@@ -2907,7 +2907,7 @@ class ApiUIController extends AdminController
             }
         }
 
-        $query_lot = InfoCongDoan::with('plan', 'lot.product', 'line.machine')->whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_bam_may')->whereNotNull('thoi_gian_ket_thuc');
+        $query_lot = InfoCongDoan::with('plan', 'lot.product', 'line.machine');
         if ($request->date && count($request->date) > 1) {
             $query_lot->whereDate('thoi_gian_bat_dau', '>=', date('Y-m-d', strtotime($request->date[0])))->whereDate('thoi_gian_bat_dau', '<=', date('Y-m-d', strtotime($request->date[1])));
         } else {
@@ -2935,6 +2935,7 @@ class ApiUIController extends AdminController
             DB::raw("SUM(sl_dau_vao_hang_loat) as tong_sl_dau_vao_hang_loat"),
             DB::raw("DATE(thoi_gian_bat_dau) as ngay_sx"),
         ])
+        ->whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_bam_may')->whereNotNull('thoi_gian_ket_thuc')
         ->groupBy('lo_sx', 'line_id', 'ngay_sx')
         ->orderBy('ngay_sx')->orderBy('lo_sx')
         ->get();
@@ -3015,7 +3016,8 @@ class ApiUIController extends AdminController
         $query_lot->whereIn('line_id', ['10', '22', '11', '12', '13', '14', '15'])->selectRaw('lo_sx,line_id,SUM(sl_dau_vao_hang_loat) as sl_dau_vao_,
         SUM(sl_dau_ra_hang_loat) as sl_dau_ra_, SUM(sl_tem_vang) as sl_tem_vang_, SUM(sl_ng) as sl_ng_,SUM(powerM) as powerM_, SUM(sl_dau_ra_hang_loat - sl_tem_vang - sl_ng) as sl_ok_
         , SUM(TIME_TO_SEC(TIMEDIFF(thoi_gian_ket_thuc , thoi_gian_bat_dau))) as tong_thoi_gian_san_xuat_, SUM(TIME_TO_SEC(TIMEDIFF(thoi_gian_bam_may , thoi_gian_bat_dau))) as thoi_gian_khong_san_luong_,
-        SUM(TIME_TO_SEC(TIMEDIFF(thoi_gian_ket_thuc , thoi_gian_bam_may))) as thoi_gian_tinh_san_luong_,MAX(thoi_gian_bat_dau) as ngay_sx_gan_nhat_');
+        SUM(TIME_TO_SEC(TIMEDIFF(thoi_gian_ket_thuc , thoi_gian_bam_may))) as thoi_gian_tinh_san_luong_,MAX(thoi_gian_bat_dau) as ngay_sx_gan_nhat_')
+        ->whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc');;
         $records = $query_lot->groupBy('lo_sx', 'line_id')->get()->groupBy('lo_sx');
         $table4 = [];
         foreach ($records as $key => $record) {
@@ -3047,7 +3049,6 @@ class ApiUIController extends AdminController
             }
             $table4[] = $obj;
         }
-
         $start4_row = $table3_row + 1;
         $start4_col = 1;
         $header4 = [

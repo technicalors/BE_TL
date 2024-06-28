@@ -2589,10 +2589,9 @@ class ApiMobileController extends AdminController
         if ($request->record_type == "tb") {
             $tracking = Tracking::where('machine_id', $request->machine_id)->first();
             $tracking->update(['status' => $request->status]);
-            // $machine_status = MachineStatus::where('machine_id', $request->machine_id)->first();
-            // if ($machine_status->status == 1) {
-            $res = MachineLog::UpdateStatus($request);
-            // }
+            if($tracking->lot_id){
+                $res = MachineLog::UpdateStatus($request);
+            }
         }
         ##
         // if(isset($tracking) && !is_null($tracking->lot_id)){
