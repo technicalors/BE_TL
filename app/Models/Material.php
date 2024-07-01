@@ -9,8 +9,5 @@ class Material extends Model
 {
     use HasFactory;
     protected $table = "material";
-    protected $casts = [
-        'thong_so' => 'json',
-        'id'=>'string'
-    ];
+    protected $fillable = ['name','material', 'color', 'quantitative', 'thickness', 'meter_per_roll', 'sheet_per_pallet'];
 }

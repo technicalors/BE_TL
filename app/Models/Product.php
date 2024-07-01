@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Validator;
 class Product extends Model
 {
     use HasFactory;
-    protected $fillable = ['id', 'name','so_bat','material_id', 'dinh_muc', 'customer_id', 'ver', 'his', 'nhiet_do_phong', 'do_am_phong', 'do_am_giay', 'thoi_gian_bao_on', 'chieu_dai_thung', 'chieu_rong_thung', 'chieu_cao_thung', 'the_tich_thung', 'dinh_muc_thung', 'u_nhiet_do_phong', 'u_do_am_phong', 'u_do_am_giay', 'u_thoi_gian_u', 'number_of_bin', 'kt_kho_dai', 'kt_kho_rong'];
+    protected $fillable = ['id', 'name','so_bat','material_id', 'dinh_muc', 'customer_id', 'ver', 'his', 'weight', 'paper_norm', 'nhiet_do_phong', 'do_am_phong', 'do_am_giay', 'thoi_gian_bao_on', 'chieu_dai_thung', 'chieu_rong_thung', 'chieu_cao_thung', 'the_tich_thung', 'dinh_muc_thung', 'u_nhiet_do_phong', 'u_do_am_phong', 'u_do_am_giay', 'u_thoi_gian_u', 'number_of_bin', 'kt_kho_dai', 'kt_kho_rong'];
     protected $hidden = ['created_at', 'updated_at'];
     protected $casts = ['info' => 'json', "id" => "string"];
 

@@ -201,6 +201,94 @@ class ProductController extends AdminController
         return $spec;
     }
 
+    public function importNewVersion()
+    {
+        set_time_limit(0);
+        if (!isset($_FILES['files'])) { {
+                admin_error('Định dạng file không đúng', 'error');
+                return back();
+            }
+        }
+
+
+        $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
+        if ($extension == 'csv') {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
+        } elseif ($extension == 'xlsx') {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+        } else {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
+        }
+        // file path
+        $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
+        $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
+        
+        for ($i = 5; $i <= count($allDataInSheet); $i++) {
+            $row = $allDataInSheet[$i];
+            $spec_data = [];
+            if (isset($mark_product[$row['B']]) || $row['B'] == '' || $row['H'] == '') continue;
+            $product = new Product();
+            $product->id = str_replace(" ", "", $row["B"]);
+            $product->name = $row["C"];
+            $product->customer_id = $row["F"];
+            $product->material_id = $row["H"];
+            $product->dinh_muc = $row["N"];
+            $product->dinh_muc_thung = $row["DR"];
+
+            $product->nhiet_do_phong = $row["EU"];
+            $product->do_am_phong = $row["EV"];
+            $product->do_am_giay = $row["EW"];
+            $product->so_bat = $row["BR"];
+            $product->thoi_gian_bao_on = $row["EX"];
+
+            $product->chieu_dai_thung = $row["DT"];
+            $product->chieu_rong_thung = $row["DU"];
+            $product->chieu_cao_thung = $row["DV"];
+            $product->the_tich_thung = $row["DW"];
+            $product->kt_kho_dai = $row["BO"];
+            $product->kt_kho_rong = $row["BQ"];
+            $product->ver = $row['D'];
+            $product->his = $row['E'];
+
+            $product->u_nhiet_do_phong = $row['EU'];
+            $product->u_do_am_phong = $row['EV'];
+            $product->u_do_am_giay = $row['EW'];
+            $product->u_thoi_gian_u = $row['EX'];
+
+            $spec_data = $this->importSpec($row, $titleRow1, $titleRow2, $product->id);
+            Spec::insert($spec_data);
+            // return;
+            $product_data[] = $product;
+            $product->save();
+            $mark_product[$row['B']] = true;
+
+            if (!isset($mark_material[$row['H']])) {
+                $material = new Material();
+                $material->id = $row['H'];
+                $material->ten = $row['I'];
+                $material->code = $row['J'];
+                $info = [
+                    "mau" => $row['K'],
+                    "DL" => $row['L']
+                ];
+
+                $material->thong_so = $info;
+                $material->save();
+                $mark_material[$row['H']] = true;
+            }
+            if ($row['F'] == '') continue;
+            if (!isset($mark_customer[$row['F']])) {
+                $customer = new Customer();
+                $customer->name = $row['G'];
+                $customer->id = $row['F'];
+                $customer->save();
+                $mark_customer[$row['F']] = true;
+            }
+        }
+        admin_success('Tải lên thành công', 'success');
+        return back();
+    }
+
 
 
     /**
