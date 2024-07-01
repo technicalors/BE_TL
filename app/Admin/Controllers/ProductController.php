@@ -254,8 +254,6 @@ class ProductController extends AdminController
             $product->u_do_am_phong = $row['EV'];
             $product->u_do_am_giay = $row['EW'];
             $product->u_thoi_gian_u = $row['EX'];
-
-            $spec_data = $this->importSpec($row, $titleRow1, $titleRow2, $product->id);
             Spec::insert($spec_data);
             // return;
             $product_data[] = $product;
