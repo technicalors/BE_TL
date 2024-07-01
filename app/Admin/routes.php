@@ -346,7 +346,7 @@ Route::group([
 
 Route::group([
     'prefix'        => "/api",
-    'middleware'    => [],
+    'middleware'    => "auth:sanctum",
     'as'            => "mobile/api" . '.',
 ], function (Router $router) {
     $router->post('/machine/update', [ApiMobileController::class, 'exMachineUpdate']);
@@ -454,6 +454,15 @@ Route::group([
     $router->post('permissions/delete', [App\Admin\Controllers\PermissionController::class, 'deletePermissions']);
     $router->get('permissions/export', [App\Admin\Controllers\PermissionController::class, 'exportPermissions']);
     $router->post('permissions/import', [App\Admin\Controllers\PermissionController::class, 'importPermissions']);
+
+    $router->get('product/list', [App\Admin\Controllers\ProductController::class, 'list']);
+    $router->patch('product/update/{id}', [App\Admin\Controllers\ProductController::class, 'update']);
+    $router->post('product/create', [App\Admin\Controllers\ProductController::class, 'create']);
+    $router->post('product/delete/{id}', [App\Admin\Controllers\ProductController::class, 'delete']);
+    $router->get('product/export', [App\Admin\Controllers\ProductController::class, 'exportLine']);
+    $router->post('product/import', [App\Admin\Controllers\ProductController::class, 'importLine']);
+
+
     $router->get('update-du-lieu', [ApiMobileController::class, 'updateDuLieu']);
 
     $router->get('production_plan/export', [ApiUIController::class, 'exportKHSX']);
