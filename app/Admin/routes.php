@@ -458,9 +458,18 @@ Route::group([
     $router->get('product/list', [App\Admin\Controllers\ProductController::class, 'list']);
     $router->patch('product/update/{id}', [App\Admin\Controllers\ProductController::class, 'update']);
     $router->post('product/create', [App\Admin\Controllers\ProductController::class, 'create']);
-    $router->post('product/delete/{id}', [App\Admin\Controllers\ProductController::class, 'delete']);
-    $router->get('product/export', [App\Admin\Controllers\ProductController::class, 'exportLine']);
-    $router->post('product/import', [App\Admin\Controllers\ProductController::class, 'importLine']);
+    $router->delete('product/delete/{id}', [App\Admin\Controllers\ProductController::class, 'delete']);
+    $router->post('products/delete', [App\Admin\Controllers\ProductController::class, 'deleteMultiple']);
+    $router->get('product/export', [App\Admin\Controllers\ProductController::class, 'export']);
+    $router->post('product/import', [App\Admin\Controllers\ProductController::class, 'import']);
+
+    $router->get('material/list', [App\Admin\Controllers\MaterialController::class, 'list']);
+    $router->patch('material/update/{id}', [App\Admin\Controllers\MaterialController::class, 'update']);
+    $router->post('material/create', [App\Admin\Controllers\MaterialController::class, 'create']);
+    $router->delete('material/delete/{id}', [App\Admin\Controllers\MaterialController::class, 'delete']);
+    $router->post('materials/delete', [App\Admin\Controllers\MaterialController::class, 'deleteMultiple']);
+    $router->get('material/export', [App\Admin\Controllers\MaterialController::class, 'exportLine']);
+    $router->post('material/import', [App\Admin\Controllers\MaterialController::class, 'importLine']);
 
 
     $router->get('update-du-lieu', [ApiMobileController::class, 'updateDuLieu']);

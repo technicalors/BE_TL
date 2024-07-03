@@ -2,74 +2,118 @@
 
 namespace App\Admin\Controllers;
 
+use App\Http\Controllers\Controller;
 use App\Models\Material;
+use App\Traits\API;
 use Encore\Admin\Controllers\AdminController;
 use Encore\Admin\Form;
 use Encore\Admin\Grid;
 use Encore\Admin\Show;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
-class MaterialController extends AdminController
+class MaterialController extends Controller
 {
-    /**
-     * Title for current resource.
-     *
-     * @var string
-     */
-    protected $title = 'Material';
-
-    /**
-     * Make a grid builder.
-     *
-     * @return Grid
-     */
-    protected function grid()
+    use API;
+    public function list(Request $request)
     {
-        $grid = new Grid(new Material());
-        $grid->actions(function ($actions) {
-            $actions->disableDelete();
-            $actions->disableEdit();
-            $actions->disableView();
-        });
-
-        $grid->column('id', __('Id'));
-        $grid->column('code', __('Code'));
-        $grid->column('ten', __('Ten'));
-        $grid->column('thong_so', __('Thong so'));
-
-        return $grid;
+        $query = Material::orderBy('created_at', 'DESC');
+        if (isset($request->id)) {
+            $query->where('id', 'like', "%$request->id%");
+        }
+        if (isset($request->name)) {
+            $query->where('name', 'like', "%$request->name%");
+        }
+        $total = $query->count();
+        if (isset($request->page) && isset($request->pageSize)) {
+            // return $request->page - 1;
+            $query->offset((($request->page - 1) ?? 0) * $request->pageSize)->limit($request->pageSize);
+        }
+        $result = $query->get();
+        return $this->success(['data' => $result, 'total' => $total]);
     }
 
-    /**
-     * Make a show builder.
-     *
-     * @param mixed $id
-     * @return Show
-     */
-    protected function detail($id)
+    public function create(Request $request)
     {
-        $show = new Show(Material::findOrFail($id));
-
-        $show->field('id', __('Id'));
-        $show->field('code', __('Code'));
-        $show->field('ten', __('Ten'));
-        $show->field('thong_so', __('Thong so'));
-
-        return $show;
+        $input = $request->all();
+        $validated = Material::validate($input);
+        if ($validated->fails()) {
+            return $this->failure('', $validated->errors()->first());
+        }
+        try {
+            DB::beginTransaction();
+            $product = Material::create($input);
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+        }
+        return $this->success('', 'Tạo thành công');
     }
 
-    /**
-     * Make a form builder.
-     *
-     * @return Form
-     */
-    protected function form()
+    public function update(Request $request, $id)
     {
-        $form = new Form(new Material());
+        $input = $request->all();
+        $validated = Material::validate($input, $id);
+        if ($validated->fails()) {
+            return $this->failure('', $validated->errors()->first());
+        }
+        try {
+            DB::beginTransaction();
+            $product = Material::find($id)->update($input);
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+        }
+        return $this->success('', 'Cập nhật thành công');
+    }
 
-        $form->text('code', __('Code'));
-        $form->text('ten', __('Ten'));
-        $form->text('thong_so', __('Thong so'));
+    public function delete(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $product = Material::find($id)->delete();
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+        }
+        return $this->success('', 'Xoá thành công');
+    }
 
-        return $form;
+    public function deleteMultiple(Request $request)
+    {
+        try {
+            DB::beginTransaction();
+            $product = Material::whereIn('id', $request)->delete();
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+        }
+        return $this->success('', 'Xoá thành công');
+    }
+    public function upload_xlsx($action, $title)
+    {
+        return view('import', [
+            "action" => $action,
+            "title" => $title
+        ]);
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx',
+        ]);
+        // try {
+        //     Excel::import(new MoldsImport, $request->file('file'));
+        // } catch (\Exception $e) {
+        //     // Handle the exception and return an appropriate response
+        //     return $this->failure(['error' => $e->getMessage()], 'File import failed', 422);
+        // }
+        return $this->success('', 'Upload thành công');
+    }
+
+    public function export(Request $request)
+    {
+        return $this->success('', 'Export thành công');
     }
 }

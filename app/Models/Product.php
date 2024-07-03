@@ -54,12 +54,12 @@ class Product extends Model
         return $this->hasMany(Lot::class);
     }
 
-    static function validate($input, $is_update = true)
+    static function validate($input, $id = null)
     {
         $validated = Validator::make(
             $input,
             [
-                'id'=>'required|unique:products,id'.($is_update ? ','.$input['id'] : ""),
+                'id'=>'required|unique:products,id'.($id ? ','.$id : ""),
                 'name'=>'required',
                 'customer_id'=>'required',
             ],
