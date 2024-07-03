@@ -3616,10 +3616,7 @@ class ApiMobileController extends AdminController
     }
     public function ui_getLines(Request $request)
     {
-        $lines = Line::all();
-        foreach ($lines as $line) {
-            $line['machine'] = $line->machine;
-        }
+        $lines = Line::with('machine')->get();
         return $this->success($lines);
     }
 

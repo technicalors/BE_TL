@@ -3,32 +3,35 @@
 namespace App\Admin\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\Material;
+use App\Models\Bom;
 use App\Traits\API;
-use Encore\Admin\Controllers\AdminController;
-use Encore\Admin\Form;
-use Encore\Admin\Grid;
-use Encore\Admin\Show;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class MaterialController extends Controller
+class BomController extends Controller
 {
     use API;
     public function list(Request $request)
     {
-        $query = Material::orderBy('created_at', 'DESC');
-        if (isset($request->id)) {
-            $query->where('id', 'like', "%$request->id%");
+        $query = Bom::orderBy('created_at', 'DESC');
+        if (isset($request->product_id)) {
+            $query->where('product_id', 'like', "%$request->product_id%");
         }
-        if (isset($request->name)) {
-            $query->where('name', 'like', "%$request->name%");
+        if (isset($request->product_name)) {
+            $query->where('product_name', 'like', "%$request->product_name%");
+        }
+        if (isset($request->material_id)) {
+            $query->where('material_id', 'like', "%$request->material_id%");
+        }
+        if (isset($request->material_name)) {
+            $query->where('material_name', 'like', "%$request->material_name%");
         }
         $total = $query->count();
         if (isset($request->page) && isset($request->pageSize)) {
             // return $request->page - 1;
             $query->offset((($request->page - 1) ?? 0) * $request->pageSize)->limit($request->pageSize);
         }
+        $query->with('material', 'product');
         $result = $query->get();
         return $this->success(['data' => $result, 'total' => $total]);
     }
@@ -36,13 +39,13 @@ class MaterialController extends Controller
     public function create(Request $request)
     {
         $input = $request->all();
-        $validated = Material::validate($input);
+        $validated = Bom::validate($input);
         if ($validated->fails()) {
             return $this->failure('', $validated->errors()->first());
         }
         try {
             DB::beginTransaction();
-            $material = Material::create($input);
+            $bom = Bom::create($input);
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -53,13 +56,13 @@ class MaterialController extends Controller
     public function update(Request $request, $id)
     {
         $input = $request->all();
-        $validated = Material::validate($input, $id);
+        $validated = Bom::validate($input, $id);
         if ($validated->fails()) {
             return $this->failure('', $validated->errors()->first());
         }
         try {
             DB::beginTransaction();
-            $material = Material::find($id)->update($input);
+            $bom = Bom::find($id)->update($input);
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -71,7 +74,7 @@ class MaterialController extends Controller
     {
         try {
             DB::beginTransaction();
-            $material = Material::find($id)->delete();
+            $bom = Bom::find($id)->delete();
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -83,7 +86,7 @@ class MaterialController extends Controller
     {
         try {
             DB::beginTransaction();
-            $material = Material::whereIn('id', $request)->delete();
+            $bom = Bom::whereIn('id', $request)->delete();
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();

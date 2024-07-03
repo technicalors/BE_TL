@@ -5,7 +5,9 @@ use App\Admin\Controllers\ApiUIController;
 use App\Admin\Controllers\InfoCongDoanController;
 // use App\Admin\Controllers\ProductionPlanController;
 use App\Admin\Controllers\RoleController;
+use Encore\Admin\Facades\Admin;
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\Route;
 
 Admin::routes();
 
@@ -471,6 +473,14 @@ Route::group([
     $router->get('material/export', [App\Admin\Controllers\MaterialController::class, 'exportLine']);
     $router->post('material/import', [App\Admin\Controllers\MaterialController::class, 'importLine']);
 
+    $router->get('bom/list', [App\Admin\Controllers\BomController::class, 'list']);
+    $router->patch('bom/update/{id}', [App\Admin\Controllers\BomController::class, 'update']);
+    $router->post('bom/create', [App\Admin\Controllers\BomController::class, 'create']);
+    $router->delete('bom/delete/{id}', [App\Admin\Controllers\BomController::class, 'delete']);
+    $router->post('boms/delete', [App\Admin\Controllers\BomController::class, 'deleteMultiple']);
+    $router->get('bom/export', [App\Admin\Controllers\BomController::class, 'exportLine']);
+    $router->post('bom/import', [App\Admin\Controllers\BomController::class, 'importLine']);
+
 
     $router->get('update-du-lieu', [ApiMobileController::class, 'updateDuLieu']);
 
@@ -488,4 +498,13 @@ Route::group([
 
     $router->get('update/product/info_cong_doan', [ApiUIController::class, 'updateProductIdInfoCongDoan']);
     $router->get('update/kho_bao_on', [ApiUIController::class, 'updateSanLuongKhoBaoOn']);
+    $router->get('update-material-name', [ApiUIController::class, 'updateMaterialName']);
+});
+
+
+Route::group([
+    'prefix'        => "/api",
+    'middleware'    => [],
+], function (Router $router) {
+    $router->get('update-material-name', [ApiUIController::class, 'updateMaterialName']);
 });
