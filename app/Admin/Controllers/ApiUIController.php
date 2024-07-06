@@ -33,6 +33,7 @@ use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Models\CustomUser;
 use App\Models\LSXLog;
+use App\Models\Material;
 use Carbon\CarbonPeriod;
 use stdClass;
 use Throwable;
@@ -275,7 +276,7 @@ class ApiUIController extends AdminController
         $bat_data = [];
         if (isset($info['qc']) && isset($info['qc'][$line_key])) {
             $info_qc = $info['qc'][$line_key];
-            if(isset($info_qc['thoi_gian_vao'])){
+            if (isset($info_qc['thoi_gian_vao'])) {
                 $thoi_gian_kiem_tra = date('d/m/Y H:i:s', strtotime($info_qc['thoi_gian_vao']));
             }
             if ($line_key === 'gap-dan') {
@@ -613,11 +614,11 @@ class ApiUIController extends AdminController
         $query = $this->qcHistoryQuery($request);
         $dateRange = CarbonPeriod::create($request->date[0], $request->date[1]);
         $dates = array_flip(array_map(fn ($date) => $date->format('Y-m-d'), iterator_to_array($dateRange)));
-        $data = $query->get()->filter(function($value, $key) use($dates) {
+        $data = $query->get()->filter(function ($value, $key) use ($dates) {
             $line_key = $this->ID2TEXT[$value->line_id];
-            if(isset($value->log->info['qc'][$line_key]['thoi_gian_vao'])){
+            if (isset($value->log->info['qc'][$line_key]['thoi_gian_vao'])) {
                 $thoi_gian_vao = date('Y-m-d', strtotime($value->log->info['qc'][$line_key]['thoi_gian_vao']));
-                if(isset($dates[$thoi_gian_vao])) {
+                if (isset($dates[$thoi_gian_vao])) {
                     return $value;
                 }
             }
@@ -811,11 +812,11 @@ class ApiUIController extends AdminController
         $query = $this->qcHistoryQuery($request);
         $dateRange = CarbonPeriod::create(date('Y-m-d', strtotime($request->date[0])), date('Y-m-d', strtotime($request->date[1])));
         $dates = array_flip(array_map(fn ($date) => $date->format('Y-m-d'), iterator_to_array($dateRange)));
-        $data = $query->get()->filter(function($value, $key) use($dates) {
+        $data = $query->get()->filter(function ($value, $key) use ($dates) {
             $line_key = $this->ID2TEXT[$value->line_id];
-            if(isset($value->log->info['qc'][$line_key]['thoi_gian_vao'])){
+            if (isset($value->log->info['qc'][$line_key]['thoi_gian_vao'])) {
                 $thoi_gian_vao = date('Y-m-d', strtotime($value->log->info['qc'][$line_key]['thoi_gian_vao']));
-                if(isset($dates[$thoi_gian_vao])) {
+                if (isset($dates[$thoi_gian_vao])) {
                     return $value;
                 }
             }
@@ -2175,7 +2176,7 @@ class ApiUIController extends AdminController
             $log_export = WareHouseLog::with('creator')->where('lot_id', $lot->id)->where('type', 2)->first();
             $object = new stdClass();
             $object->ngay = date('d/m/Y', strtotime($lot->created_at));
-            if(!$lot->product){
+            if (!$lot->product) {
                 continue;
             }
             $object->ma_khach_hang = $lot->product->customer->id;
@@ -2436,11 +2437,11 @@ class ApiUIController extends AdminController
         $query = $this->qcHistoryQuery($request);
         $dateRange = CarbonPeriod::create($request->date[0], $request->date[1]);
         $dates = array_flip(array_map(fn ($date) => $date->format('Y-m-d'), iterator_to_array($dateRange)));
-        $data = $query->get()->filter(function($value, $key) use($dates) {
+        $data = $query->get()->filter(function ($value, $key) use ($dates) {
             $line_key = $this->ID2TEXT[$value->line_id];
-            if(isset($value->log->info['qc'][$line_key]['thoi_gian_vao'])){
+            if (isset($value->log->info['qc'][$line_key]['thoi_gian_vao'])) {
                 $thoi_gian_vao = date('Y-m-d', strtotime($value->log->info['qc'][$line_key]['thoi_gian_vao']));
-                if(isset($dates[$thoi_gian_vao])) {
+                if (isset($dates[$thoi_gian_vao])) {
                     return $value;
                 }
             }
@@ -2907,7 +2908,7 @@ class ApiUIController extends AdminController
             }
         }
 
-        $query_lot = InfoCongDoan::with('plan', 'lot.product', 'line.machine')->whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_bam_may')->whereNotNull('thoi_gian_ket_thuc');
+        $query_lot = InfoCongDoan::with('plan', 'lot.product', 'line.machine');
         if ($request->date && count($request->date) > 1) {
             $query_lot->whereDate('thoi_gian_bat_dau', '>=', date('Y-m-d', strtotime($request->date[0])))->whereDate('thoi_gian_bat_dau', '<=', date('Y-m-d', strtotime($request->date[1])));
         } else {
@@ -2923,22 +2924,23 @@ class ApiUIController extends AdminController
         //Table 3
         $table_lot_query = clone $query_lot;
         $records =  $table_lot_query->whereIn('line_id', ['10', '22', '11', '12', '13', '14'])
-        ->select([
-            'info_cong_doan.*',
-            DB::raw("SUM(TIME_TO_SEC(TIMEDIFF(thoi_gian_ket_thuc , thoi_gian_bat_dau))) as tong_thoi_gian_san_xuat"),
-            DB::raw("SUM(TIME_TO_SEC(TIMEDIFF(thoi_gian_bam_may , thoi_gian_bat_dau))) as tong_thoi_gian_vao_hang"),
-            DB::raw("SUM(TIME_TO_SEC(TIMEDIFF(thoi_gian_ket_thuc , thoi_gian_bam_may))) as tong_thoi_gian_ra_sp"),
-            DB::raw("SUM(sl_ng) as tong_sl_ng"),
-            DB::raw("SUM(sl_tem_vang) as tong_sl_tem_vang"),
-            DB::raw("SUM(sl_dau_ra_hang_loat - sl_tem_vang - sl_ng) as tong_sl_ok"),
-            DB::raw("SUM(sl_dau_ra_hang_loat) as tong_sl_dau_ra_hang_loat"),
-            DB::raw("SUM(sl_dau_vao_hang_loat) as tong_sl_dau_vao_hang_loat"),
-            DB::raw("DATE(thoi_gian_bat_dau) as ngay_sx"),
-        ])
-        ->groupBy('lo_sx', 'line_id', 'ngay_sx')
-        ->orderBy('ngay_sx')->orderBy('lo_sx')
-        ->get();
-        
+            ->select([
+                'info_cong_doan.*',
+                DB::raw("SUM(TIME_TO_SEC(TIMEDIFF(thoi_gian_ket_thuc , thoi_gian_bat_dau))) as tong_thoi_gian_san_xuat"),
+                DB::raw("SUM(TIME_TO_SEC(TIMEDIFF(thoi_gian_bam_may , thoi_gian_bat_dau))) as tong_thoi_gian_vao_hang"),
+                DB::raw("SUM(TIME_TO_SEC(TIMEDIFF(thoi_gian_ket_thuc , thoi_gian_bam_may))) as tong_thoi_gian_ra_sp"),
+                DB::raw("SUM(sl_ng) as tong_sl_ng"),
+                DB::raw("SUM(sl_tem_vang) as tong_sl_tem_vang"),
+                DB::raw("SUM(sl_dau_ra_hang_loat - sl_tem_vang - sl_ng) as tong_sl_ok"),
+                DB::raw("SUM(sl_dau_ra_hang_loat) as tong_sl_dau_ra_hang_loat"),
+                DB::raw("SUM(sl_dau_vao_hang_loat) as tong_sl_dau_vao_hang_loat"),
+                DB::raw("DATE(thoi_gian_bat_dau) as ngay_sx"),
+            ])
+            ->whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_bam_may')->whereNotNull('thoi_gian_ket_thuc')
+            ->groupBy('lo_sx', 'line_id', 'ngay_sx')
+            ->orderBy('ngay_sx')->orderBy('lo_sx')
+            ->get();
+
         $table3 = [];
         foreach ($records as $key => $record) {
             $obj = ['tg_kh_giao' => 0, 'sl_ke_hoach' => 0];
@@ -2948,9 +2950,9 @@ class ApiUIController extends AdminController
             $record->tg_kh_giao = $plan ? round($plan->tong_tg_thuc_hien / 60, 1) : 0;
             $record->sl_ke_hoach = $plan ? (($plan->sl_thanh_pham && $plan->product->so_bat) ? $plan->product->so_bat * $plan->sl_thanh_pham : $plan->sl_giao_sx) : 0;
             $record->sl_nhan_su = $plan->nhan_luc ?? "";
-            $record->ty_le_ng = round(($record->tong_sl_dau_ra_hang_loat ? ($record->tong_sl_ng / $record->tong_sl_dau_ra_hang_loat) : 0) * 100)."%";
-            $record->ty_le_hao_phi_thoi_gian = round(($record->tong_sl_dau_ra_hang_loat ? ($record->tong_thoi_gian_vao_hang / $record->tong_thoi_gian_san_xuat) : 0) * 100)."%";
-            $record->ty_le_hoan_thanh = round(($record->tong_sl_dau_ra_hang_loat ? (($record->tong_sl_dau_ra_hang_loat - $record->tong_sl_ng) / $record->tong_sl_dau_ra_hang_loat) : 0) * 100)."%";
+            $record->ty_le_ng = round(($record->tong_sl_dau_ra_hang_loat ? ($record->tong_sl_ng / $record->tong_sl_dau_ra_hang_loat) : 0) * 100) . "%";
+            $record->ty_le_hao_phi_thoi_gian = round(($record->tong_sl_dau_ra_hang_loat ? ($record->tong_thoi_gian_vao_hang / $record->tong_thoi_gian_san_xuat) : 0) * 100) . "%";
+            $record->ty_le_hoan_thanh = round(($record->tong_sl_dau_ra_hang_loat ? (($record->tong_sl_dau_ra_hang_loat - $record->tong_sl_ng) / $record->tong_sl_dau_ra_hang_loat) : 0) * 100) . "%";
             $record->tong_thoi_gian_san_xuat = round($record->tong_thoi_gian_san_xuat / 3600, 1);
             $record->tong_thoi_gian_vao_hang = round($record->tong_thoi_gian_vao_hang / 3600, 1);
             $record->tong_thoi_gian_ra_sp = round($record->tong_thoi_gian_ra_sp / 3600, 1);
@@ -3015,7 +3017,8 @@ class ApiUIController extends AdminController
         $query_lot->whereIn('line_id', ['10', '22', '11', '12', '13', '14', '15'])->selectRaw('lo_sx,line_id,SUM(sl_dau_vao_hang_loat) as sl_dau_vao_,
         SUM(sl_dau_ra_hang_loat) as sl_dau_ra_, SUM(sl_tem_vang) as sl_tem_vang_, SUM(sl_ng) as sl_ng_,SUM(powerM) as powerM_, SUM(sl_dau_ra_hang_loat - sl_tem_vang - sl_ng) as sl_ok_
         , SUM(TIME_TO_SEC(TIMEDIFF(thoi_gian_ket_thuc , thoi_gian_bat_dau))) as tong_thoi_gian_san_xuat_, SUM(TIME_TO_SEC(TIMEDIFF(thoi_gian_bam_may , thoi_gian_bat_dau))) as thoi_gian_khong_san_luong_,
-        SUM(TIME_TO_SEC(TIMEDIFF(thoi_gian_ket_thuc , thoi_gian_bam_may))) as thoi_gian_tinh_san_luong_,MAX(thoi_gian_bat_dau) as ngay_sx_gan_nhat_');
+        SUM(TIME_TO_SEC(TIMEDIFF(thoi_gian_ket_thuc , thoi_gian_bam_may))) as thoi_gian_tinh_san_luong_,MAX(thoi_gian_bat_dau) as ngay_sx_gan_nhat_')
+            ->whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc');;
         $records = $query_lot->groupBy('lo_sx', 'line_id')->get()->groupBy('lo_sx');
         $table4 = [];
         foreach ($records as $key => $record) {
@@ -3047,7 +3050,6 @@ class ApiUIController extends AdminController
             }
             $table4[] = $obj;
         }
-
         $start4_row = $table3_row + 1;
         $start4_col = 1;
         $header4 = [
@@ -3663,11 +3665,11 @@ class ApiUIController extends AdminController
         $query = $this->qcHistoryQuery($request);
         $dateRange = CarbonPeriod::create($request->date[0], $request->date[1]);
         $dates = array_flip(array_map(fn ($date) => $date->format('Y-m-d'), iterator_to_array($dateRange)));
-        $data = $query->get()->filter(function($value, $key) use($dates) {
+        $data = $query->get()->filter(function ($value, $key) use ($dates) {
             $line_key = $this->ID2TEXT[$value->line_id];
-            if(isset($value->log->info['qc'][$line_key]['thoi_gian_vao'])){
+            if (isset($value->log->info['qc'][$line_key]['thoi_gian_vao'])) {
                 $thoi_gian_vao = date('Y-m-d', strtotime($value->log->info['qc'][$line_key]['thoi_gian_vao']));
-                if(isset($dates[$thoi_gian_vao])) {
+                if (isset($dates[$thoi_gian_vao])) {
                     return $value;
                 }
             }
@@ -5282,29 +5284,45 @@ class ApiUIController extends AdminController
             $infos_bao_on = InfoCongDoan::where('line_id', 9)->get();
             foreach ($infos_bao_on as $info) {
                 $info_in = InfoCongDoan::where('line_id', 10)->where('lot_id', $info->lot_id)->first();
-                if($info_in && $info_in->sl_dau_vao_hang_loat){
-                    $info->update(['sl_dau_vao_hang_loat'=>$info_in->sl_dau_vao_hang_loat, 'sl_dau_ra_hang_loat'=>$info_in->sl_dau_vao_hang_loat]);
-                }else{
+                if ($info_in && $info_in->sl_dau_vao_hang_loat) {
+                    $info->update(['sl_dau_vao_hang_loat' => $info_in->sl_dau_vao_hang_loat, 'sl_dau_ra_hang_loat' => $info_in->sl_dau_vao_hang_loat]);
+                } else {
                     $lot = Lot::with('product')->find($info->lot_id);
-                    if($lot && $lot->product) $info->update(['sl_dau_vao_hang_loat'=>$lot->so_luong * $lot->product->so_bat, 'sl_dau_ra_hang_loat'=>$lot->so_luong * $lot->product->so_bat]);
+                    if ($lot && $lot->product) $info->update(['sl_dau_vao_hang_loat' => $lot->so_luong * $lot->product->so_bat, 'sl_dau_ra_hang_loat' => $lot->so_luong * $lot->product->so_bat]);
                 }
             }
             $infos_u = InfoCongDoan::where('line_id', 21)->get();
             foreach ($infos_u as $info) {
                 $info_in = InfoCongDoan::where('line_id', 10)->where('lot_id', $info->lot_id)->first();
-                if(!$info_in){
+                if (!$info_in) {
                     $lot_id = str_replace('.TV10', '', $info->lot_id);
                     $info_in = InfoCongDoan::where('line_id', 10)->where('lot_id', $lot_id)->first();
-                    if($info_in){
-                        $info->update(['sl_dau_vao_hang_loat'=>$info_in->sl_tem_vang, 'sl_dau_ra_hang_loat'=>$info_in->sl_tem_vang]);
+                    if ($info_in) {
+                        $info->update(['sl_dau_vao_hang_loat' => $info_in->sl_tem_vang, 'sl_dau_ra_hang_loat' => $info_in->sl_tem_vang]);
                     }
-                }else{
+                } else {
                     $so_luong = $info_in->sl_dau_ra_hang_loat - $info_in->sl_tem_vang - $info_in->sl_ng;
-                    $info->update(['sl_dau_vao_hang_loat'=>$so_luong, 'sl_dau_ra_hang_loat'=>$so_luong]);
+                    $info->update(['sl_dau_vao_hang_loat' => $so_luong, 'sl_dau_ra_hang_loat' => $so_luong]);
                 }
             }
             DB::commit();
             return $this->success($counter, 'OK');
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return $th;
+        }
+    }
+
+    public function updateMaterialName()
+    {
+        try {
+            DB::beginTransaction();
+            $materials = Material::all();
+            foreach ($materials as $material) {
+                $material->name = $material->ten;
+                $material->save();
+            }
+            DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
             return $th;
