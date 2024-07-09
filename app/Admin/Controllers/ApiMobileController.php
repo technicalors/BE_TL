@@ -107,7 +107,7 @@ class ApiMobileController extends AdminController
         if (Admin::guard()->attempt($credentials)) {
             $user = Admin::user();
             $user = $this->user->find($user->id);
-            // $user->tokens()->delete();
+            $user->tokens()->delete();
             return $this->success($this->parseDataUser($user), 'Đăng nhập thành công');
         }
         return $this->failure([], 'Sai tên đăng nhập hoặc mật khẩu!');
@@ -805,7 +805,7 @@ class ApiMobileController extends AdminController
                 $tracking = Tracking::where('machine_id', 'GL_637CIR')->first();
                 $info_cong_doan->start_powerM = $tracking->powerM;
             }
-            if ($line_key === 'kho-bao-on' || $line_key === 'u') {
+            if($line_key === 'kho-bao-on' || $line_key === 'u'){
                 $info_cong_doan->sl_dau_vao_hang_loat = ($pallet->so_luong * $pallet->product->so_bat);
             }
             $info_cong_doan->save();
@@ -1037,7 +1037,7 @@ class ApiMobileController extends AdminController
                 $info_cong_doan['end_powerM'] = $tracking->powerM;
                 $info_cong_doan['powerM'] = $tracking->powerM - $info_cong_doan['start_powerM'];
             }
-            if ($line_key === 'kho-bao-on' || $line_key === 'u') {
+            if($line_key === 'kho-bao-on' || $line_key === 'u'){
                 $info_cong_doan['sl_dau_ra_hang_loat'] = ($pallet->so_luong * $pallet->product->so_bat);
             }
             $info_cong_doan['thoi_gian_ket_thuc'] = Carbon::now();
@@ -1928,7 +1928,7 @@ class ApiMobileController extends AdminController
                 $info['qc'][$line_key]['thoi_gian_ra'] = Carbon::now();
             }
             $log->info = $info;
-
+    
             if ($info_cong_doan) {
                 $sl_con_lai = 0;
                 if ($request->line_id == 10 || $request->line_id == 11 || $request->line_id == 12 || $request->line_id == 14 || $request->line_id == 22) {
@@ -1966,7 +1966,7 @@ class ApiMobileController extends AdminController
                 $info_bat['qc'][$line_key]['sl_ng'] = $sl_ng;
                 $log_bat->info = $info_bat;
                 $log_bat->save();
-
+    
                 $info_cd_bat = $bat->infoCongDoan()->where('type', 'sx')->where('line_id', $line->id)->first();
                 $info_cd_bat['sl_ng'] = $sl_ng;
                 $info_cd_bat->save();
@@ -2589,7 +2589,7 @@ class ApiMobileController extends AdminController
         if ($request->record_type == "tb") {
             $tracking = Tracking::where('machine_id', $request->machine_id)->first();
             $tracking->update(['status' => $request->status]);
-            if ($tracking->lot_id) {
+            if($tracking->lot_id){
                 $res = MachineLog::UpdateStatus($request);
             }
         }
@@ -2904,8 +2904,8 @@ class ApiMobileController extends AdminController
                 $input['quy_cach'] = $row['J'];
                 $input['sl_thung_chan'] = !is_null($row['K']) ? $row['K'] : 0;
                 $input['sl_hang_le'] = $row['L'];
-                $product_import = WareHouseLog::where('lot_id', 'like', "%" . $input['product_id'] . "%")->where('type', 1)->sum('so_luong');
-                $product_export = WareHouseLog::where('lot_id', 'like', "%" . $input['product_id'] . "%")->where('type', 2)->sum('so_luong');
+                $product_import = WareHouseLog::where('lot_id', 'like', "%".$input['product_id']."%")->where('type', 1)->sum('so_luong');
+                $product_export = WareHouseLog::where('lot_id', 'like', "%".$input['product_id']."%")->where('type', 2)->sum('so_luong');
                 $sl_ton = $product_import - $product_export;
                 $input['ton_kho'] = $sl_ton ?? 0;
                 $input['xac_nhan_sx'] = $row['N'];
@@ -3620,17 +3620,16 @@ class ApiMobileController extends AdminController
         return $this->success($lines);
     }
 
-    public function getTreeLines(Request $request)
-    {
+    public function getTreeLines(Request $request){
         $lines = Line::where('display', 1)->with(['children' => function ($query) {
             $query->select('machines.*', 'id as key', 'name as title', DB::raw("'machine' as type"));
         }])->select('lines.*', 'id as key', 'name as title', DB::raw("'line' as type"))->get();
         $data = [
             [
-                'key' => 'xuong_giay',
-                'title' => 'Xưởng Giấy',
-                'type' => 'phan_xuong',
-                'children' => $lines
+                'key'=>'xuong_giay', 
+                'title'=>'Xưởng Giấy',
+                'type'=>'phan_xuong',
+                'children'=>$lines
             ]
         ];
         return $this->success($data);
