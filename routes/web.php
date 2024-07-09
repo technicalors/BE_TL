@@ -68,65 +68,65 @@ Route::get('/', function () {
 });
 
 
-function readFilex($activeIndex = 0, $file_name = "msdata.xlsx")
-{
-  $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+// function readFilex($activeIndex = 0, $file_name = "msdata.xlsx")
+// {
+//   $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
 
-  $spreadsheet = $reader->load("../document/" . $file_name);
-  $spreadsheet->setActiveSheetIndex($activeIndex);
-  $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
-  return $allDataInSheet;
-}
-function initUser()
-{
-  $dataSheet = readFilex();
+//   $spreadsheet = $reader->load("../document/" . $file_name);
+//   $spreadsheet->setActiveSheetIndex($activeIndex);
+//   $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
+//   return $allDataInSheet;
+// }
+// function initUser()
+// {
+//   $dataSheet = readFilex();
 
-  $roles = [];
-  $pers = [];
+//   $roles = [];
+//   $pers = [];
 
-  for ($i = 6; $i <= count($dataSheet); $i++) {
-    $row = $dataSheet[$i];
-    $phongban = $row['B'];
-    $to = $row['C'];
-    $mnv = $row['D'];
-    $ten = $row['E'];
-
-
-
-    if (!isset($pers[$to])) {
-      $p = new Permission();
-      $p->name = $to;
-      $p->slug = Str::slug($to);
-      $p->save();
-      $pers[$to] = $p;
-    } else {
-      $p = $pers[$to];
-    }
-
-    if (!isset($roles[$phongban])) {
-      $r = new Role();
-      $r->name = $phongban;
-      $r->slug = Str::slug($phongban);
-      $r->save();
-      $roles[$phongban] = $r;
-    } else {
-      $r = $roles[$phongban];
-    }
+//   for ($i = 6; $i <= count($dataSheet); $i++) {
+//     $row = $dataSheet[$i];
+//     $phongban = $row['B'];
+//     $to = $row['C'];
+//     $mnv = $row['D'];
+//     $ten = $row['E'];
 
 
-    $arr = explode('-', Str::slug($ten));
-    $user = new CustomUser();
-    $user->username = $arr[0][0] . $arr[1][0] . $arr[2];
-    $user->password = Hash::make("12345678");
 
-    $user->name = $ten;
-    $user->mnv = $mnv;
-    $user->save();
-    $user->permissions()->attach([$p->id]);
-    $user->roles()->attach([$r->id]);
-    $user->save();
-  }
-}
+//     if (!isset($pers[$to])) {
+//       $p = new Permission();
+//       $p->name = $to;
+//       $p->slug = Str::slug($to);
+//       $p->save();
+//       $pers[$to] = $p;
+//     } else {
+//       $p = $pers[$to];
+//     }
+
+//     if (!isset($roles[$phongban])) {
+//       $r = new Role();
+//       $r->name = $phongban;
+//       $r->slug = Str::slug($phongban);
+//       $r->save();
+//       $roles[$phongban] = $r;
+//     } else {
+//       $r = $roles[$phongban];
+//     }
+
+
+//     $arr = explode('-', Str::slug($ten));
+//     $user = new CustomUser();
+//     $user->username = $arr[0][0] . $arr[1][0] . $arr[2];
+//     $user->password = Hash::make("12345678");
+
+//     $user->name = $ten;
+//     $user->mnv = $mnv;
+//     $user->save();
+//     $user->permissions()->attach([$p->id]);
+//     $user->roles()->attach([$r->id]);
+//     $user->save();
+//   }
+// }
 
 // function initError()
 // {
@@ -182,72 +182,72 @@ function initUser()
 // }
 
 
-function initMachine()
-{
-  $dataSheet = readFilex(3);
+// function initMachine()
+// {
+//   $dataSheet = readFilex(3);
 
-  for ($i = 5; $i < count($dataSheet); $i++) {
-    $row = $dataSheet[$i];
-    $machine = new Machine();
-    $machine->line_id = -1;
-    $machine->name = $row['B'];
-    $machine->code = $row['C'];
-    $machine->ma_so = $row['D'];
-    $machine->cong_suat = $row['E'];
-    $machine->hang_sx = $row['F'];
-    $machine->nam_sd = $row['G'];
-    $machine->don_vi_sd = $row['H'];
-    $machine->tinh_trang = $row['I'];
-    $machine->vi_tri = $row['J'];
-    $machine->save();
-  }
-}
-
-
-function initWareHouse()
-{
-  $dataSheet = readFilex(3);
-}
-
-function initTest()
-{ // chi tieu kiem tra
-
-  $arr = ["Kích thước", "Ngoại quan", "Đặc tính"];
-  $lines  = [16, 10, 11, 12, 13, 15, 20];
-
-  TestCriteria::truncate();
-  for ($k = 0; $k <= 6; $k++) {
-    $dataSheet = readFilex($k, "chi_tieu_kiem_tra.xlsx");
-    for ($i = 5; $i <= count($dataSheet); $i++) {
-      $row = $dataSheet[$i];
-      $test1 = new TestCriteria();
-      $test1->hang_muc = $row['A'] ?? " ";
-      $test1->tieu_chuan = $row['B'] ?? " ";
-      $test1->chi_tieu = 'Kích thước';
-      $test1->line_id = $lines[$k];
-      $test1->save();
+//   for ($i = 5; $i < count($dataSheet); $i++) {
+//     $row = $dataSheet[$i];
+//     $machine = new Machine();
+//     $machine->line_id = -1;
+//     $machine->name = $row['B'];
+//     $machine->code = $row['C'];
+//     $machine->ma_so = $row['D'];
+//     $machine->cong_suat = $row['E'];
+//     $machine->hang_sx = $row['F'];
+//     $machine->nam_sd = $row['G'];
+//     $machine->don_vi_sd = $row['H'];
+//     $machine->tinh_trang = $row['I'];
+//     $machine->vi_tri = $row['J'];
+//     $machine->save();
+//   }
+// }
 
 
-      $test2 = new TestCriteria();
-      $test2->hang_muc = $row['E'] ?? " ";
-      $test2->tieu_chuan = $row['F'] ?? " ";
-      $test2->chi_tieu = 'Ngoại quan';
-      $test2->line_id = $lines[$k];
-      $test2->save();
+// function initWareHouse()
+// {
+//   $dataSheet = readFilex(3);
+// }
 
-      $test2 = new TestCriteria();
-      $test2->hang_muc = $row['I'] ?? " ";
-      $test2->tieu_chuan = $row['J'] ?? " ";
-      $test2->chi_tieu = 'Đặc tính';
-      if ($lines[$k] == 15 || $lines[$k] == 20) {
-        $test2->chi_tieu = 'Ngoại quan';
-      }
+// function initTest()
+// { // chi tieu kiem tra
 
-      $test2->line_id = $lines[$k];
-      $test2->save();
-    }
-  }
-}
+//   $arr = ["Kích thước", "Ngoại quan", "Đặc tính"];
+//   $lines  = [16, 10, 11, 12, 13, 15, 20];
+
+//   TestCriteria::truncate();
+//   for ($k = 0; $k <= 6; $k++) {
+//     $dataSheet = readFilex($k, "chi_tieu_kiem_tra.xlsx");
+//     for ($i = 5; $i <= count($dataSheet); $i++) {
+//       $row = $dataSheet[$i];
+//       $test1 = new TestCriteria();
+//       $test1->hang_muc = $row['A'] ?? " ";
+//       $test1->tieu_chuan = $row['B'] ?? " ";
+//       $test1->chi_tieu = 'Kích thước';
+//       $test1->line_id = $lines[$k];
+//       $test1->save();
+
+
+//       $test2 = new TestCriteria();
+//       $test2->hang_muc = $row['E'] ?? " ";
+//       $test2->tieu_chuan = $row['F'] ?? " ";
+//       $test2->chi_tieu = 'Ngoại quan';
+//       $test2->line_id = $lines[$k];
+//       $test2->save();
+
+//       $test2 = new TestCriteria();
+//       $test2->hang_muc = $row['I'] ?? " ";
+//       $test2->tieu_chuan = $row['J'] ?? " ";
+//       $test2->chi_tieu = 'Đặc tính';
+//       if ($lines[$k] == 15 || $lines[$k] == 20) {
+//         $test2->chi_tieu = 'Ngoại quan';
+//       }
+
+//       $test2->line_id = $lines[$k];
+//       $test2->save();
+//     }
+//   }
+// }
 
 Route::get('/test', function () {
 
@@ -265,7 +265,7 @@ Route::get('/test', function () {
   // initUser();
   // initError();
   // initMachine();
-  initTest();
+  // initTest();
 
 
   /*  
