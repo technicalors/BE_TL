@@ -2,6 +2,7 @@
 
 use App\Admin\Controllers\ApiMobileController;
 use App\Admin\Controllers\ApiUIController;
+use App\Admin\Controllers\ExportFileController;
 use App\Admin\Controllers\InfoCongDoanController;
 // use App\Admin\Controllers\ProductionPlanController;
 use App\Admin\Controllers\RoleController;
@@ -507,4 +508,5 @@ Route::group([
     'middleware'    => [],
 ], function (Router $router) {
     $router->get('update-material-name', [ApiUIController::class, 'updateMaterialName']);
+    $router->get('create-pptx', [ExportFileController::class, 'createPPTX']);
 });
