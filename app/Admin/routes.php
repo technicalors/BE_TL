@@ -4,8 +4,16 @@ use App\Admin\Controllers\ApiMobileController;
 use App\Admin\Controllers\ApiUIController;
 use App\Admin\Controllers\ExportFileController;
 use App\Admin\Controllers\InfoCongDoanController;
+use App\Admin\Controllers\MachineController;
 // use App\Admin\Controllers\ProductionPlanController;
 use App\Admin\Controllers\RoleController;
+use App\Admin\Controllers\MaintenanceCategoryController;
+use App\Admin\Controllers\MaintenanceItemController;
+use App\Admin\Controllers\MaintenanceLogController;
+use App\Admin\Controllers\MaintenancePlanController;
+use App\Admin\Controllers\MaintenanceScheduleController;
+use App\Admin\Controllers\MaintenanceLogImageController;
+use App\Models\MaintenancePlan;
 use Encore\Admin\Facades\Admin;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
@@ -500,6 +508,19 @@ Route::group([
     $router->get('update/product/info_cong_doan', [ApiUIController::class, 'updateProductIdInfoCongDoan']);
     $router->get('update/kho_bao_on', [ApiUIController::class, 'updateSanLuongKhoBaoOn']);
     $router->get('update-material-name', [ApiUIController::class, 'updateMaterialName']);
+
+    Route::apiResource('maintenance-categories', MaintenanceCategoryController::class);
+    Route::apiResource('maintenance-items', MaintenanceItemController::class);
+    Route::apiResource('machines', MachineController::class);
+    Route::apiResource('maintenance-plans', MaintenancePlanController::class);
+    Route::apiResource('maintenance-schedules', MaintenanceScheduleController::class);
+    Route::apiResource('maintenance-logs', MaintenanceLogController::class);
+    Route::apiResource('maintenance-log-images', MaintenanceLogImageController::class);
+
+    $router->get('maintenance-plans/list/plan', [MaintenancePlanController::class, 'list']);
+    $router->get('maintenance-plans/detail/list', [MaintenancePlanController::class, 'detail']);
+    
+
 });
 
 
@@ -509,4 +530,6 @@ Route::group([
 ], function (Router $router) {
     $router->get('update-material-name', [ApiUIController::class, 'updateMaterialName']);
     $router->get('create-pptx', [ExportFileController::class, 'createPPTX']);
+    $router->post('import-btbd', [MaintenanceScheduleController::class, 'import']);
+    $router->post('maintenance-log-images/upload', [MaintenanceLogImageController::class, 'upload']);
 });
