@@ -22,7 +22,6 @@ class ProductOrder extends Model
             [
                 'product_id'=>'required',
                 'order_date'=>'required|date_format:Y-m-d',
-                'delivery_date'=>'date_format:Y-m-d',
                 'quantity'=>'required|integer|min:0',
             ],
             [
