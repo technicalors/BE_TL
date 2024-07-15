@@ -482,6 +482,14 @@ Route::group([
     $router->get('material/export', [App\Admin\Controllers\MaterialController::class, 'exportLine']);
     $router->post('material/import', [App\Admin\Controllers\MaterialController::class, 'importLine']);
 
+    $router->get('customer/list', [App\Admin\Controllers\CustomerApiController::class, 'list']);
+    $router->patch('customer/update/{id}', [App\Admin\Controllers\CustomerApiController::class, 'update']);
+    $router->post('customer/create', [App\Admin\Controllers\CustomerApiController::class, 'create']);
+    $router->delete('customer/delete/{id}', [App\Admin\Controllers\CustomerApiController::class, 'delete']);
+    $router->post('customers/delete', [App\Admin\Controllers\CustomerApiController::class, 'deleteMultiple']);
+    $router->get('customer/export', [App\Admin\Controllers\CustomerApiController::class, 'exportLine']);
+    $router->post('customer/import', [App\Admin\Controllers\CustomerApiController::class, 'importLine']);
+
     $router->get('bom/list', [App\Admin\Controllers\BomController::class, 'list']);
     $router->patch('bom/update/{id}', [App\Admin\Controllers\BomController::class, 'update']);
     $router->post('bom/create', [App\Admin\Controllers\BomController::class, 'create']);
