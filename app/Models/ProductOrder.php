@@ -22,14 +22,13 @@ class ProductOrder extends Model
             [
                 'product_id'=>'required',
                 'order_date'=>'required|date_format:Y-m-d',
-                'delivery_date'=>'required|date_format:Y-m-d',
+                'delivery_date'=>'date_format:Y-m-d',
                 'quantity'=>'required|integer|min:0',
             ],
             [
                 'product_id.required'=>'Vui lòng nhập sản phẩm',
                 'quantity.required'=>'Vui lòng nhập số lượng',
                 'order_date.required'=>'Vui lòng nhập ngày đặt hàng',
-                'delivery_date.required'=>'Vui lòng nhập ngày giao',
             ]
         );
         return $validated;
