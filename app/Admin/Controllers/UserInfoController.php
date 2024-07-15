@@ -39,7 +39,7 @@ class UserInfoController extends Controller
     public function create(Request $request)
     {
         $input = $request->all();
-        $validated = UserInfo::validate($input);
+        $validated = UserInfo::validate($request->input());
         if ($validated->fails()) {
             return $this->failure('', $validated->errors()->first());
         }
@@ -56,7 +56,7 @@ class UserInfoController extends Controller
     public function update(Request $request, $id)
     {
         $input = $request->all();
-        $validated = UserInfo::validate($input, $id);
+        $validated = UserInfo::validate($request->input(), $id);
         if ($validated->fails()) {
             return $this->failure('', $validated->errors()->first());
         }
