@@ -498,6 +498,14 @@ Route::group([
     $router->get('product-order/export', [App\Admin\Controllers\ProductOrderController::class, 'exportLine']);
     $router->post('product-order/import', [App\Admin\Controllers\ProductOrderController::class, 'import']);
 
+    $router->get('user-info/list', [App\Admin\Controllers\UserInfoController::class, 'list']);
+    $router->patch('user-info/update/{id}', [App\Admin\Controllers\UserInfoController::class, 'update']);
+    $router->post('user-info/create', [App\Admin\Controllers\UserInfoController::class, 'create']);
+    $router->delete('user-info/delete/{id}', [App\Admin\Controllers\UserInfoController::class, 'delete']);
+    $router->post('user-infos/delete', [App\Admin\Controllers\UserInfoController::class, 'deleteMultiple']);
+    $router->get('user-info/export', [App\Admin\Controllers\UserInfoController::class, 'exportLine']);
+    $router->post('user-info/import', [App\Admin\Controllers\UserInfoController::class, 'import']);
+
     $router->get('bom/list', [App\Admin\Controllers\BomController::class, 'list']);
     $router->patch('bom/update/{id}', [App\Admin\Controllers\BomController::class, 'update']);
     $router->post('bom/create', [App\Admin\Controllers\BomController::class, 'create']);
