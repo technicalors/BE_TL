@@ -39,13 +39,13 @@ class UserInfoController extends Controller
     public function create(Request $request)
     {
         $input = $request->all();
-        $validated = UserInfo::validate($request->input());
+        $validated = UserInfo::validate($input);
         if ($validated->fails()) {
             return $this->failure('', $validated->errors()->first());
         }
         try {
             DB::beginTransaction();
-            $result = UserInfo::create($input);
+            $result = UserInfo::create($request->input());
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -56,13 +56,13 @@ class UserInfoController extends Controller
     public function update(Request $request, $id)
     {
         $input = $request->all();
-        $validated = UserInfo::validate($request->input(), $id);
+        $validated = UserInfo::validate($input, $id);
         if ($validated->fails()) {
             return $this->failure('', $validated->errors()->first());
         }
         try {
             DB::beginTransaction();
-            $result = UserInfo::find($id)->update($input);
+            $result = UserInfo::find($id)->update($request->input());
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
