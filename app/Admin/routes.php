@@ -488,7 +488,15 @@ Route::group([
     $router->delete('customer/delete/{id}', [App\Admin\Controllers\CustomerApiController::class, 'delete']);
     $router->post('customers/delete', [App\Admin\Controllers\CustomerApiController::class, 'deleteMultiple']);
     $router->get('customer/export', [App\Admin\Controllers\CustomerApiController::class, 'exportLine']);
-    $router->post('customer/import', [App\Admin\Controllers\CustomerApiController::class, 'importLine']);
+    $router->post('customer/import', [App\Admin\Controllers\CustomerApiController::class, 'import']);
+
+    $router->get('product-order/list', [App\Admin\Controllers\ProductOrderController::class, 'list']);
+    $router->patch('product-order/update/{id}', [App\Admin\Controllers\ProductOrderController::class, 'update']);
+    $router->post('product-order/create', [App\Admin\Controllers\ProductOrderController::class, 'create']);
+    $router->delete('product-order/delete/{id}', [App\Admin\Controllers\ProductOrderController::class, 'delete']);
+    $router->post('product-orders/delete', [App\Admin\Controllers\ProductOrderController::class, 'deleteMultiple']);
+    $router->get('product-order/export', [App\Admin\Controllers\ProductOrderController::class, 'exportLine']);
+    $router->post('product-order/import', [App\Admin\Controllers\ProductOrderController::class, 'import']);
 
     $router->get('bom/list', [App\Admin\Controllers\BomController::class, 'list']);
     $router->patch('bom/update/{id}', [App\Admin\Controllers\BomController::class, 'update']);
