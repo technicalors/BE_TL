@@ -483,6 +483,30 @@ Route::group([
     $router->get('material/export', [App\Admin\Controllers\MaterialController::class, 'exportLine']);
     $router->post('material/import', [App\Admin\Controllers\MaterialController::class, 'importLine']);
 
+    $router->get('customer/list', [App\Admin\Controllers\CustomerApiController::class, 'list']);
+    $router->patch('customer/update/{id}', [App\Admin\Controllers\CustomerApiController::class, 'update']);
+    $router->post('customer/create', [App\Admin\Controllers\CustomerApiController::class, 'create']);
+    $router->delete('customer/delete/{id}', [App\Admin\Controllers\CustomerApiController::class, 'delete']);
+    $router->post('customers/delete', [App\Admin\Controllers\CustomerApiController::class, 'deleteMultiple']);
+    $router->get('customer/export', [App\Admin\Controllers\CustomerApiController::class, 'exportLine']);
+    $router->post('customer/import', [App\Admin\Controllers\CustomerApiController::class, 'import']);
+
+    $router->get('product-order/list', [App\Admin\Controllers\ProductOrderController::class, 'list']);
+    $router->patch('product-order/update/{id}', [App\Admin\Controllers\ProductOrderController::class, 'update']);
+    $router->post('product-order/create', [App\Admin\Controllers\ProductOrderController::class, 'create']);
+    $router->delete('product-order/delete/{id}', [App\Admin\Controllers\ProductOrderController::class, 'delete']);
+    $router->post('product-orders/delete', [App\Admin\Controllers\ProductOrderController::class, 'deleteMultiple']);
+    $router->get('product-order/export', [App\Admin\Controllers\ProductOrderController::class, 'exportLine']);
+    $router->post('product-order/import', [App\Admin\Controllers\ProductOrderController::class, 'import']);
+
+    $router->get('user-info/list', [App\Admin\Controllers\UserInfoController::class, 'list']);
+    $router->patch('user-info/update/{id}', [App\Admin\Controllers\UserInfoController::class, 'update']);
+    $router->post('user-info/create', [App\Admin\Controllers\UserInfoController::class, 'create']);
+    $router->delete('user-info/delete/{id}', [App\Admin\Controllers\UserInfoController::class, 'delete']);
+    $router->post('user-infos/delete', [App\Admin\Controllers\UserInfoController::class, 'deleteMultiple']);
+    $router->get('user-info/export', [App\Admin\Controllers\UserInfoController::class, 'exportLine']);
+    $router->post('user-info/import', [App\Admin\Controllers\UserInfoController::class, 'import']);
+
     $router->get('bom/list', [App\Admin\Controllers\BomController::class, 'list']);
     $router->patch('bom/update/{id}', [App\Admin\Controllers\BomController::class, 'update']);
     $router->post('bom/create', [App\Admin\Controllers\BomController::class, 'create']);
