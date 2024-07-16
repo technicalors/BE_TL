@@ -4,6 +4,7 @@ use App\Admin\Controllers\ApiMobileController;
 use App\Admin\Controllers\ApiUIController;
 use App\Admin\Controllers\ExportFileController;
 use App\Admin\Controllers\InfoCongDoanController;
+use App\Admin\Controllers\KPIController;
 use App\Admin\Controllers\MachineController;
 // use App\Admin\Controllers\ProductionPlanController;
 use App\Admin\Controllers\RoleController;
@@ -520,7 +521,8 @@ Route::group([
     $router->get('maintenance-plans/list/plan', [MaintenancePlanController::class, 'list']);
     $router->get('maintenance-plans/detail/list', [MaintenancePlanController::class, 'detail']);
     
-
+    $router->get('kpi/productivity', [KPIController::class, 'KPIProductivity']);
+    $router->get('kpi/pass-rate', [KPIController::class, 'KPIPassRate']);
 });
 
 
