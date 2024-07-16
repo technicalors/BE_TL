@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Models\Customer;
 use App\Models\Product;
 use App\Models\ProductOrder;
 use Carbon\Carbon;
@@ -36,8 +37,10 @@ class ProductOrderImport implements ToCollection, WithHeadingRow, WithStartRow
 
     protected function importRow(array $row)
     {
+        $orderNumber = $row['order_number'] ?? null;
         $orderDate = $row['order_date'] ?? null;
         $deliveryDate = $row['delivery_date'] ?? null;
+        $customerId = $row['customer_id'] ?? null;
         $productId = $row['product_id'] ?? null;
         $quantity = $row['quantity'] ?? null;
         $note = $row['note'] ?? null;
@@ -46,11 +49,16 @@ class ProductOrderImport implements ToCollection, WithHeadingRow, WithStartRow
         $product = Product::find($productId);
         if (empty($product)) return;
 
+        $customer = Customer::find($customerId);
+        if (empty($customer)) return;
+
         $orderDate = $this->transformDate($orderDate);
         if (!empty($deliveryDate)) $deliveryDate = $this->transformDate($deliveryDate);
 
         // Create product_order
         ProductOrder::create([
+            'order_number' => $orderNumber,
+            'customer_id' => $customerId,
             'product_id' => $productId,
             'order_date' => $orderDate,
             'quantity' => $quantity,

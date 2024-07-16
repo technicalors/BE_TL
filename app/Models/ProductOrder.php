@@ -10,7 +10,7 @@ class ProductOrder extends Model
 {
     use HasFactory;
     protected $table = "product_orders";
-    protected $fillable = ['product_id', 'order_date', 'delivery_date', 'quantity', 'note'];
+    protected $fillable = ['order_number', 'customer_id', 'product_id', 'order_date', 'delivery_date', 'quantity', 'note'];
     protected $casts = [
         'product_id' => 'string',
     ];
@@ -21,6 +21,8 @@ class ProductOrder extends Model
             $input,
             [
                 'product_id'=>'required',
+                'customer_id'=>'required',
+                'order_number'=>'required',
                 'order_date'=>'required|date_format:Y-m-d',
                 'quantity'=>'required|integer|min:0',
             ],
