@@ -11,9 +11,16 @@ use Illuminate\Http\Request;
 class MaintenancePlanController extends Controller
 {
     use API;
-    public function index()
+    public function index(Request $request)
     {
-        $plan = MaintenanceSchedule::with('machine.line', 'maintenanceLog')->whereMonth('due_date', now())->whereYear('due_date', now())->get()->groupBy(['due_date', 'machine_code']);
+        $query =  MaintenanceSchedule::with('machine.line', 'maintenanceLog');
+        if (isset($request->date)) {
+            $date = date_create($request->date);
+            $query->whereMonth('due_date', $date->format('m'))->whereYear('due_date', $date->format('Y'));
+        } else {
+            $query->whereMonth('due_date', now())->whereYear('due_date', now());
+        }
+        $plan = $query->get()->groupBy(['due_date', 'machine_code']);
         $data = [];
         foreach ($plan as $due_date => $schedule) {
             if (!isset($data[$due_date])) {
@@ -69,7 +76,7 @@ class MaintenancePlanController extends Controller
         $data = [];
         foreach ($schedules as $machine_code => $schedule) {
             $schedule->sortBy('due_date');
-            $logs = $schedule->filter(function(object $item){
+            $logs = $schedule->filter(function (object $item) {
                 return $item->maintenanceLog;
             })->sortBy(function (object $item) {
                 return $item->maintenanceLog->log_date;
@@ -120,8 +127,8 @@ class MaintenancePlanController extends Controller
                 'start_date' => $schedule->maintenanceLog ? date('d/m/Y', strtotime($schedule->maintenanceLog->log_date)) : "",
                 'log' => $schedule->maintenanceLog ? $schedule->maintenanceLog : "",
                 'images' => $images,
-                'remark'=> $schedule->maintenanceLog ? $schedule->maintenanceLog->remark : "",
-                'result'=> $schedule->maintenanceLog ? $schedule->maintenanceLog->result : "",
+                'remark' => $schedule->maintenanceLog ? $schedule->maintenanceLog->remark : "",
+                'result' => $schedule->maintenanceLog ? $schedule->maintenanceLog->result : "",
             ];
         }
         return $this->success($data);
