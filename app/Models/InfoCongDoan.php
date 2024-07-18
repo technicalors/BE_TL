@@ -14,8 +14,12 @@ class InfoCongDoan extends Model
 
     protected $table = "info_cong_doan";
 
+    const STATUS_PLANNED = 0;
+    const STATUS_INPROGRESS = 1;
+    const STATUS_COMPLETED = 2;
 
-    protected $fillable = ['id', 'lot_id','lo_sx', 'line_id', 'product_id', 'thoi_gian_bat_dau', 'thoi_gian_bam_may', 'thoi_gian_ket_thuc', 'sl_dau_vao_chay_thu', 'sl_dau_ra_chay_thu', 'sl_dau_vao_hang_loat', 'sl_dau_ra_hang_loat', 'sl_tem_vang', 'sl_ng','start_powerM','end_powerM','powerM', 'updated_at'];
+    protected $fillable = ['id', 'lot_id', 'lo_sx', 'line_id', 'product_id', 'thoi_gian_bat_dau', 'thoi_gian_bam_may', 'thoi_gian_ket_thuc', 'sl_dau_vao_chay_thu', 'sl_dau_ra_chay_thu', 
+    'sl_dau_vao_hang_loat', 'sl_dau_ra_hang_loat', 'sl_tem_vang', 'sl_ng', 'start_powerM', 'end_powerM', 'powerM', 'updated_at', 'status', 'machine_code'];
 
     static function validateStore($input)
     {
@@ -73,8 +77,9 @@ class InfoCongDoan extends Model
     {
         return $this->belongsTo(Line::class);
     }
-    public function plan(){
-        return $this->hasOne(ProductionPlan::class,['lo_sx','line_id'],['lo_sx','line_id']);
+    public function plan()
+    {
+        return $this->hasOne(ProductionPlan::class, ['lo_sx', 'line_id'], ['lo_sx', 'line_id']);
     }
     public function log()
     {
@@ -82,6 +87,6 @@ class InfoCongDoan extends Model
     }
     public function spec()
     {
-        return $this->hasMany(Spec::class, ['product_id','line_id'],['product_id','line_id']);
+        return $this->hasMany(Spec::class, ['product_id', 'line_id'], ['product_id', 'line_id']);
     }
 }

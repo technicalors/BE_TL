@@ -14,20 +14,17 @@ class ProductionUpdated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $productionData;
+    public $updatedRow;
+    public $nextRow;
 
-    public function __construct($productionData)
+    public function __construct($updatedRow = null, $nextRow = null)
     {
-        $this->productionData = $productionData;
+        $this->updatedRow = $updatedRow;
+        $this->nextRow = $nextRow;
     }
 
     public function broadcastOn()
     {
         return new Channel('production-channel');
-    }
-
-    public function broadcastAs()
-    {
-        return 'productionData';
     }
 }

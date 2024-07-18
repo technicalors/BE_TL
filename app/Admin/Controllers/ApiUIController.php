@@ -5331,10 +5331,19 @@ class ApiUIController extends AdminController
     }
 
     public function test(){
-        $productionData = [
-            'product_id' => 1,
-            'quantity' => 100,
-        ];
-        broadcast(new ProductionUpdated($productionData))->toOthers();
+        // $info = InfoCongDoan::all();
+        // foreach ($info as $key => $record) {
+        //     $status = 0;
+        //     if($record->thoi_gian_bat_dau){
+        //         if($record->thoi_gian_ket_thuc){
+        //             $status = InfoCongDoan::STATUS_COMPLETED;
+        //         }else{
+        //             $status = InfoCongDoan::STATUS_INPROGRESS;
+        //         }
+        //     }
+        //     $record->update(['status'=>$status]);
+        // }
+        broadcast(new ProductionUpdated())->toOthers();
+        return 'ccc';
     }
 }

@@ -14,6 +14,7 @@ use App\Admin\Controllers\MaintenanceLogController;
 use App\Admin\Controllers\MaintenancePlanController;
 use App\Admin\Controllers\MaintenanceScheduleController;
 use App\Admin\Controllers\MaintenanceLogImageController;
+use App\Admin\Controllers\Phase2ApiController;
 use App\Models\MaintenancePlan;
 use Encore\Admin\Facades\Admin;
 use Illuminate\Routing\Router;
@@ -43,7 +44,7 @@ Route::group([
 
     $router->post('/warehouse/import_ink', [App\Admin\Controllers\WareHouseController::class, 'import_ink']);
     $router->resource('/machine', MachineController::class);
-    $router->post('/machine/import', [App\Admin\Controllers\MachineController::class, 'import']);
+    $router->post('/machine/import', [App\Admin\Controllers\MachineController::class, 'importMachine']);
 
     $router->resource('/workers', WorkerController::class);
     $router->post('/workers/import', [App\Admin\Controllers\WorkerController::class, 'import']);
@@ -560,4 +561,15 @@ Route::group([
     $router->post('maintenance-log-images/upload', [MaintenanceLogImageController::class, 'upload']);
 
     $router->post('update-production', [ApiUIController::class, 'test']);
+    
+});
+
+//Route Phase 2
+//OI
+Route::group([
+    'prefix'        => "/api/p2/oi",
+    'middleware'    => "auth:sanctum",
+], function (Router $router) {
+    $router->get('machine-list', [Phase2ApiController::class, 'getMachineList']);
+    $router->get('lot-production-list', [Phase2ApiController::class, 'getLotProductionList']);
 });

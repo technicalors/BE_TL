@@ -287,7 +287,7 @@ class MachineController extends AdminController
         }
         foreach ($allDataInSheet as $key => $row) {
             //Lấy dứ liệu từ dòng thứ 2
-            if ($key > 2) {
+            if ($key > 4) {
                 $input = [];
                 $input['name'] = $row['B'];
                 $input['kieu_loai'] = $row['C'];
