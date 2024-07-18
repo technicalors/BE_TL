@@ -558,4 +558,6 @@ Route::group([
     $router->get('create-pptx', [ExportFileController::class, 'createPPTX']);
     $router->post('import-btbd', [MaintenanceScheduleController::class, 'import']);
     $router->post('maintenance-log-images/upload', [MaintenanceLogImageController::class, 'upload']);
+
+    $router->post('update-production', [ApiUIController::class, 'test']);
 });

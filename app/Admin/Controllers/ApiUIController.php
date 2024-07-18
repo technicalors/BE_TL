@@ -2,6 +2,7 @@
 
 namespace App\Admin\Controllers;
 
+use App\Events\ProductionUpdated;
 use App\Models\Customer;
 use App\Models\Error;
 use App\Models\ErrorMachine;
@@ -5327,5 +5328,13 @@ class ApiUIController extends AdminController
             DB::rollBack();
             return $th;
         }
+    }
+
+    public function test(){
+        $productionData = [
+            'product_id' => 1,
+            'quantity' => 100,
+        ];
+        broadcast(new ProductionUpdated($productionData))->toOthers();
     }
 }
