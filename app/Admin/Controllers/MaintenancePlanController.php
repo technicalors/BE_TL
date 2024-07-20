@@ -72,7 +72,13 @@ class MaintenancePlanController extends Controller
 
     public function list(Request $request)
     {
-        $schedules = MaintenanceSchedule::with('machine.line', 'maintenancePlan', 'maintenanceItem.maintenanceCategory', 'maintenanceLog')->get()->groupBy('machine_code');
+        $query = MaintenanceSchedule::with('machine.line', 'maintenancePlan', 'maintenanceItem.maintenanceCategory', 'maintenanceLog');
+        if(isset($request->date) && count($request->date) === 2) {
+            $query->whereDate('due_date', '>=', date('Y-m-d', strtotime($request->date[0])))->whereDate('due_date', '<=', date('Y-m-d', strtotime($request->date[1])));;
+        }else{
+            $query->whereDate('due_date', now());
+        }
+        $schedules = $query->get()->groupBy('machine_code');
         $data = [];
         foreach ($schedules as $machine_code => $schedule) {
             $schedule->sortBy('due_date');
@@ -96,6 +102,11 @@ class MaintenancePlanController extends Controller
     public function detail(Request $request)
     {
         $query = MaintenanceSchedule::with('machine.line', 'maintenancePlan', 'maintenanceItem.maintenanceCategory', 'maintenanceLog.maintenanceLogImages');
+        if(isset($request->date) && count($request->date) === 2) {
+            $query->whereDate('due_date', '>=', date('Y-m-d', strtotime($request->date[0])))->whereDate('due_date', '<=', date('Y-m-d', strtotime($request->date[1])));;
+        }else{
+            $query->whereDate('due_date', now());
+        }
         if (isset($request->machine_code)) {
             $query->where('machine_code', $request->machine_code);
         }

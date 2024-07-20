@@ -2,6 +2,7 @@
 
 namespace App\Admin\Controllers;
 
+use App\Events\ProductionUpdated;
 use App\Models\Customer;
 use App\Models\Error;
 use App\Models\ErrorMachine;
@@ -5327,5 +5328,22 @@ class ApiUIController extends AdminController
             DB::rollBack();
             return $th;
         }
+    }
+
+    public function test(){
+        // $info = InfoCongDoan::all();
+        // foreach ($info as $key => $record) {
+        //     $status = 0;
+        //     if($record->thoi_gian_bat_dau){
+        //         if($record->thoi_gian_ket_thuc){
+        //             $status = InfoCongDoan::STATUS_COMPLETED;
+        //         }else{
+        //             $status = InfoCongDoan::STATUS_INPROGRESS;
+        //         }
+        //     }
+        //     $record->update(['status'=>$status]);
+        // }
+        broadcast(new ProductionUpdated())->toOthers();
+        return 'ccc';
     }
 }
