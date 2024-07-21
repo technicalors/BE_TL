@@ -2,6 +2,7 @@
 
 namespace App\Admin\Controllers;
 
+use App\Models\InfoCongDoan;
 use App\Models\LogWarningParameter;
 use App\Models\Lot;
 use App\Models\Machine;
@@ -9,6 +10,7 @@ use App\Models\MachineIOT;
 use App\Models\MachineLog;
 use App\Models\MachineParameterLogs;
 use App\Models\MachineParameters;
+use App\Models\MachineStatus;
 use App\Models\ThongSoMay;
 use App\Models\Tracking;
 use Encore\Admin\Controllers\AdminController;
@@ -18,6 +20,41 @@ use App\Traits\API;
 class IOTController extends AdminController
 {
     use API;
+
+    public function updateQuantityFromIot(Request $request)
+    {
+        $status = MachineStatus::getStatus($request->machine_id);
+        $info_cong_doan = InfoCongDoan::where('machine_code', $request->machine_id)->where('status', 1)->first();
+        $sl_bat = $info_cong_doan->lot->product->so_bat;
+        $tracking = Tracking::getData($request->machine_id);
+        $d_input = $request->input - $tracking->input;
+        $d_output = $request->output - $tracking->output;
+        // if ($machine->line_id != 13) {
+        //     $d_output = $sl_bat * $d_output;
+        //     $d_input = $sl_bat * $d_input;
+        // }
+        if ($d_input < 0) $d_input = 0;
+        if ($d_output < 0) $d_output = 0;
+        Tracking::updateData($request->machine_id, $request->input, $request->output);
+        if ($info_cong_doan) {
+            $status = MachineStatus::getStatus($request->machine_id);
+            if ($status == 0) { //chạy thử/vào hàng
+                if (!isset($info_cong_doan->sl_dau_vao_chay_thu)) $info_cong_doan->sl_dau_vao_chay_thu = 0;
+                $info_cong_doan->sl_dau_vao_chay_thu += $d_input;
+
+                if (!isset($info_cong_doan->sl_dau_ra_chay_thu)) $info_cong_doan->sl_dau_ra_chay_thu = 0;
+                $info_cong_doan->sl_dau_ra_chay_thu += $d_output;
+            } else if ($status == 1) { // chạy hàng loạt
+                if (!isset($info_cong_doan->sl_dau_vao_hang_loat)) $info_cong_doan->sl_dau_vao_hang_loat = 0;
+                $info_cong_doan->sl_dau_vao_hang_loat += $d_input;
+
+                if (!isset($info_cong_doan->sl_dau_ra_hang_loat)) $info_cong_doan->sl_dau_ra_hang_loat = 0;
+                $info_cong_doan->sl_dau_ra_hang_loat += $d_output;
+            }
+            $info_cong_doan->save();
+        }
+        return response()->json(['message' => 'Equipment quantity updated successfully'], 200);
+    }
 
     public function updateStatusFromIot(Request $request)
     {
