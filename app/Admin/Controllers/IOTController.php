@@ -25,7 +25,7 @@ class IOTController extends AdminController
     {
         $status = MachineStatus::getStatus($request->machine_id);
         $info_cong_doan = InfoCongDoan::where('machine_code', $request->machine_id)->where('status', 1)->first();
-        $sl_bat = $info_cong_doan->lot->product->so_bat;
+        // $sl_bat = $info_cong_doan->lot->product->so_bat;
         $tracking = Tracking::getData($request->machine_id);
         $d_input = $request->input - $tracking->input;
         $d_output = $request->output - $tracking->output;
@@ -61,7 +61,7 @@ class IOTController extends AdminController
         $tracking = Tracking::where('machine_id', $request->machine_id)->first();
         $tracking->update(['status' => $request->status]);
         if ($tracking->lot_id) {
-            MachineLog::UpdateStatus($request);
+            MachineStatus::setValue($request->machine_id, $request->status);
         }
         return response()->json(['message' => 'Equipment status updated successfully'], 200);
     }

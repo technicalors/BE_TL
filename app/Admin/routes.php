@@ -121,7 +121,7 @@ Route::group([
     $router->get('/thu_nghiem', [ApiMobileController::class, 'thuNghiemIOT']);
     $router->get('/chatluong', [ApiMobileController::class, 'thongsoIOT']);
 
-    $router->pots('iot/update-quantity', [IOTController::class, 'updateQuantityFromIot']);
+    $router->post('iot/update-quantity', [IOTController::class, 'updateQuantityFromIot']);
     $router->post('iot/update-params', [IOTController::class, 'updateParamsFromIot']);
     $router->post('iot/update-status', [IOTController::class, 'updateStatusFromIot']);
 });
@@ -586,6 +586,7 @@ Route::group([
     $router->get('production-overall', [Phase2ApiController::class, 'getProductionOverall']);
     $router->get('lot-production-list', [Phase2ApiController::class, 'getLotProductionList']);
     $router->post('scan-material', [Phase2ApiController::class, 'scanMaterial']);
+    $router->post('scan-manufacture', [Phase2ApiController::class, 'scanManufacture']);
     $router->post('end-of-production', [Phase2ApiController::class, 'endOfProduction']);
 
     //Chất lượng
