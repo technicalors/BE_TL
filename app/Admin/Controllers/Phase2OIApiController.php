@@ -28,7 +28,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
-class Phase2ApiController extends Controller
+class Phase2OIApiController extends Controller
 {
     use API;
 

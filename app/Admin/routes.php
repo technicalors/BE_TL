@@ -15,7 +15,8 @@ use App\Admin\Controllers\MaintenanceLogController;
 use App\Admin\Controllers\MaintenancePlanController;
 use App\Admin\Controllers\MaintenanceScheduleController;
 use App\Admin\Controllers\MaintenanceLogImageController;
-use App\Admin\Controllers\Phase2ApiController;
+use App\Admin\Controllers\Phase2OIApiController;
+use App\Admin\Controllers\Phase2UIApiController;
 use App\Models\MaintenancePlan;
 use Encore\Admin\Facades\Admin;
 use Illuminate\Routing\Router;
@@ -565,7 +566,7 @@ Route::group([
     $router->post('import-btbd', [MaintenanceScheduleController::class, 'import']);
     $router->post('maintenance-log-images/upload', [MaintenanceLogImageController::class, 'upload']);
 
-    $router->post('create-lot-demo', [Phase2ApiController::class, 'createLotDemo']);
+    $router->post('create-lot-demo', [Phase2OIApiController::class, 'createLotDemo']);
 });
 
 //Route Phase 2
@@ -574,7 +575,7 @@ Route::group([
     'prefix'        => "/api/p2",
     'middleware'    => [],
 ], function (Router $router) {
-    $router->post('update-production', [Phase2ApiController::class, 'updateProduction']);
+    $router->post('update-production', [Phase2OIApiController::class, 'updateProduction']);
 });
 //OI
 Route::group([
@@ -582,20 +583,27 @@ Route::group([
     'middleware'    => "auth:sanctum",
 ], function (Router $router) {
     //Sản xuất
-    $router->get('machine-list', [Phase2ApiController::class, 'getMachineList']);
-    $router->get('production-overall', [Phase2ApiController::class, 'getProductionOverall']);
-    $router->get('lot-production-list', [Phase2ApiController::class, 'getLotProductionList']);
-    $router->post('scan-material', [Phase2ApiController::class, 'scanMaterial']);
-    $router->post('scan-manufacture', [Phase2ApiController::class, 'scanManufacture']);
-    $router->post('end-of-production', [Phase2ApiController::class, 'endOfProduction']);
+    $router->get('machine-list', [Phase2OIApiController::class, 'getMachineList']);
+    $router->get('production-overall', [Phase2OIApiController::class, 'getProductionOverall']);
+    $router->get('lot-production-list', [Phase2OIApiController::class, 'getLotProductionList']);
+    $router->post('scan-material', [Phase2OIApiController::class, 'scanMaterial']);
+    $router->post('scan-manufacture', [Phase2OIApiController::class, 'scanManufacture']);
+    $router->post('end-of-production', [Phase2OIApiController::class, 'endOfProduction']);
 
     //Chất lượng
-    $router->get('qc-overall', [Phase2ApiController::class, 'getQCOverall']);
-    $router->get('lot-qc-list', [Phase2ApiController::class, 'getLotQCList']);
-    $router->post('scan-qc', [Phase2ApiController::class, 'scanQC']);
-    $router->get('criteria-list-of-lot', [Phase2ApiController::class, 'getCriteriaListOfLot']);
-    $router->post('save-pqc-result', [Phase2ApiController::class, 'savePQCResult']);
-    $router->post('update-error-log', [Phase2ApiController::class, 'updateErrorLog']);
-    $router->post('update-tem-vang-quantity', [Phase2ApiController::class, 'updateTemVangQuantity']);
-    $router->post('print-tem-vang', [Phase2ApiController::class, 'printTemVang']);
+    $router->get('qc-overall', [Phase2OIApiController::class, 'getQCOverall']);
+    $router->get('lot-qc-list', [Phase2OIApiController::class, 'getLotQCList']);
+    $router->post('scan-qc', [Phase2OIApiController::class, 'scanQC']);
+    $router->get('criteria-list-of-lot', [Phase2OIApiController::class, 'getCriteriaListOfLot']);
+    $router->post('save-pqc-result', [Phase2OIApiController::class, 'savePQCResult']);
+    $router->post('update-error-log', [Phase2OIApiController::class, 'updateErrorLog']);
+    $router->post('update-tem-vang-quantity', [Phase2OIApiController::class, 'updateTemVangQuantity']);
+    $router->post('print-tem-vang', [Phase2OIApiController::class, 'printTemVang']);
+});
+//UI
+Route::group([
+    'prefix'        => "/api/p2/ui",
+    'middleware'    => "auth:sanctum",
+], function (Router $router) {
+    $router->get('/tree-select', [Phase2UIApiController::class, 'getTreeSelect']);
 });

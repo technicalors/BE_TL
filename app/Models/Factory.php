@@ -9,7 +9,7 @@ class Factory extends Model
 {
     use HasFactory;
 
-    protected $table = "factory";
+    // protected $table = "factory";
     protected $fillable = [
         'name',
     ];
