@@ -565,10 +565,17 @@ Route::group([
     $router->post('import-btbd', [MaintenanceScheduleController::class, 'import']);
     $router->post('maintenance-log-images/upload', [MaintenanceLogImageController::class, 'upload']);
 
-    $router->post('update-production', [ApiUIController::class, 'test']);
+    $router->post('create-lot-demo', [Phase2ApiController::class, 'createLotDemo']);
 });
 
 //Route Phase 2
+//No Auth
+Route::group([
+    'prefix'        => "/api/p2",
+    'middleware'    => [],
+], function (Router $router) {
+    $router->post('update-production', [Phase2ApiController::class, 'updateProduction']);
+});
 //OI
 Route::group([
     'prefix'        => "/api/p2/oi",
@@ -576,4 +583,6 @@ Route::group([
 ], function (Router $router) {
     $router->get('machine-list', [Phase2ApiController::class, 'getMachineList']);
     $router->get('lot-production-list', [Phase2ApiController::class, 'getLotProductionList']);
+    $router->post('scan-material', [Phase2ApiController::class, 'scanMaterial']);
+    $router->post('end-of-production', [Phase2ApiController::class, 'endOfProduction']);
 });

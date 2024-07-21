@@ -11,6 +11,10 @@ use Illuminate\Support\Str;
 class Lot extends Model
 {
     use HasFactory;
+    const TYPE_TEM_TRANG = 0;
+    const TYPE_BAT = 1;
+    const TYPE_TEM_VANG = 2;
+    const TYPE_THUNG = 3;
     public $incrementing = false;
     protected $table = 'lot';
     protected $fillable = ['type', 'lo_sx', 'so_luong', 'finish', 'product_id', 'material_export_log_id', 'id', 'p_id'];
