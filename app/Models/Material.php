@@ -29,4 +29,9 @@ class Material extends Model
         );
         return $validated;
     }
+
+    public function bom()
+    {
+        return $this->hasOne(Bom::class, 'material_id', 'id');
+    }
 }

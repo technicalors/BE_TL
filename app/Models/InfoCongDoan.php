@@ -89,4 +89,8 @@ class InfoCongDoan extends Model
     {
         return $this->hasMany(Spec::class, ['product_id', 'line_id'], ['product_id', 'line_id']);
     }
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
 }
