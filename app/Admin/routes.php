@@ -4,6 +4,7 @@ use App\Admin\Controllers\ApiMobileController;
 use App\Admin\Controllers\ApiUIController;
 use App\Admin\Controllers\ExportFileController;
 use App\Admin\Controllers\InfoCongDoanController;
+use App\Admin\Controllers\IOTController;
 use App\Admin\Controllers\KPIController;
 use App\Admin\Controllers\MachineController;
 // use App\Admin\Controllers\ProductionPlanController;
@@ -119,6 +120,9 @@ Route::group([
     $router->any('/tinh_san_luong', [ApiMobileController::class, 'tinhSanLuongIOT']);
     $router->get('/thu_nghiem', [ApiMobileController::class, 'thuNghiemIOT']);
     $router->get('/chatluong', [ApiMobileController::class, 'thongsoIOT']);
+
+    Route::post('iot/update-params', [IOTController::class, 'updateParamsFromIot']);
+    Route::post('iot/update-status', [IOTController::class, 'updateStatusFromIot']);
 });
 
 // UI-API
@@ -545,7 +549,7 @@ Route::group([
 
     $router->get('maintenance-plans/list/plan', [MaintenancePlanController::class, 'list']);
     $router->get('maintenance-plans/detail/list', [MaintenancePlanController::class, 'detail']);
-    
+
     $router->get('kpi/productivity', [KPIController::class, 'KPIProductivity']);
     $router->get('kpi/pass-rate', [KPIController::class, 'KPIPassRate']);
 });
@@ -561,7 +565,6 @@ Route::group([
     $router->post('maintenance-log-images/upload', [MaintenanceLogImageController::class, 'upload']);
 
     $router->post('update-production', [ApiUIController::class, 'test']);
-    
 });
 
 //Route Phase 2
