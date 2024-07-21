@@ -6,11 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\InfoCongDoan;
 use App\Models\Line;
 use App\Models\Lot;
+use App\Models\LSXLog;
 use App\Models\Machine;
 use App\Models\Material;
 use App\Models\ProductionPlan;
+use App\Models\QCHistory;
 use App\Models\Spec;
+use App\Models\TestCriteria;
 use App\Models\Tracking;
+use App\Models\User;
 use App\Models\Workers;
 use App\Traits\API;
 use Carbon\Carbon;
@@ -28,6 +32,7 @@ class Phase2ApiController extends Controller
 {
     use API;
 
+    //==================================Sản xuất==================================
     //Trả về danh sách máy theo dây chuyền
     public function getMachineList(Request $request)
     {
@@ -38,6 +43,36 @@ class Phase2ApiController extends Controller
             $machine = Machine::select('id', 'code', 'name')->get();
             return $this->success($machine);
         }
+    }
+
+    //Trả về dữ liệu tổng quan của sản xuất
+    public function getProductionOverall(Request $request)
+    {
+        $tong_sl_thuc_te = 0;
+        $tong_sl_ng = 0;
+        $tong_sl_tem_vang = 0;
+        $query = InfoCongDoan::whereDate("created_at", Carbon::now());
+        if (empty($request->machine_code)) {
+            $query->where('machine_code', $request->machine_code);
+        }
+        if (empty($request->line_id)) {
+            $query->where('line_id', $request->line_id);
+        }
+        $info_cong_doans = $query->get();
+        foreach ($info_cong_doans as $key => $info_congdoan) {
+            $lot = Lot::find($info_congdoan->lot_id);
+            $tong_sl_thuc_te += $info_congdoan->sl_dau_ra_hang_loat;
+            $tong_sl_ng += $info_congdoan->sl_ng;
+            $tong_sl_tem_vang += $info_congdoan->sl_tem_vang;
+        }
+
+        $data =  [
+            "tong_sl_trong_ngay_kh" => 0,
+            "tong_sl_thuc_te" =>  $tong_sl_thuc_te,
+            "tong_sl_tem_vang" =>  $tong_sl_tem_vang,
+            "tong_sl_ng" => $tong_sl_ng,
+        ];
+        return $this->success($data);
     }
 
     //Trả về sanh sách Lot sản xuất của công đoạn
@@ -57,7 +92,7 @@ class Phase2ApiController extends Controller
         if (!empty($request->machine_code)) {
             $query->where('machine_code', $machine_code);
         }
-        $list = $query->orderBy('thoi_gian_bat_dau', 'DESC')->get();
+        $list = $query->orderBy('thoi_gian_bat_dau')->get();
         $spec = Spec::whereIn('product_id', $list->pluck('product_id')->toArray())
             ->select('value', 'product_id', 'line_id', 'slug')->get()
             ->keyBy(function ($item) {
@@ -195,10 +230,12 @@ class Phase2ApiController extends Controller
             try {
                 DB::beginTransaction();
                 $infoCongDoan->update([
+                    'user_id'=> $request->user()->id,
                     'status' => InfoCongDoan::STATUS_INPROGRESS
                 ]);
                 $tracking->update([
-                    'lot_id' => $infoCongDoan->lot_id
+                    'lot_id' => $infoCongDoan->lot_id,
+                    'input' => 0
                 ]);
                 DB::commit();
             } catch (\Throwable $th) {
@@ -226,6 +263,10 @@ class Phase2ApiController extends Controller
                 if (!$infoCongDoan) {
                     return $this->failure([], "Lot này chưa được sản xuất");
                 }
+                $infoCongDoan->update([
+                    'user_id'=> $request->user()->id,
+                    'status' => InfoCongDoan::STATUS_INPROGRESS
+                ]);
                 $tracking->update([
                     'lot_id' => $request->lot_id,
                     'input' => 0
@@ -259,42 +300,408 @@ class Phase2ApiController extends Controller
         $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
         if ($infoCongDoan) {
             try {
-                DB::beginTransaction();
+                DB::beginTransaction();  
+                $sl_con_lai = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang;
+                if($sl_con_lai < 0){
+                    return $this->failure([], "Số lượng sản xuất không hợp lệ");
+                }elseif($sl_con_lai === 0){
+                    Lot::create([
+                        'id' => $infoCongDoan->lot_id,
+                        'product_id' => $infoCongDoan->product_id,
+                        'lo_sx' => $infoCongDoan->lo_sx,
+                        'so_luong' => 0,
+                        'type' => Lot::TYPE_TEM_TRANG
+                    ]);
+                }
                 $infoCongDoan->update([
                     'thoi_gian_ket_thuc' => Carbon::now(),
                     'status' => InfoCongDoan::STATUS_COMPLETED
                 ]);
-                $tracking->update([
-                    'lot_id' => null,
-                    'input' => 0,
-                ]);
-                $lot = Lot::create([
+                Lot::create([
                     'id' => $infoCongDoan->lot_id,
                     'product_id' => $infoCongDoan->product_id,
                     'lo_sx' => $infoCongDoan->lo_sx,
-                    'so_luong'=> $infoCongDoan->sl_dau_ra_hang_loat,
-                    'type'=> Lot::TYPE_TEM_TRANG,
+                    'so_luong' => $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang,
+                    'type' => Lot::TYPE_TEM_TRANG
+                ]);
+                $tracking->update([
+                    'lot_id' => null,
+                    'input' => 0,
                 ]);
                 DB::commit();
             } catch (\Throwable $th) {
                 DB::rollBack();
                 return $this->failure($th, "Lỗi kết thúc sản xuất");
             }
-            return $this->success([], "Kết thúc sản xuất thành công");
+            return $this->success($this->formatTemTrang($infoCongDoan, $request), "Kết thúc sản xuất thành công");
         } else {
             return $this->failure([], "Không tìm thấy lot");
         }
     }
 
+    public function formatTemTrang($infoCongDoan, $request)
+    {
+        $product = $infoCongDoan->product;
+        $line = $infoCongDoan->line;
+        $next_line = Line::where('ordering', '>', $line->ordering)->orderBy('ordering')->first();
+        $user = $request->user();
+        $data = [];
+        $data['lot_id'] = $infoCongDoan->lot_id;
+        $data['lsx'] = $infoCongDoan->lo_sx;
+        $data['ten_sp'] = $product->name;
+        $data['soluongtp'] = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang;
+        $data['his'] = $product->his;
+        $data['ver'] = $product->ver;
+        $data['cd_thuc_hien'] = $line->name;
+        $data['cd_tiep_theo'] = $next_line->name;
+        $data['nguoi_sx'] = $user->name;
+        return $data;
+    }
+
+    //============================Chất lượng============================
+    //Số liệu tổng quan Chất lượng
+    public function getQCOverall(Request $request)
+    {
+        $query = InfoCongDoan::whereDate('thoi_gian_ket_thuc', Carbon::today());
+        if (empty($request->line_id)) {
+            $query->where('line_id', $request->line_id);
+        }
+        $info_cong_doan = $query->get();
+        $data = [];
+        $data['ke_hoach'] = 0;
+        $data['muc_tieu'] = round(($data['ke_hoach'] / 12) * ((int)date('H') - 6));
+        $data['ket_qua'] = $info_cong_doan->sum('sl_dau_ra_hang_loat');
+        return $this->success($data);
+    }
+
+    //Trả về danh sách lot QC
+    public function getLotQCList(Request $request)
+    {
+        $line = Line::find($request->line_id);
+        if (!$line) {
+            return $this->failure([], "Không tìm thấy công đoạn");
+        }
+        $machine = Machine::where('code', $request->machine_code)->first();
+        if (!$machine) {
+            return $this->failure([], "Không tìm thấy máy");
+        }
+        $query = InfoCongDoan::where('line_id', $line->id)->where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_INPROGRESS)->whereDate('thoi_gian_bat_dau', Carbon::today());
+        $list  = $query->get();
+        foreach ($list as $item) {
+            $product = $item->product;
+            $item->ten_sp = $product->name;
+            $item->ngay_sx = $item->created_at->format('d/m/Y');
+            $item->sl_kh = 0;
+            $item->sl_ok = $item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang;
+            $item->ty_le_ht = $item->sl_dau_ra_hang_loat > 0 ? round($item->sl_ok / $item->sl_dau_ra_hang_loat * 100) : 0;
+        }
+        return $this->success($list);
+    }
+
+    //Scan lot vào QC
+    public function scanQC(Request $request)
+    {
+        $line = Line::find($request->line_id);
+        if (!$line) {
+            return $this->failure([], "Không tìm thấy công đoạn");
+        }
+        $machine = Machine::where('code', $request->machine_code)->first();
+        if (!$machine) {
+            return $this->failure([], "Không tìm thấy máy");
+        }
+        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
+        $data = [];
+        if ($infoCongDoan) {
+            try {
+                DB::beginTransaction();
+                $qc_history = QCHistory::where('lot_id', $infoCongDoan->lot_id)->where('line_id', $infoCongDoan->line_id)->where('machine_code', $infoCongDoan->machine_code)->first();
+                if ($qc_history) {
+                    $data = $qc_history->log ?? null;
+                } else {
+                    $qc_history = QCHistory::create([
+                        'lot_id' => $infoCongDoan->lot_id,
+                        'line_id' => $infoCongDoan->line_id,
+                        'machine_code' => $infoCongDoan->machine_code,
+                        'user_id' => $request->user()->id,
+                    ]);
+                    $data = $qc_history->log ?? null;
+                }
+                DB::commit();
+            } catch (\Throwable $th) {
+                DB::rollBack();
+                return $this->failure($th, "Lỗi quét QC");
+            }
+            return $this->success($data, "Quét QC thành công");
+        } else {
+            return $this->failure([], "Không tìm thấy lot");
+        }
+    }
+
+    public function getCriteriaListOfLot(Request $request)
+    {
+        $line = Line::find($request->line_id);
+        if (!$line) {
+            return $this->failure([], "Không tìm thấy công đoạn");
+        }
+        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->first();
+        $product =  $infoCongDoan->product;
+        $line_key = Str::slug($line->name);
+        $list  = TestCriteria::where('line_id', $line->id)->where('is_show', 1)->get();
+        $reference = array_merge($list->pluck('reference')->toArray(), [$line->id]);
+        $spcec = Spec::whereIn("line_id", $reference)->whereNotNull('slug')->whereNotNull('name')->where("product_id", $product->id)->whereNotNull('value')->get();
+        $data = [];
+        $ct = [];
+        foreach ($list as $item) {
+            if (!isset($data[Str::slug($item->chi_tieu)])) {
+                $data[Str::slug($item->chi_tieu)] = [];
+            }
+            if ($item->hang_muc == " ") continue;
+            if ($this->findSpec($item, $spcec)) array_push($data[Str::slug($item->chi_tieu)], $this->findSpec($item, $spcec));
+            $ct[Str::slug($item->chi_tieu)] = $item->chi_tieu;
+        }
+        return $this->success($data);
+    }
+
+    public function findSpec($test, $spcecs)
+    {
+        return $test;
+    }
+
+    public function savePQCResult(Request $request)
+    {
+        if (!isset($request->criteria_key)) {
+            return $this->failure([], "Không tìm thấy tiêu chí");
+        }
+        $line = Line::find($request->line_id);
+        if (!$line) {
+            return $this->failure([], "Không tìm thấy công đoạn");
+        }
+        $machine = Machine::where('code', $request->machine_code)->first();
+        if (!$machine) {
+            return $this->failure([], "Không tìm thấy máy");
+        }
+        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
+        $qc_history = QCHistory::where('lot_id', $infoCongDoan->lot_id)->where('line_id', $infoCongDoan->line_id)->where('machine_code', $infoCongDoan->machine_code)->first();
+        if (!$qc_history) {
+            return $this->failure([], "Không tìm thấy lịch sử QC");
+        }
+        try {
+            DB::beginTransaction();
+            $log = $qc_history->log ?? [];
+            $log[Str::slug($request->criteria_key)] = $request->data;
+            $qc_history->update([
+                'log' => $log
+            ]);
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return $this->failure($th, "Lỗi lưu kết quả QC");
+        }
+
+        return $this->success($qc_history, "Đã lưu kết quả QC");
+    }
+
+    public function updateErrorLog(Request $request)
+    {
+        $line = Line::find($request->line_id);
+        if (!$line) {
+            return $this->failure([], "Không tìm thấy công đoạn");
+        }
+        $machine = Machine::where('code', $request->machine_code)->first();
+        if (!$machine) {
+            return $this->failure([], "Không tìm thấy máy");
+        }
+        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
+        $qc_history = QCHistory::where('lot_id', $infoCongDoan->lot_id)->where('line_id', $infoCongDoan->line_id)->where('machine_code', $infoCongDoan->machine_code)->first();
+        if (!$qc_history) {
+            return $this->failure([], "Không tìm thấy lịch sử QC");
+        }
+        try {
+            DB::beginTransaction();
+            $log = $qc_history->log ?? [];
+            $permission = [];
+            foreach ($request->user()->roles as $role) {
+                $tm = ($role->permissions()->pluck("slug"));
+                foreach ($tm as $t) {
+                    $permission[] = $t;
+                }
+            }
+            $ng_quantity = 0;
+            foreach ($request->data as $err_quantity) {
+                $ng_quantity += $err_quantity;
+            }
+            $errors_log = [
+                'data' => $request->data,
+                'user_id' => $request->user()->id,
+                'type' => count(array_intersect(['oqc', 'pqc'], $permission)) > 0 ? 'qc' : 'sx',
+                'thoi_gian_kiem_tra' => Carbon::now()
+            ];
+            if (!isset($log['errors'])) {
+                $log['errors'] = [];
+            }
+            $log['errors'][] = $errors_log;
+            $log['sl_ng'] = ($log['sl_ng'] ?? 0) + $ng_quantity;
+            $qc_history->update([
+                'log' => $log
+            ]);
+            $sl_con_lai = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_tem_vang - $log['sl_ng'];
+            if ($sl_con_lai < 0) {
+                return $this->failure([], "Số lượng NG vượt quá số lượng sản xuất");
+            } elseif ($sl_con_lai === 0) {
+                $infoCongDoan->update([
+                    'sl_ng' => $log['sl_ng'],
+                    'thoi_gian_ket_thuc' => Carbon::now(),
+                    'status' => InfoCongDoan::STATUS_COMPLETED
+                ]);
+                Lot::create([
+                    'id' => $infoCongDoan->lot_id,
+                    'product_id' => $infoCongDoan->product_id,
+                    'lo_sx' => $infoCongDoan->lo_sx,
+                    'so_luong' => 0,
+                ]);
+            } else {
+                $infoCongDoan->update([
+                    'sl_ng' => $log['sl_ng']
+                ]);
+            }
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return $this->failure($th, "Lỗi lưu kết quả QC");
+        }
+
+        return $this->success($qc_history, "Đã lưu kết quả QC");
+    }
+
+    public function updateTemVangQuantity(Request $request)
+    {
+        $line = Line::find($request->line_id);
+        if (!$line) {
+            return $this->failure([], "Không tìm thấy công đoạn");
+        }
+        $machine = Machine::where('code', $request->machine_code)->first();
+        if (!$machine) {
+            return $this->failure([], "Không tìm thấy máy");
+        }
+        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
+        $qc_history = QCHistory::where('lot_id', $infoCongDoan->lot_id)->where('line_id', $infoCongDoan->line_id)->where('machine_code', $infoCongDoan->machine_code)->first();
+        if (!$qc_history) {
+            return $this->failure([], "Không tìm thấy lịch sử QC");
+        }
+        try {
+            DB::beginTransaction();
+            $log = $qc_history->log ?? [];
+            $log['sl_tem_vang'] = ($log['sl_tem_vang'] ?? 0) + $request->sl_tem_vang;
+            $qc_history->update([
+                'log' => $log
+            ]);
+            if (!isset($log['loi_tem_vang'])) {
+                $log['loi_tem_vang'] = [];
+            }
+            $log['loi_tem_vang'][] = $request->seleted_errors;
+            $sl_con_lai = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $log['sl_tem_vang'];
+            if ($sl_con_lai < 0) {
+                return $this->failure([], "Số lượng Tem vàng vượt quá số lượng sản xuất");
+            } elseif ($sl_con_lai === 0) {
+                $infoCongDoan->update([
+                    'sl_tem_vang' => $log['sl_tem_vang'],
+                    'thoi_gian_ket_thuc' => Carbon::now(),
+                    'status' => InfoCongDoan::STATUS_COMPLETED
+                ]);
+            } else {
+                $infoCongDoan->update([
+                    'sl_tem_vang' => $log['sl_tem_vang']
+                ]);
+            }
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return $this->failure($th, "Lỗi lưu kết quả QC");
+        }
+
+        return $this->success($qc_history, "Đã lưu kết quả QC");
+    }
+
+    public function printTemVang(Request $request)
+    {
+        $line = Line::find($request->line_id);
+        if (!$line) {
+            return $this->failure([], "Không tìm thấy công đoạn");
+        }
+        $machine = Machine::where('code', $request->machine_code)->first();
+        if (!$machine) {
+            return $this->failure([], "Không tìm thấy máy");
+        }
+        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
+        if ($infoCongDoan->sl_tem_vang <= 0) {
+            return $this->failure('', 'Không có số lượng tem vàng không thể in tem');
+        }
+        $new_tem_vang_id = "";
+        if (str_contains($infoCongDoan->lot_id, '.TV')) {
+            $parts = explode('.', $infoCongDoan->lot_id);
+            array_pop($parts);
+            $string = implode('.', $parts);
+            $new_tem_vang_id = $string . '.TV' . $line->id;
+        } else {
+            $new_tem_vang_id = $infoCongDoan->lot_id . '.TV' . $line->id;
+        }
+        $sl_con_lai = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang;
+        if($sl_con_lai < 0){
+            return $this->failure([], "Số lượng Tem vàng vượt quá số lượng sản xuất");
+        }elseif($sl_con_lai === 0){
+            Lot::create([
+                'id' => $infoCongDoan->lot_id,
+                'product_id' => $infoCongDoan->product_id,
+                'lo_sx' => $infoCongDoan->lo_sx,
+                'so_luong' => 0,
+                'type' => Lot::TYPE_TEM_TRANG,
+            ]);
+        }
+        $temVang = InfoCongDoan::create([
+            'lot_id' => $new_tem_vang_id,
+            'line_id' => $line->id,
+            'machine_code' => $machine->code,
+            'product_id' => $infoCongDoan->product_id,
+            'lo_sx' => $infoCongDoan->lo_sx,
+            'status' => InfoCongDoan::STATUS_PLANNED,
+            'sl_kh' => $infoCongDoan->sl_tem_vang,
+        ]);
+        return $this->success($this->formatTemVang($infoCongDoan, $request, $new_tem_vang_id), "In tem vàng thành công");
+    }
+
+    public function formatTemVang($infoCongDoan, $request, $new_tem_vang_id)
+    {
+        $product = $infoCongDoan->product;
+        $line = $infoCongDoan->line;
+        $next_line = Line::where('ordering', '>', $line->ordering)->orderBy('ordering')->first();
+        $qc_history = QCHistory::where('lot_id', $infoCongDoan->lot_id)->where('line_id', $infoCongDoan->line_id)->where('machine_code', $infoCongDoan->machine_code)->first();
+        $user_sx = User::find($infoCongDoan->user_id);
+        $user_qc = User::find($qc_history->user_id);
+        $errors = [];
+        if (isset($qc_history->log['errors'])) {
+            foreach ($qc_history->log['errors'] as $error) {
+                foreach ($error['data'] as $key => $err) {
+                    $errors[] = $key;
+                }
+            }
+        }
+        $data = [];
+        $data['lot_id'] = $new_tem_vang_id ?? "";
+        $data['lsx'] = $infoCongDoan->lo_sx ?? "";
+        $data['ten_sp'] = $product->name ?? "";
+        $data['sl_tem_vang'] = $infoCongDoan->sl_tem_vang ?? 0;
+        $data['his'] = $product->his ?? "";
+        $data['ver'] = $product->ver ?? "";
+        $data['cd_thuc_hien'] = $line->name ?? "";
+        $data['cd_tiep_theo'] = $next_line->name ?? "";
+        $data['nguoi_sx'] = $user_sx->name ?? "";
+        $data['nguoi_qc'] = $user_qc ?? "";
+        $data['ghi_chu'] = implode(', ', $errors ?? []);
+        return $data;
+    }
 
 
-
-
-
-
-
-
-    //Hàm tạo lot demo
+    //==============================================Hàm tạo lot demo
     public function createLotDemo(Request $request)
     {
         $product_id = $request->product_id;

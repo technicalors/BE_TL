@@ -580,8 +580,20 @@ Route::group([
     'prefix'        => "/api/p2/oi",
     'middleware'    => "auth:sanctum",
 ], function (Router $router) {
+    //Sản xuất
     $router->get('machine-list', [Phase2ApiController::class, 'getMachineList']);
+    $router->get('production-overall', [Phase2ApiController::class, 'getProductionOverall']);
     $router->get('lot-production-list', [Phase2ApiController::class, 'getLotProductionList']);
     $router->post('scan-material', [Phase2ApiController::class, 'scanMaterial']);
     $router->post('end-of-production', [Phase2ApiController::class, 'endOfProduction']);
+
+    //Chất lượng
+    $router->get('qc-overall', [Phase2ApiController::class, 'getQCOverall']);
+    $router->get('lot-qc-list', [Phase2ApiController::class, 'getLotQCList']);
+    $router->post('scan-qc', [Phase2ApiController::class, 'scanQC']);
+    $router->get('criteria-list-of-lot', [Phase2ApiController::class, 'getCriteriaListOfLot']);
+    $router->post('save-pqc-result', [Phase2ApiController::class, 'savePQCResult']);
+    $router->post('update-error-log', [Phase2ApiController::class, 'updateErrorLog']);
+    $router->post('update-tem-vang-quantity', [Phase2ApiController::class, 'updateTemVangQuantity']);
+    $router->post('print-tem-vang', [Phase2ApiController::class, 'printTemVang']);
 });
