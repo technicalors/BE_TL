@@ -121,8 +121,9 @@ Route::group([
     $router->get('/thu_nghiem', [ApiMobileController::class, 'thuNghiemIOT']);
     $router->get('/chatluong', [ApiMobileController::class, 'thongsoIOT']);
 
-    Route::post('iot/update-params', [IOTController::class, 'updateParamsFromIot']);
-    Route::post('iot/update-status', [IOTController::class, 'updateStatusFromIot']);
+    $router->pots('iot/update-quantity', [IOTController::class, 'updateQuantityFromIot']);
+    $router->post('iot/update-params', [IOTController::class, 'updateParamsFromIot']);
+    $router->post('iot/update-status', [IOTController::class, 'updateStatusFromIot']);
 });
 
 // UI-API
