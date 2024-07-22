@@ -2,6 +2,7 @@
 
 namespace App\Admin\Controllers;
 
+use App\Events\ProductionUpdated;
 use App\Models\InfoCongDoan;
 use App\Models\LogWarningParameter;
 use App\Models\Lot;
@@ -48,6 +49,12 @@ class IOTController extends AdminController
                 if (!isset($info_cong_doan->sl_dau_ra_hang_loat)) $info_cong_doan->sl_dau_ra_hang_loat = 0;
                 $info_cong_doan->sl_dau_ra_hang_loat += $d_output;
             }
+            $productionData = [
+                'lot_id' => $tracking->lot_id,
+                'sl_dau_vao_hang_loat' => $info_cong_doan->sl_dau_vao_hang_loat,
+                'sl_dau_ra_hang_loat' => $info_cong_doan->sl_dau_ra_hang_loat,
+            ];
+            event(new ProductionUpdated($productionData));
             $info_cong_doan->save();
         }
         return response()->json(['message' => 'Equipment quantity updated successfully'], 200);
