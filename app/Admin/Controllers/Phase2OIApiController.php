@@ -3,10 +3,13 @@
 namespace App\Admin\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\CustomUser;
+use App\Models\Error;
 use App\Models\Factory;
 use App\Models\InfoCongDoan;
 use App\Models\Line;
 use App\Models\Lot;
+use App\Models\LotErrorLog;
 use App\Models\LSXLog;
 use App\Models\Machine;
 use App\Models\Material;
@@ -121,7 +124,7 @@ class Phase2OIApiController extends Controller
             "tong_sl_tem_vang" =>  $tong_sl_tem_vang,
             "tong_sl_ng" => $tong_sl_ng,
         ];
-        $data['ty_le_hoan_thanh'] = $data['tong_sl_trong_ngay_kh'] > 0 ? round($data['tong_sl_thuc_te'] / $data['tong_sl_trong_ngay_kh'] * 100)."%" : "%";
+        $data['ty_le_hoan_thanh'] = $data['tong_sl_trong_ngay_kh'] > 0 ? round($data['tong_sl_thuc_te'] / $data['tong_sl_trong_ngay_kh'] * 100) . "%" : "%";
         return $this->success($data);
     }
 
@@ -170,7 +173,7 @@ class Phase2OIApiController extends Controller
                 "sl_dau_ra_ok" => $item->sl_dau_ra_hang_loat - $item->sl_tem_vang - $item->sl_ng,
                 "sl_tem_vang" => $item->sl_tem_vang,
                 "sl_ng" => $item->sl_ng,
-                "ti_le_ht" => $item->sl_dau_ra_hang_loat > 0 ? round(($item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang) / $item->sl_dau_ra_hang_loat * 100).'%' : "0%",
+                "ti_le_ht" => $item->sl_dau_ra_hang_loat > 0 ? round(($item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang) / $item->sl_dau_ra_hang_loat * 100) . '%' : "0%",
                 "uph_an_dinh" => "",
                 "uph_thuc_te" => "",
                 "status" => $item->status,
@@ -322,10 +325,10 @@ class Phase2OIApiController extends Controller
                 DB::beginTransaction();
                 $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $machine->line->id)->where('status', InfoCongDoan::STATUS_PLANNED)->first();
                 if (!$infoCongDoan) {
-                    if(str_contains($request->lot_id, '.TV')){
+                    if (str_contains($request->lot_id, '.TV')) {
                         $previousLine = Line::where('ordering', '<', $machine->line->ordering)->orderBy('ordering', 'desc')->first();
                         $checkInfo = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $previousLine->id)->where('status', InfoCongDoan::STATUS_PLANNED)->first();
-                        if($checkInfo){
+                        if ($checkInfo) {
                             $infoCongDoan = InfoCongDoan::create([
                                 'lot_id' => $request->lot_id,
                                 'line_id' => $machine->line->id,
@@ -335,14 +338,14 @@ class Phase2OIApiController extends Controller
                                 'sl_kh' => $checkInfo->sl_kh,
                                 'status' => InfoCongDoan::STATUS_PLANNED
                             ]);
-                        }else{
+                        } else {
                             return $this->failure([], "Lot chưa có kế hoạch sản xuất tại công đoạn này");
                         }
-                    }else{
+                    } else {
                         return $this->failure([], "Lot chưa có kế hoạch sản xuất tại công đoạn này");
                     }
                 }
-                if(!$infoCongDoan){
+                if (!$infoCongDoan) {
                     return $this->failure([], "Lot chưa có kế hoạch sản xuất tại công đoạn này");
                 }
                 $infoCongDoan->update([
@@ -363,6 +366,73 @@ class Phase2OIApiController extends Controller
             return $this->failure([], "Lot này đã được quét");
         }
         return $this->success([], "Quét lot thành công");
+    }
+
+    public function getLotErrorLogList(Request $request){
+        $lotErrorLog = LotErrorLog::where('lot_id', $request->lot_id)->orderBy('line_id')->get();
+        $errorList = [];
+        $log = [];
+        foreach ($lotErrorLog as $item) {
+            foreach($item->log ?? [] as $key => $value){
+                if(!isset($log[$key])){
+                    $errorList[] = Error::where('id', $key)->first();
+                }
+                $log[$key] = ($log[$key] ?? 0) + $value;
+            }
+        }
+        return $this->success(['errorList'=>$errorList, 'log'=>$log]);
+    }
+
+    //Truy vấn dữ liệu lỗi công đoạn
+    public function findError(Request $request)
+    {
+        $error = Error::where('id', $request->error_id)->first();
+        if ($error) {
+            return $this->success($error);
+        } else {
+            return $this->failure([], "Không tìm thấy mã lỗi ở công đoạn này");
+        }
+    }
+
+    //Cập nhật danh sách lỗi cho lot
+    public function updateLotErrorLog(Request $request)
+    {
+        $machine = Machine::where('code', $request->machine_code)->first();
+        if (!$machine) {
+            return $this->failure([], "Không tìm thấy máy");
+        }
+        $tracking = Tracking::where('machine_id', $machine->code)->first();
+        if (!$tracking) {
+            return $this->failure([], "Máy này chưa được sử dụng");
+        }
+        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $machine->line->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
+        if ($infoCongDoan) {
+            try {
+                DB::beginTransaction();
+                $log = LotErrorLog::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $machine->line->id)->first();
+                if($log){
+                    $log->update([
+                        'log' => $request->log
+                    ]);
+                }else{
+                    $log = LotErrorLog::create([
+                        'lot_id' => $infoCongDoan->lot_id,
+                        'log' => $request->log,
+                        'machine_code' => $infoCongDoan->machine_code,
+                        'line_id' => $infoCongDoan->line_id,
+                        'user_id' => $request->user()->id
+                    ]);
+                }
+                
+                DB::commit();
+            } catch (\Throwable $th) {
+                DB::rollBack();
+                return $this->failure($th, "Lỗi cập nhật");
+            }
+            return $this->success([], "Cập nhật lỗi thành công");
+        } else {
+            return $this->failure([], "Không tìm thấy lot");
+        }
     }
 
     //Kết thúc sản xuất lot
@@ -427,7 +497,19 @@ class Phase2OIApiController extends Controller
         $product = $infoCongDoan->product;
         $line = $infoCongDoan->line;
         $next_line = Line::where('ordering', '>', $line->ordering)->orderBy('ordering')->first();
-        $user = $request->user();
+        $user = CustomUser::find($infoCongDoan->user_id ?? "");
+        $lotErrorLog = LotErrorLog::where('lot_id', $request->lot_id)->orderBy('line_id')->get();
+        $log = [];
+        foreach ($lotErrorLog as $item) {
+            foreach($item->log ?? [] as $key => $value){
+                $log[$key] = ($log[$key] ?? 0) + $value;
+            }
+        }
+        $errors = [];
+        foreach ($log as $key => $value) {
+            $errors[] = "$key: $value";
+        }
+        $ghi_chu = implode(', ', $errors);
         $data = [];
         $data['lot_id'] = $infoCongDoan->lot_id;
         $data['lsx'] = $infoCongDoan->lo_sx;
@@ -435,9 +517,10 @@ class Phase2OIApiController extends Controller
         $data['soluongtp'] = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang;
         $data['his'] = $product->his;
         $data['ver'] = $product->ver;
-        $data['cd_thuc_hien'] = $line->name;
-        $data['cd_tiep_theo'] = $next_line->name;
-        $data['nguoi_sx'] = $user->name;
+        $data['cd_thuc_hien'] = $line->name ?? "";
+        $data['cd_tiep_theo'] = $next_line->name ?? "";
+        $data['nguoi_sx'] = $user->name ?? "";
+        $data['ghi_chu'] = $ghi_chu ?? "";
         return $data;
     }
 
@@ -637,7 +720,7 @@ class Phase2OIApiController extends Controller
                     'status' => InfoCongDoan::STATUS_COMPLETED
                 ]);
                 $tracking = Tracking::where('lot_id', $infoCongDoan->lot_id)->where('machine_id', $machine->id)->first();
-                if($tracking){
+                if ($tracking) {
                     $tracking->update([
                         'lot_id' => null,
                         'input' => 0,
@@ -774,8 +857,8 @@ class Phase2OIApiController extends Controller
         $line = $infoCongDoan->line;
         $next_line = Line::where('ordering', '>', $line->ordering)->orderBy('ordering')->first();
         $qc_history = QCHistory::where('lot_id', $infoCongDoan->lot_id)->where('line_id', $infoCongDoan->line_id)->where('machine_code', $infoCongDoan->machine_code)->first();
-        $user_sx = User::find($infoCongDoan->user_id);
-        $user_qc = User::find($qc_history->user_id);
+        $user_sx = CustomUser::find($infoCongDoan->user_id);
+        $user_qc = CustomUser::find($qc_history->user_id);
         $errors = [];
         if (isset($qc_history->log['errors'])) {
             foreach ($qc_history->log['errors'] as $error) {

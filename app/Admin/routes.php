@@ -589,6 +589,9 @@ Route::group([
     $router->get('lot-production-list', [Phase2OIApiController::class, 'getLotProductionList']);
     $router->post('scan-material', [Phase2OIApiController::class, 'scanMaterial']);
     $router->post('scan-manufacture', [Phase2OIApiController::class, 'scanManufacture']);
+    $router->get('lot-error-log-list', [Phase2OIApiController::class, 'getLotErrorLogList']);
+    $router->post('find-error', [Phase2OIApiController::class, 'findError']);
+    $router->post('update-lot-error-log', [Phase2OIApiController::class, 'updateLotErrorLog']);
     $router->post('end-of-production', [Phase2OIApiController::class, 'endOfProduction']);
 
     //Chất lượng
