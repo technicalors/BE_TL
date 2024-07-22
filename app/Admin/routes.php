@@ -583,6 +583,7 @@ Route::group([
     'middleware'    => "auth:sanctum",
 ], function (Router $router) {
     //Sản xuất
+    $router->get('line-list', [Phase2OIApiController::class, 'getLineList']);
     $router->get('machine-list', [Phase2OIApiController::class, 'getMachineList']);
     $router->get('production-overall', [Phase2OIApiController::class, 'getProductionOverall']);
     $router->get('lot-production-list', [Phase2OIApiController::class, 'getLotProductionList']);
@@ -599,6 +600,9 @@ Route::group([
     $router->post('update-error-log', [Phase2OIApiController::class, 'updateErrorLog']);
     $router->post('update-tem-vang-quantity', [Phase2OIApiController::class, 'updateTemVangQuantity']);
     $router->post('print-tem-vang', [Phase2OIApiController::class, 'printTemVang']);
+
+    //Thiết bị
+    $router->get('machine-overall', [Phase2OIApiController::class, 'getMachineOverall']);
 });
 //UI
 Route::group([

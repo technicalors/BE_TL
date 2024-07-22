@@ -3,6 +3,7 @@
 namespace App\Admin\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Factory;
 use App\Models\InfoCongDoan;
 use App\Models\Line;
 use App\Models\Lot;
@@ -33,6 +34,54 @@ class Phase2OIApiController extends Controller
     use API;
 
     //==================================Sản xuất==================================
+    //Trả về danh sách công đoạn theo nhà máy
+    public function getLineList(Request $request)
+    {
+        $factory = Factory::find(2);
+        if (!$factory) {
+            return $this->failure([], "Không tìm thấy nhà máy");
+        }
+        $list = Line::where("display", "1")->where('factory_id', $factory->id)->orderBy('ordering', 'ASC')->get();
+        $except = [
+            'sx' => ['kho-thanh-pham', 'oqc', 'iqc'],
+            'cl' => ['kho-thanh-pham', 'kho-bao-on', 'u']
+        ];
+        $data = [];
+        if (isset($request->type)) {
+            if ($request->type === 'tb') {
+                foreach ($list as $item) {
+                    if (count($item->machine()->where('display', '1')->get()) > 0) {
+                        $data[] = [
+                            "label" => $item->name,
+                            "ordering" => $item->ordering,
+                            "value" => $item->id
+                        ];
+                    }
+                }
+            } else {
+                foreach ($list as $item) {
+                    $line_key = Str::slug($item->name);
+                    if (in_array($line_key, $except[$request->type])) {
+                        continue;
+                    }
+                    $data[] = [
+                        "label" => $item->name,
+                        "ordering" => $item->ordering,
+                        "value" => $item->id
+                    ];
+                }
+            }
+        } else {
+            foreach ($list as $item) {
+                $data[] = [
+                    "label" => $item->name,
+                    "ordering" => $item->ordering,
+                    "value" => $item->id
+                ];
+            }
+        }
+        return $this->success($data);
+    }
     //Trả về danh sách máy theo dây chuyền
     public function getMachineList(Request $request)
     {
