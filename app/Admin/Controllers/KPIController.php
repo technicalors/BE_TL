@@ -97,7 +97,7 @@ class KPIController extends Controller
         return $this->success($weeks);
         for ($i = 0; $i <= $weeks; $i++) {
             $date = date('Y-m-d', strtotime($start_date . ' +' . $i . ' days'));
-            $infos = InfoCongDoan::where("type", "sx")->whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc')
+            $infos = InfoCongDoan::whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc')
                 ->whereDate('thoi_gian_bat_dau', $date)->with("lot.plans")->get();
             $ti_le = 0;
             $count = 0;
@@ -125,7 +125,7 @@ class KPIController extends Controller
         return $this->success($weeks);
         for ($i = 0; $i <= $weeks; $i++) {
             $date = date('Y-m-d', strtotime($start_date . ' +' . $i . ' days'));
-            $infos = InfoCongDoan::where("type", "sx")->whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc')
+            $infos = InfoCongDoan::whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc')
                 ->whereDate('thoi_gian_bat_dau', $date)->with("lot.plans")->get();
             $ti_le = 0;
             $count = 0;

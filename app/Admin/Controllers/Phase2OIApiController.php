@@ -612,7 +612,6 @@ class Phase2OIApiController extends Controller
         }
         $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->first();
         $product =  $infoCongDoan->product;
-        $line_key = Str::slug($line->name);
         $list  = TestCriteria::where('line_id', $line->id)->where('is_show', 1)->get();
         $reference = array_merge($list->pluck('reference')->toArray(), [$line->id]);
         $spcec = Spec::whereIn("line_id", $reference)->whereNotNull('slug')->whereNotNull('name')->where("product_id", $product->id)->whereNotNull('value')->get();
@@ -794,6 +793,24 @@ class Phase2OIApiController extends Controller
         return $this->success($qc_history, "Đã lưu kết quả QC");
     }
 
+    public function checkEligibleForPrinting(Request $request)
+    {
+        $line = Line::find($request->line_id);
+        if (!$line) {
+            return $this->failure([], "Không tìm thấy công đoạn");
+        }
+        $machine = Machine::where('code', $request->machine_code)->first();
+        if (!$machine) {
+            return $this->failure([], "Không tìm thấy máy");
+        }
+        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
+        if ($infoCongDoan->sl_tem_vang <= 0) {
+            return $this->failure([], "Không có số lượng tem vàng không thể in tem");
+        }
+        $list = TestCriteria::where('line_id', $line->id)->where('is_show', 1)->select('chi_tieu')->distinct()->get();
+        return $list;
+    }
+
     public function printTemVang(Request $request)
     {
         $line = Line::find($request->line_id);
@@ -819,6 +836,7 @@ class Phase2OIApiController extends Controller
         }
         try {
             DB::beginTransaction();
+            return $this->checkEligibleForPrinting($request);
             $sl_con_lai = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang;
             if ($sl_con_lai < 0) {
                 return $this->failure([], "Số lượng Tem vàng vượt quá số lượng sản xuất");
