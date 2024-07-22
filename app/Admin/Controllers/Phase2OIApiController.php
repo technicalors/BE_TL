@@ -121,7 +121,7 @@ class Phase2OIApiController extends Controller
             "tong_sl_tem_vang" =>  $tong_sl_tem_vang,
             "tong_sl_ng" => $tong_sl_ng,
         ];
-        $data['ty_le_hoan_thanh'] = $data['tong_sl_trong_ngay_kh'] > 0 ? round($data['tong_sl_thuc_te'] / $data['tong_sl_trong_ngay_kh'] * 100)."%" : "%";
+        $data['ty_le_hoan_thanh'] = $data['tong_sl_trong_ngay_kh'] > 0 ? round($data['tong_sl_thuc_te'] / $data['tong_sl_trong_ngay_kh'] * 100) . "%" : "%";
         return $this->success($data);
     }
 
@@ -170,7 +170,7 @@ class Phase2OIApiController extends Controller
                 "sl_dau_ra_ok" => $item->sl_dau_ra_hang_loat - $item->sl_tem_vang - $item->sl_ng,
                 "sl_tem_vang" => $item->sl_tem_vang,
                 "sl_ng" => $item->sl_ng,
-                "ti_le_ht" => $item->sl_dau_ra_hang_loat > 0 ? round(($item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang) / $item->sl_dau_ra_hang_loat * 100).'%' : "0%",
+                "ti_le_ht" => $item->sl_dau_ra_hang_loat > 0 ? round(($item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang) / $item->sl_dau_ra_hang_loat * 100) . '%' : "0%",
                 "uph_an_dinh" => "",
                 "uph_thuc_te" => "",
                 "status" => $item->status,
@@ -278,7 +278,7 @@ class Phase2OIApiController extends Controller
         if (!$product) {
             return $this->failure([], "Không tìm thấy sản phẩm");
         }
-        $infoCongDoan = InfoCongDoan::where('machine_code', $machine->code)->where('line_id', $machine->line->id)->where('product_id', $product->id)->where('status', InfoCongDoan::STATUS_PLANNED)->orderBy('created_at')->first();
+        $infoCongDoan = InfoCongDoan::where('machine_code', $machine->code)->where('line_id', $machine->line->id)->where('product_id', $product->id)->where('status', InfoCongDoan::STATUS_PLANNED)->orderBy('lot_id', 'ASC')->first();
         if ($infoCongDoan) {
             try {
                 DB::beginTransaction();
@@ -322,10 +322,10 @@ class Phase2OIApiController extends Controller
                 DB::beginTransaction();
                 $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $machine->line->id)->where('status', InfoCongDoan::STATUS_PLANNED)->first();
                 if (!$infoCongDoan) {
-                    if(str_contains($request->lot_id, '.TV')){
+                    if (str_contains($request->lot_id, '.TV')) {
                         $previousLine = Line::where('ordering', '<', $machine->line->ordering)->orderBy('ordering', 'desc')->first();
                         $checkInfo = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $previousLine->id)->where('status', InfoCongDoan::STATUS_PLANNED)->first();
-                        if($checkInfo){
+                        if ($checkInfo) {
                             $infoCongDoan = InfoCongDoan::create([
                                 'lot_id' => $request->lot_id,
                                 'line_id' => $machine->line->id,
@@ -335,14 +335,14 @@ class Phase2OIApiController extends Controller
                                 'sl_kh' => $checkInfo->sl_kh,
                                 'status' => InfoCongDoan::STATUS_PLANNED
                             ]);
-                        }else{
+                        } else {
                             return $this->failure([], "Lot chưa có kế hoạch sản xuất tại công đoạn này");
                         }
-                    }else{
+                    } else {
                         return $this->failure([], "Lot chưa có kế hoạch sản xuất tại công đoạn này");
                     }
                 }
-                if(!$infoCongDoan){
+                if (!$infoCongDoan) {
                     return $this->failure([], "Lot chưa có kế hoạch sản xuất tại công đoạn này");
                 }
                 $infoCongDoan->update([
@@ -637,7 +637,7 @@ class Phase2OIApiController extends Controller
                     'status' => InfoCongDoan::STATUS_COMPLETED
                 ]);
                 $tracking = Tracking::where('lot_id', $infoCongDoan->lot_id)->where('machine_id', $machine->id)->first();
-                if($tracking){
+                if ($tracking) {
                     $tracking->update([
                         'lot_id' => null,
                         'input' => 0,
