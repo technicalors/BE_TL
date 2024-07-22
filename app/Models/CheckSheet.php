@@ -10,7 +10,10 @@ class CheckSheet extends Model
     use HasFactory;
 
     protected $table = "check_sheet";
-
+    protected $fillable = [
+        'line_id',
+        'hang_muc',
+    ];
 
     public function checkSheetWork()
     {

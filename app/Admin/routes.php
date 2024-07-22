@@ -2,6 +2,8 @@
 
 use App\Admin\Controllers\ApiMobileController;
 use App\Admin\Controllers\ApiUIController;
+use App\Admin\Controllers\CheckSheetApiController;
+use App\Admin\Controllers\ErrorMachineApiController;
 use App\Admin\Controllers\ExportFileController;
 use App\Admin\Controllers\InfoCongDoanController;
 use App\Admin\Controllers\IOTController;
@@ -555,6 +557,9 @@ Route::group([
 
     $router->get('kpi/productivity', [KPIController::class, 'KPIProductivity']);
     $router->get('kpi/pass-rate', [KPIController::class, 'KPIPassRate']);
+
+    $router->post('error-machine/import', [ErrorMachineApiController::class, 'import']);
+    $router->post('check-sheet/import', [CheckSheetApiController::class, 'import']);
 });
 
 
@@ -590,6 +595,9 @@ Route::group([
     $router->get('lot-production-list', [Phase2OIApiController::class, 'getLotProductionList']);
     $router->post('scan-material', [Phase2OIApiController::class, 'scanMaterial']);
     $router->post('scan-manufacture', [Phase2OIApiController::class, 'scanManufacture']);
+    $router->get('lot-error-log-list', [Phase2OIApiController::class, 'getLotErrorLogList']);
+    $router->post('find-error', [Phase2OIApiController::class, 'findError']);
+    $router->post('update-lot-error-log', [Phase2OIApiController::class, 'updateLotErrorLog']);
     $router->post('end-of-production', [Phase2OIApiController::class, 'endOfProduction']);
 
     //Chất lượng

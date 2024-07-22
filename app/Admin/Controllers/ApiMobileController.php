@@ -1677,7 +1677,7 @@ class ApiMobileController extends AdminController
                 return $q->whereIn('line_id', $previous_lines);
             })->first();
             if ($erro) return $this->success($erro);
-            return $this->failure([], "Không tìm thấy mã lỗi");
+            return $this->failure([], "Không tìm thấy mã lỗi ở công đoạn này");
         }
         return $this->success($list);
     }
