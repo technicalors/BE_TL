@@ -623,4 +623,5 @@ Route::group([
     'middleware'    => "auth:sanctum",
 ], function (Router $router) {
     $router->get('/tree-select', [Phase2UIApiController::class, 'getTreeSelect']);
+    $router->get('/production-history', [Phase2UIApiController::class, 'getProductionHistory']);
 });
