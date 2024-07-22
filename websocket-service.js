@@ -4,9 +4,9 @@ const axios = require('axios');
 
 const LOGIN_API_URL = 'http://103.77.215.18:3030/api/auth/login';
 const WEBSOCKET_URL = 'ws://103.77.215.18:3030/api/ws/plugins/telemetry';
-const PRODUCTION_API_URL = 'http://127.0.0.1:8000/api/iot/update-quantity';
-const MACHINE_INFO_API_URL = 'http://127.0.0.1:8000/api/iot/update-params';
-const MACHINE_STATUS_API_URL = 'http://127.0.0.1:8000/api/iot/update-status';
+const PRODUCTION_API_URL = 'https://backtl.ors.vn/api/iot/update-quantity';
+const MACHINE_INFO_API_URL = 'https://backtl.ors.vn/api/iot/update-params';
+const MACHINE_STATUS_API_URL = 'https://backtl.ors.vn/api/iot/update-status';
 const DEVICE_IDS = ['f7f77560-45bd-11ef-b8c3-a13625245eca']; // Thay thế bằng danh sách mã thiết bị thực tế
 
 // Thông tin đăng nhập
@@ -107,7 +107,7 @@ function convertMachineStatusData(data, deviceId) {
 // Hàm phân loại dữ liệu và đẩy vào hàng đợi
 function enqueueData(deviceId, data) {
     // Chuyển đổi và đẩy dữ liệu sản lượng
-    if (data['PLC_PACK:Mass_Weighed']) {
+    if (data['GD02:Num_Imput'] && data['GD02:Num_Out']) {
         let convertedData = convertProductionData(data, deviceId);
         if (JSON.stringify(lastProductionValues[deviceId]) !== JSON.stringify(data)) {
             dataQueues[deviceId].push({ data: convertedData, apiUrl: PRODUCTION_API_URL });
@@ -122,7 +122,7 @@ function enqueueData(deviceId, data) {
     }
 
     // Chuyển đổi và đẩy dữ liệu trạng thái máy
-    if (data['HMI_Mixing:Status']) {
+    if (data['GD02:STATUS']) {
         let convertedData = convertMachineStatusData(data, deviceId);
         if (JSON.stringify(lastMachineStatusValues[deviceId]) !== JSON.stringify(data)) {
             dataQueues[deviceId].push({ data: convertedData, apiUrl: MACHINE_STATUS_API_URL });
@@ -161,6 +161,7 @@ async function connectWebSocket(deviceId) {
     ws.on('message', async (data) => {
         try {
             const parsedData = JSON.parse(data);
+            console.log(parsedData.data);
             // console.log(`Received data from ${deviceId}:`, parsedData.data);
 
             // Thêm mã thiết bị vào dữ liệu
