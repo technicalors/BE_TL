@@ -9,6 +9,10 @@ class CheckSheetWork extends Model
 {
     use HasFactory;
     protected $table = "check_sheet_works";
+    protected $fillable = [
+        'check_sheet_id',
+        'cong_viec',
+    ];
 
     public function checksheet()
     {

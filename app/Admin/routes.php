@@ -2,6 +2,8 @@
 
 use App\Admin\Controllers\ApiMobileController;
 use App\Admin\Controllers\ApiUIController;
+use App\Admin\Controllers\CheckSheetApiController;
+use App\Admin\Controllers\ErrorMachineApiController;
 use App\Admin\Controllers\ExportFileController;
 use App\Admin\Controllers\InfoCongDoanController;
 use App\Admin\Controllers\IOTController;
@@ -554,6 +556,9 @@ Route::group([
 
     $router->get('kpi/productivity', [KPIController::class, 'KPIProductivity']);
     $router->get('kpi/pass-rate', [KPIController::class, 'KPIPassRate']);
+
+    $router->post('error-machine/import', [ErrorMachineApiController::class, 'import']);
+    $router->post('check-sheet/import', [CheckSheetApiController::class, 'import']);
 });
 
 
