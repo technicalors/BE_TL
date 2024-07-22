@@ -2849,11 +2849,62 @@ class ApiMobileController extends AdminController
                         ],
                         $input
                     );
+
+                    // TODO: add field lotsize to info_cong_doan table (lot)
+                    // ID Lot: Mã lô+.L.0001
+                    if (!empty($record)) {
+                        $numbers = $this->getQuantityArray($input['sl_tong_don_hang'], 1000);
+                        $countLot = InfoCongDoan::query()->where([
+                            ['lo_sx', $input['lo_sx']],
+                            ['line_id', $input['line_id']],
+                            ['machine_code', $input['machine_id']],
+                        ])->count();
+                        foreach ($numbers as $number) {
+                            $countLot++;
+                            InfoCongDoan::create([
+                                'lot_id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT), 
+                                'lotsize' => 1000, // Default 
+                                'lo_sx' => $input['lo_sx'], 
+                                'line_id' => $input['line_id'], 
+                                'product_id' => $input['product_id'], 
+                                'thoi_gian_bat_dau' => null, 
+                                'thoi_gian_bam_may' => null, 
+                                'thoi_gian_ket_thuc' => null, 
+                                'sl_dau_vao_chay_thu' => 0, 
+                                'sl_dau_ra_chay_thu' => 0, 
+                                'sl_dau_vao_hang_loat' => 0, 
+                                'sl_dau_ra_hang_loat' => 0, 
+                                'sl_tem_vang' => 0, 
+                                'sl_ng' => 0, 
+                                'start_powerM' => null, 
+                                'end_powerM' => null, 
+                                'powerM' => null, 
+                                'status' => $input['status'], 
+                                'machine_code' => $input['machine_id'], 
+                                'sl_kh' => 0, 
+                                'user_id' => auth()->user()->id,
+                            ]);
+                        }
+                    }
                     unset($input);
                 }
             }
         }
         return $this->success([], 'Upload thành công');
+    }
+
+    function getQuantityArray($quantity, $default)
+    {
+        // Calculate the full parts and the remainder
+        $fullParts = intdiv($quantity, $default);
+        $remainder = $quantity % $default;
+        // Create an array filled with full parts
+        $result = array_fill(0, $fullParts, $default);
+        // Add the remainder if it is not zero
+        if ($remainder !== 0) {
+            $result[] = $remainder;
+        }
+        return $result;
     }
 
     public function uploadKHXK(Request $request)
