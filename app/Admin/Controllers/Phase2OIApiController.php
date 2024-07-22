@@ -142,7 +142,7 @@ class Phase2OIApiController extends Controller
         if (!empty($request->machine_code)) {
             $query->where('machine_code', $machine_code);
         }
-        $list = $query->orderBy('thoi_gian_bat_dau')->get();
+        $list = $query->orderBy('lot_id', 'ASC')->get();
         $spec = Spec::whereIn('product_id', $list->pluck('product_id')->toArray())
             ->select('value', 'product_id', 'line_id', 'slug')->get()
             ->keyBy(function ($item) {
@@ -278,7 +278,8 @@ class Phase2OIApiController extends Controller
         if (!$product) {
             return $this->failure([], "Không tìm thấy sản phẩm");
         }
-        $infoCongDoan = InfoCongDoan::where('machine_code', $machine->code)->where('line_id', $machine->line->id)->where('product_id', $product->id)->where('status', InfoCongDoan::STATUS_PLANNED)->orderBy('lot_id', 'ASC')->first();
+        $infoCongDoan = InfoCongDoan::where('machine_code', $machine->code)->where('line_id', $machine->line->id)->where('product_id', $product->id)->where('status', InfoCongDoan::STATUS_PLANNED)
+            ->orderBy('lot_id', 'ASC')->first();
         if ($infoCongDoan) {
             try {
                 DB::beginTransaction();

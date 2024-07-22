@@ -1,12 +1,13 @@
 const WebSocket = require('ws');
 const axios = require('axios');
 // Cấu hình API và WebSocket
-
+const base_url = 'http://127.0.0.1:8000/api/iot';
 const LOGIN_API_URL = 'http://103.77.215.18:3030/api/auth/login';
 const WEBSOCKET_URL = 'ws://103.77.215.18:3030/api/ws/plugins/telemetry';
-const PRODUCTION_API_URL = 'https://backtl.ors.vn/api/iot/update-quantity';
-const MACHINE_INFO_API_URL = 'https://backtl.ors.vn/api/iot/update-params';
-const MACHINE_STATUS_API_URL = 'https://backtl.ors.vn/api/iot/update-status';
+const PRODUCTION_API_URL = base_url + '/update-quantity';
+const MACHINE_INFO_API_URL = base_url + '/update-params';
+const MACHINE_STATUS_API_URL = base_url + '/update-status';
+const MACHINE_RECORD_API_URL = base_url + '/record-product-output';
 const DEVICE_IDS = ['f7f77560-45bd-11ef-b8c3-a13625245eca']; // Thay thế bằng danh sách mã thiết bị thực tế
 
 // Thông tin đăng nhập
@@ -82,8 +83,8 @@ async function processQueue(deviceId) {
 function convertProductionData(data, deviceId) {
     return {
         device_id: deviceId,
-        input: data['GD02:Num_Imput'][0][0],
-        output: data['GD02:Num_Out'][0][0],
+        input: data['PLC:Num_Input'][0][0],
+        output: data['PLC:Num_Out'][0][0],
     };
 }
 
@@ -100,14 +101,20 @@ function convertMachineInfoData(data, deviceId) {
 function convertMachineStatusData(data, deviceId) {
     return {
         device_id: deviceId,
-        status: data['HMI_Mixing:Status'][0][1],
+        status: data['PLC:STATUS'][0][1],
+    };
+}
+
+function convertMachineRecordData(data, deviceId) {
+    return {
+        device_id: deviceId,
     };
 }
 
 // Hàm phân loại dữ liệu và đẩy vào hàng đợi
 function enqueueData(deviceId, data) {
     // Chuyển đổi và đẩy dữ liệu sản lượng
-    if (data['GD02:Num_Imput'] && data['GD02:Num_Out']) {
+    if (data['PLC:Num_Input'] && data['PLC:Num_Out']) {
         let convertedData = convertProductionData(data, deviceId);
         if (JSON.stringify(lastProductionValues[deviceId]) !== JSON.stringify(data)) {
             dataQueues[deviceId].push({ data: convertedData, apiUrl: PRODUCTION_API_URL });
@@ -122,10 +129,21 @@ function enqueueData(deviceId, data) {
     }
 
     // Chuyển đổi và đẩy dữ liệu trạng thái máy
-    if (data['GD02:STATUS']) {
+    if (data['PLC:STATUS']) {
         let convertedData = convertMachineStatusData(data, deviceId);
         if (JSON.stringify(lastMachineStatusValues[deviceId]) !== JSON.stringify(data)) {
+            console.log(convertedData);
             dataQueues[deviceId].push({ data: convertedData, apiUrl: MACHINE_STATUS_API_URL });
+            lastMachineStatusValues[deviceId] = data;
+        }
+    }
+
+    if (data['PLC:Count_En']) {
+        let convertedData = convertMachineRecordData(data, deviceId);
+        if (JSON.stringify(lastMachineStatusValues[deviceId]) !== JSON.stringify(data)) {
+            if (data['PLC:Count_En'][0][1] == 1) {
+                dataQueues[deviceId].push({ data: convertedData, apiUrl: MACHINE_RECORD_API_URL });
+            }
             lastMachineStatusValues[deviceId] = data;
         }
     }
@@ -161,7 +179,7 @@ async function connectWebSocket(deviceId) {
     ws.on('message', async (data) => {
         try {
             const parsedData = JSON.parse(data);
-            console.log(parsedData.data);
+            // console.log(parsedData.data);
             // console.log(`Received data from ${deviceId}:`, parsedData.data);
 
             // Thêm mã thiết bị vào dữ liệu

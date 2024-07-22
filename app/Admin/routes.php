@@ -125,6 +125,7 @@ Route::group([
     $router->post('iot/update-quantity', [IOTController::class, 'updateQuantityFromIot']);
     $router->post('iot/update-params', [IOTController::class, 'updateParamsFromIot']);
     $router->post('iot/update-status', [IOTController::class, 'updateStatusFromIot']);
+    $router->post('iot/record-product-output', [IOTController::class, 'recordProductOutput']);
 });
 
 // UI-API

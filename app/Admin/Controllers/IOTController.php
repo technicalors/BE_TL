@@ -23,21 +23,18 @@ class IOTController extends AdminController
 
     public function updateQuantityFromIot(Request $request)
     {
-        $status = MachineStatus::getStatus($request->machine_id);
-        $info_cong_doan = InfoCongDoan::where('machine_code', $request->machine_id)->where('status', 1)->first();
+        $machine = Machine::where('device_id', $request->device_id)->first();
+        $status = MachineStatus::getStatus($machine->code);
+        $info_cong_doan = InfoCongDoan::where('machine_code', $machine->code)->where('status', 1)->first();
         // $sl_bat = $info_cong_doan->lot->product->so_bat;
-        $tracking = Tracking::getData($request->machine_id);
+        $tracking = Tracking::getData($machine->code);
         $d_input = $request->input - $tracking->input;
         $d_output = $request->output - $tracking->output;
-        // if ($machine->line_id != 13) {
-        //     $d_output = $sl_bat * $d_output;
-        //     $d_input = $sl_bat * $d_input;
-        // }
         if ($d_input < 0) $d_input = 0;
         if ($d_output < 0) $d_output = 0;
-        Tracking::updateData($request->machine_id, $request->input, $request->output);
+        Tracking::updateData($machine->code, $request->input, $request->output);
         if ($info_cong_doan) {
-            $status = MachineStatus::getStatus($request->machine_id);
+            $status = MachineStatus::getStatus($machine->code);
             if ($status == 0) { //chạy thử/vào hàng
                 if (!isset($info_cong_doan->sl_dau_vao_chay_thu)) $info_cong_doan->sl_dau_vao_chay_thu = 0;
                 $info_cong_doan->sl_dau_vao_chay_thu += $d_input;
@@ -58,24 +55,26 @@ class IOTController extends AdminController
 
     public function updateStatusFromIot(Request $request)
     {
-        $tracking = Tracking::where('machine_id', $request->machine_id)->first();
+        $machine = Machine::where('device_id', $request->device_id)->first();
+        $tracking = Tracking::where('machine_id', $machine->code)->first();
         $tracking->update(['status' => $request->status]);
         if ($tracking->lot_id) {
-            MachineStatus::setValue($request->machine_id, $request->status);
+            MachineStatus::setValue($machine->code, $request->status);
         }
         return response()->json(['message' => 'Equipment status updated successfully'], 200);
     }
 
     public function updateParamsFromIot(Request $request)
     {
+        $machine = Machine::where('device_id', $request->device_id)->first();
         $log_iot = new MachineIOT();
         $log_iot->data = $request->all();
         $log_iot->save();
-        $tracking = Tracking::where('machine_id', $request->machine_id)->first();
+        $tracking = Tracking::where('machine_id', $machine->code)->first();
         LogWarningParameter::checkParameter($request);
         if (!$tracking) {
             $tracking = new Tracking();
-            $tracking->machine_id = $request->machine_id;
+            $tracking->machine_id = $machine->code;
             $tracking->timestamp = $request->timestamp;
             $tracking->save();
         }
@@ -86,8 +85,8 @@ class IOTController extends AdminController
             if ($request->timestamp  >= ($tracking->timestamp +  300)) {
                 $start = $tracking->timestamp;
                 $end = $tracking->timestamp +  300;
-                $logs = MachineIOT::where('data->record_type', "cl")->where('data->machine_id', $request->machine_id)->where('data->timestamp', '>=', $start)->where('data->timestamp', '<=', $end)->pluck('data')->toArray();
-                $parameters = MachineParameters::where('machine_id', $request->machine_id)->where('is_if', 1)->pluck('parameter_id')->toArray();
+                $logs = MachineIOT::where('data->record_type', "cl")->where('data->machine_id', $machine->code)->where('data->timestamp', '>=', $start)->where('data->timestamp', '<=', $end)->pluck('data')->toArray();
+                $parameters = MachineParameters::where('machine_id', $machine->code)->where('is_if', 1)->pluck('parameter_id')->toArray();
                 $arr = [];
                 foreach ($parameters as $key => $parameter) {
                     $arr[$parameter] = 0;
@@ -97,10 +96,9 @@ class IOTController extends AdminController
                         }
                     }
                 }
-                MachineIOT::where('data->record_type', "cl")->where('data->machine_id', $request->machine_id)->delete();
-                Tracking::where('machine_id', $request->machine_id)->update(['timestamp' => $request->timestamp]);
-                MachineParameterLogs::where('machine_id', $request->machine_id)->where('start_time', '<=', date('Y-m-d H:i:s', $request->timestamp))->where('end_time', '>=', date('Y-m-d H:i:s', $request->timestamp))->update(['data_if' => $arr]);
-                $machine = Machine::where('code', $request->machine_id)->first();
+                MachineIOT::where('data->record_type', "cl")->where('data->machine_id', $machine->code)->delete();
+                Tracking::where('machine_id', $machine->code)->update(['timestamp' => $request->timestamp]);
+                MachineParameterLogs::where('machine_id', $machine->code)->where('start_time', '<=', date('Y-m-d H:i:s', $request->timestamp))->where('end_time', '>=', date('Y-m-d H:i:s', $request->timestamp))->update(['data_if' => $arr]);
                 if ($machine) {
                     $line = $machine->line;
                     $updated_tracking = Tracking::where('machine_id', $machine->code)->first();
@@ -121,5 +119,22 @@ class IOTController extends AdminController
             }
         }
         return response()->json(['message' => 'Equipment parameter log created successfully'], 200);
+    }
+
+    public function recordProductOutput(Request $request)
+    {
+
+        $machine = Machine::where('device_id', $request->device_id)->first();
+        $tracking = Tracking::where('machine_id', $machine->code)->first();
+        if (!$tracking) {
+            return response()->json(['message' => 'Tracking not found'], 404);
+        }
+        $info_cong_doan = InfoCongDoan::where('line_id', $machine->line_id)->where('lot_id', $tracking->lot_id)->first();
+        if ($info_cong_doan) {
+            $info_cong_doan['thoi_gian_bam_may'] = date('Y-m-d H:i:s');
+            $info_cong_doan->save();
+        }
+        MachineStatus::active($machine->code);
+        return $info_cong_doan;
     }
 }
