@@ -281,7 +281,7 @@ class Phase2OIApiController extends Controller
         if (!$product) {
             return $this->failure([], "Không tìm thấy sản phẩm");
         }
-        $infoCongDoan = InfoCongDoan::where('machine_code', $machine->code)->where('line_id', $machine->line->id)->where('product_id', $product->id)->where('status', InfoCongDoan::STATUS_PLANNED)->orderBy('created_at')->first();
+        $infoCongDoan = InfoCongDoan::where('machine_code', $machine->code)->where('line_id', $machine->line->id)->where('product_id', $product->id)->where('status', InfoCongDoan::STATUS_PLANNED)->orderBy('lot_id', 'ASC')->first();
         if ($infoCongDoan) {
             try {
                 DB::beginTransaction();
