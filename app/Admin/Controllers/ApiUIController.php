@@ -451,7 +451,7 @@ class ApiUIController extends AdminController
 
     public function produceHistoryQuery(Request $request)
     {
-        $query = InfoCongDoan::where("type", "sx");
+        $query = InfoCongDoan::whereNotNull('thoi_gian_bat_dau')->with("lot.plans", "lot.log", "lot.product", "line", "plan");
         if (isset($request->line_id)) {
             if (is_array($request->line_id)) {
                 $query->whereIn('line_id', $request->line_id);
@@ -487,7 +487,6 @@ class ApiUIController extends AdminController
             $lot = Lot::where('lo_sx', $request->lo_sx)->get();
             $query->whereIn('lot_id', $lot->pluck('id'));
         }
-        $query->whereNotNull('thoi_gian_bat_dau')->with("lot.plans", "lot.log", "lot.product", "line", "plan");
         return $query;
     }
 
@@ -841,7 +840,7 @@ class ApiUIController extends AdminController
         $lines = ['10', '22', '11', '12', '14', '13'];
         $res = [];
         foreach ($lines as $line) {
-            $info = InfoCongDoan::where("type", "sx")->where("line_id", $line)->with(["lot.plans", "lot.plan.product"])->orderBy('thoi_gian_bat_dau', 'DESC')->first();
+            $info = InfoCongDoan::where("line_id", $line)->with(["lot.plans", "lot.plan.product"])->orderBy('thoi_gian_bat_dau', 'DESC')->first();
             $plan = $info->lot->getPlanByLine($info->line_id);
             $product = $info->lot->product;
             if (!isset($plan)) $plan = $info->lot->plan;
@@ -1151,12 +1150,12 @@ class ApiUIController extends AdminController
     public function kpiTiLeLeadTime($start_date, $end_date)
     {
         $res = [];
-        $infos = InfoCongDoan::where("type", "sx")->whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc')
+        $infos = InfoCongDoan::whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc')
             ->whereDate('thoi_gian_bat_dau', '>=', $start_date)->where('thoi_gian_bat_dau', '<=', $end_date)->where('line_id', 15)->with("lot.plans")->get();
         $sub = (strtotime($end_date) - strtotime($start_date)) / 86400;
         for ($i = 0; $i <= $sub; $i++) {
             $date = date('Y-m-d', strtotime($start_date . ' +' . $i . ' days'));
-            $infos = InfoCongDoan::where("type", "sx")->whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc')
+            $infos = InfoCongDoan::whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc')
                 ->whereDate('thoi_gian_bat_dau', $date)->where('line_id', 15)->with("lot.plans")->get();
             $lot_ids =  $infos->pluck('lot_id')->toArray();
             $lsx_ids = Lot::whereIn('id', $lot_ids)->pluck('lo_sx')->toArray();
@@ -1165,7 +1164,7 @@ class ApiUIController extends AdminController
             $count = 0;
             foreach ($plans as $plan) {
                 $line_id = $this->TEXT2ID[$plan->cong_doan_sx];
-                $record = InfoCongDoan::where("type", "sx")->whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc')->where('line_id', $line_id)->where('lot_id', 'like', '%' . $plan->lo_sx . '%')->orderBy('thoi_gian_ket_thuc', 'DESC')->first();
+                $record = InfoCongDoan::whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc')->where('line_id', $line_id)->where('lot_id', 'like', '%' . $plan->lo_sx . '%')->orderBy('thoi_gian_ket_thuc', 'DESC')->first();
                 if (!$record) continue;
                 $time = (strtotime($record->thoi_gian_ket_thuc) - strtotime($plan->thoi_gian_ket_thuc)) / 86400;
                 if ($time < 7) {
@@ -1186,7 +1185,7 @@ class ApiUIController extends AdminController
         $sub = (strtotime($end_date) - strtotime($start_date)) / 86400;
         for ($i = 0; $i <= $sub; $i++) {
             $date = date('Y-m-d', strtotime($start_date . ' +' . $i . ' days'));
-            $infos = InfoCongDoan::where("type", "sx")->whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc')->whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_bam_may')
+            $infos = InfoCongDoan::whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc')->whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_bam_may')
                 ->whereDate('thoi_gian_bat_dau', $date)->with("lot.plans")->get();
             $ti_le = 0;
             $count = 0;
@@ -1215,7 +1214,7 @@ class ApiUIController extends AdminController
         $sub = (strtotime($end_date) - strtotime($start_date)) / 86400;
         for ($i = 0; $i <= $sub; $i++) {
             $date = date('Y-m-d', strtotime($start_date . ' +' . $i . ' days'));
-            $infos = InfoCongDoan::where("type", "sx")->whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc')
+            $infos = InfoCongDoan::whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc')
                 ->whereDate('thoi_gian_bat_dau', $date)->with("lot.plans")->get();
             $ti_le = 0;
             $count = 0;
@@ -1236,7 +1235,7 @@ class ApiUIController extends AdminController
         $sub = (strtotime($end_date) - strtotime($start_date)) / 86400;
         for ($i = 0; $i <= $sub; $i++) {
             $date = date('Y-m-d', strtotime($start_date . ' +' . $i . ' days'));
-            $infos = InfoCongDoan::where("type", "sx")->whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc')
+            $infos = InfoCongDoan::whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc')
                 ->whereDate('thoi_gian_bat_dau', $date)->with("lot.plans")->get();
             $ti_le = 0;
             $count = 0;
@@ -1259,8 +1258,8 @@ class ApiUIController extends AdminController
         $sub = (strtotime($end_date) - strtotime($start_date)) / 86400;
         for ($i = 0; $i <= $sub; $i++) {
             $date = date('Y-m-d', strtotime($start_date . ' +' . $i . ' days'));
-            $count_tong = InfoCongDoan::where("type", "sx")->where('line_id', 20)->whereDate('thoi_gian_bat_dau', $date)->with("lot.plans")->count();
-            $count_ng = InfoCongDoan::where("type", "sx")->where('line_id', 20)->whereDate('thoi_gian_bat_dau', $date)->where('sl_tem_vang', '>', 0)->with("lot.plans")->count();
+            $count_tong = InfoCongDoan::where('line_id', 20)->whereDate('thoi_gian_bat_dau', $date)->with("lot.plans")->count();
+            $count_ng = InfoCongDoan::where('line_id', 20)->whereDate('thoi_gian_bat_dau', $date)->where('sl_tem_vang', '>', 0)->with("lot.plans")->count();
             $res[$date] = $count_tong > 0 ? (int)number_format($count_ng / $count_tong * 100) : 0;
             if ($res[$date] > 5) {
                 $res[$date] = 1;
@@ -1318,7 +1317,7 @@ class ApiUIController extends AdminController
             $end_date = date('Y-m-d', strtotime($request->end_date));
         }
 
-        $infos = InfoCongDoan::where("type", "sx")->whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc')
+        $infos = InfoCongDoan::whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc')
             ->whereDate('thoi_gian_bat_dau', '>=', $start_date)->where('thoi_gian_bat_dau', '<=', $end_date)->where('line_id', 15)->with("lot.plans")->get();
         $ti_le_sx = $this->kpiTiLeSanXuat($infos, $start_date, $end_date);
         $ti_le_dat_thang = $this->kpiTiLeDatThang($start_date, $end_date);
@@ -1363,7 +1362,7 @@ class ApiUIController extends AdminController
         $obj->keys[chr(ord($letter) + 1)] = 'ty_le_dat';
         $obj->keys[chr(ord($letter) + 2)] = 'last_year';
         array_push($obj->headers, 'Tỷ lệ đạt', 'Tỷ lệ tăng giảm so với cùng kì năm trước');
-        $infos = InfoCongDoan::where("type", "sx")->whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc')
+        $infos = InfoCongDoan::whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc')
             ->whereDate('thoi_gian_bat_dau', '>=', $start_date)->where('thoi_gian_bat_dau', '<=', $end_date)->where('line_id', 15)->with("lot.plans")->get();
         $ti_le_sx = $this->kpiTiLeSanXuat($infos, $start_date, $end_date);
         $ti_le_dat_thang = $this->kpiTiLeDatThang($start_date, $end_date);
@@ -1676,7 +1675,7 @@ class ApiUIController extends AdminController
     {
         $page = $request->page - 1;
         $pageSize = $request->pageSize;
-        $query = InfoCongDoan::where("type", "sx")->orderBy('created_at');
+        $query = InfoCongDoan::orderBy('created_at');
         $query->where('line_id', 20);
 
         if (isset($request->date) && count($request->date)) {
@@ -2299,7 +2298,7 @@ class ApiUIController extends AdminController
 
     public function exportOQC(Request $request)
     {
-        $query = InfoCongDoan::where("type", "sx")->orderBy('created_at');
+        $query = InfoCongDoan::orderBy('created_at');
         $query->where('line_id', 20);
 
         if (isset($request->date) && count($request->date)) {
@@ -2625,7 +2624,6 @@ class ApiUIController extends AdminController
             for ($i = 0; $i <= $count_day; $i++) {
                 $log_todays = InfoCongDoan::with('lot.product', 'plan')->whereNotIn('line_id', [14, 22])
                     ->whereDate('thoi_gian_bat_dau', date('Y-m-d', strtotime($request->date[0] . ' +' . $i . ' day')))
-                    ->where('type', 'sx')
                     ->whereNotNull('thoi_gian_bat_dau')
                     ->whereNotNull('thoi_gian_bam_may')
                     ->whereNotNull('thoi_gian_ket_thuc')
@@ -3220,7 +3218,7 @@ class ApiUIController extends AdminController
 
     public function getDetailDataError(Request $request)
     {
-        $query = InfoCongDoan::where("type", "sx")->where('lot_id', $request->lot_id);
+        $query = InfoCongDoan::where('lot_id', $request->lot_id);
         $line = Line::find($request->line_id);
         if ($line) {
             $query->where('line_id', $line->id);
@@ -4195,7 +4193,7 @@ class ApiUIController extends AdminController
                     $sheet_array[$key]['end_date'] = date("Y-m-d", strtotime($value));
                     break;
             }
-            $query = InfoCongDoan::where("type", "sx")->orderBy('created_at');
+            $query = InfoCongDoan::orderBy('created_at');
             if (isset($sheet_array[$key]['start_date']) && isset($sheet_array[$key]['end_date'])) {
                 $query->whereDate('created_at', '>=', $sheet_array[$key]['start_date'])
                     ->whereDate('created_at', '<=', $sheet_array[$key]['end_date']);
@@ -4545,7 +4543,7 @@ class ApiUIController extends AdminController
 
     public function exportQCErrorList(Request $request)
     {
-        $query = InfoCongDoan::where("type", "sx")->orderBy('created_at');
+        $query = InfoCongDoan::orderBy('created_at');
         $line = Line::find($request->line_id);
         if ($line) {
             $query->where('line_id', $line->id);
@@ -4714,7 +4712,7 @@ class ApiUIController extends AdminController
     {
         $page = $request->page - 1;
         $pageSize = $request->pageSize;
-        $query = InfoCongDoan::where("type", "sx")->orderBy('created_at');
+        $query = InfoCongDoan::orderBy('created_at');
         $line = Line::find($request->line_id);
         if ($line) {
             $query->where('line_id', $line->id);

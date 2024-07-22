@@ -217,7 +217,7 @@ class Lot extends Model
     {
         $log = $this->log;
         $product = $this->product;
-        $san_luong = $this->infoCongDoan()->where('type', 'sx')->where('line_id', $line->id)->first();
+        $san_luong = $this->infoCongDoan()->where('line_id', $line->id)->first();
         if (!$san_luong) {
             $data = null;
         }
@@ -337,7 +337,7 @@ class Lot extends Model
         $log = $this->log->info;
 
 
-        $info_cong_doan = $this->infoCongDoan()->where('line_id', $linex[$line])->where('type', 'sx')->first();
+        $info_cong_doan = $this->infoCongDoan()->where('line_id', $linex[$line])->first();
 
         $sl_dau_ra = 0;
 

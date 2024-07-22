@@ -794,7 +794,7 @@ class ApiMobileController extends AdminController
         $log->info = $info;
         $log->save();
 
-        $info_cong_doan = InfoCongDoan::where('type', 'sx')->where("lot_id", $pallet->id)->where('line_id', $request->line_id)->first();
+        $info_cong_doan = InfoCongDoan::where("lot_id", $pallet->id)->where('line_id', $request->line_id)->first();
         if (!$info_cong_doan) {
             $info_cong_doan = new InfoCongDoan();
             $info_cong_doan->type = 'sx';
@@ -880,7 +880,7 @@ class ApiMobileController extends AdminController
 
             //Chia thùng
 
-            $info_cong_doan = InfoCongDoan::where("type", "sx")->where("line_id", $line->id)->where("lot_id", $pallet->id)->first();
+            $info_cong_doan = InfoCongDoan::where("line_id", $line->id)->where("lot_id", $pallet->id)->first();
             $bats = $info["qc"][$line_key]['bat'];
             if (!array_key_exists($bat->id, $bats)) {
                 return $this->failure([], "Bạn chưa thể in tem, cần kiểm tra lại chất lượng");
@@ -888,7 +888,7 @@ class ApiMobileController extends AdminController
             $order_line = array_reverse([10, 22, 11, 12, 14]); //In, In lưới, Phủ, Bế, Bóc
             $info_cds = null;
             foreach ($order_line as $l) {
-                $prev_info_cd = InfoCongDoan::where("type", "sx")->where("lot_id", $pallet->id)->where("line_id", $l)->first();
+                $prev_info_cd = InfoCongDoan::where("lot_id", $pallet->id)->where("line_id", $l)->first();
                 if ($prev_info_cd) {
                     $info_cds = $prev_info_cd;
                     break;
@@ -1897,7 +1897,7 @@ class ApiMobileController extends AdminController
             if (!isset($info['qc'][$line_key])) {
                 $info['qc'][$line_key] = [];
             }
-            $info_cong_doan = $pallet->infoCongDoan()->where('type', 'sx')->where('line_id', $line->id)->first();
+            $info_cong_doan = $pallet->infoCongDoan()->where('line_id', $line->id)->first();
             $sl_ng = 0;
             $request_errors = 0;
             foreach ($request['data'] as $err_key => $err_val) {
@@ -1937,7 +1937,7 @@ class ApiMobileController extends AdminController
                 } else {
                     if ($line_key === 'gap-dan') {
                         $bat = Lot::where('p_id', $pallet->id)->where('type', 1)->orderBy('created_at', 'DESC')->first();
-                        $info_cd_bat = $bat->infoCongDoan()->where('type', 'sx')->where('line_id', $line->id)->first();
+                        $info_cd_bat = $bat->infoCongDoan()->where('line_id', $line->id)->first();
                         $sl_con_lai = $info_cd_bat->sl_dau_ra_hang_loat - $info_cd_bat->sl_tem_vang - $sl_ng;
                     }
                     $info_cong_doan['sl_ng'] += $request_errors;
@@ -1967,7 +1967,7 @@ class ApiMobileController extends AdminController
                 $log_bat->info = $info_bat;
                 $log_bat->save();
     
-                $info_cd_bat = $bat->infoCongDoan()->where('type', 'sx')->where('line_id', $line->id)->first();
+                $info_cd_bat = $bat->infoCongDoan()->where('line_id', $line->id)->first();
                 $info_cd_bat['sl_ng'] = $sl_ng;
                 $info_cd_bat->save();
             }
@@ -2072,7 +2072,7 @@ class ApiMobileController extends AdminController
         $product = $lot->product;
         $lo_sx = $product->lots;
         // return $lo_sx;
-        $san_luong = InfoCongDoan::whereIn('lot_id', $lo_sx->pluck('id'))->where('line_id', $request->line_id)->where('type', 'sx')->whereDate('created_at', date('Y-m-d'))->get();
+        $san_luong = InfoCongDoan::whereIn('lot_id', $lo_sx->pluck('id'))->where('line_id', $request->line_id)->whereDate('created_at', date('Y-m-d'))->get();
         // return $san_luong->toArray();
         // $plan = $lot->plan;
         // $product = $plan->product;
@@ -2117,7 +2117,7 @@ class ApiMobileController extends AdminController
         $data = new stdClass();
         $query = ProductionPlan::where('cong_doan_sx', $key_line)->whereDate('ngay_sx', date('Y-m-d'));
         $plan = $query->first();
-        $info_cong_doan = InfoCongDoan::where('line_id', $line->id)->where('type', 'sx')->whereDate('thoi_gian_ket_thuc', Carbon::today())->get();
+        $info_cong_doan = InfoCongDoan::where('line_id', $line->id)->whereDate('thoi_gian_ket_thuc', Carbon::today())->get();
         if ($request->line_id == 10 || $request->line_id == 11 || $request->line_id == 12 || $request->line_id == 14 || $request->line_id == 22) {
             $data->ke_hoach = (int)$query->sum('sl_thanh_pham');
             $data->muc_tieu = round(($data->ke_hoach / 12) * ((int)date('H') - 6));
@@ -2190,7 +2190,7 @@ class ApiMobileController extends AdminController
         $info = $log->info;
         $plan = $pallet->plan;
         $product = $pallet->product;
-        $san_luong = $pallet->infoCongDoan()->where('type', 'sx')->where('line_id', $line->id)->first();
+        $san_luong = $pallet->infoCongDoan()->where('line_id', $line->id)->first();
         if ($san_luong->sl_tem_vang <= 0) {
             return $this->failure('', 'Không có số lượng tem vàng không thể in tem');
         }
@@ -2413,7 +2413,7 @@ class ApiMobileController extends AdminController
             $info['qc'][$line_key]['bat'][$bat->id]['sl_tem_vang'] += $request->sl_tem_vang;
             $info['qc'][$line_key]['bat'][$bat->id]['loi_tem_vang'] = $errors;
             $log_bat = $bat->log;
-            $info_cong_doan_bat = InfoCongDoan::where('type', 'sx')->where("lot_id", $bat->id)->where('line_id', $request->line_id)->first();
+            $info_cong_doan_bat = InfoCongDoan::where("lot_id", $bat->id)->where('line_id', $request->line_id)->first();
             if ($info_cong_doan_bat) {
                 $info_cong_doan_bat['sl_tem_vang'] += $request->sl_tem_vang;
             }
@@ -2638,7 +2638,7 @@ class ApiMobileController extends AdminController
             return $this->failure([], "Incorrect private_key");
         }
         $machine = Machine::where('code', $request->machine_id)->first();
-        $info_cong_doan = InfoCongDoan::where('type', 'sx')->where('line_id', $machine->line_id)->whereNotNull("thoi_gian_bat_dau")->whereNull('thoi_gian_ket_thuc')->orderBy('created_at', 'DESC')->first();
+        $info_cong_doan = InfoCongDoan::where('line_id', $machine->line_id)->whereNotNull("thoi_gian_bat_dau")->whereNull('thoi_gian_ket_thuc')->orderBy('created_at', 'DESC')->first();
         if ($info_cong_doan) {
             $info_cong_doan['thoi_gian_bam_may'] = date('Y-m-d H:i:s', $request->timestamp);
             $info_cong_doan->save();
@@ -3403,7 +3403,7 @@ class ApiMobileController extends AdminController
         if (!isset($line)) {
             return $this->failure([], "Không tìm thấy công đoạn");
         }
-        $info_cong_doan = $pallet->infoCongDoan()->where('line_id', $line->id)->where('type', 'sx')->first();
+        $info_cong_doan = $pallet->infoCongDoan()->where('line_id', $line->id)->first();
         $info_cong_doan['sl_dau_ra_hang_loat'] = $request->san_luong * $pallet->plan->product->so_bat;
         $info_cong_doan->save();
         return $this->success([], 'Cập nhật thành công');
@@ -3419,7 +3419,7 @@ class ApiMobileController extends AdminController
         if (!isset($line)) {
             return $this->failure([], "Không tìm thấy công đoạn");
         }
-        $info_cong_doan = $pallet->infoCongDoan()->where('line_id', $line->id)->where('type', 'sx')->first();
+        $info_cong_doan = $pallet->infoCongDoan()->where('line_id', $line->id)->first();
         if (isset($info_cong_doan['sl_dau_ra_hang_loat']) && $info_cong_doan['sl_dau_ra_hang_loat']) {
             return $this->failure([], 'Đã nhập sản lượng');
         } else {

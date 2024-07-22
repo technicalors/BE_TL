@@ -608,6 +608,7 @@ Route::group([
     $router->post('save-pqc-result', [Phase2OIApiController::class, 'savePQCResult']);
     $router->post('update-error-log', [Phase2OIApiController::class, 'updateErrorLog']);
     $router->post('update-tem-vang-quantity', [Phase2OIApiController::class, 'updateTemVangQuantity']);
+    $router->post('check-eligible-for-printing', [Phase2OIApiController::class, 'checkEligibleForPrinting']);
     $router->post('print-tem-vang', [Phase2OIApiController::class, 'printTemVang']);
 
     //Thiết bị
