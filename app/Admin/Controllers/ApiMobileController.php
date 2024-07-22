@@ -2805,7 +2805,7 @@ class ApiMobileController extends AdminController
                 "boc" => 14,
                 "chon" => 15,
                 "u" => 21,
-                "in-luoi" => 22
+                "in-luoi" => 22,
             ];
             foreach ($allDataInSheet as $key => $row) {
                 //Lấy dứ liệu từ dòng thứ 5
@@ -2814,10 +2814,13 @@ class ApiMobileController extends AdminController
                         break;
                     }
 
+                    $line = Line::query()->where('name', 'like', trim($row['G']))->first();
+                    if (empty($line)) throw new Exception('Không tìm thấy công đoạn');
+
                     if (!is_null($row['B'])) {
                         $input['ngay_dat_hang'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['AD'])));
                         $input['cong_doan_sx'] = Str::slug($row['G']); //
-                        $input['line_id'] = $linex[Str::slug($row['G'])]; //
+                        $input['line_id'] = $line->id; //
                         $input['ca_sx'] = $row['F']; //
                         $input['ngay_sx'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['E'])));
                         // $plan->ngay_sx =new Carbon($row['E']);
