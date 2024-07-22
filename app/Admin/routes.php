@@ -17,6 +17,7 @@ use App\Admin\Controllers\MaintenanceLogController;
 use App\Admin\Controllers\MaintenancePlanController;
 use App\Admin\Controllers\MaintenanceScheduleController;
 use App\Admin\Controllers\MaintenanceLogImageController;
+use App\Admin\Controllers\Phase2DBApiController;
 use App\Admin\Controllers\Phase2OIApiController;
 use App\Admin\Controllers\Phase2UIApiController;
 use App\Models\MaintenancePlan;
@@ -157,6 +158,7 @@ Route::group([
 
     $router->get('/inventory', [ApiUIController::class, 'inventory']);
 });
+
 
 // END UI-API;
 
@@ -582,6 +584,7 @@ Route::group([
     'middleware'    => [],
 ], function (Router $router) {
     $router->post('update-production', [Phase2OIApiController::class, 'updateProduction']);
+    $router->get('/produce/fmb', [Phase2DBApiController::class, 'fmb']);
 });
 //OI
 Route::group([
