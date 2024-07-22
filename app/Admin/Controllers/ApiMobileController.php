@@ -2822,11 +2822,11 @@ class ApiMobileController extends AdminController
                     $input['product_id'] = $row['I']; //
                     $input['khach_hang'] = $row['J']; //
                     $input['lo_sx'] = $row['L']; //
-                    $input['so_bat'] = $row['T']; //
+                    $input['so_bat'] = $row['T'] ?? 0; //
                     $input['sl_nvl'] = $row['O']; //
                     $input['sl_tong_don_hang'] = $row['N']; //
                     $input['sl_giao_sx'] = $row['Q']; //
-                    $input['sl_thanh_pham'] = $row['P']; //
+                    $input['sl_thanh_pham'] = $row['P'] ?? 0; //
                     $input['thu_tu_uu_tien'] = $row['B']; //
                     $input['note'] = $row['AE'] ?? "";
                     $input['UPH'] = str_replace(',', '', $row['W']); //
@@ -2863,7 +2863,7 @@ class ApiMobileController extends AdminController
                             $countLot++;
                             InfoCongDoan::create([
                                 'lot_id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT), 
-                                'lotsize' => 1000, // Default 
+                                'lotsize' => $number, // Default 
                                 'lo_sx' => $input['lo_sx'], 
                                 'line_id' => $input['line_id'], 
                                 'product_id' => $input['product_id'], 
@@ -2881,7 +2881,7 @@ class ApiMobileController extends AdminController
                                 'powerM' => null, 
                                 'status' => $input['status'], 
                                 'machine_code' => $input['machine_id'], 
-                                'sl_kh' => 0, 
+                                'sl_kh' => $input['so_bat'] * $input['sl_thanh_pham'], // 
                                 'user_id' => auth()->user()->id,
                             ]);
                         }
