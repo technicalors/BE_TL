@@ -527,7 +527,7 @@ class Phase2OIApiController extends Controller
         if (!$machine) {
             return $this->failure([], "Không tìm thấy máy");
         }
-        $query = InfoCongDoan::where('line_id', $line->id)->where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_INPROGRESS)->whereDate('thoi_gian_bat_dau', Carbon::today());
+        $query = InfoCongDoan::where('line_id', $line->id)->where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_INPROGRESS)->whereDate('thoi_gian_bat_dau', '>=', Carbon::today()->subDays(7));
         $list  = $query->get();
         foreach ($list as $item) {
             $product = $item->product;
@@ -750,10 +750,8 @@ class Phase2OIApiController extends Controller
             $sl_con_lai = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $log['sl_tem_vang'];
             if ($sl_con_lai < 0) {
                 return $this->failure([], "Số lượng Tem vàng vượt quá số lượng sản xuất");
-            } elseif ($sl_con_lai === 0) {
-                $infoCongDoan->update([
-                    'sl_tem_vang' => $log['sl_tem_vang'],
-                ]);
+            } elseif ($sl_con_lai > 0) {
+                return $this->failure([], "Số lượng Tem vàng phải bằng số lượng sản xuất");
             } else {
                 $infoCongDoan->update([
                     'sl_tem_vang' => $log['sl_tem_vang']
@@ -768,22 +766,25 @@ class Phase2OIApiController extends Controller
         return $this->success($qc_history, "Đã lưu kết quả QC");
     }
 
-    public function checkEligibleForPrinting(Request $request)
+    public function checkEligibleForPrinting($infoCongDoan)
     {
-        $line = Line::find($request->line_id);
-        if (!$line) {
-            return $this->failure([], "Không tìm thấy công đoạn");
+        $list = TestCriteria::where('line_id', $infoCongDoan->line_id)->where('is_show', 1)->select('chi_tieu')->distinct()->get();
+        $qc_history = QCHistory::where('lot_id', $infoCongDoan->lot_id)->where('line_id', $infoCongDoan->line_id)->where('machine_code', $infoCongDoan->machine_code)->first();
+        $log = [];
+        if ($qc_history) {
+            $log = $qc_history->log ?? [];
         }
-        $machine = Machine::where('code', $request->machine_code)->first();
-        if (!$machine) {
-            return $this->failure([], "Không tìm thấy máy");
+        $result = [];
+        foreach ($list as $item) {
+            if (isset($log[Str::slug($item->chi_tieu)])) {
+                $qc_data = $log[Str::slug($item->chi_tieu)];
+                $result[] = $qc_data['result'] ?? "";
+            }
         }
-        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
-        if ($infoCongDoan->sl_tem_vang <= 0) {
-            return $this->failure([], "Không có số lượng tem vàng không thể in tem");
+        if (in_array(0, $result) || count($result) !== count($list)) {
+            return false;
         }
-        $list = TestCriteria::where('line_id', $line->id)->where('is_show', 1)->select('chi_tieu')->distinct()->get();
-        return $list;
+        return true;
     }
 
     public function printTemVang(Request $request)
@@ -809,9 +810,12 @@ class Phase2OIApiController extends Controller
         } else {
             $new_tem_vang_id = $infoCongDoan->lot_id . '.TV' . $line->id;
         }
+        if(!$this->checkEligibleForPrinting($request)){
+            return $this->failure([], "Chưa kiểm tra đủ tiêu chí QC");
+        }
         try {
             DB::beginTransaction();
-            return $this->checkEligibleForPrinting($request);
+            $this->checkEligibleForPrinting($request);
             $sl_con_lai = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang;
             if ($sl_con_lai < 0) {
                 return $this->failure([], "Số lượng Tem vàng vượt quá số lượng sản xuất");
@@ -821,7 +825,7 @@ class Phase2OIApiController extends Controller
                     'product_id' => $infoCongDoan->product_id,
                     'lo_sx' => $infoCongDoan->lo_sx,
                     'so_luong' => 0,
-                    'type' => Lot::TYPE_TEM_TRANG,
+                    'type' => Lot::TYPE_TEM_VANG,
                 ]);
                 $infoCongDoan->update([
                     'thoi_gian_ket_thuc' => Carbon::now(),
@@ -842,10 +846,10 @@ class Phase2OIApiController extends Controller
             DB::rollBack();
             return $this->failure($th, "Lỗi in tem vàng");
         }
-        return $this->success($this->formatTemVang($infoCongDoan, $request, $new_tem_vang_id), "In tem vàng thành công");
+        return $this->success($this->formatTemVang($infoCongDoan, $request), "In tem vàng thành công");
     }
 
-    public function formatTemVang($infoCongDoan, $request, $new_tem_vang_id)
+    public function formatTemVang($infoCongDoan, $request)
     {
         $product = $infoCongDoan->product;
         $line = $infoCongDoan->line;
@@ -853,16 +857,28 @@ class Phase2OIApiController extends Controller
         $qc_history = QCHistory::where('lot_id', $infoCongDoan->lot_id)->where('line_id', $infoCongDoan->line_id)->where('machine_code', $infoCongDoan->machine_code)->first();
         $user_sx = CustomUser::find($infoCongDoan->user_id);
         $user_qc = CustomUser::find($qc_history->user_id);
-        $errors = [];
-        if (isset($qc_history->log['errors'])) {
-            foreach ($qc_history->log['errors'] as $error) {
-                foreach ($error['data'] as $key => $err) {
-                    $errors[] = $key;
-                }
+        // $errors = [];
+        // if (isset($qc_history->log['errors'])) {
+        //     foreach ($qc_history->log['errors'] as $error) {
+        //         foreach ($error['data'] as $key => $err) {
+        //             $errors[] = $key;
+        //         }
+        //     }
+        // }
+        $lotErrorLog = LotErrorLog::where('lot_id', $request->lot_id)->orderBy('line_id')->get();
+        $log = [];
+        foreach ($lotErrorLog as $item) {
+            foreach ($item->log ?? [] as $key => $value) {
+                $log[$key] = ($log[$key] ?? 0) + $value;
             }
         }
+        $errors = [];
+        foreach ($log as $key => $value) {
+            $errors[] = "$key: $value";
+        }
+        $ghi_chu = "Hàng tem vàng - " . implode(', ', $errors);
         $data = [];
-        $data['lot_id'] = $new_tem_vang_id ?? "";
+        $data['lot_id'] = $infoCongDoan->lot_id ?? "";
         $data['lsx'] = $infoCongDoan->lo_sx ?? "";
         $data['ten_sp'] = $product->name ?? "";
         $data['sl_tem_vang'] = $infoCongDoan->sl_tem_vang ?? 0;
@@ -871,8 +887,8 @@ class Phase2OIApiController extends Controller
         $data['cd_thuc_hien'] = $line->name ?? "";
         $data['cd_tiep_theo'] = $next_line->name ?? "";
         $data['nguoi_sx'] = $user_sx->name ?? "";
-        $data['nguoi_qc'] = $user_qc ?? "";
-        $data['ghi_chu'] = implode(', ', $errors ?? []);
+        $data['nguoi_qc'] = $user_qc->name ?? "";
+        $data['ghi_chu'] = $ghi_chu;
         return $data;
     }
 

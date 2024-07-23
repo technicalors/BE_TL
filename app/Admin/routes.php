@@ -580,7 +580,7 @@ Route::group([
 //Route Phase 2
 //No Auth
 Route::group([
-    'prefix'        => "/api/p2",
+    'prefix'        => "/api/p2/dasboard",
     'middleware'    => [],
 ], function (Router $router) {
     $router->post('update-production', [Phase2OIApiController::class, 'updateProduction']);
