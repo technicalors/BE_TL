@@ -351,13 +351,22 @@ class Phase2OIApiController extends Controller
         $lotErrorLog = LotErrorLog::where('lot_id', $request->lot_id)->orderBy('line_id')->get();
         $errorList = [];
         $log = [];
+        $index = 0;
         foreach ($lotErrorLog as $item) {
             foreach ($item->log ?? [] as $key => $value) {
-                if (!isset($log[$key])) {
-                    $errorList[] = Error::where('id', $key)->first();
-                }
                 $log[$key] = ($log[$key] ?? 0) + $value;
             }
+        }
+        foreach($log as $key => $value) {
+            $error = Error::find($key);
+            if(!$error) {
+                continue;
+            }
+            $errorList[] = [
+                'id' => $error->id,
+                'noi_dung' => Error::find($key)->noi_dung,
+                'value' => $value
+            ];
         }
         return $this->success(['errorList' => $errorList, 'log' => $log]);
     }
@@ -445,18 +454,20 @@ class Phase2OIApiController extends Controller
                         'so_luong' => 0,
                         'type' => Lot::TYPE_TEM_TRANG
                     ]);
+                }else{
+                    Lot::create([
+                        'id' => $infoCongDoan->lot_id,
+                        'product_id' => $infoCongDoan->product_id,
+                        'lo_sx' => $infoCongDoan->lo_sx,
+                        'so_luong' => $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang,
+                        'type' => Lot::TYPE_TEM_TRANG
+                    ]);
                 }
                 $infoCongDoan->update([
                     'thoi_gian_ket_thuc' => Carbon::now(),
                     'status' => InfoCongDoan::STATUS_COMPLETED
                 ]);
-                Lot::create([
-                    'id' => $infoCongDoan->lot_id,
-                    'product_id' => $infoCongDoan->product_id,
-                    'lo_sx' => $infoCongDoan->lo_sx,
-                    'so_luong' => $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang,
-                    'type' => Lot::TYPE_TEM_TRANG
-                ]);
+                
                 $tracking->update([
                     'lot_id' => null,
                     'input' => 0,

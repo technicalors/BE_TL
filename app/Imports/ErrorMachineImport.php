@@ -31,19 +31,21 @@ class ErrorMachineImport implements ToCollection, WithHeadingRow, WithStartRow
     public function collection(Collection $collection)
     {
         $this->fields = $collection->toArray();
-        $this->maxId = ErrorMachine::max('id');
+        $this->maxId = 1;
+        $error = ErrorMachine::orderBy('code', 'DESC')->first();
+        $max = explode('-', $error->code)[1];
         if (empty($this->maxId)) throw new Exception('MaxId model not found');
         foreach ($collection as $row) {
             $this->maxId++;
-            $this->importRow($this->maxId, $row->toArray());
+            $this->importRow($this->maxId, $row->toArray(), $max);
         }
     }
 
-    protected function importRow($id, array $row)
+    protected function importRow($id, array $row, $max)
     {
         $line_name = $row['line_name'] ?? null;
         $noi_dung = $row['noi_dung'] ?? null;
-        $code = $row['code'] ?? null;
+        $code = 'ml-'.($max + $id) ?? null;
         $nguyen_nhan = $row['nguyen_nhan'] ?? null;
         $khac_phuc = $row['khac_phuc'] ?? null;
         $phong_ngua = $row['phong_ngua'] ?? null;
@@ -55,7 +57,7 @@ class ErrorMachineImport implements ToCollection, WithHeadingRow, WithStartRow
 
         // Create product_order
         ErrorMachine::create([
-            'id' => $id,
+            // 'id' => $id,
             'line_id' => $line->id,
             'noi_dung' => $noi_dung,
             'code' => Str::slug($code),

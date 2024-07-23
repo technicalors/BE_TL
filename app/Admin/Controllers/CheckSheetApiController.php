@@ -28,5 +28,6 @@ class CheckSheetApiController extends Controller
             DB::rollBack();
             return $this->failure(['error' => $e->getMessage()], 'Upload thất bại', 422);
         }
+        return $this->success([], 'Upload success', 200);
     }
 }

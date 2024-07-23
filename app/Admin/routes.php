@@ -586,6 +586,7 @@ Route::group([
 ], function (Router $router) {
     $router->post('update-production', [Phase2OIApiController::class, 'updateProduction']);
     $router->get('/produce/fmb', [Phase2DBApiController::class, 'fmb']);
+    $router->get('/machine-performance', [Phase2DBApiController::class, 'getMachinePerformance']);
 });
 //OI
 Route::group([

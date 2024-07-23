@@ -48,15 +48,18 @@ class CheckSheetImport implements ToCollection, WithHeadingRow, WithStartRow
         $line = Line::query()->whereRaw('UPPER(name) LIKE ?', [strtoupper($line_name)])->first();
         if (empty($line)) throw new Exception('Không tìm thấy công đoạn(line)');
 
-        $hangMuc = CheckSheet::query()->whereRaw('UPPER(hang_muc) LIKE ?', [strtoupper($hang_muc)])->first();
-        if (empty($hangMuc)) {
-            $hangMuc = CheckSheet::create([
-                'line_id' => $line->id,
-                'hang_muc' => $hang_muc,
-            ]);
+        try {
+            $hangMuc = CheckSheet::query()->whereRaw('UPPER(hang_muc) LIKE ?', [strtoupper($hang_muc)])->first();
+            if (empty($hangMuc)) {
+                $hangMuc = CheckSheet::create([
+                    'line_id' => $line->id,
+                    'hang_muc' => $hang_muc,
+                ]);
+            }
+            CheckSheetWork::create(['check_sheet_id' => $hangMuc->id, 'cong_viec' => $cong_viec]);
+        } catch (\Exception $th) {
+            throw $th;
         }
-
-        CheckSheetWork::create(['check_sheet_id' => $hangMuc->id, 'cong_viec' => $cong_viec]);
     }
 
     protected function transformDate($value)

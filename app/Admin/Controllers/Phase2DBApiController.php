@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Factory;
 use App\Models\InfoCongDoan;
 use App\Models\Line;
+use App\Models\Lot;
+use App\Models\Machine;
+use App\Models\Tracking;
 use App\Traits\API;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -65,5 +68,54 @@ class Phase2DBApiController extends Controller
             }
         }
         return $this->success($data);
+    }
+
+    public function getMachinePerformance()
+    {
+        $lines = Line::where('factory_id', 2)->where('id', '<>', 29)->get();
+        $res = [];
+        foreach ($lines as $key => $line) {
+            $machines = Machine::where('line_id', $line->id)->get();
+            foreach ($machines as $machine) {
+                $res[$machine->code]['machine_name'] = $machine->name;
+                $tracking = Tracking::where('machine_id', $machine->code)->first();
+                if ($machine->is_iot == 1) {
+                    $res[$machine->code]['status'] = $tracking->status;
+                } else {
+                    $res[$machine->code]['status'] = is_null($tracking->lot_id) ? 0 : 1;
+                }
+                if (is_null($tracking->lot_id)) {
+                    $res[$machine->code]['percent'] = 0;
+                } else {
+                    $lot = Lot::find($tracking->lot_id);
+                    $plan = $lot->getPlanByLine($line->id);
+                    $tg_kh = $plan ? strtotime($plan->thoi_gian_ket_thuc) - strtotime($plan->thoi_gian_bat_dau) : 0;
+                    $info_cds = InfoCongDoan::where('line_id', $line->id)
+                        ->where('machine_code', $machine->code)
+                        ->where('lot_id', 'like', '%' . $lot->lo_sx . '%')
+                        ->orderBy('thoi_gian_bat_dau', 'DESC')
+                        ->whereNotNull('thoi_gian_bat_dau')
+                        ->whereNotNull('thoi_gian_bam_may')
+                        ->whereNotNull('thoi_gian_ket_thuc')
+                        ->get();
+                    $tg_tsl = 0;
+                    $tong_sl = 0;
+                    $tong_sl_dat = 0;
+                    $tong_tg = 0;
+                    foreach ($info_cds as $info_cd) {
+                        $tg_tsl += is_null($info_cd->thoi_gian_ket_thuc) ? strtotime(date('Y-m-d H:i:s')) - strtotime($info_cd->thoi_gian_bam_may) : strtotime($info_cd->thoi_gian_ket_thuc) - strtotime($info_cd->thoi_gian_bam_may);
+                        $tong_tg += strtotime($info_cd->thoi_gian_ket_thuc) - strtotime($info_cd->thoi_gian_bat_dau);
+                        $tong_sl += $info_cd->sl_dau_ra_hang_loat;
+                        $tong_sl_dat += $info_cd->sl_dau_ra_hang_loat - $info_cd->sl_ng;
+                    }
+                    $A = $tong_tg > 0 ? ($tg_tsl / $tong_tg) * 100 : 0;
+                    $Q = $tong_sl > 0 ? ($tong_sl_dat / $tong_sl) * 100 : 0;
+                    $P = (isset($plan) && $plan->UPH && $tg_tsl > 0) ? ($tong_sl / (($tg_tsl / 3600) * (int)$plan->UPH)) * 100 : 0;
+                    $res[$machine->code]['percent'] = (int)number_format(($A * $Q * $P) / 10000);
+                    // $res[$machine->code]['percent'] += 40;
+                }
+            }
+        }
+        return $this->success($res);
     }
 }
