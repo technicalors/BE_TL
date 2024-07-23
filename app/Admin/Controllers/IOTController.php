@@ -17,6 +17,7 @@ use App\Models\Tracking;
 use Encore\Admin\Controllers\AdminController;
 use Illuminate\Http\Request;
 use App\Traits\API;
+use Carbon\Carbon;
 
 class IOTController extends AdminController
 {
@@ -43,6 +44,7 @@ class IOTController extends AdminController
                 if (!isset($info_cong_doan->sl_dau_ra_chay_thu)) $info_cong_doan->sl_dau_ra_chay_thu = 0;
                 $info_cong_doan->sl_dau_ra_chay_thu += $d_output;
             } else if ($status == 1) { // chạy hàng loạt
+                if (!isset($info_cong_doan->thoi_gian_bam_may)) $info_cong_doan->thoi_gian_bam_may = Carbon::now();
                 if (!isset($info_cong_doan->sl_dau_vao_hang_loat)) $info_cong_doan->sl_dau_vao_hang_loat = 0;
                 $info_cong_doan->sl_dau_vao_hang_loat += $d_input;
 

@@ -3,6 +3,9 @@
 namespace App\Admin\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
+use App\Models\CustomUser;
+use App\Models\Error;
 use App\Models\Factory;
 use App\Models\InfoCongDoan;
 use App\Models\Line;
@@ -12,6 +15,7 @@ use App\Models\Machine;
 use App\Models\Material;
 use App\Models\ProductionPlan;
 use App\Models\QCHistory;
+use App\Models\Shift;
 use App\Models\Spec;
 use App\Models\TestCriteria;
 use App\Models\Tracking;
@@ -58,4 +62,248 @@ class Phase2UIApiController extends Controller
         }
         return $this->success($factories);
     }
+
+    private function productionOverall($infos)
+    {
+        $overall = [
+            "sl_dau_ra_kh" => 0,
+            "sl_dau_ra_thuc_te_ok" => 0,
+            "sl_chenh_lech" => 0,
+            "ty_le" => 0,
+            "sl_tem_vang" => 0,
+            "sl_ng" => 0,
+        ];
+        $sl_thuc_te = 0;
+        foreach ($infos as $item) {
+            if ($item->lot->type == 1) continue;
+            $overall["sl_dau_ra_thuc_te_ok"] += $item->sl_dau_ra_hang_loat - ($item->sl_tem_vang + $item->sl_ng);
+            $sl_thuc_te += $item->sl_dau_ra_hang_loat - $item->sl_ng;
+            $overall["sl_tem_vang"] += $item->sl_tem_vang;
+            $overall["sl_ng"] += $item->sl_ng;
+            if ($item->plan) {
+                $overall['sl_dau_ra_kh'] += ($item->plan->sl_thanh_pham && $item->plan->sl_thanh_pham) ? ($item->lot->product->so_bat * $item->plan->sl_thanh_pham) : $item->plan->sl_giao_sx;
+            }
+        }
+        $overall["sl_chenh_lech"] = ($overall["sl_dau_ra_thuc_te_ok"] + $overall["sl_tem_vang"] + $overall["sl_ng"]) - $overall['sl_dau_ra_kh'];
+        $overall["ty_le"] = ($overall['sl_dau_ra_kh'] ? (int)(($sl_thuc_te / $overall['sl_dau_ra_kh']) * 100) : 0) . '%';
+        return $overall;
+    }
+
+    private function productionPercent($query)
+    {
+        $data = [];
+        $line_ids = Line::where('factory_id', 2)->pluck('id')->toArray();
+        $info_cds = $query->whereIn('line_id', $line_ids)->where('status', InfoCongDoan::STATUS_COMPLETED)->select('lo_sx', 'line_id', DB::raw("SUM(sl_dau_ra_hang_loat) - SUM(sl_ng) as sl_daura"))->groupBy('lo_sx', 'line_id')->get();
+        foreach ($info_cds as $key => $info_cd) {
+            $data[$info_cd->lo_sx][$info_cd->line_id] = $info_cd->sl_daura;
+        }
+        return $data;
+    }
+
+    private function productionTable($infos)
+    {
+        $data = [];
+        $shift = Shift::first();
+        $errors = Error::all();
+        $err_arr = [];
+        foreach ($errors as $key => $error) {
+            $err_arr[$error->id] = $error->noi_dung;
+        }
+        $users = CustomUser::all();
+        $user_arr = [];
+        foreach ($users as $key => $user) {
+            $user_arr[$user->id] = $user->name;
+        }
+        foreach ($infos as $item) {
+            if ($item->type == 'qc') continue;
+            if (!$item->lot) continue;
+
+            $start = new Carbon($item->thoi_gian_bat_dau);
+            $end = new Carbon($item->thoi_gian_ket_thuc);
+            $d = $end->diffInMinutes($start);
+
+            $start_date = date("Y/m/d", strtotime($start));
+            $start_shift = strtotime($start_date . ' ' . $shift->start_time);
+            $end_shift = strtotime($start_date . ' ' . $shift->end_time);
+            if (strtotime($start) >= $start_shift && strtotime($start) <=  $end_shift) {
+                $ca_sx = 'Ca 1';
+            } else {
+                $ca_sx = 'Ca 2';
+            }
+
+            $info = $item->lot->log ? $item->lot->log->info : [];
+            $line_key = Str::slug($item->line->name);
+            $errors = [];
+            $thoi_gian_kiem_tra = '';
+            $sl_ng_pqc = 0;
+            $sl_ng_sxkt = 0;
+            $user_pqc = '';
+            $user_sxkt = '';
+            if (isset($info['qc']) && isset($info['qc'][$line_key])) {
+                $info_qc = $info['qc'][$line_key];
+                if ($line_key === 'gap-dan' && isset($info_qc['bat'])) {
+                    $qc_error = [];
+                    foreach ($info_qc['bat'] as $bat_error) {
+                        if (isset($bat_error['errors'])) {
+                            $qc_error = array_merge($qc_error, $bat_error['errors']);
+                        }
+                    }
+                } else {
+                    $qc_error = $info_qc['errors'] ?? [];
+                }
+                foreach ($qc_error as $key => $err) {
+                    if (!is_numeric($err)) {
+                        foreach ($err['data'] ?? [] as $err_key => $err_val) {
+                            if (isset($err['type']) && $err['type'] === 'qc') {
+                                if ($line_key === 'gap-dan' || $line_key === 'chon' || $line_key === 'oqc') {
+                                    $sl_ng_pqc += $err_val;
+                                } else {
+                                    $sl_ng_pqc += $err_val * $item->lot->product->so_bat;
+                                }
+                                $user_pqc = $user_arr[$err['user_id']] ? $user_arr[$err['user_id']] : '';
+                            } else {
+                                if ($line_key === 'gap-dan' || $line_key === 'chon' || $line_key === 'oqc') {
+                                    $sl_ng_sxkt += $err_val;
+                                } else {
+                                    $sl_ng_sxkt += $err_val * $item->lot->product->so_bat;
+                                }
+                                $user_sxkt = $user_arr[$err['user_id']] ? $user_arr[$err['user_id']] : '';
+                            }
+                            if ($line_key === 'gap-dan' || $line_key === 'chon' || $line_key === 'oqc') {
+                                $errors[$err_key]['value'] = ($errors[$err_key]['value'] ?? 0) + $err_val;;
+                            } else {
+                                $errors[$err_key]['value'] = ($errors[$err_key]['value'] ?? 0) + $err_val * $item->lot->product->so_bat;
+                            }
+                            $errors[$err_key]['name'] = $err_arr[$err_key];
+                        }
+                    } else {
+                        $sl_ng_pqc += $err;
+                        $errors[$key]['value'] = ($errors[$key]['value'] ?? 0) + $err;
+                        $errors[$key]['name'] = $err_arr[$key];
+                    }
+                }
+                $user_sxkt = isset($info[$line_key]['user_name']) ? $info[$line_key]['user_name'] : '';
+                $user_pqc = isset($info_qc['user_name']) ? $info_qc['user_name'] : '';
+            }
+            $tm = [
+                "ngay_sx" => date('d/m/Y H:i:s', strtotime($item->created_at)),
+                'ca_sx' => $ca_sx,
+                'xuong' => 'Giấy',
+                "cong_doan" => $item->line->name,
+                "machine" => count($item->line->machine) ? $item->line->machine[0]->name : '-',
+                "machine_id" => count($item->line->machine) ? $item->line->machine[0]->code : '-',
+                "khach_hang" => $item->plan ? $item->plan->khach_hang : '',
+                "ten_san_pham" => $item->lot->product ? $item->lot->product->name : '',
+                "product_id" => $item->lot->product ? $item->lot->product->id : '',
+                "material_id" => $item->lot->product ? $item->lot->product->material_id : '',
+                "lo_sx" => $item->lot->lo_sx,
+                "lot_id" => $item->lot_id,
+                "thoi_gian_bat_dau_kh" => $item->plan ? date('d/m/Y H:i:s', strtotime($item->plan->thoi_gian_bat_dau)) : '',
+                "thoi_gian_ket_thuc_kh" => $item->plan ? date('d/m/Y H:i:s', strtotime($item->plan->thoi_gian_ket_thuc)) : '',
+                "sl_dau_vao_kh" => $item->plan ? ($item->plan->sl_nvl ? $item->plan->sl_nvl : $item->plan->sl_giao_sx) : 0,
+                "sl_dau_ra_kh" => $item->plan ? ($item->plan->sl_thanh_pham ? $item->plan->sl_thanh_pham : $item->plan->sl_giao_sx) : 0,
+                "thoi_gian_bat_dau" => $item->thoi_gian_bat_dau ? date('d/m/Y H:i:s', strtotime($item->thoi_gian_bat_dau)) : '-',
+                "thoi_gian_bam_may" => $item->thoi_gian_bam_may ? date('d/m/Y H:i:s', strtotime($item->thoi_gian_bam_may)) : '-',
+                "thoi_gian_ket_thuc" => $item->thoi_gian_ket_thuc ? date('d/m/Y H:i:s', strtotime($item->thoi_gian_ket_thuc)) : '-',
+                "thoi_gian_chay_san_luong" =>  number_format($d / 60, 2),
+                "sl_ng" => $sl_ng_pqc + $sl_ng_sxkt,
+                "sl_tem_vang" => $item->sl_tem_vang,
+                "sl_dau_ra_ok" => $item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang,
+                "ti_le_ng" => number_format($item->sl_dau_ra_hang_loat > 0 ? ($item->sl_ng / $item->sl_dau_ra_hang_loat) : 0, 2) * 100,
+                "sl_dau_ra_hang_loat" => $item->sl_dau_ra_hang_loat,
+                "sl_dau_vao_hang_loat" => $item->sl_dau_vao_hang_loat,
+                "sl_dau_ra_chay_thu" => $item->sl_dau_ra_chay_thu ? $item->sl_dau_ra_chay_thu : '-',
+                "sl_dau_vao_chay_thu" => $item->sl_dau_vao_chay_thu ? $item->sl_dau_vao_chay_thu : '-',
+                "ty_le_dat" => $item->sl_dau_ra_hang_loat > 0 ? number_format(($item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang) / $item->sl_dau_ra_hang_loat) : '-',
+                "cong_nhan_sx" =>  $item->plan ? $item->plan->nhan_luc : "-",
+                "leadtime" => $item->thoi_gian_ket_thuc ? number_format((strtotime($item->thoi_gian_ket_thuc) - strtotime($item->thoi_gian_bat_dau)) / 3600, 2) : '-',
+                "tt_thuc_te" => ($item->sl_dau_ra_hang_loat > 0 && $item->thoi_gian_bam_may) ? number_format((strtotime($item->thoi_gian_ket_thuc) - strtotime($item->thoi_gian_bam_may)) / ($item->sl_dau_ra_hang_loat * 60), 4) : '-',
+                "chenh_lech" => $item->sl_dau_vao_hang_loat - $item->sl_dau_ra_hang_loat,
+                "errors" => $errors,
+                'thoi_gian_kiem_tra' => $thoi_gian_kiem_tra,
+                'sl_ng_pqc' => $sl_ng_pqc,
+                'sl_ng_sxkt' => $sl_ng_sxkt,
+                'user_pqc' => $user_pqc,
+                'user_sxkt' => $user_sxkt,
+                'dien_nang' => $item->powerM ? number_format($item->powerM) : '',
+            ];
+            $data[] = $tm;
+        }
+        return $data;
+    }
+
+    public function productionHistoryQuery(Request $request)
+    {
+        $line_ids = Line::where('factory_id', 2)->pluck('id')->toArray();
+        $query = InfoCongDoan::whereIn('line_id', $line_ids)->whereNotNull('thoi_gian_bat_dau')->with("lot.plans", "lot.log", "lot.product", "line", "plan");
+        if (isset($request->line_id)) {
+            if (is_array($request->line_id)) {
+                $query->whereIn('line_id', $request->line_id);
+            } else {
+                $query->where('line_id', $request->line_id);
+            }
+        }
+        if (isset($request->date) && count($request->date)) {
+            $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->date[0])))
+                ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->date[1])));
+        } else {
+            $query->whereDate('created_at', date('Y-m-d'));
+        }
+        if (isset($request->product_id)) {
+            $query->where('lot_id', 'like',  '%' . $request->product_id . '%');
+        }
+        if (isset($request->ten_sp)) {
+            $query->where('lot_id', 'like',  '%' . $request->ten_sp . '%');
+        }
+        if (isset($request->khach_hang)) {
+            $khach_hang = Customer::where('id', $request->khach_hang)->first();
+            if ($khach_hang) {
+                $plan = ProductionPlan::where('khach_hang', $khach_hang->name)->get();
+                $product_ids = $plan->pluck('product_id')->toArray();
+                $query->where(function ($qr) use ($product_ids) {
+                    for ($i = 0; $i < count($product_ids); $i++) {
+                        $qr->orwhere('lot_id', 'like',  '%' . $product_ids[$i] . '%');
+                    }
+                });
+            }
+        }
+        if (isset($request->lo_sx)) {
+            $lot = Lot::where('lo_sx', $request->lo_sx)->get();
+            $query->whereIn('lot_id', $lot->pluck('id'));
+        }
+        return $query;
+    }
+
+    public function getProductionHistory(Request $request)
+    {
+        $page = $request->page - 1;
+        $pageSize = $request->pageSize;
+        $query = $this->productionHistoryQuery($request);
+        $percent_query = clone $query;
+        $infos = $query->get();
+        $info_table = $query->offset($page * $pageSize)->limit($pageSize)->get();
+        $records = [];
+        $lo_sx_ids = [];
+        foreach ($infos as $key => $info) {
+            if ($info->lot) {
+                $records[] = $info;
+                if (!in_array($info->lot->lo_sx, $lo_sx_ids)) {
+                    $lo_sx_ids[] = $info->lot->lo_sx;
+                }
+            }
+        }
+        $overall = $this->productionOverall($records);
+        $percent = $this->productionPercent($percent_query);
+        $table = $this->productionTable($info_table);
+        $count = count($infos);
+        $totalPage = $count;
+        return $this->success([
+            "overall" => $overall,
+            "percent" => $percent,
+            "table" => $table,
+            "totalPage" => $totalPage,
+        ]);
+    }
+
+    
 }

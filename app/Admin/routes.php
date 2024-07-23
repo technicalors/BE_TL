@@ -580,7 +580,7 @@ Route::group([
 //Route Phase 2
 //No Auth
 Route::group([
-    'prefix'        => "/api/p2",
+    'prefix'        => "/api/p2/dasboard",
     'middleware'    => [],
 ], function (Router $router) {
     $router->post('update-production', [Phase2OIApiController::class, 'updateProduction']);
@@ -623,4 +623,5 @@ Route::group([
     'middleware'    => "auth:sanctum",
 ], function (Router $router) {
     $router->get('/tree-select', [Phase2UIApiController::class, 'getTreeSelect']);
+    $router->get('/production-history', [Phase2UIApiController::class, 'getProductionHistory']);
 });
