@@ -8,7 +8,7 @@ const PRODUCTION_API_URL = base_url + '/update-quantity';
 const MACHINE_INFO_API_URL = base_url + '/update-params';
 const MACHINE_STATUS_API_URL = base_url + '/update-status';
 const MACHINE_RECORD_API_URL = base_url + '/record-product-output';
-const DEVICE_IDS = ['f7f77560-45bd-11ef-b8c3-a13625245eca']; // Thay thế bằng danh sách mã thiết bị thực tế
+const DEVICE_IDS = ['f7f77560-45bd-11ef-b8c3-a13625245eca', '7cda31d0-45bb-11ef-b8c3-a13625245eca', 'da03f550-45be-11ef-b8c3-a13625245eca', 'a43d8520-45bf-11ef-b8c3-a13625245eca']; // Thay thế bằng danh sách mã thiết bị thực tế
 
 // Thông tin đăng nhập
 const credentials = {
