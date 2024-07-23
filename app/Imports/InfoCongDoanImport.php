@@ -62,7 +62,6 @@ class InfoCongDoanImport implements ToCollection, WithHeadingRow, WithStartRow
         $khach_hang = $row['khach_hang'] ?? null;
         $so_bat = $row['so_bat'] ?? null;
         $sl_nvl = $row['sl_nvl'] ?? 0;
-        $sl_tong_don_hang = $row['sl_tong_don_hang'] ?? 0;
         $sl_giao_sx = $row['sl_giao_sx'] ?? 0;
         $sl_thanh_pham = $row['sl_thanh_pham'] ?? 0;
         $thu_tu_uu_tien = $row['thu_tu_uu_tien'] ?? 1;
