@@ -88,6 +88,10 @@ class Phase2DBApiController extends Controller
                     $res[$machine->code]['percent'] = 0;
                 } else {
                     $lot = Lot::find($tracking->lot_id);
+                    if (!$lot) {
+                        $res[$machine->code]['percent'] = 0;
+                        continue;
+                    }
                     $plan = $lot->getPlanByLine($line->id);
                     $tg_kh = $plan ? strtotime($plan->thoi_gian_ket_thuc) - strtotime($plan->thoi_gian_bat_dau) : 0;
                     $info_cds = InfoCongDoan::where('line_id', $line->id)
