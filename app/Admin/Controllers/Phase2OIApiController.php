@@ -255,27 +255,29 @@ class Phase2OIApiController extends Controller
         if (!$product) {
             return $this->failure([], "Không tìm thấy sản phẩm");
         }
-        $infoCongDoan = InfoCongDoan::where('machine_code', $machine->code)->where('line_id', $machine->line->id)->where('product_id', $product->id)->where('status', InfoCongDoan::STATUS_PLANNED)
-            ->orderBy('lot_id', 'ASC')->first();
-        if ($infoCongDoan) {
-            try {
-                DB::beginTransaction();
-                $infoCongDoan->update([
-                    'thoi_gian_bat_dau' => Carbon::now(),
-                    'user_id' => $request->user()->id,
-                    'status' => InfoCongDoan::STATUS_INPROGRESS
-                ]);
-                $tracking->update([
-                    'lot_id' => $infoCongDoan->lot_id,
-                    'input' => 0
-                ]);
-                DB::commit();
-            } catch (\Throwable $th) {
-                DB::rollBack();
-                return $this->failure($th, "Lỗi quét NVL");
-            }
-        } else {
-            return $this->failure([], "Không có kế hoạch sản xuất cho NVL này");
+        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $machine->line->id)->where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_PLANNED)->first();
+        if (!$infoCongDoan) {
+            return $this->failure([], "Không tìm thấy lot cần chạy");
+        }
+        if($infoCongDoan->product_id !== $product->id){
+            return $this->failure([], "Mapping không thành công");
+        }
+        try {
+            DB::beginTransaction();
+            $infoCongDoan->update([
+                'thoi_gian_bat_dau' => Carbon::now(),
+                'user_id' => $request->user()->id,
+                'status' => InfoCongDoan::STATUS_INPROGRESS
+            ]);
+            $tracking->update([
+                'lot_id' => $infoCongDoan->lot_id,
+                'input' => 0,
+                'output' => 0
+            ]);
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return $this->failure($th, "Lỗi quét NVL");
         }
         return $this->success([], "Bắt đầu sản xuất");
     }
@@ -330,7 +332,8 @@ class Phase2OIApiController extends Controller
                 ]);
                 $tracking->update([
                     'lot_id' => $request->lot_id,
-                    'input' => 0
+                    'input' => 0,
+                    'output' => 0
                 ]);
                 DB::commit();
             } catch (\Throwable $th) {
@@ -456,6 +459,7 @@ class Phase2OIApiController extends Controller
                 $tracking->update([
                     'lot_id' => null,
                     'input' => 0,
+                    'output' => 0
                 ]);
                 DB::commit();
             } catch (\Throwable $th) {
@@ -699,6 +703,7 @@ class Phase2OIApiController extends Controller
                     $tracking->update([
                         'lot_id' => null,
                         'input' => 0,
+                        'output' => 0
                     ]);
                 }
                 Lot::create([
@@ -810,7 +815,7 @@ class Phase2OIApiController extends Controller
         } else {
             $new_tem_vang_id = $infoCongDoan->lot_id . '.TV' . $line->id;
         }
-        if(!$this->checkEligibleForPrinting($request)){
+        if (!$this->checkEligibleForPrinting($request)) {
             return $this->failure([], "Chưa kiểm tra đủ tiêu chí QC");
         }
         try {
@@ -831,16 +836,15 @@ class Phase2OIApiController extends Controller
                     'thoi_gian_ket_thuc' => Carbon::now(),
                     'status' => InfoCongDoan::STATUS_COMPLETED
                 ]);
+                $tracking = Tracking::where('lot_id', $infoCongDoan->lot_id)->where('machine_id', $machine->id)->first();
+                if ($tracking) {
+                    $tracking->update([
+                        'lot_id' => null,
+                        'input' => 0,
+                        'output' => 0
+                    ]);
+                }
             }
-            $temVang = InfoCongDoan::firstOrCreate([
-                'lot_id' => $new_tem_vang_id,
-                'line_id' => $line->id,
-                'machine_code' => $machine->code,
-                'product_id' => $infoCongDoan->product_id,
-                'lo_sx' => $infoCongDoan->lo_sx,
-                'status' => InfoCongDoan::STATUS_PLANNED,
-                'sl_kh' => $infoCongDoan->sl_tem_vang,
-            ]);
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
