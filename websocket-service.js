@@ -35,7 +35,7 @@ async function getAuthToken() {
                 'Content-Type': 'application/json'
             }
         });
-        authToken = response.token;
+        authToken = response.data.token;
         return authToken;
     } catch (error) {
         console.error('Error fetching auth token:', error.message);
