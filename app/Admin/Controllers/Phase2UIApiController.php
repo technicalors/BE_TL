@@ -3,6 +3,7 @@
 namespace App\Admin\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Imports\InfoCongDoanImport;
 use App\Models\Customer;
 use App\Models\CustomUser;
 use App\Models\Error;
@@ -32,6 +33,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Maatwebsite\Excel\Facades\Excel;
 
 class Phase2UIApiController extends Controller
 {
@@ -305,5 +307,19 @@ class Phase2UIApiController extends Controller
         ]);
     }
 
-    
+    public function uploadInfoCongDoan(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx',
+        ]);
+        DB::beginTransaction();
+        try {
+            Excel::import(new InfoCongDoanImport, $request->file('file'));
+            DB::commit();
+            return $this->success('', 'Upload thành công');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return $this->failure([], $e->getMessage(), 500);
+        }
+    }
 }
