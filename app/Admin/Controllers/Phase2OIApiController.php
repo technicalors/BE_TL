@@ -259,7 +259,7 @@ class Phase2OIApiController extends Controller
         if (!$infoCongDoan) {
             return $this->failure([], "Không tìm thấy lot cần chạy");
         }
-        if ($infoCongDoan->product_id !== $product->id) {
+        if ($infoCongDoan->product_id != $product->id) {
             return $this->failure([], "Mapping không thành công");
         }
         try {
