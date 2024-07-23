@@ -15,7 +15,7 @@ class Phase2DBApiController extends Controller
     use API;
     public function fmb(Request $request)
     {
-        $lines = Line::where('factory_id', 2)->get();
+        $lines = Line::where('factory_id', 2)->whereNot('id', 29)->get();
         $data = [];
         foreach ($lines as $line) {
             $info = InfoCongDoan::where("line_id", $line->id)->with(["lot.plans", "lot.plan.product"])->orderBy('thoi_gian_bat_dau', 'DESC')->first();
