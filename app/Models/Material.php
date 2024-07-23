@@ -34,4 +34,8 @@ class Material extends Model
     {
         return $this->hasOne(Bom::class, 'material_id', 'id');
     }
+    public function boms()
+    {
+        return $this->hasMany(Bom::class, 'material_id', 'id');
+    }
 }

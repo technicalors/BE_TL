@@ -251,15 +251,15 @@ class Phase2OIApiController extends Controller
         if (!$material) {
             return $this->failure([], "Không tìm thấy NVL");
         }
-        $product = $material->bom->product ?? null;
-        if (!$product) {
+        $product_ids = $material->boms()->pluck('product_id')->toArray() ?? [];
+        if (count($product_ids) === 0) {
             return $this->failure([], "Không tìm thấy sản phẩm");
         }
         $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $machine->line->id)->where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_PLANNED)->first();
         if (!$infoCongDoan) {
             return $this->failure([], "Không tìm thấy lot cần chạy");
         }
-        if ($infoCongDoan->product_id != $product->id) {
+        if (in_array($infoCongDoan->product_id, $product_ids)) {
             return $this->failure([], "Mapping không thành công");
         }
         try {
