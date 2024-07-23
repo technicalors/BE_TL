@@ -259,7 +259,7 @@ class Phase2OIApiController extends Controller
         if (!$infoCongDoan) {
             return $this->failure([], "Không tìm thấy lot cần chạy");
         }
-        if($infoCongDoan->product_id !== $product->id){
+        if ($infoCongDoan->product_id !== $product->id) {
             return $this->failure([], "Mapping không thành công");
         }
         try {
@@ -397,6 +397,7 @@ class Phase2OIApiController extends Controller
                     $log = LotErrorLog::create([
                         'lot_id' => $infoCongDoan->lot_id,
                         'log' => $request->log,
+                        'lo_sx' => $infoCongDoan->lo_sx,
                         'machine_code' => $infoCongDoan->machine_code,
                         'line_id' => $infoCongDoan->line_id,
                         'user_id' => $request->user()->id
@@ -803,17 +804,11 @@ class Phase2OIApiController extends Controller
             return $this->failure([], "Không tìm thấy máy");
         }
         $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
+        if (!$infoCongDoan) {
+            return $this->failure([], "Không tìm thấy lot");
+        }
         if ($infoCongDoan->sl_tem_vang <= 0) {
             return $this->failure('', 'Không có số lượng tem vàng không thể in tem');
-        }
-        $new_tem_vang_id = "";
-        if (str_contains($infoCongDoan->lot_id, '.TV')) {
-            $parts = explode('.', $infoCongDoan->lot_id);
-            array_pop($parts);
-            $string = implode('.', $parts);
-            $new_tem_vang_id = $string . '.TV' . $line->id;
-        } else {
-            $new_tem_vang_id = $infoCongDoan->lot_id . '.TV' . $line->id;
         }
         if (!$this->checkEligibleForPrinting($request)) {
             return $this->failure([], "Chưa kiểm tra đủ tiêu chí QC");
@@ -829,7 +824,7 @@ class Phase2OIApiController extends Controller
                     'id' => $infoCongDoan->lot_id,
                     'product_id' => $infoCongDoan->product_id,
                     'lo_sx' => $infoCongDoan->lo_sx,
-                    'so_luong' => 0,
+                    'so_luong' => $infoCongDoan->sl_tem_vang,
                     'type' => Lot::TYPE_TEM_VANG,
                 ]);
                 $infoCongDoan->update([
@@ -861,14 +856,14 @@ class Phase2OIApiController extends Controller
         $qc_history = QCHistory::where('lot_id', $infoCongDoan->lot_id)->where('line_id', $infoCongDoan->line_id)->where('machine_code', $infoCongDoan->machine_code)->first();
         $user_sx = CustomUser::find($infoCongDoan->user_id);
         $user_qc = CustomUser::find($qc_history->user_id);
-        // $errors = [];
-        // if (isset($qc_history->log['errors'])) {
-        //     foreach ($qc_history->log['errors'] as $error) {
-        //         foreach ($error['data'] as $key => $err) {
-        //             $errors[] = $key;
-        //         }
-        //     }
-        // }
+        $errors = [];
+        if (isset($qc_history->log['errors'])) {
+            foreach ($qc_history->log['errors'] as $error) {
+                foreach ($error['data'] as $key => $err) {
+                    $errors[] = $key;
+                }
+            }
+        }
         $lotErrorLog = LotErrorLog::where('lot_id', $request->lot_id)->orderBy('line_id')->get();
         $log = [];
         foreach ($lotErrorLog as $item) {
@@ -892,6 +887,7 @@ class Phase2OIApiController extends Controller
         $data['cd_tiep_theo'] = $next_line->name ?? "";
         $data['nguoi_sx'] = $user_sx->name ?? "";
         $data['nguoi_qc'] = $user_qc->name ?? "";
+        $data['tinh_trang_loi'] = implode(', ', $errors);
         $data['ghi_chu'] = $ghi_chu;
         return $data;
     }
