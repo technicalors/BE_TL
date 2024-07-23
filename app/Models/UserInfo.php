@@ -10,7 +10,9 @@ class UserInfo extends Model
 {
     use HasFactory;
     protected $table = "user_infos";
-    protected $fillable = ['id', 'name', 'date_join_company', 'date_end_trial', 'category1', 'category2', 'category3', 'category4', 'category5', 'note'];
+    protected $keyType = 'string';
+    public $incrementing = false;
+    protected $fillable = ['id', 'name', 'date_join_company', 'date_end_trial', 'category_1', 'category_2', 'category_3', 'category_4', 'category_5', 'note'];
     protected $casts = [
         'id' => 'string',
     ];
