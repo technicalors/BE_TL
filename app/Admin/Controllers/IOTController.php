@@ -4,6 +4,7 @@ namespace App\Admin\Controllers;
 
 use App\Events\ProductionUpdated;
 use App\Models\InfoCongDoan;
+use App\Models\IOTLog;
 use App\Models\LogWarningParameter;
 use App\Models\Lot;
 use App\Models\Machine;
@@ -25,6 +26,9 @@ class IOTController extends AdminController
 
     public function updateQuantityFromIot(Request $request)
     {
+        $iot_log = new IOTLog();
+        $iot_log->data = $request->all();
+        $iot_log->save();
         $machine = Machine::where('device_id', $request->device_id)->first();
         $status = MachineStatus::getStatus($machine->code);
         $info_cong_doan = InfoCongDoan::where('machine_code', $machine->code)->where('status', 1)->first();
