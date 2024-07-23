@@ -57,6 +57,7 @@ use App\Models\WareHouseExportPlan;
 use App\Models\Workers;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use PDO;
 use SebastianBergmann\CodeUnit\FunctionUnit;
 use stdClass;
@@ -2748,111 +2749,124 @@ class ApiMobileController extends AdminController
         // file path
         $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
-        foreach ($allDataInSheet as $key => $row) {
-            //Lấy dứ liệu từ dòng thứ 5
-            if ($key > 3 && !is_null($row['H']) && !is_null($row['I'])) {
-                if (is_null($row['B'])) {
-                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu thứ tự ưu tiên');
+        
+        DB::beginTransaction();
+        try {
+            foreach ($allDataInSheet as $key => $row) {
+                //Lấy dứ liệu từ dòng thứ 5
+                if ($key > 3 && !is_null($row['H']) && !is_null($row['I'])) {
+                    if (is_null($row['B'])) {
+                        return $this->failure([], 'Dòng số ' . $key . ': Thiếu thứ tự ưu tiên');
+                    }
+                    if (is_null($row['C'])) {
+                        return $this->failure([], 'Dòng số ' . $key . ': Thiếu thời gian bắt đầu');
+                    }
+                    if (is_null($row['D'])) {
+                        return $this->failure([], 'Dòng số ' . $key . ': Thiếu thời gian kết thúc');
+                    }
+                    if (is_null($row['E'])) {
+                        return $this->failure([], 'Dòng số ' . $key . ': Thiếu thời gian ngày sản xuất');
+                    }
+                    if (is_null($row['G'])) {
+                        return $this->failure([], 'Dòng số ' . $key . ': Thiếu công đoạn sản xuất');
+                    }
+                    if (is_null($row['H'])) {
+                        return $this->failure([], 'Dòng số ' . $key . ': Thiếu công đoạn sản xuất');
+                    }
+                    if (is_null($row['I'])) {
+                        return $this->failure([], 'Dòng số ' . $key . ': Thiếu mã sản phẩm');
+                    }
+                    if (is_null($row['L'])) {
+                        return $this->failure([], 'Dòng số ' . $key . ': Thiếu lô sản xuất');
+                    }
+                    // if (is_null($row['T'])) {
+                    //     return $this->failure([], 'Dòng số ' . $key . ': Thiếu số bát');
+                    // }
+                    if (is_null($row['M'])) {
+                        return $this->failure([], 'Dòng số ' . $key . ': Thiếu ngày giao hàng');
+                    }
+                    if (is_null($row['AD'])) {
+                        return $this->failure([], 'Dòng số ' . $key . ': Thiếu ngày đặt hàng');
+                    }
+                    // if (Str::slug($row['G']) == 'in') {
+                    //     $check = ProductionPlan::where('lo_sx', $row['L'])->first();
+                    //     if ($check) {
+                    //         return $this->failure([], 'Dòng số ' . $key . ': Lô sản xuất đã tồn tại');
+                    //     }
+                    // }
                 }
-                if (is_null($row['C'])) {
-                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu thời gian bắt đầu');
-                }
-                if (is_null($row['D'])) {
-                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu thời gian kết thúc');
-                }
-                if (is_null($row['E'])) {
-                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu thời gian ngày sản xuất');
-                }
-                if (is_null($row['G'])) {
-                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu công đoạn sản xuất');
-                }
-                if (is_null($row['H'])) {
-                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu công đoạn sản xuất');
-                }
-                if (is_null($row['I'])) {
-                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu mã sản phẩm');
-                }
-                if (is_null($row['L'])) {
-                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu lô sản xuất');
-                }
-                // if (is_null($row['T'])) {
-                //     return $this->failure([], 'Dòng số ' . $key . ': Thiếu số bát');
-                // }
-                if (is_null($row['M'])) {
-                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu ngày giao hàng');
-                }
-                if (is_null($row['AD'])) {
-                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu ngày đặt hàng');
-                }
-                // if (Str::slug($row['G']) == 'in') {
-                //     $check = ProductionPlan::where('lo_sx', $row['L'])->first();
-                //     if ($check) {
-                //         return $this->failure([], 'Dòng số ' . $key . ': Lô sản xuất đã tồn tại');
-                //     }
-                // }
             }
-        }
-        $linex = [
-            "kho_bao_on" => 9,
-            "in" => 10,
-            "phu" => 11,
-            "be" => 12,
-            "gap-dan" => 13,
-            "boc" => 14,
-            "chon" => 15,
-            "u" => 21,
-            "in-luoi" => 22
-        ];
-        foreach ($allDataInSheet as $key => $row) {
-            //Lấy dứ liệu từ dòng thứ 5
-            if ($key > 3 && !is_null($row['H'])) {
-                if (is_null($row['H'])) {
-                    break;
-                }
+            $linex = [
+                "kho_bao_on" => 9,
+                "in" => 10,
+                "phu" => 11,
+                "be" => 12,
+                "gap-dan" => 13,
+                "boc" => 14,
+                "chon" => 15,
+                "u" => 21,
+                "in-luoi" => 22,
+            ];
+            foreach ($allDataInSheet as $key => $row) {
+                //Lấy dứ liệu từ dòng thứ 5
+                if ($key > 3 && !is_null($row['H'])) {
+                    if (is_null($row['H'])) {
+                        break;
+                    }
 
-                if (!is_null($row['B'])) {
-                    $input['ngay_dat_hang'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['AD'])));
-                    $input['cong_doan_sx'] = Str::slug($row['G']); //
-                    $input['line_id'] = $linex[Str::slug($row['G'])]; //
-                    $input['ca_sx'] = $row['F']; //
-                    $input['ngay_sx'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['E'])));
-                    // $plan->ngay_sx =new Carbon($row['E']);
-                    $input['ngay_giao_hang'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['M'])));
-                    $input['machine_id'] = $row['H']; //
-                    $input['product_id'] = $row['I']; //
-                    $input['khach_hang'] = $row['J']; //
-                    $input['lo_sx'] = $row['L']; //
-                    $input['so_bat'] = $row['T'] ?? 0; //
-                    $input['sl_nvl'] = $row['O']; //
-                    $input['sl_tong_don_hang'] = $row['N']; //
-                    $input['sl_giao_sx'] = $row['Q']; //
-                    $input['sl_thanh_pham'] = $row['P'] ?? 0; //
-                    $input['thu_tu_uu_tien'] = $row['B']; //
-                    $input['note'] = $row['AE'] ?? "";
-                    $input['UPH'] = str_replace(',', '', $row['W']); //
-                    $input['nhan_luc'] = $row['AB'];
-                    $input['tong_tg_thuc_hien'] = filter_var($row['AA'], FILTER_SANITIZE_NUMBER_INT); //
-                    $input['kho_giay'] =  $row['U'] ?? "";
-                    $input['toc_do'] =  $row['V'] ? (int)$row['V'] : "";
-                    $input['thoi_gian_chinh_may'] =  $row['X'] ? (float)$row['X'] : "";
-                    $input['thoi_gian_thuc_hien'] =  $row['Y'] ? (float)$row['Y'] : "";
-                    // $plan->thoi_gian_bat_dau = date('Y-m-d H:i:s', strtotime(str_replace('/', '-', $row['C'])));
-                    $input['thoi_gian_bat_dau'] = date('Y-m-d H:i:s', strtotime($input['ngay_sx'] . ' ' . $row['C']));
-                    $input['thoi_gian_ket_thuc'] = date('Y-m-d H:i:s', strtotime($input['ngay_sx'] . ' ' . $row['D'] . (strtotime($row['C']) > strtotime($row['D']) ? " +1 day" : "")));
-                    $input['status'] = 0;
-                    $input['file'] = $hash;
-                    $record = ProductionPlan::updateOrCreate(
-                        [
-                            'cong_doan_sx' => $input['cong_doan_sx'],
-                            'lo_sx' => $input['lo_sx'],
-                            'product_id' => $input['product_id'],
-                        ],
-                        $input
-                    );
+                    $line = Line::query()->where('name', 'like', trim($row['G']))->first();
+                    if (empty($line)) throw new Exception('Không tìm thấy công đoạn');
 
-                    // TODO: add field lotsize to info_cong_doan table (lot)
-                    // ID Lot: Mã lô+.L.0001
-                    if (!empty($record)) {
+                    if (!is_null($row['B'])) {
+                        $input['ngay_dat_hang'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['AD'])));
+                        $input['cong_doan_sx'] = Str::slug($row['G']); //
+                        $input['line_id'] = $line->id; //
+                        $input['ca_sx'] = $row['F']; //
+                        $input['ngay_sx'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['E'])));
+                        // $plan->ngay_sx =new Carbon($row['E']);
+                        $input['ngay_giao_hang'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['M'])));
+                        $input['machine_id'] = $row['H']; //
+                        $input['product_id'] = $row['I']; //
+                        $input['khach_hang'] = $row['J']; //
+                        $input['lo_sx'] = $row['L']; //
+                        $input['so_bat'] = $row['T'] ?? 0; //
+                        $input['sl_nvl'] = $row['O']; //
+                        $input['sl_tong_don_hang'] = $row['N']; //
+                        $input['sl_giao_sx'] = $row['Q']; //
+                        $input['sl_thanh_pham'] = $row['P'] ?? 0; //
+                        $input['thu_tu_uu_tien'] = $row['B']; //
+                        $input['note'] = $row['AE'] ?? "";
+                        $input['UPH'] = str_replace(',', '', $row['W']); //
+                        $input['nhan_luc'] = $row['AB'];
+                        $input['tong_tg_thuc_hien'] = filter_var($row['AA'], FILTER_SANITIZE_NUMBER_INT); //
+                        $input['kho_giay'] =  $row['U'] ?? "";
+                        $input['toc_do'] =  $row['V'] ? (int)$row['V'] : "";
+                        $input['thoi_gian_chinh_may'] =  $row['X'] ? (float)$row['X'] : "";
+                        $input['thoi_gian_thuc_hien'] =  $row['Y'] ? (float)$row['Y'] : "";
+                        // $plan->thoi_gian_bat_dau = date('Y-m-d H:i:s', strtotime(str_replace('/', '-', $row['C'])));
+                        $input['thoi_gian_bat_dau'] = date('Y-m-d H:i:s', strtotime($input['ngay_sx'] . ' ' . $row['C']));
+                        $input['thoi_gian_ket_thuc'] = date('Y-m-d H:i:s', strtotime($input['ngay_sx'] . ' ' . $row['D'] . (strtotime($row['C']) > strtotime($row['D']) ? " +1 day" : "")));
+                        $input['status'] = 0;
+                        $input['file'] = $hash;
+                        // $record = ProductionPlan::updateOrCreate(
+                        //     [
+                        //         'cong_doan_sx' => $input['cong_doan_sx'],
+                        //         'lo_sx' => $input['lo_sx'],
+                        //         'product_id' => $input['product_id'],
+                        //     ],
+                        //     $input
+                        // );
+
+                        $record = ProductionPlan::query()->where([
+                            ['cong_doan_sx', $input['cong_doan_sx']],
+                            ['lo_sx', $input['lo_sx']],
+                            ['product_id', $input['product_id']],
+                        ])->first();
+                        Log::debug($record);
+                        if (!empty($record)) throw new Exception("Kế hoạch đã được tạo");
+                        $record = ProductionPlan::create($input);
+                        // TODO: add field lotsize to info_cong_doan table (lot)
+                        // ID Lot: Mã lô+.L.0001
                         $numbers = $this->getQuantityArray($input['sl_tong_don_hang'], 1000);
                         $countLot = InfoCongDoan::query()->where([
                             ['lo_sx', $input['lo_sx']],
@@ -2885,12 +2899,18 @@ class ApiMobileController extends AdminController
                                 'user_id' => auth()->user()->id,
                             ]);
                         }
+                        unset($input);
                     }
-                    unset($input);
                 }
             }
+
+            DB::commit();
+            return $this->success([], 'Upload thành công');
+        } catch (\Exception $ex) {
+            Log::error($ex->getMessage());
+            DB::rollBack();
+            return $this->failure([], $ex->getMessage(), 500);
         }
-        return $this->success([], 'Upload thành công');
     }
 
     function getQuantityArray($quantity, $default)

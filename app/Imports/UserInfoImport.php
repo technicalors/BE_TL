@@ -41,11 +41,11 @@ class UserInfoImport implements ToCollection, WithHeadingRow, WithStartRow
         $name = $row['name'] ?? null;
         $dateJoinCompany = $row['date_join_company'] ?? null;
         $dateEndTrial = $row['date_end_trial'] ?? null;
-        $category1 = $row['category1'] ?? null;
-        $category2 = $row['category2'] ?? null;
-        $category3 = $row['category3'] ?? null;
-        $category4 = $row['category4'] ?? null;
-        $category5 = $row['category5'] ?? null;
+        $category1 = $row['category_1'] ?? null;
+        $category2 = $row['category_2'] ?? null;
+        $category3 = $row['category_3'] ?? null;
+        $category4 = $row['category_4'] ?? null;
+        $category5 = $row['category_5'] ?? null;
         $note = $row['note'] ?? null;
 
         if (!$id || !$name || !$dateJoinCompany) return;
@@ -59,11 +59,11 @@ class UserInfoImport implements ToCollection, WithHeadingRow, WithStartRow
             'name' => $name,
             'date_join_company' => $dateJoinCompany,
             'date_end_trial' => $dateEndTrial,
-            'category1' => $category1,
-            'category2' => $category2,
-            'category3' => $category3,
-            'category4' => $category4,
-            'category5' => $category5,
+            'category_1' => $category1,
+            'category_2' => $category2,
+            'category_3' => $category3,
+            'category_4' => $category4,
+            'category_5' => $category5,
             'note' => $note,
         ]);
     }
