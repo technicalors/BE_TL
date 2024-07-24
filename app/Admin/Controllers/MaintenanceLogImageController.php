@@ -42,10 +42,10 @@ class MaintenanceLogImageController extends Controller
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
-            
+
             return $this->failure('', 'Đã xảy ra lỗi. Vui lòng thử lại sau.');
         }
-        
+
         return $this->success($maintenanceLogImage);
     }
 
@@ -72,8 +72,10 @@ class MaintenanceLogImageController extends Controller
         $this->validate($request, [
             'image' => 'required|image|max:10240', // max 10MB
         ]);
-
-        $path = $request->file('image')->store('maintenance-log-images', 'public');
-        return $this->success(['path' => $path]);
+        $image = $request->file('image');
+        $filename = 'evidence_' . time() . '.' . $image->getClientOriginalExtension();
+        $image->move(public_path('maintenance-log-images'), $filename);
+        $filePath = url('maintenance-log-images/' . $filename);
+        return $this->success(['path' => $filePath]);
     }
 }
