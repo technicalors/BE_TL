@@ -198,8 +198,8 @@ class Phase2OIApiController extends Controller
                 "thoi_gian_ket_thuc_kh" => $item->plan ? date('d/m/Y H:i:s', strtotime($item->plan->thoi_gian_ket_thuc)) : "", "",
                 'thoi_gian_bat_dau' => $item->thoi_gian_bat_dau ? date('d/m/Y H:i:s', strtotime($item->thoi_gian_bat_dau)) : "",
                 'thoi_gian_ket_thuc' => $item->thoi_gian_ket_thuc ? date('d/m/Y H:i:s', strtotime($item->thoi_gian_ket_thuc)) : "",
-                'sl_dau_vao_kh' => 0,
-                'sl_dau_ra_kh' => 0,
+                'sl_dau_vao_kh' => $item->sl_kh ?? 0,
+                'sl_dau_ra_kh' => $item->sl_kh ?? 0,
                 'sl_dau_vao_hang_loat' => $item->sl_dau_vao_hang_loat ?? 0,
                 'sl_dau_ra_hang_loat' => $item->sl_dau_ra_hang_loat ?? 0,
                 "sl_dau_ra_ok" => $item->sl_dau_ra_hang_loat - $item->sl_tem_vang - $item->sl_ng,
@@ -357,9 +357,9 @@ class Phase2OIApiController extends Controller
                 $log[$key] = ($log[$key] ?? 0) + $value;
             }
         }
-        foreach($log as $key => $value) {
+        foreach ($log as $key => $value) {
             $error = Error::find($key);
-            if(!$error) {
+            if (!$error) {
                 continue;
             }
             $errorList[] = [
@@ -454,7 +454,7 @@ class Phase2OIApiController extends Controller
                         'so_luong' => 0,
                         'type' => Lot::TYPE_TEM_TRANG
                     ]);
-                }else{
+                } else {
                     Lot::create([
                         'id' => $infoCongDoan->lot_id,
                         'product_id' => $infoCongDoan->product_id,
@@ -467,7 +467,7 @@ class Phase2OIApiController extends Controller
                     'thoi_gian_ket_thuc' => Carbon::now(),
                     'status' => InfoCongDoan::STATUS_COMPLETED
                 ]);
-                
+
                 $tracking->update([
                     'lot_id' => null,
                     'input' => 0,
