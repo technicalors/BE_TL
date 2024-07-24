@@ -146,6 +146,8 @@ class IOTController extends AdminController
         if ($info_cong_doan) {
             $info_cong_doan['thoi_gian_bam_may'] = date('Y-m-d H:i:s');
             $info_cong_doan->save();
+        }else{
+            return response()->json(['message' => 'InfoCongDoan not found'], 404);
         }
         MachineStatus::active($machine->code);
         return $info_cong_doan;
