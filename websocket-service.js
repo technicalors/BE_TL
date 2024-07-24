@@ -83,7 +83,7 @@ async function processQueue(deviceId) {
 function convertProductionData(data, deviceId) {
     return {
         device_id: deviceId,
-        input: data['PLC:Num_Input'][0][1],
+        input: data['PLC:Num_Input'] ? data['PLC:Num_Input'][0][1] : 0,
         output: data['PLC:Num_Out'][0][1],
     };
 }
@@ -117,6 +117,9 @@ function enqueueData(deviceId, data) {
     // Chuyển đổi và đẩy dữ liệu sản lượngPLC:Num_Out
     if (data['PLC:Num_Input'] || data['PLC:Num_Out']) {
         let convertedData = convertProductionData(data, deviceId);
+        if (deviceId == 'a43d8520-45bf-11ef-b8c3-a13625245eca') {
+            console.log('convertedData', convertedData);
+        }
         if (JSON.stringify(lastProductionValues[deviceId]) !== JSON.stringify(data)) {
             dataQueues[deviceId].push({ data: convertedData, apiUrl: PRODUCTION_API_URL });
             lastProductionValues[deviceId] = data;
