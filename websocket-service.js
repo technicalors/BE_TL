@@ -83,7 +83,7 @@ async function processQueue(deviceId) {
 function convertProductionData(data, deviceId) {
     return {
         device_id: deviceId,
-        input: data['PLC:Num_Input'] ? data['PLC:Num_Input'][0][1] : data['PLC:Num_Out'][0][1],
+        input: data['PLC:Num_Input'] ? data['PLC:Num_Input'][0][1] : 0,
         output: data['PLC:Num_Out'][0][1],
     };
 }
