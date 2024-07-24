@@ -114,11 +114,10 @@ function convertMachineRecordData(data, deviceId) {
 // Hàm phân loại dữ liệu và đẩy vào hàng đợi
 function enqueueData(deviceId, data) {
     // console.log('data',data);
-    // Chuyển đổi và đẩy dữ liệu sản lượng
-    if (data['PLC:Num_Input'] && data['PLC:Num_Out']) {
+    // Chuyển đổi và đẩy dữ liệu sản lượngPLC:Num_Out
+    if (data['PLC:Num_Input'] || data['PLC:Num_Out']) {
         let convertedData = convertProductionData(data, deviceId);
         if (JSON.stringify(lastProductionValues[deviceId]) !== JSON.stringify(data)) {
-            console.log(convertedData);
             dataQueues[deviceId].push({ data: convertedData, apiUrl: PRODUCTION_API_URL });
             lastProductionValues[deviceId] = data;
         }
@@ -134,7 +133,6 @@ function enqueueData(deviceId, data) {
     if (data['PLC:STATUS']) {
         let convertedData = convertMachineStatusData(data, deviceId);
         if (JSON.stringify(lastMachineStatusValues[deviceId]) !== JSON.stringify(data)) {
-            console.log(convertedData);
             dataQueues[deviceId].push({ data: convertedData, apiUrl: MACHINE_STATUS_API_URL });
             lastMachineStatusValues[deviceId] = data;
         }
