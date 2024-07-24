@@ -57,8 +57,8 @@ class IOTController extends AdminController
             }
             $productionData = [
                 'lot_id' => $tracking->lot_id,
-                'sl_dau_vao_hang_loat' => $info_cong_doan->sl_dau_vao_hang_loat,
-                'sl_dau_ra_hang_loat' => $info_cong_doan->sl_dau_ra_hang_loat,
+                'sl_dau_vao_hang_loat' => (int)$info_cong_doan->sl_dau_vao_hang_loat,
+                'sl_dau_ra_hang_loat' => (int)$info_cong_doan->sl_dau_ra_hang_loat,
             ];
             event(new ProductionUpdated($productionData));
             $info_cong_doan->save();
