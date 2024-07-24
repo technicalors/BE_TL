@@ -387,6 +387,7 @@ Route::group([
     $router->get('/production-plan/list', [ApiUIController::class, 'getListProductionPlan']);
     $router->get('/warehouse/list-export-plan', [ApiMobileController::class, 'getListWareHouseExportPlan']);
     $router->post('/upload-info-cong-doan', [Phase2UIApiController::class, 'uploadInfoCongDoan']);
+    $router->post('/upload-warehouse-location', [Phase2UIApiController::class, 'uploadWarehouseLocation']);
 
     //// ROUTE CỦA AN
     $router->get('line/list-machine', [ApiMobileController::class, 'getMachineOfLine']);
