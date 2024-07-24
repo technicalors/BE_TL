@@ -94,6 +94,7 @@ class MaintenanceScheduleController extends Controller
         MaintenancePlan::truncate(); //Truncate MaintenancePlan table
         MaintenanceSchedule::truncate(); //Truncate MaintenanceSchedule table
         MaintenanceLog::truncate(); //Truncate MaintenanceLog table
+        MaintenanceLogImage::truncate(); //Truncate MaintenanceLogImage table
 
         //Using maatwebsite/excel to read excel file
         $data = Excel::import(new MaintenanceScheduleImport, $path);

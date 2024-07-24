@@ -557,6 +557,7 @@ Route::group([
 
     $router->get('maintenance-plans/list/plan', [MaintenancePlanController::class, 'list']);
     $router->get('maintenance-plans/detail/list', [MaintenancePlanController::class, 'detail']);
+    $router->post('maintenance-plans/import', [MaintenanceScheduleController::class, 'import']);
 
     $router->get('kpi/productivity', [KPIController::class, 'KPIProductivity']);
     $router->get('kpi/pass-rate', [KPIController::class, 'KPIPassRate']);
