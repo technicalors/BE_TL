@@ -205,7 +205,7 @@ class Phase2OIApiController extends Controller
                 "sl_dau_ra_ok" => $item->sl_dau_ra_hang_loat - $item->sl_tem_vang - $item->sl_ng,
                 "sl_tem_vang" => $item->sl_tem_vang,
                 "sl_ng" => $item->sl_ng,
-                "ti_le_ht" => $item->sl_dau_ra_hang_loat > 0 ? round(($item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang) / $item->sl_dau_ra_hang_loat * 100) . '%' : "0%",
+                "ti_le_ht" => $item->sl_dau_ra_hang_loat > 0 ? round(($item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang) / $item->sl_kh * 100) . '%' : "0%",
                 "uph_an_dinh" => "",
                 "uph_thuc_te" => "",
                 "status" => $item->status,
