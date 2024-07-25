@@ -230,7 +230,7 @@ Số lot NG là số sản phẩm NG QC phản hồi (tính theo cột lỗi QC 
         return response()->json([
             'success' => true,
             'file' => $fileName,
-            'time' => Carbon::now()->toDateTimeString()
+            'message' => 'Thực hiện thành công',
         ]);
     }
 
