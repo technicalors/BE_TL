@@ -9,9 +9,15 @@ use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpPresentation\DocumentLayout;
 use PhpOffice\PhpPresentation\PhpPresentation;
 use PhpOffice\PhpPresentation\IOFactory;
+use PhpOffice\PhpPresentation\Shape\Chart;
+use PhpOffice\PhpPresentation\Shape\Chart\Gridlines;
+use PhpOffice\PhpPresentation\Shape\Chart\Legend;
 use PhpOffice\PhpPresentation\Slide\Background\Image;
 use PhpOffice\PhpPresentation\Shape\Chart\Type\Bar;
 use PhpOffice\PhpPresentation\Shape\Chart\Series;
+use PhpOffice\PhpPresentation\Shape\Chart\Title;
+use PhpOffice\PhpPresentation\Shape\Chart\Type\Bar3D;
+use PhpOffice\PhpPresentation\Shape\Chart\Type\Line;
 use PhpOffice\PhpPresentation\Shape\Chart\Type\Pie3D;
 use PhpOffice\PhpPresentation\Shape\Drawing\Base64;
 use PhpOffice\PhpPresentation\Style\Color;
@@ -19,6 +25,8 @@ use PhpOffice\PhpPresentation\Style\Alignment;
 use PhpOffice\PhpPresentation\Style\Border;
 use PhpOffice\PhpPresentation\Style\Bullet;
 use PhpOffice\PhpPresentation\Style\Fill;
+use PhpOffice\PhpPresentation\Style\Outline;
+use PhpOffice\PhpSpreadsheet\Chart\DataSeries;
 
 class ExportFileController extends Controller
 {
@@ -198,12 +206,359 @@ Số lot NG là số sản phẩm NG QC phản hồi (tính theo cột lỗi QC 
             }
         }
 
+        // Chất lượng công đoạn in
+        $this->createQualityOverviewSlide($objPHPPowerPoint, '2. Chất lượng công đoạn in', 'Biểu đồ chất lượng công đoạn in', $slideWidth);
+        // Chất lượng công đoạn ghép đế
+        $this->createQualityOverviewSlide($objPHPPowerPoint, '2. Chất lượng công đoạn ghép đế', 'Biểu đồ chất lượng công đoạn ghép đế', $slideWidth);
+        // Chất lượng công đoạn bế
+        $this->createQualityOverviewSlide($objPHPPowerPoint, '2. Chất lượng công đoạn bế', 'Biểu đồ chất lượng công đoạn bế', $slideWidth);
+        // Chất lượng công đoạn chọn
+        $this->createQualityOverviewSlide($objPHPPowerPoint, '2. Chất lượng công đoạn chọn', 'Biểu đồ chất lượng công đoạn chọn', $slideWidth);
+        // Chất lượng công đoạn OQC
+        $this->createQualityOverviewSlide($objPHPPowerPoint, '2. Chất lượng công đoạn OQC', 'Biểu đồ chất lượng công đoạn OQC', $slideWidth);
+        // Lỗi trọng điểm
+        $this->loiTrongDiem($objPHPPowerPoint, $slideWidth);
+        // Đối sách cải tiến
+        $this->doiSachCaiTien($objPHPPowerPoint, $slideWidth);
+
         // Xuất file PPTX
         $oWriterPPTX = IOFactory::createWriter($objPHPPowerPoint, 'PowerPoint2007');
         $fileName = 'baocao_tuan_14.pptx';
-        $filePath = storage_path($fileName);
+        $filePath = public_path($fileName);
         $oWriterPPTX->save($filePath);
 
-        return Carbon::now()->toDateTimeString();
+        return response()->json([
+            'success' => true,
+            'file' => $fileName,
+            'time' => Carbon::now()->toDateTimeString()
+        ]);
+    }
+
+    /**
+     * Slide tổng quan chất lượng công đoạn
+     */
+    public function createQualityOverviewSlide(PhpPresentation $objPHPPowerPoint, string $heading = 'Heading', string $chartName = 'Chart title', float $slideWidth)
+    {
+        $slide = $objPHPPowerPoint->createSlide();
+
+        // Tiêu đề chính
+        $shape = $slide->createRichTextShape()
+            ->setHeight(40)
+            ->setWidth($slideWidth - 100)
+            ->setOffsetX(50);
+        $shape->getActiveParagraph()->getAlignment()->setHorizontal(Alignment::HORIZONTAL_JUSTIFY);
+        $textRun = $shape->createTextRun('I. TỔNG QUAN CHẤT LƯỢNG TUẦN 14');
+        $textRun->getFont()
+            ->setName('Times New Roman')
+            ->setBold(true)
+            ->setSize(22)
+            ->setColor(new Color('FF0000FF'));
+
+        // Tiêu đề phụ
+        $shape = $slide->createRichTextShape()
+            ->setHeight(20)
+            ->setWidth($slideWidth - 100)
+            ->setOffsetX(50)
+            ->setOffsetY(40);
+        $shape->getActiveParagraph()->getAlignment()->setHorizontal(Alignment::HORIZONTAL_JUSTIFY);
+        $textRun = $shape->createTextRun($heading);
+        $textRun->getFont()
+            ->setName('Times New Roman')
+            ->setBold(true)
+            ->setSize(18)
+            ->setColor(new Color(Color::COLOR_RED));
+
+        // Thêm biểu đồ cột
+        $chartShape = $slide->createChartShape()
+            ->setResizeProportional(false)
+            ->setHeight(320)
+            ->setWidth(865)
+            ->setOffsetX(50)
+            ->setOffsetY(80);
+        $chartShape->getBorder()->setLineStyle(Border::LINE_SINGLE);
+        $chartShape->getBorder()->setColor(new Color('FF000000'));
+
+        // Thêm tiêu đề cho biểu đồ
+        $chartTitle = $chartShape->getTitle();
+        $chartTitle->setText($chartName);
+        $chartTitle->getFont()->setSize(12);
+
+        $barChart = new Bar();
+        $chartShape->getPlotArea()->setType($barChart);
+
+        // Đặt vị trí của legend xuống dưới biểu đồ cột
+        $chartShape->getLegend()->setPosition(Legend::POSITION_BOTTOM);
+
+        // Thêm đường lưới ngang chính
+        $gridlines = new Gridlines();
+        $gridlines->getOutline()->getFill()->setFillType(Fill::FILL_SOLID)->setStartColor(new Color('FF707C9C'));
+        $chartShape->getPlotArea()->getAxisY()->setMajorGridlines($gridlines);
+
+        // Cấu hình trục X
+        $axisX = $chartShape->getPlotArea()->getAxisX();
+        $axisX->setTitle('Các tuần');
+
+        // Cấu hình trục Y
+        $axisY = $chartShape->getPlotArea()->getAxisY();
+        $axisY->setTitle('Giá trị');
+
+        $categories = ['Tuần 08', 'Tuần 09', 'Tuần 10', 'Tuần 11', 'Tuần 12', 'Tuần 13', 'Tuần 14'];
+        $values1 = [1, 5, 4, 10, 6, 2, 1]; // Số lot OK
+        $values2 = [1, 1, 0, 1, 0, 0, 0]; // Số lot NG
+
+        $series1 = new Series('Số lot OK', $values1, $categories);
+        $series1->getFill()->setFillType(Fill::FILL_SOLID)->setStartColor(new Color('FF0070C0'));
+        $series2 = new Series('Số lot NG', $values2, $categories);
+        $series2->getFill()->setFillType(Fill::FILL_SOLID)->setStartColor(new Color('FFFF0000'));
+
+        // $series3->setType(new Line());
+
+        $barChart->addSeries($series1);
+        $barChart->addSeries($series2);
+
+        // Thêm bảng dữ liệu
+        $tableShape = $slide->createTableShape(8);
+        $tableShape->setHeight(250);
+        $tableShape->setOffsetX(50);
+        $tableShape->setOffsetY(405);
+
+        // Dữ liệu bảng
+        $data = [
+            ['Tuần', 'Tuần 08', 'Tuần 09', 'Tuần 10', 'Tuần 11', 'Tuần 12', 'Tuần 13', 'Tuần 14'],
+            ['Tổng số lot kiểm tra', 0, 5, 5, 0, 0, 2, 1],
+            ['Số lot OK', 0, 5, 4, 0, 0, 2, 1],
+            ['Số lot NG', 0, 0, 0, 0, 0, 0, 0],
+            ['Mục tiêu', '3%', '3%', '3%', '3%', '3%', '3%', '3%'],
+            ['Tỷ lệ NG (%)', '0%', '0%', '0%', '0%', '0%', '0%', '0%'],
+        ];
+
+        // Tạo bảng
+        foreach ($data as $rowIdx => $rowData) {
+            $row = $tableShape->createRow();
+            $row->setHeight(18); // Chỉnh chiều cao của row
+            foreach ($rowData as $colIdx => $cellData) {
+                $cell = $row->nextCell();
+
+                // Cài đặt độ rộng cho cột đầu tiên
+                if ($colIdx == 0) {
+                    $cell->setWidth(200); // Độ rộng cột đầu tiên lớn hơn
+                } else {
+                    $cell->setWidth(95); // Độ rộng các cột khác
+                }
+
+                $textRun = $cell->createTextRun($cellData);
+                $textRun->getFont()->setName('Times New Roman')->setSize(12);
+                $cell->getActiveParagraph()->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // Căn giữa các cell
+                if ($rowIdx == 0) {
+                    $cell->getFill()->setFillType(Fill::FILL_SOLID)->setStartColor(new Color('B7DEE8'));
+                }
+                if ($colIdx == 0) {
+                    $cell->getFill()->setFillType(Fill::FILL_SOLID)->setStartColor(new Color('B7DEE8'));
+                }
+            }
+        }
+    }
+
+    public function loiTrongDiem(PhpPresentation $objPHPPowerPoint, float $slideWidth)
+    {
+        $slide = $objPHPPowerPoint->createSlide();
+
+        // Tiêu đề chính
+        $shape = $slide->createRichTextShape()
+            ->setHeight(40)
+            ->setWidth($slideWidth)
+            ->setOffsetX(50);
+        $shape->getActiveParagraph()->getAlignment()->setHorizontal(Alignment::HORIZONTAL_JUSTIFY);
+        $textRun = $shape->createTextRun('II. LỖI TRỌNG ĐIỂM TUẦN 13 SO VỚI TUẦN 14');
+        $textRun->getFont()
+            ->setName('Times New Roman')
+            ->setBold(true)
+            ->setSize(22)
+            ->setColor(new Color('FF0000FF'));
+
+
+        // Thêm biểu đồ cột w13
+        $chartShape1 = $slide->createChartShape()
+            ->setResizeProportional(false)
+            ->setHeight(320)
+            ->setWidth(215)
+            ->setOffsetX(50)
+            ->setOffsetY(80);
+        $chartShape1->getBorder()->setLineStyle(Border::LINE_SINGLE);
+        $chartShape1->getBorder()->setColor(new Color('FF000000'));
+
+        // Thêm tiêu đề cho biểu đồ w13
+        $chartTitle1 = $chartShape1->getTitle();
+        $chartTitle1->setText('Lỗi trọng điểm tuẩn 13');
+        $chartTitle1->getFont()->setSize(12);
+        $barChart1 = new Bar();
+        $chartShape1->getPlotArea()->setType($barChart1);
+        $chartShape1->getLegend()->setPosition(Legend::POSITION_BOTTOM);
+        $gridlines1 = new Gridlines();
+        $gridlines1->getOutline()->getFill()->setFillType(Fill::FILL_SOLID)->setStartColor(new Color('FF707C9C'));
+        $chartShape1->getPlotArea()->getAxisY()->setMajorGridlines($gridlines1);
+        $axisX = $chartShape1->getPlotArea()->getAxisX();
+        $axisX->setTitle(' ');
+        $axisY = $chartShape1->getPlotArea()->getAxisY();
+        $axisY->setTitle(' ');
+        $categories = ['BE3', 'BE2', 'BE1'];
+        $values1 = [0.17, 0.41, 0.9];
+        $series1 = new Series('Tuần 12', $values1, $categories);
+        $series1->getFill()->setFillType(Fill::FILL_SOLID)->setStartColor(new Color('FF0070C0'));
+        $barChart1->addSeries($series1);
+
+        // Thêm biểu đồ cột w14
+        $chartShape2 = $slide->createChartShape()
+            ->setResizeProportional(false)
+            ->setHeight(320)
+            ->setWidth(215)
+            ->setOffsetX(50 + 215)
+            ->setOffsetY(80);
+        $chartShape2->getBorder()->setLineStyle(Border::LINE_SINGLE);
+        $chartShape2->getBorder()->setColor(new Color('FF000000'));
+
+        // Thêm tiêu đề cho biểu đồ w14
+        $chartTitle2 = $chartShape2->getTitle();
+        $chartTitle2->setText('Lỗi trọng điểm tuẩn 14');
+        $chartTitle2->getFont()->setSize(12);
+        $barChar2 = new Bar();
+        $chartShape2->getPlotArea()->setType($barChar2);
+        $chartShape2->getLegend()->setPosition(Legend::POSITION_BOTTOM);
+        $gridlines2 = new Gridlines();
+        $gridlines2->getOutline()->getFill()->setFillType(Fill::FILL_SOLID)->setStartColor(new Color('FF707C9C'));
+        $chartShape2->getPlotArea()->getAxisY()->setMajorGridlines($gridlines2);
+        $axisX = $chartShape2->getPlotArea()->getAxisX();
+        $axisX->setTitle(' ');
+        $axisY = $chartShape2->getPlotArea()->getAxisY();
+        $axisY->setTitle(' ');
+        $categories = ['BE3', 'BE2', 'BE1'];
+        $values2 = [0.17, 0.41, 0.9];
+        $series2 = new Series('Tuần 12', $values2, $categories);
+        $series2->getFill()->setFillType(Fill::FILL_SOLID)->setStartColor(new Color('FF0070C0'));
+        $barChar2->addSeries($series2);
+
+        //-------------------
+
+        // Thêm biểu đồ cột
+        $chartShape = $slide->createChartShape()
+            ->setResizeProportional(false)
+            ->setHeight(320)
+            ->setWidth(430)
+            ->setOffsetX(50 + 430)
+            ->setOffsetY(80);
+        $chartShape->getBorder()->setLineStyle(Border::LINE_SINGLE);
+        $chartShape->getBorder()->setColor(new Color('FF000000'));
+
+        // Thêm tiêu đề cho biểu đồ
+        $chartTitle = $chartShape->getTitle();
+        $chartTitle->setText('Biểu đồ so sánh tỷ lệ lỗi');
+        $chartTitle->getFont()->setSize(12);
+
+        $barChart = new Bar();
+        $chartShape->getPlotArea()->setType($barChart);
+
+        // Đặt vị trí của legend xuống dưới biểu đồ cột
+        $chartShape->getLegend()->setPosition(Legend::POSITION_BOTTOM);
+
+        // Thêm đường lưới ngang chính
+        $gridlines = new Gridlines();
+        $gridlines->getOutline()->getFill()->setFillType(Fill::FILL_SOLID)->setStartColor(new Color('FF707C9C'));
+        $chartShape->getPlotArea()->getAxisY()->setMajorGridlines($gridlines);
+
+        // Cấu hình trục X
+        $axisX = $chartShape->getPlotArea()->getAxisX();
+        $axisX->setTitle('Lỗi');
+
+        // Cấu hình trục Y
+        $axisY = $chartShape->getPlotArea()->getAxisY();
+        $axisY->setTitle('%');
+
+        $categories = ['BE3', 'BE2', 'BE1'];
+        $values1 = [0.17, 0.41, 0.9];
+        $values2 = [0.12, 0.11, 0.5];
+
+        $series1 = new Series('Tuần 12', $values1, $categories);
+        $series1->getFill()->setFillType(Fill::FILL_SOLID)->setStartColor(new Color(Color::COLOR_YELLOW));
+        $series2 = new Series('Tuần 13', $values2, $categories);
+        $series2->getFill()->setFillType(Fill::FILL_SOLID)->setStartColor(new Color('FFFF6E00'));
+
+        $barChart->addSeries($series1);
+        $barChart->addSeries($series2);
+
+        // Description
+        $shape = $slide->createRichTextShape()
+            ->setHeight(50)
+            ->setWidth(865);
+        $shape->setOffsetY(450)->setOffsetX(50);
+        $shape->getFill()->setFillType(Fill::FILL_SOLID)->setStartColor(new Color('FFEDDEBE'));
+        $shape->getBorder()
+            ->setLineStyle(Border::LINE_SINGLE);
+        $textRun = $shape->createTextRun('Lỗi lặp lại vẫn tiếp tục diễn ra, bộ phận sản xuất cải tiến chưa triệt để, cụ thể: lỗi BE3 (Xơ, bavia) giảm từ 0.17% xuống còn 0.12%, lỗi BE2 (Dính phôi) giảm từ 0.41% xuống còn 0.12%. lỗi BE1(Bế lệch) giảm từ 0.09% xuống còn 0.07%.');
+        $textRun->getFont()->setColor(new Color(Color::COLOR_BLACK));
+        $shape->getActiveParagraph()
+            ->getBulletStyle()
+            ->setBulletType(Bullet::TYPE_BULLET)->setBulletColor(new Color(Color::COLOR_BLACK));
+    }
+
+    public function doiSachCaiTien(PhpPresentation $objPHPPowerPoint, float $slideWidth)
+    {
+        $slide = $objPHPPowerPoint->createSlide();
+
+        // Tiêu đề chính
+        $shape = $slide->createRichTextShape()
+            ->setHeight(40)
+            ->setWidth($slideWidth)
+            ->setOffsetX(50);
+        $shape->getActiveParagraph()->getAlignment()->setHorizontal(Alignment::HORIZONTAL_JUSTIFY);
+        $textRun = $shape->createTextRun('III. ĐỐI SÁCH CẢI TIẾN LỖI TRỌNG ĐIỂM TUẦN 14');
+        $textRun->getFont()
+            ->setName('Times New Roman')
+            ->setBold(true)
+            ->setSize(22)
+            ->setColor(new Color('FF0000FF'));
+
+        // Thêm bảng dữ liệu
+        $tableShape = $slide->createTableShape(4);
+        // $tableShape->setHeight(250);
+        $tableShape->setWidth(865);
+        $tableShape->setOffsetX(50);
+        $tableShape->setOffsetY(80);
+
+        // Dữ liệu bảng
+        $dataT = [
+            ['STT', 'Thông tin', 'Nguyên nhân', 'Đối sách cải tiến'],
+            [1, 'Lỗi BE2 (Hằn, dính phôi) chiếm 0.12%', '', ''],
+            [2, 'Lỗi BE1 (Bế lệch) chiếm 0.07%', '', ''],
+            [3, 'Lỗi BE3 (Xơ, bavia) chiếm 0.12%', '', ''],
+            [4, 'Lỗi PH2(loang phủ) chiếm 5.54%', '', ''],
+            [5, 'Lỗi PH3 (lệch phủ) chiếm 0.26%', '', ''],
+            [6, 'Lỗi BE2 (Hằn, dính phôi) chiếm 0.12%', '', ''],
+            [7, 'Lỗi BE2 (Hằn, dính phôi) chiếm 0.12%', '', ''],
+        ];
+
+        // Tạo bảng
+        foreach ($dataT as $rowIdx => $rowData) {
+            $row = $tableShape->createRow();
+            $row->setHeight(50); // Chỉnh chiều cao của row
+            foreach ($rowData as $colIdx => $cellData) {
+                $cell = $row->nextCell();
+
+                // Cài đặt độ rộng cho cột đầu tiên 865
+                if ($colIdx == 0) {
+                    $cell->setWidth(55); // Độ rộng cột đầu tiên lớn hơn
+                } else {
+                    $cell->setWidth(270); // Độ rộng các cột khác
+                }
+                $textRun = $cell->createTextRun($cellData);
+                $textRun->getFont()->setName('Times New Roman')->setSize(12);
+                $cell->getActiveParagraph()->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER); // Căn giữa các cell
+                if ($rowIdx == 0) {
+                    $cell->getFill()->setFillType(Fill::FILL_SOLID)->setStartColor(new Color('B7DEE8'));
+                }
+                if ($colIdx == 0) {
+                    $cell->getFill()->setFillType(Fill::FILL_SOLID)->setStartColor(new Color('B7DEE8'));
+                }
+            }
+        }
     }
 }
