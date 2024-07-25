@@ -133,7 +133,6 @@ class ProductController extends Controller
     public function importNewVersion(Request $request)
     {
         set_time_limit(0);
-        set_memory_limit('1024M');
         if (!isset($_FILES['files'])) { {
                 return 'nooooooo';
             }
