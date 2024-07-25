@@ -84,21 +84,24 @@ class MaintenanceScheduleController extends Controller
     //import Maintenance Schedule from Excel
     public function import(Request $request)
     {
-        // $request->validate([
-        //     'file' => 'required|mimes:xlsx,xls',
-        // ]);
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls',
+        ]);
 
         $path = $request->file('file');
-        MaintenanceCategory::truncate(); //Truncate MaintenanceCategory table
-        MaintenanceItem::truncate(); //Truncate MaintenanceItem table
-        MaintenancePlan::truncate(); //Truncate MaintenancePlan table
-        MaintenanceSchedule::truncate(); //Truncate MaintenanceSchedule table
-        MaintenanceLog::truncate(); //Truncate MaintenanceLog table
-        MaintenanceLogImage::truncate(); //Truncate MaintenanceLogImage table
+        // MaintenanceLogImage::truncate(); //Truncate MaintenanceLogImage table
+        // MaintenanceCategory::truncate(); //Truncate MaintenanceCategory table
+        // MaintenanceItem::truncate(); //Truncate MaintenanceItem table
+        // MaintenancePlan::truncate(); //Truncate MaintenancePlan table
+        // MaintenanceSchedule::truncate(); //Truncate MaintenanceSchedule table
+        // MaintenanceLog::truncate(); //Truncate MaintenanceLog table
 
-        //Using maatwebsite/excel to read excel file
-        $data = Excel::import(new MaintenanceScheduleImport, $path);
-
-        return $data;
+        try {
+            $data = Excel::import(new MaintenanceScheduleImport($request), $path);
+            return $this->success($data, 'Nhập dữ liệu thành công');
+        } catch (\Exception $e) {
+            return $this->failure('', $e->getMessage());
+        }
+        return $this->success($data, 'Nhập dữ liệu thành công');
     }
 }

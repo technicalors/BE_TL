@@ -8,6 +8,8 @@ use App\Models\InfoCongDoan;
 use App\Models\Line;
 use App\Models\Lot;
 use App\Models\Machine;
+use App\Models\MachineParameterLogs;
+use App\Models\Shift;
 use App\Models\Tracking;
 use App\Traits\API;
 use Illuminate\Http\Request;
@@ -121,5 +123,31 @@ class Phase2DBApiController extends Controller
             }
         }
         return $this->success($res);
+    }
+
+    public function handle()
+    {
+        try {
+            $shifts = Shift::all();
+            $machines = Machine::all();
+            foreach ($shifts as $key => $shift) {
+                $check = MachineParameterLogs::whereDate('start_time', date('Y-m-d'))->whereTime('start_time', '=', $shift->start_time)->first();
+                // return [strtotime(date('H:i:s')) > (strtotime($shift->start_time) -  7200), strtotime(date('H:i:s')) < strtotime($shift->start_time), !$check];
+                if (strtotime(date('H:i:s')) > (strtotime($shift->start_time) -  7200) && !$check) {
+                    $start_time = date('Y-m-d H:i:s', strtotime($shift->start_time));
+                    $end_time = strtotime($shift->start_time) > strtotime($shift->end_time) ? date('Y-m-d H:i:s', strtotime($shift->end_time . ' +1 day')) : date('Y-m-d H:i:s', strtotime($shift->end_time));
+                    while (strtotime($start_time) < strtotime($end_time)) {
+                        $end = date('Y-m-d H:i:s', strtotime($start_time) + 7200);
+                        foreach ($machines as $key => $machine) {
+                            MachineParameterLogs::create(['start_time' => $start_time, 'end_time' => $end, 'machine_id' => $machine->code]);
+                        }
+                        $start_time = $end;
+                    }
+                }
+            }
+        } catch (\Throwable $th) {
+            throw $th;
+        }
+        return 'ok';
     }
 }

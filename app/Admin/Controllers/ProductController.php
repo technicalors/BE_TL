@@ -130,15 +130,14 @@ class ProductController extends Controller
         return $this->success('', 'Export thành công');
     }
 
-    public function importNewVersion()
+    public function importNewVersion(Request $request)
     {
         set_time_limit(0);
+        set_memory_limit('1024M');
         if (!isset($_FILES['files'])) { {
-                admin_error('Định dạng file không đúng', 'error');
-                return back();
+                return 'nooooooo';
             }
         }
-
         $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
         if ($extension == 'csv') {
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
@@ -179,15 +178,15 @@ class ProductController extends Controller
         try {
             DB::beginTransaction();
             //Thực hiện import
+            return $production_journeys_data;
             return $this->importProductionJourneys($production_journeys_data);
             admin_success('Tải lên thành công', 'success');
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
-            admin_error('Tải lên không thành công', 'failure');
+            return $th;
         }
-
-        return back();
+        return 'ccc';
     }
     protected $product_columns = [
         'B', 'C', 'D', 'E', 'F', 'G', 'AO', 'AP'

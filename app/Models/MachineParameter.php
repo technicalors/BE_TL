@@ -9,8 +9,5 @@ class MachineParameter extends Model
 {
     use HasFactory;
 
-    protected $fillable=['machine_id','info'];
-    protected $casts=[
-        "info"=>"json"
-    ];
+    protected $fillable=['machine_id', 'is_if', 'parameter_id'];
 }

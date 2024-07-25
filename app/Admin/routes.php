@@ -20,6 +20,7 @@ use App\Admin\Controllers\MaintenanceLogImageController;
 use App\Admin\Controllers\Phase2DBApiController;
 use App\Admin\Controllers\Phase2OIApiController;
 use App\Admin\Controllers\Phase2UIApiController;
+use App\Admin\Controllers\ParameterController;
 use App\Models\MaintenancePlan;
 use Encore\Admin\Facades\Admin;
 use Illuminate\Routing\Router;
@@ -124,11 +125,6 @@ Route::group([
     $router->any('/tinh_san_luong', [ApiMobileController::class, 'tinhSanLuongIOT']);
     $router->get('/thu_nghiem', [ApiMobileController::class, 'thuNghiemIOT']);
     $router->get('/chatluong', [ApiMobileController::class, 'thongsoIOT']);
-
-    $router->post('/iot/update-quantity', [IOTController::class, 'updateQuantityFromIot']);
-    $router->post('/iot/update-params', [IOTController::class, 'updateParamsFromIot']);
-    $router->post('/iot/update-status', [IOTController::class, 'updateStatusFromIot']);
-    $router->post('/iot/record-product-output', [IOTController::class, 'recordProductOutput']);
 });
 
 // UI-API
@@ -548,18 +544,6 @@ Route::group([
     $router->get('update/kho_bao_on', [ApiUIController::class, 'updateSanLuongKhoBaoOn']);
     $router->get('update-material-name', [ApiUIController::class, 'updateMaterialName']);
 
-    Route::apiResource('maintenance-categories', MaintenanceCategoryController::class);
-    Route::apiResource('maintenance-items', MaintenanceItemController::class);
-    Route::apiResource('machines', MachineController::class);
-    Route::apiResource('maintenance-plans', MaintenancePlanController::class);
-    Route::apiResource('maintenance-schedules', MaintenanceScheduleController::class);
-    Route::apiResource('maintenance-logs', MaintenanceLogController::class);
-    Route::apiResource('maintenance-log-images', MaintenanceLogImageController::class);
-
-    $router->get('maintenance-plans/list/plan', [MaintenancePlanController::class, 'list']);
-    $router->get('maintenance-plans/detail/list', [MaintenancePlanController::class, 'detail']);
-    $router->post('maintenance-plans/import', [MaintenanceScheduleController::class, 'import']);
-
     $router->get('kpi/productivity', [KPIController::class, 'KPIProductivity']);
     $router->get('kpi/pass-rate', [KPIController::class, 'KPIPassRate']);
 
@@ -567,7 +551,8 @@ Route::group([
     $router->post('check-sheet/import', [CheckSheetApiController::class, 'import']);
 });
 
-
+//Route Phase 2
+//No Auth
 Route::group([
     'prefix'        => "/api",
     'middleware'    => [],
@@ -578,10 +563,16 @@ Route::group([
     $router->post('maintenance-log-images/upload', [MaintenanceLogImageController::class, 'upload']);
 
     $router->post('create-lot-demo', [Phase2OIApiController::class, 'createLotDemo']);
-});
 
-//Route Phase 2
-//No Auth
+    $router->post('/iot/update-quantity', [IOTController::class, 'updateQuantityFromIot']);
+    $router->post('/iot/update-params', [IOTController::class, 'updateParamsFromIot']);
+    $router->post('/iot/update-status', [IOTController::class, 'updateStatusFromIot']);
+    $router->post('/iot/record-product-output', [IOTController::class, 'recordProductOutput']);
+
+    Route::post('/import-parameters', [ParameterController::class, 'import']);
+    $router->post('/import-spec', [App\Admin\Controllers\ProductController::class, 'importNewVersion']);
+});
+//Dashboard
 Route::group([
     'prefix'        => "/api/p2/dasboard",
     'middleware'    => [],
@@ -589,6 +580,7 @@ Route::group([
     $router->post('update-production', [Phase2OIApiController::class, 'updateProduction']);
     $router->get('/produce/fmb', [Phase2DBApiController::class, 'fmb']);
     $router->get('/machine-performance', [Phase2DBApiController::class, 'getMachinePerformance']);
+    $router->post('/test-api', [Phase2DBApiController::class, 'handle']);
 });
 //OI
 Route::group([
@@ -628,4 +620,18 @@ Route::group([
 ], function (Router $router) {
     $router->get('/tree-select', [Phase2UIApiController::class, 'getTreeSelect']);
     $router->get('/production-history', [Phase2UIApiController::class, 'getProductionHistory']);
+
+    Route::apiResource('maintenance-categories', MaintenanceCategoryController::class);
+    Route::apiResource('maintenance-items', MaintenanceItemController::class);
+    Route::apiResource('machines', MachineController::class);
+    Route::apiResource('maintenance-plans', MaintenancePlanController::class);
+    Route::apiResource('maintenance-schedules', MaintenanceScheduleController::class);
+    Route::apiResource('maintenance-logs', MaintenanceLogController::class);
+    Route::apiResource('maintenance-log-images', MaintenanceLogImageController::class);
+
+    $router->get('maintenance-plans/list/plan', [MaintenancePlanController::class, 'list']);
+    $router->get('maintenance-plans/detail/list', [MaintenancePlanController::class, 'detail']);
+    $router->post('maintenance-plans/import', [MaintenanceScheduleController::class, 'import']);
+
+    
 });

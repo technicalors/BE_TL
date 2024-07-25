@@ -17,7 +17,8 @@ class RequestLog extends Model
         'response_status',
         'duration',
         'memory',
-        'requested_by'
+        'requested_by',
+        'response'
     ];
 
     public static function queryableFields(): array

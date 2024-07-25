@@ -41,6 +41,7 @@ class LogRequest
             'duration' => microtime(true) - LARAVEL_START,
             'memory' => memory_get_usage(),
             'requested_by' => optional(auth()->user())->id,
+            'response' => $response->getContent()
         ];
         try {
             RequestLog::query()->create($logData);
