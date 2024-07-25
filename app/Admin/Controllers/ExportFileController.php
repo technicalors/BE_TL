@@ -224,7 +224,7 @@ Số lot NG là số sản phẩm NG QC phản hồi (tính theo cột lỗi QC 
         // Xuất file PPTX
         $oWriterPPTX = IOFactory::createWriter($objPHPPowerPoint, 'PowerPoint2007');
         $fileName = 'baocao_tuan_14.pptx';
-        $filePath = public_path($fileName);
+        $filePath = storage_path($fileName);
         $oWriterPPTX->save($filePath);
 
         return response()->json([
