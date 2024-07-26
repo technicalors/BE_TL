@@ -2,6 +2,7 @@
 
 namespace App\Admin\Controllers;
 
+use App\Helpers\QueryHelper;
 use App\Models\CheckSheetWork;
 use App\Models\ProductionPlan;
 use App\Models\User;
@@ -48,6 +49,7 @@ use App\Models\MaterialExportLog;
 use App\Models\MaterialLog;
 use App\Models\Monitor;
 use App\Models\OddBin;
+use App\Models\ProductOrder;
 use App\Models\Scenario;
 use App\Models\Spec;
 use App\Models\TestCriteria;
@@ -2737,9 +2739,9 @@ class ApiMobileController extends AdminController
 
     public function uploadKHSX()
     {
-        $hash = hash_file("md5", $_FILES['files']['tmp_name']);
-        $lists = ProductionPlan::where("file", $hash);
-        $lists->delete();
+        // $hash = hash_file("md5", $_FILES['files']['tmp_name']);
+        // $lists = ProductionPlan::where("file", $hash);
+        // $lists->delete();
         $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
         if ($extension == 'csv') {
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
@@ -2858,7 +2860,7 @@ class ApiMobileController extends AdminController
                         $input['thoi_gian_bat_dau'] = date('Y-m-d H:i:s', strtotime($input['ngay_sx'] . ' ' . $row['C']));
                         $input['thoi_gian_ket_thuc'] = date('Y-m-d H:i:s', strtotime($input['ngay_sx'] . ' ' . $row['D'] . (strtotime($row['C']) > strtotime($row['D']) ? " +1 day" : "")));
                         $input['status'] = 0;
-                        $input['file'] = $hash;
+                        // $input['file'] = $hash;
                         // $record = ProductionPlan::updateOrCreate(
                         //     [
                         //         'cong_doan_sx' => $input['cong_doan_sx'],
@@ -2868,18 +2870,37 @@ class ApiMobileController extends AdminController
                         //     $input
                         // );
 
+                        // Customer
+                        $customer = Customer::query()->where('name', 'like', trim($input['khach_hang']))->first();
+                        if (empty($customer)) throw new Exception('Không tìm thấy khách hàng');
+
+                        // Product order
+                        $productOrder = ProductOrder::find($input['product_order_id']);
+                        if (empty($productOrder)) {
+                            $productOrder = ProductOrder::create([
+                                'id' => $input['product_order_id'],
+                                'order_number' => $input['product_order_id'],
+                                'customer_id' => $customer->id,
+                                'product_id' => $input['product_id'],
+                                'order_date' => $input['ngay_dat_hang'],
+                                'quantity' => $input['sl_thanh_pham'],
+                                'delivery_date' => $input['ngay_giao_hang'],
+                            ]);
+                        }
+
                         $record = ProductionPlan::query()->where([
-                            ['cong_doan_sx', $input['cong_doan_sx']],
-                            ['lo_sx', $input['lo_sx']],
+                            ['line_id', $line->id],
+                            ['lo_sx', $losx->id],
                             ['product_id', $input['product_id']],
                         ])->first();
-                        Log::debug($record);
-                        if (!empty($record)) throw new Exception("Kế hoạch đã được tạo");
+                        if (isset($record)) throw new Exception("Kế hoạch cho LoSX:{$record->lo_sx} - {$record->product_id} đã được tạo");
+
                         $record = ProductionPlan::create($input);
                         // TODO: add field lotsize to info_cong_doan table (lot)
                         // ID Lot: Mã lô+.L.0001
                         $spec = Spec::query()->where('product_id', $input['product_id'])->where('line_id', '24')->where('slug', 'so-luong')->first();
                         if ($spec) {
+                            if (!isset($spec->value)) throw new Exception('Không tìm thấy giá trị của Spec');
                             $lotsize = $spec->value;
                         } else {
                             throw new Exception("Không tìm thấy định mức cuộn");
@@ -2894,7 +2915,7 @@ class ApiMobileController extends AdminController
                             $countLot++;
                             InfoCongDoan::create([
                                 'lot_id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
-                                'lotsize' => $number, // Default 
+                                'lotsize' => $lotsize, // 👈 Định mức cuộn
                                 'lo_sx' => $input['lo_sx'],
                                 'line_id' => $input['line_id'],
                                 'product_id' => $input['product_id'],
@@ -3807,14 +3828,14 @@ class ApiMobileController extends AdminController
         }
         $machines = $machine_query->get();
         $columns = [];
-        foreach($machines as $machine){
+        foreach ($machines as $machine) {
             foreach ($machine->parameters as $param) {
                 $col = new stdClass;
                 $col->title = $param->name;
                 $col->dataIndex = $param->id;
                 $col->key = $param->id;
                 $col->is_if = $param->is_if;
-                if(!isset($columns[$param->id])){
+                if (!isset($columns[$param->id])) {
                     $columns[$param->id] = $col;
                 }
             }
