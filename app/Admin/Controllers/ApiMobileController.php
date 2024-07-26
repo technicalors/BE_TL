@@ -3796,7 +3796,35 @@ class ApiMobileController extends AdminController
         $count = $query->count();
         $totalPage = $count;
         $thong_so_may = $query->offset($page * $pageSize)->limit($pageSize)->get();
-        $data = new stdClass();
+        $machine_query = Machine::with(['parameters' => function ($query) {
+            $query->select('parameters.*', 'machine_parameters.is_if');
+        }]);
+        if ($line) {
+            $machine_query->where('line_id', $line->id);
+        }
+        if (isset($request->machine_code)) {
+            $machine_query->where('code', $request->machine_code);
+        }
+        $machines = $machine_query->get();
+        $columns = [];
+        foreach($machines as $machine){
+            foreach ($machine->parameters as $param) {
+                $col = new stdClass;
+                $col->title = $param->name;
+                $col->dataIndex = $param->id;
+                $col->key = $param->id;
+                $col->is_if = $param->is_if;
+                if(!isset($columns[$param->id])){
+                    $columns[$param->id] = $col;
+                }
+            }
+        }
+        $machine_parameter_logs = MachineParameterLogs::where('machine_id', $request->machine_id)->whereDate('start_time', date('Y-m-d'))->get();
+        foreach ($machine_parameter_logs as $machine_params) {
+            $data[] = array_merge($machine_params->data_if ?? [], $machine_params->data_input ?? [], ['start_time' => $machine_params->start_time, 'end_time' => $machine_params->end_time]);
+        }
+        $obj = new stdClass;
+        $obj->columns = $columns;
         foreach ($thong_so_may as $record) {
             $data_if = $record->data_if;
             if (!is_null($record->lot_id) && $record->line_id == 13) {
@@ -3812,9 +3840,9 @@ class ApiMobileController extends AdminController
             }
             $record->data_if = $data_if;
         }
-        $data->data = $thong_so_may;
-        $data->totalPage = $totalPage;
-        return $this->success($data);
+        $obj->data = $thong_so_may;
+        $obj->totalPage = $totalPage;
+        return $this->success($obj);
     }
     public function ui_getMachines(Request $request)
     {

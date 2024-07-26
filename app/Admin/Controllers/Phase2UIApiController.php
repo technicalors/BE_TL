@@ -4,6 +4,7 @@ namespace App\Admin\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Imports\InfoCongDoanImport;
+use App\Imports\WarehouseLocationImport;
 use App\Models\Customer;
 use App\Models\CustomUser;
 use App\Models\Error;
@@ -315,6 +316,25 @@ class Phase2UIApiController extends Controller
         DB::beginTransaction();
         try {
             Excel::import(new InfoCongDoanImport, $request->file('file'));
+            DB::commit();
+            return $this->success('', 'Upload thành công');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return $this->failure([], $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Upload vi tri kho
+     */
+    public function uploadWarehouseLocation(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx',
+        ]);
+        DB::beginTransaction();
+        try {
+            Excel::import(new WarehouseLocationImport, $request->file('file'));
             DB::commit();
             return $this->success('', 'Upload thành công');
         } catch (\Exception $e) {

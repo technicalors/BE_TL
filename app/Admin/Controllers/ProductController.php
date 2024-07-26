@@ -111,18 +111,165 @@ class ProductController extends Controller
         ]);
     }
 
-    public function import(Request $request)
+    public function import()
     {
-        $request->validate([
-            'file' => 'required|mimes:xlsx',
-        ]);
-        // try {
-        //     Excel::import(new MoldsImport, $request->file('file'));
-        // } catch (\Exception $e) {
-        //     // Handle the exception and return an appropriate response
-        //     return $this->failure(['error' => $e->getMessage()], 'File import failed', 422);
-        // }
-        return $this->success('', 'Upload thành công');
+        set_time_limit(0);
+        ini_set('memory_limit', '2048M');
+        if (!isset($_FILES['files'])) { {
+                admin_error('Định dạng file không đúng', 'error');
+                return back();
+            }
+        }
+
+        $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
+        if ($extension == 'csv') {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
+        } elseif ($extension == 'xlsx') {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+        } else {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
+        }
+        // file path
+        $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
+        $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
+
+        $materials = Material::all();
+        $customers = Customer::all();
+
+        $products = Product::all();
+
+        Spec::truncate();
+
+        foreach ($products as $item) {
+            $item->delete();
+        }
+        // $products->delete();
+        $mark_material = [];
+        $mark_customer = [];
+        $mark_product = [];
+
+        foreach ($materials as $item) {
+            // dd($item->id);
+            $mark_material[$item->id] = true;
+        }
+        foreach ($customers as $item) {
+            $mark_customer[$item->id] = true;
+        }
+
+        // dd($mark_material);
+
+        $titleRow1 = $allDataInSheet[3];
+        $titleRow2 = $allDataInSheet[4];
+        for ($i = 5; $i <= count($allDataInSheet); $i++) {
+            $row = $allDataInSheet[$i];
+
+            if (isset($mark_product[$row['B']]) || $row['B'] == '' || $row['H'] == '') continue;
+            $product = new Product();
+            $product->id = str_replace(" ", "", $row["B"]);
+            $product->name = $row["C"];
+            $product->customer_id = $row["F"];
+            $product->material_id = $row["H"];
+            $product->dinh_muc = $row["N"];
+            $product->dinh_muc_thung = $row["DC"];
+            $product->nhiet_do_phong = $row["EF"];
+            $product->do_am_phong = $row["EG"];
+            $product->do_am_giay = $row["EH"];
+            $product->thoi_gian_bao_on = $row["EI"];
+            $product->chieu_dai_thung = $row["DE"];
+            $product->chieu_rong_thung = $row["DF"];
+            $product->chieu_cao_thung = $row["DG"];
+            $product->the_tich_thung = $row["DH"];
+            $product->kt_kho_dai = $row["BC"];
+            $product->kt_kho_rong = $row["BE"];
+            $product->ver = $row['D'];
+            $product->his = $row['E'];
+            $product->u_nhiet_do_phong = $row['EO'];
+            $product->u_do_am_phong = $row['EP'];
+            $product->u_do_am_giay = $row['EQ'];
+            $product->u_thoi_gian_u = $row['ER'];
+            $this->importSpec($row, $titleRow1, $titleRow2, $product->id);
+            $product->save();
+            $mark_product[$row['B']] = true;
+
+            if (!isset($mark_material[$row['H']])) {
+                $material = new Material();
+                $material->id = $row['H'];
+                $material->ten = $row['I'];
+                $material->code = $row['J'];
+                $info = [
+                    "mau" => $row['K'],
+                    "DL" => $row['L']
+                ];
+
+                $material->thong_so = $info;
+                $material->save();
+                $mark_material[$row['H']] = true;
+            }
+            if ($row['F'] == '') continue;
+            if (!isset($mark_customer[$row['F']])) {
+                $customer = new Customer();
+                $customer->name = $row['G'];
+                $customer->id = $row['F'];
+                $customer->save();
+                $mark_customer[$row['F']] = true;
+            }
+        }
+
+        admin_success('Tải lên thành công', 'success');
+        return back();
+    }
+
+    private function importSpec($currRow, $titleRow1, $titleRow2, $product_id)
+    {
+
+
+
+        $title = [];
+        foreach ($titleRow2 as $i => $item) {
+            $title[$i] = $titleRow2[$i];
+            if (!isset($item)) {
+                $title[$i] = $titleRow1[$i];
+            }
+        }
+
+        $line_id = [];
+        $spec_data = [];
+        foreach ($currRow as $key => $item) {
+            if ($key == "DI") {
+                $line_id = [20];//IQC
+            } else if ($key == "DU") {
+                $line_id = [24];//Gap dan lien hoan
+            } else if ($key == "EQ") {
+                $line_id = [25];
+            } else if ($key == "GA") {
+                $line_id = [27];
+            } else if ($key == "GU") {
+                $line_id = [11, 22];
+            } else if ($key == "HR") {
+                $line_id = [12, 14, 26];
+            } else if ($key == "IW") {
+                $line_id = [13, 15, 29];
+            }
+
+            foreach ($line_id as $id) {
+                // if (!isset($title[$key])) continue;
+                // $spec = new Spec();
+                // $spec->name = $title[$key];
+                // $spec->value = $item;
+                // $spec->product_id = $product_id;
+                // $spec->slug = Str::slug($spec->name);
+                // $spec->line_id = $id;
+                // $spec->save();
+                $input = [];
+                $input['name'] = $title[$key];
+                $input['value'] = $item;
+                $input['product_id'] = $product_id;
+                $input['slug'] = Str::slug($input['name']);
+                $input['line_id'] = $id;
+                $spec_data[] = $input;
+            }
+            Spec::insert($spec_data);
+        }
     }
 
     public function export(Request $request)
@@ -130,15 +277,14 @@ class ProductController extends Controller
         return $this->success('', 'Export thành công');
     }
 
-    public function importNewVersion()
+    public function importNewVersion(Request $request)
     {
         set_time_limit(0);
+        ini_set('memory_limit', '2048M');
         if (!isset($_FILES['files'])) { {
-                admin_error('Định dạng file không đúng', 'error');
-                return back();
+                return $this->failure('', 'Định dạng file không đúng');
             }
         }
-
         $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
         if ($extension == 'csv') {
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
@@ -160,34 +306,47 @@ class ProductController extends Controller
         $assigned_machine_personnels_data = [];
         $line_standards_data = [];
         $production_modes_data = [];
-        foreach ($allDataInSheet as $index => $row) {
-            if ($index < 5) {
-                continue;
-            }
-            //Lọc dữ liệu
-            $product_data[] = array_intersect_key($row, array_flip($this->product_columns));
-            $material_data[] = array_intersect_key($row, array_flip($this->material_columns));
-            $bom_data[] = array_intersect_key($row, array_flip($this->bom_columns));
-            $production_journeys_data[] = array_intersect_key($row, array_flip($this->production_journey_column));
-            $material_wastages_data[] = array_intersect_key($row, array_flip($this->material_wastage_columns));
-            $time_wastages_data[] = array_intersect_key($row, array_flip($this->time_wastage_columns));
-            $line_productivities_data[] = array_intersect_key($row, array_flip($this->line_productivity_columns));
-            $assigned_machine_personnels_data[] = array_intersect_key($row, array_flip($this->assigned_machine_personnel_columns));
-            $line_standards_data[] = array_intersect_key($row, array_flip($this->line_standard_columns));
-            $production_modes_data[] = array_intersect_key($row, array_flip($this->production_mode_columns));
-        }
+        $product = null;
+        $material = null;
+        $titleRow1 = $allDataInSheet[3];
+        $titleRow2 = $allDataInSheet[4];
         try {
             DB::beginTransaction();
-            //Thực hiện import
-            return $this->importProductionJourneys($production_journeys_data);
-            admin_success('Tải lên thành công', 'success');
+            foreach ($allDataInSheet as $index => $row) {
+                if ($index < 5) {
+                    continue;
+                }
+                //Lọc dữ liệu
+                $product_data[] = array_intersect_key($row, array_flip($this->product_columns));
+                if (trim($row['B'])) {
+                    $product = Product::firstOrCreate(['id' => trim($row['B'])], array_intersect_key($row, array_flip($this->product_columns)));
+                    $production_journey = ProductionJourney::create(['product_id' => $product->id], array_intersect_key($row, array_flip($this->production_journey_column)));
+                    $this->importSpec($row, $titleRow1, $titleRow2, $product->id);
+                }
+                $material_data[] = array_intersect_key($row, array_flip($this->material_columns));
+                if (trim($row['I'])) {
+                    $material = Material::firstOrCreate(['id' => trim($row['I'])], array_intersect_key($row, array_flip($this->material_columns)));
+                    if ($material && $product) {
+                        Bom::firstOrCreate(['product_id' => $product->id, 'material_id' => $material->id], array_intersect_key($row, array_flip($this->bom_columns)));
+                    }
+                }
+
+                // $bom_data[] = array_intersect_key($row, array_flip($this->bom_columns));
+                // $production_journeys_data[] = array_intersect_key($row, array_flip($this->production_journey_column));
+                // $material_wastages_data[] = array_intersect_key($row, array_flip($this->material_wastage_columns));
+                // $time_wastages_data[] = array_intersect_key($row, array_flip($this->time_wastage_columns));
+                // $line_productivities_data[] = array_intersect_key($row, array_flip($this->line_productivity_columns));
+                // $assigned_machine_personnels_data[] = array_intersect_key($row, array_flip($this->assigned_machine_personnel_columns));
+                // $line_standards_data[] = array_intersect_key($row, array_flip($this->line_standard_columns));
+                // $production_modes_data[] = array_intersect_key($row, array_flip($this->production_mode_columns));
+            }
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
-            admin_error('Tải lên không thành công', 'failure');
+            return $this->failure($th, 'Import thất bại');
         }
 
-        return back();
+        return $this->success('', 'Import thành công');
     }
     protected $product_columns = [
         'B', 'C', 'D', 'E', 'F', 'G', 'AO', 'AP'
@@ -197,17 +356,19 @@ class ProductController extends Controller
     {
         $product = [];
         foreach ($product_data as $data) {
-            $input = [];
-            $input['id'] = $data['B'];
-            $input['name'] = $data['C'];
-            $input['ver'] = $data['D'];
-            $input['his'] = $data['E'];
-            $input['customer_id'] = $data['F'];
-            $input['weight'] = $data['AO'];
-            $input['paper_norm'] = $data['AP'];
-            $product[] = $input;
+            if (trim($data['B'])) {
+                $input = [];
+                $input['id'] = trim($data['B']);
+                $input['name'] = $data['C'];
+                $input['ver'] = $data['D'];
+                $input['his'] = $data['E'];
+                $input['customer_id'] = $data['F'];
+                $input['weight'] = $data['AO'];
+                $input['paper_norm'] = $data['AP'];
+                $product[] = $input;
+                Product::firstOrCreate(['id' => $input['id']], $input);
+            }
         }
-        Product::insert($product);
     }
 
     protected $material_columns = [
@@ -218,16 +379,18 @@ class ProductController extends Controller
     {
         $material = [];
         foreach ($material_data as $data) {
-            $input = [];
-            $input['id'] = $data['I'];
-            $input['name'] = $data['J'];
-            $input['material'] = $data['L'];
-            $input['color'] = $data['M'];
-            $input['quantitative'] = $data['N'];
-            $input['thickness'] = $data['O'];
-            $input['meter_per_roll'] = $data['P'];
-            $input['sheet_per_pallet'] = $data['Q'];
-            $material[] = $input;
+            if (trim($data['I'])) {
+                $input = [];
+                $input['id'] = $data['I'];
+                $input['name'] = $data['J'];
+                $input['material'] = $data['L'];
+                $input['color'] = $data['M'];
+                $input['quantitative'] = $data['N'];
+                $input['thickness'] = $data['O'];
+                $input['meter_per_roll'] = $data['P'];
+                $input['sheet_per_pallet'] = $data['Q'];
+                $material[] = $input;
+            }
         }
         Material::insert($material);
     }
@@ -240,29 +403,58 @@ class ProductController extends Controller
     {
         $bom = [];
         foreach ($bom_data as $data) {
-            $input = [];
-            $input['product_id'] = $data['B'];
-            $input['material_id'] = $data['I'];
-            $input['ratio'] = $data['K'];
-            $input['priority'] = $data['H'];
-            $bom[] = $input;
+            if (trim($data['B']) && trim($data['I'])) {
+                $input = [];
+                $input['product_id'] = trim($data['B']);
+                $input['material_id'] = trim($data['I']);
+                $input['ratio'] = $data['K'];
+                $input['priority'] = $data['H'];
+                $bom[] = $input;
+            }
         }
         Bom::insert($bom);
     }
 
     protected $production_journey_column = [
-        'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF', 'AG', 'AH', 'AI', 'AJ', 'AK', 'AL', 'AM', 'AN'
+        'B', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF', 'AG', 'AH', 'AI', 'AJ', 'AK', 'AL', 'AM', 'AN'
+    ];
+    public function handleProductionJourney($production_journeys_data)
+    {
+        $filteredLine = [];
+        $index = 0;
+        foreach ($production_journeys_data as $data) {
+            if ($data['B']) {
+                if (count(array_filter($data, 'is_numeric')) > 0) {
+                    $filteredLine[$index] = array_filter($data, 'is_numeric');
+                    $filteredLine[$index]['B'] = $data['B'];
+                    $index++;
+                }
+            }
+        }
+        return $filteredLine;
+    }
+    protected $lines = [
+        'U' => 'Chia',
+        'AD' => 24,
+        'AE' => 27,
+        'AF' => 25,
+        'AI' => 26,
+        'AN' => 29,
     ];
     //import production_journey
-    protected function importProductionJourneys($production_journeys_data)
+    protected function importProductionJourneys($filteredLine)
     {
         $production_journeys = [];
-        foreach ($production_journeys_data as $data) {
-            $input = [];
-            $input['product_id'] = $data['B'];
-            $input['line_id'] = $data['I'];
-            $input['ordinal'] = $data['K'];
-            $production_journeys[] = $input;
+        foreach ($filteredLine as $line_in_order) {
+            foreach ($line_in_order as $key => $value) {
+                $input = [];
+                if (isset($this->lines[$key])) {
+                    $input['product_id'] = trim($line_in_order['B']);
+                    $input['line_id'] = $this->lines[$key];
+                    $input['ordinal'] = $value;
+                    $production_journeys[] = $input;
+                }
+            }
         }
         ProductionJourney::insert($production_journeys);
     }
