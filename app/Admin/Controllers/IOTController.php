@@ -8,7 +8,7 @@ use App\Models\IOTLog;
 use App\Models\LogWarningParameter;
 use App\Models\Lot;
 use App\Models\Machine;
-use App\Models\MachineIOT;
+use App\Models\MachineIot;
 use App\Models\MachineLog;
 use App\Models\MachineParameterLogs;
 use App\Models\MachineParameters;
@@ -80,7 +80,7 @@ class IOTController extends AdminController
     public function updateParamsFromIot(Request $request)
     {
         $machine = Machine::where('device_id', $request->device_id)->first();
-        $log_iot = new MachineIOT();
+        $log_iot = new MachineIot();
         $log_iot->data = $request->all();
         $log_iot->save();
         $tracking = Tracking::where('machine_id', $machine->code)->first();
@@ -98,7 +98,7 @@ class IOTController extends AdminController
             if ($request->timestamp  >= ($tracking->timestamp +  300)) {
                 $start = $tracking->timestamp;
                 $end = $tracking->timestamp +  300;
-                $logs = MachineIOT::where('data->record_type', "cl")->where('data->machine_id', $machine->code)->where('data->timestamp', '>=', $start)->where('data->timestamp', '<=', $end)->pluck('data')->toArray();
+                $logs = MachineIot::where('data->record_type', "cl")->where('data->machine_id', $machine->code)->where('data->timestamp', '>=', $start)->where('data->timestamp', '<=', $end)->pluck('data')->toArray();
                 $parameters = MachineParameters::where('machine_id', $machine->code)->where('is_if', 1)->pluck('parameter_id')->toArray();
                 $arr = [];
                 foreach ($parameters as $key => $parameter) {
@@ -109,7 +109,7 @@ class IOTController extends AdminController
                         }
                     }
                 }
-                MachineIOT::where('data->record_type', "cl")->where('data->machine_id', $machine->code)->delete();
+                MachineIot::where('data->record_type', "cl")->where('data->machine_id', $machine->code)->delete();
                 Tracking::where('machine_id', $machine->code)->update(['timestamp' => $request->timestamp]);
                 MachineParameterLogs::where('machine_id', $machine->code)->where('start_time', '<=', date('Y-m-d H:i:s', $request->timestamp))->where('end_time', '>=', date('Y-m-d H:i:s', $request->timestamp))->update(['data_if' => $arr]);
                 if ($machine) {

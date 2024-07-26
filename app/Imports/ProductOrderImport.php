@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Helpers\QueryHelper;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\ProductOrder;
@@ -55,8 +56,11 @@ class ProductOrderImport implements ToCollection, WithHeadingRow, WithStartRow
         $orderDate = $this->transformDate($orderDate);
         if (!empty($deliveryDate)) $deliveryDate = $this->transformDate($deliveryDate);
 
+        $id = QueryHelper::generateNewId(new ProductOrder(), date('Ym'), 2);
+
         // Create product_order
         ProductOrder::create([
+            'id' => $id,
             'order_number' => $orderNumber,
             'customer_id' => $customerId,
             'product_id' => $productId,

@@ -2,6 +2,7 @@
 
 namespace App\Admin\Controllers;
 
+use App\Helpers\QueryHelper;
 use App\Models\CheckSheetWork;
 use App\Models\ProductionPlan;
 use App\Models\User;
@@ -16,11 +17,12 @@ use App\Models\Error;
 use App\Models\InfoCongDoan;
 use App\Models\Insulation;
 use App\Models\IOTLog;
-use App\Models\MachineIOT;
+use App\Models\MachineIot;
 use App\Models\Line;
 use App\Models\LineTable;
 use App\Models\LogInTem;
 use App\Models\LogWarningParameter;
+use App\Models\Losx;
 use App\Models\Lot;
 use App\Models\LSXLog;
 use App\Models\Machine;
@@ -47,6 +49,7 @@ use App\Models\MaterialExportLog;
 use App\Models\MaterialLog;
 use App\Models\Monitor;
 use App\Models\OddBin;
+use App\Models\ProductOrder;
 use App\Models\Scenario;
 use App\Models\Spec;
 use App\Models\TestCriteria;
@@ -806,7 +809,7 @@ class ApiMobileController extends AdminController
                 $tracking = Tracking::where('machine_id', 'GL_637CIR')->first();
                 $info_cong_doan->start_powerM = $tracking->powerM;
             }
-            if($line_key === 'kho-bao-on' || $line_key === 'u'){
+            if ($line_key === 'kho-bao-on' || $line_key === 'u') {
                 $info_cong_doan->sl_dau_vao_hang_loat = ($pallet->so_luong * $pallet->product->so_bat);
             }
             $info_cong_doan->save();
@@ -1038,7 +1041,7 @@ class ApiMobileController extends AdminController
                 $info_cong_doan['end_powerM'] = $tracking->powerM;
                 $info_cong_doan['powerM'] = $tracking->powerM - $info_cong_doan['start_powerM'];
             }
-            if($line_key === 'kho-bao-on' || $line_key === 'u'){
+            if ($line_key === 'kho-bao-on' || $line_key === 'u') {
                 $info_cong_doan['sl_dau_ra_hang_loat'] = ($pallet->so_luong * $pallet->product->so_bat);
             }
             $info_cong_doan['thoi_gian_ket_thuc'] = Carbon::now();
@@ -1929,7 +1932,7 @@ class ApiMobileController extends AdminController
                 $info['qc'][$line_key]['thoi_gian_ra'] = Carbon::now();
             }
             $log->info = $info;
-    
+
             if ($info_cong_doan) {
                 $sl_con_lai = 0;
                 if ($request->line_id == 10 || $request->line_id == 11 || $request->line_id == 12 || $request->line_id == 14 || $request->line_id == 22) {
@@ -1967,7 +1970,7 @@ class ApiMobileController extends AdminController
                 $info_bat['qc'][$line_key]['sl_ng'] = $sl_ng;
                 $log_bat->info = $info_bat;
                 $log_bat->save();
-    
+
                 $info_cd_bat = $bat->infoCongDoan()->where('line_id', $line->id)->first();
                 $info_cd_bat['sl_ng'] = $sl_ng;
                 $info_cd_bat->save();
@@ -2512,7 +2515,7 @@ class ApiMobileController extends AdminController
             }
         }
         if ($request->record_type == 'cl') {
-            $log_iot = new MachineIOT();
+            $log_iot = new MachineIot();
             $log_iot->data = $request->all();
             $log_iot->save();
             if ($request->machine_id == 'bao-on') {
@@ -2538,7 +2541,7 @@ class ApiMobileController extends AdminController
                 if ($request->timestamp  >= ($tracking->timestamp +  300)) {
                     $start = $tracking->timestamp;
                     $end = $tracking->timestamp +  300;
-                    $logs = MachineIOT::where('data->record_type', "cl")->where('data->machine_id', $request->machine_id)->where('data->timestamp', '>=', $start)->where('data->timestamp', '<=', $end)->pluck('data')->toArray();
+                    $logs = MachineIot::where('data->record_type', "cl")->where('data->machine_id', $request->machine_id)->where('data->timestamp', '>=', $start)->where('data->timestamp', '<=', $end)->pluck('data')->toArray();
                     $parameters = MachineParameters::where('machine_id', $request->machine_id)->where('is_if', 1)->pluck('parameter_id')->toArray();
                     $arr = [];
                     foreach ($parameters as $key => $parameter) {
@@ -2563,7 +2566,7 @@ class ApiMobileController extends AdminController
                         $arr['speed'] = number_format($machine_speed->sum('speed') / $machine_speed->count());
                         MachineSpeed::where('machine_id', $machine->code)->delete();
                     }
-                    MachineIOT::where('data->record_type', "cl")->where('data->machine_id', $request->machine_id)->delete();
+                    MachineIot::where('data->record_type', "cl")->where('data->machine_id', $request->machine_id)->delete();
                     Tracking::where('machine_id', $request->machine_id)->update(['timestamp' => $request->timestamp]);
                     MachineParameterLogs::where('machine_id', $request->machine_id)->where('start_time', '<=', date('Y-m-d H:i:s', $request->timestamp))->where('end_time', '>=', date('Y-m-d H:i:s', $request->timestamp))->update(['data_if' => $arr]);
                     if ($machine) {
@@ -2590,7 +2593,7 @@ class ApiMobileController extends AdminController
         if ($request->record_type == "tb") {
             $tracking = Tracking::where('machine_id', $request->machine_id)->first();
             $tracking->update(['status' => $request->status]);
-            if($tracking->lot_id){
+            if ($tracking->lot_id) {
                 $res = MachineLog::UpdateStatus($request);
             }
         }
@@ -2733,11 +2736,12 @@ class ApiMobileController extends AdminController
     }
 
     //Upload KHSX
+
     public function uploadKHSX()
     {
-        $hash = hash_file("md5", $_FILES['files']['tmp_name']);
-        $lists = ProductionPlan::where("file", $hash);
-        $lists->delete();
+        // $hash = hash_file("md5", $_FILES['files']['tmp_name']);
+        // $lists = ProductionPlan::where("file", $hash);
+        // $lists->delete();
         $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
         if ($extension == 'csv') {
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
@@ -2749,7 +2753,7 @@ class ApiMobileController extends AdminController
         // file path
         $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
-        
+
         DB::beginTransaction();
         try {
             foreach ($allDataInSheet as $key => $row) {
@@ -2818,6 +2822,16 @@ class ApiMobileController extends AdminController
                     if (empty($line)) throw new Exception('Không tìm thấy công đoạn');
 
                     if (!is_null($row['B'])) {
+                        $losx = Losx::query()->where('product_order_id', $row['L'])->first();
+                        if ($losx) {
+                            $input['lo_sx'] = $losx->id;
+                        } else {
+                            $losx = Losx::create([
+                                'product_order_id' => $row['L']
+                            ]);
+                            $input['lo_sx'] = $losx->id;
+                        }
+                        $input['product_order_id'] = $row['L'];
                         $input['ngay_dat_hang'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['AD'])));
                         $input['cong_doan_sx'] = Str::slug($row['G']); //
                         $input['line_id'] = $line->id; //
@@ -2828,7 +2842,6 @@ class ApiMobileController extends AdminController
                         $input['machine_id'] = $row['H']; //
                         $input['product_id'] = $row['I']; //
                         $input['khach_hang'] = $row['J']; //
-                        $input['lo_sx'] = $row['L']; //
                         $input['so_bat'] = $row['T'] ?? 0; //
                         $input['sl_nvl'] = $row['O']; //
                         $input['sl_tong_don_hang'] = $row['N']; //
@@ -2847,7 +2860,7 @@ class ApiMobileController extends AdminController
                         $input['thoi_gian_bat_dau'] = date('Y-m-d H:i:s', strtotime($input['ngay_sx'] . ' ' . $row['C']));
                         $input['thoi_gian_ket_thuc'] = date('Y-m-d H:i:s', strtotime($input['ngay_sx'] . ' ' . $row['D'] . (strtotime($row['C']) > strtotime($row['D']) ? " +1 day" : "")));
                         $input['status'] = 0;
-                        $input['file'] = $hash;
+                        // $input['file'] = $hash;
                         // $record = ProductionPlan::updateOrCreate(
                         //     [
                         //         'cong_doan_sx' => $input['cong_doan_sx'],
@@ -2857,17 +2870,42 @@ class ApiMobileController extends AdminController
                         //     $input
                         // );
 
+                        // Customer
+                        $customer = Customer::query()->where('name', 'like', trim($input['khach_hang']))->first();
+                        if (empty($customer)) throw new Exception('Không tìm thấy khách hàng');
+
+                        // Product order
+                        $productOrder = ProductOrder::find($input['product_order_id']);
+                        if (empty($productOrder)) {
+                            $productOrder = ProductOrder::create([
+                                'id' => $input['product_order_id'],
+                                'order_number' => $input['product_order_id'],
+                                'customer_id' => $customer->id,
+                                'product_id' => $input['product_id'],
+                                'order_date' => $input['ngay_dat_hang'],
+                                'quantity' => $input['sl_thanh_pham'],
+                                'delivery_date' => $input['ngay_giao_hang'],
+                            ]);
+                        }
+
                         $record = ProductionPlan::query()->where([
-                            ['cong_doan_sx', $input['cong_doan_sx']],
-                            ['lo_sx', $input['lo_sx']],
+                            ['line_id', $line->id],
+                            ['lo_sx', $losx->id],
                             ['product_id', $input['product_id']],
                         ])->first();
-                        Log::debug($record);
-                        if (!empty($record)) throw new Exception("Kế hoạch đã được tạo");
+                        if (isset($record)) throw new Exception("Kế hoạch cho LoSX:{$record->lo_sx} - {$record->product_id} đã được tạo");
+
                         $record = ProductionPlan::create($input);
                         // TODO: add field lotsize to info_cong_doan table (lot)
                         // ID Lot: Mã lô+.L.0001
-                        $numbers = $this->getQuantityArray($input['sl_tong_don_hang'], 1000);
+                        $spec = Spec::query()->where('product_id', $input['product_id'])->where('line_id', '24')->where('slug', 'so-luong')->first();
+                        if ($spec) {
+                            if (!isset($spec->value)) throw new Exception('Không tìm thấy giá trị của Spec');
+                            $lotsize = $spec->value;
+                        } else {
+                            throw new Exception("Không tìm thấy định mức cuộn");
+                        }
+                        $numbers = $this->getQuantityArray($input['sl_giao_sx'], 1000);
                         $countLot = InfoCongDoan::query()->where([
                             ['lo_sx', $input['lo_sx']],
                             ['line_id', $input['line_id']],
@@ -2876,25 +2914,25 @@ class ApiMobileController extends AdminController
                         foreach ($numbers as $number) {
                             $countLot++;
                             InfoCongDoan::create([
-                                'lot_id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT), 
-                                'lotsize' => $number, // Default 
-                                'lo_sx' => $input['lo_sx'], 
-                                'line_id' => $input['line_id'], 
-                                'product_id' => $input['product_id'], 
-                                'thoi_gian_bat_dau' => null, 
-                                'thoi_gian_bam_may' => null, 
-                                'thoi_gian_ket_thuc' => null, 
-                                'sl_dau_vao_chay_thu' => 0, 
-                                'sl_dau_ra_chay_thu' => 0, 
-                                'sl_dau_vao_hang_loat' => 0, 
-                                'sl_dau_ra_hang_loat' => 0, 
-                                'sl_tem_vang' => 0, 
-                                'sl_ng' => 0, 
-                                'start_powerM' => null, 
-                                'end_powerM' => null, 
-                                'powerM' => null, 
-                                'status' => $input['status'], 
-                                'machine_code' => $input['machine_id'], 
+                                'lot_id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
+                                'lotsize' => $lotsize, // 👈 Định mức cuộn
+                                'lo_sx' => $input['lo_sx'],
+                                'line_id' => $input['line_id'],
+                                'product_id' => $input['product_id'],
+                                'thoi_gian_bat_dau' => null,
+                                'thoi_gian_bam_may' => null,
+                                'thoi_gian_ket_thuc' => null,
+                                'sl_dau_vao_chay_thu' => 0,
+                                'sl_dau_ra_chay_thu' => 0,
+                                'sl_dau_vao_hang_loat' => 0,
+                                'sl_dau_ra_hang_loat' => 0,
+                                'sl_tem_vang' => 0,
+                                'sl_ng' => 0,
+                                'start_powerM' => null,
+                                'end_powerM' => null,
+                                'powerM' => null,
+                                'status' => $input['status'],
+                                'machine_code' => $input['machine_id'],
                                 'sl_kh' => $input['so_bat'] * $input['sl_thanh_pham'], // 
                                 'user_id' => auth()->user()->id,
                             ]);
@@ -2975,8 +3013,8 @@ class ApiMobileController extends AdminController
                 $input['quy_cach'] = $row['J'];
                 $input['sl_thung_chan'] = !is_null($row['K']) ? $row['K'] : 0;
                 $input['sl_hang_le'] = $row['L'];
-                $product_import = WareHouseLog::where('lot_id', 'like', "%".$input['product_id']."%")->where('type', 1)->sum('so_luong');
-                $product_export = WareHouseLog::where('lot_id', 'like', "%".$input['product_id']."%")->where('type', 2)->sum('so_luong');
+                $product_import = WareHouseLog::where('lot_id', 'like', "%" . $input['product_id'] . "%")->where('type', 1)->sum('so_luong');
+                $product_export = WareHouseLog::where('lot_id', 'like', "%" . $input['product_id'] . "%")->where('type', 2)->sum('so_luong');
                 $sl_ton = $product_import - $product_export;
                 $input['ton_kho'] = $sl_ton ?? 0;
                 $input['xac_nhan_sx'] = $row['N'];
@@ -3691,16 +3729,17 @@ class ApiMobileController extends AdminController
         return $this->success($lines);
     }
 
-    public function getTreeLines(Request $request){
+    public function getTreeLines(Request $request)
+    {
         $lines = Line::where('display', 1)->with(['children' => function ($query) {
             $query->select('machines.*', 'id as key', 'name as title', DB::raw("'machine' as type"));
         }])->select('lines.*', 'id as key', 'name as title', DB::raw("'line' as type"))->get();
         $data = [
             [
-                'key'=>'xuong_giay', 
-                'title'=>'Xưởng Giấy',
-                'type'=>'phan_xuong',
-                'children'=>$lines
+                'key' => 'xuong_giay',
+                'title' => 'Xưởng Giấy',
+                'type' => 'phan_xuong',
+                'children' => $lines
             ]
         ];
         return $this->success($data);
@@ -3789,14 +3828,14 @@ class ApiMobileController extends AdminController
         }
         $machines = $machine_query->get();
         $columns = [];
-        foreach($machines as $machine){
+        foreach ($machines as $machine) {
             foreach ($machine->parameters as $param) {
                 $col = new stdClass;
                 $col->title = $param->name;
                 $col->dataIndex = $param->id;
                 $col->key = $param->id;
                 $col->is_if = $param->is_if;
-                if(!isset($columns[$param->id])){
+                if (!isset($columns[$param->id])) {
                     $columns[$param->id] = $col;
                 }
             }

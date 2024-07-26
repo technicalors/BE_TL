@@ -8,7 +8,9 @@ const PRODUCTION_API_URL = base_url + '/update-quantity';
 const MACHINE_INFO_API_URL = base_url + '/update-params';
 const MACHINE_STATUS_API_URL = base_url + '/update-status';
 const MACHINE_RECORD_API_URL = base_url + '/record-product-output';
-const DEVICE_IDS = ['f7f77560-45bd-11ef-b8c3-a13625245eca', '7cda31d0-45bb-11ef-b8c3-a13625245eca', 'da03f550-45be-11ef-b8c3-a13625245eca', 'a43d8520-45bf-11ef-b8c3-a13625245eca', '22d821e0-45bd-11ef-b8c3-a13625245eca']; // Thay thế bằng danh sách mã thiết bị thực tế
+const DEVICE_IDS = ['f7f77560-45bd-11ef-b8c3-a13625245eca', '7cda31d0-45bb-11ef-b8c3-a13625245eca', 'da03f550-45be-11ef-b8c3-a13625245eca', 'a43d8520-45bf-11ef-b8c3-a13625245eca',
+    '22d821e0-45bd-11ef-b8c3-a13625245eca', 'af35a2e0-45c0-11ef-b8c3-a13625245eca', '9032a0e0-45bc-11ef-b8c3-a13625245eca', '40a1abc0-45bc-11ef-b8c3-a13625245eca',
+    '886de160-45be-11ef-b8c3-a13625245eca', '2a9b5df0-45bf-11ef-b8c3-a13625245eca', '7b85a180-45bf-11ef-b8c3-a13625245eca']; // Thay thế bằng danh sách mã thiết bị thực tế
 
 // Thông tin đăng nhập
 const credentials = {
@@ -26,6 +28,130 @@ let isProcessing = {};
 // Biến lưu trữ giá trị cuối cùng cho sản lượng và trạng thái máy
 let lastProductionValues = {};
 let lastMachineStatusValues = {};
+
+const deviceFieldConfig = {
+    '22d821e0-45bd-11ef-b8c3-a13625245eca': {
+        PLC_CB01: 'PLC:CB01',
+        PLC_CB02: 'PLC:CB02',
+        PLC_CB03: 'PLC:CB03',
+        PLC_CB04: 'PLC:CB04',
+        PLC_CB05: 'PLC:CB05',
+        PLC_CB06: 'PLC:CB06',
+        PLC_CB07: 'PLC:CB07',
+        PLC_CB08: 'PLC:CB08',
+        PLC_CB09: 'PLC:CB09',
+        PLC_CB10: 'PLC:CB10',
+        PLC_CB11: 'PLC:CB11',
+        PLC_CB12: 'PLC:CB12',
+        PLC_CB13: 'PLC:CB13',
+        PLC_CB14: 'PLC:CB14',
+        PLC_CB15: 'PLC:CB15',
+        PLC_CB16: 'PLC:CB16',
+        PLC_AP01: 'PLC:AP01',
+        PLC_AP02: 'PLC:AP02',
+        PLC_AP03: 'PLC:AP03',
+        PM01_TEnergy: 'PM01_TEnergy',
+        Env01_Temper: 'Env01:Temper',
+        Env01_Humi: 'Env01:Humi'
+    },
+    '40a1abc0-45bc-11ef-b8c3-a13625245eca': {
+        PLC_UV1: 'PLC:UV1',
+        PLC_UV2: 'PLC:UV2',
+        PLC_STATUS: 'PLC:STATUS',
+        PLC_Time_UV1: 'PLC:Time_UV1',
+        PLC_Time_UV2: 'PLC:Time_UV2',
+        PM01_TEnergy: 'PM01_TEnergy',
+    },
+    '7cda31d0-45bb-11ef-b8c3-a13625245eca': {
+        PLC_UV1: 'PLC:UV1',
+        PLC_UV2: 'PLC:UV2',
+        PLC_UV3: 'PLC:UV3',
+        PLC_UV4: 'PLC:UV4',
+        PLC_UV5: 'PLC:UV5',
+        PLC_UV6: 'PLC:UV6',
+        PLC_UV7: 'PLC:UV7',
+        PLC_UV8: 'PLC:UV8',
+        PLC_Time_UV1: 'PLC:Time_UV1',
+        PLC_Time_UV2: 'PLC:Time_UV2',
+        PLC_Time_UV3: 'PLC:Time_UV3',
+        PLC_Time_UV4: 'PLC:Time_UV4',
+        PLC_Time_UV5: 'PLC:Time_UV5',
+        PLC_Time_UV6: 'PLC:Time_UV6',
+        PLC_Time_UV7: 'PLC:Time_UV7',
+        PLC_Time_UV8: 'PLC:Time_UV8',
+        PM01_TEnergy: 'PM01_TEnergy',
+        Env01_Temper: 'Env01:Temper',
+        Env01_Humi: 'Env01:Humi'
+    },
+    '886de160-45be-11ef-b8c3-a13625245eca': {
+        PLC_CB01: 'PLC:CB01',
+        PLC_CB02: 'PLC:CB02',
+        PLC_CB03: 'PLC:CB03',
+        PLC_CB04: 'PLC:CB04',
+        PLC_CB05: 'PLC:CB05',
+        PLC_CB06: 'PLC:CB06',
+        PLC_CB07: 'PLC:CB07',
+        PLC_CB08: 'PLC:CB08',
+        PLC_CB09: 'PLC:CB09',
+        PLC_CB10: 'PLC:CB10',
+        PLC_CB11: 'PLC:CB11',
+        PLC_CB12: 'PLC:CB12',
+        PLC_CB13: 'PLC:CB13',
+        PLC_CB14: 'PLC:CB14',
+        PLC_CB15: 'PLC:CB15',
+        PLC_CB16: 'PLC:CB16',
+        PLC_AP01: 'PLC:AP01',
+        PLC_AP02: 'PLC:AP02',
+        PLC_AP03: 'PLC:AP03',
+        PM01_TEnergy: 'PM01_TEnergy',
+    },
+    '9032a0e0-45bc-11ef-b8c3-a13625245eca': {
+        PLC_UV1: 'PLC:UV1',
+        PLC_UV2: 'PLC:UV2',
+        PLC_UV3: 'PLC:UV3',
+        PLC_UV4: 'PLC:UV4',
+        PLC_Time_UV1: 'PLC:Time_UV1',
+        PLC_Time_UV2: 'PLC:Time_UV2',
+        PLC_Time_UV3: 'PLC:Time_UV3',
+        PLC_Time_UV4: 'PLC:Time_UV4',
+        PM01_TEnergy: 'PM01_TEnergy',
+    },
+    'a43d8520-45bf-11ef-b8c3-a13625245eca': {
+        PLC_F_Thu: 'PLC:F_Thu',
+        PLC_F_xa: 'PLC:F_xa',
+        PM01_TEnergy: 'PM01_TEnergy',
+    },
+    'af35a2e0-45c0-11ef-b8c3-a13625245eca': {
+        PLC_F_Thu: 'PLC:F_Thu',
+        PLC_F_xa: 'PLC:F_xa',
+        PM01_TEnergy: 'PM01_TEnergy',
+    },
+    'da03f550-45be-11ef-b8c3-a13625245eca': {
+        PM01_TEnergy: 'PM01_TEnergy',
+    },
+    'f7f77560-45bd-11ef-b8c3-a13625245eca': {
+        PLC_CB01: 'PLC:CB01',
+        PLC_CB02: 'PLC:CB02',
+        PLC_CB03: 'PLC:CB03',
+        PLC_CB04: 'PLC:CB04',
+        PLC_CB05: 'PLC:CB05',
+        PLC_CB06: 'PLC:CB06',
+        PLC_CB07: 'PLC:CB07',
+        PLC_CB08: 'PLC:CB08',
+        PLC_CB09: 'PLC:CB09',
+        PLC_CB10: 'PLC:CB10',
+        PLC_CB11: 'PLC:CB11',
+        PLC_CB12: 'PLC:CB12',
+        PLC_CB13: 'PLC:CB13',
+        PLC_CB14: 'PLC:CB14',
+        PLC_CB15: 'PLC:CB15',
+        PLC_CB16: 'PLC:CB16',
+        PLC_AP01: 'PLC:AP01',
+        PLC_AP02: 'PLC:AP02',
+        PLC_AP03: 'PLC:AP03',
+        PM01_TEnergy: 'PM01_TEnergy',
+    }
+};
 
 // Hàm lấy token
 async function getAuthToken() {
@@ -90,18 +216,31 @@ function convertProductionData(data, deviceId) {
 
 // Hàm chuyển đổi dữ liệu thông số máy
 function convertMachineInfoData(data, deviceId) {
-    return {
+    const specificFields = deviceFieldConfig[deviceId] || {};
+
+    const convertedData = {
         device_id: deviceId,
-        tem_lieu: data['HMI_Mixing:Tem_Lieu'][0][1],
-        tem_vo: data['HMI_Mixing:Tem_Vo'][0][1],
     };
+
+    // Chuyển đổi các trường riêng
+    for (const [field, path] of Object.entries(specificFields)) {
+        if (data[path]) {
+            console.log('data', data[path][0][1]);
+            convertedData[field] = data[path][0][1];
+        }
+    }
+    return convertedData;
 }
 
+function convertToNumber(value) {
+    const number = parseFloat(value);
+    return Math.round(number);
+}
 // Hàm chuyển đổi dữ liệu trạng thái máy
 function convertMachineStatusData(data, deviceId) {
     return {
         device_id: deviceId,
-        status: data['PLC:STATUS'][0][1],
+        status: convertToNumber(data['PLC:STATUS'][0][1]),
     };
 }
 
@@ -117,9 +256,6 @@ function enqueueData(deviceId, data) {
     // Chuyển đổi và đẩy dữ liệu sản lượngPLC:Num_Out
     if (data['PLC:Num_Input'] || data['PLC:Num_Out']) {
         let convertedData = convertProductionData(data, deviceId);
-        if (deviceId == 'a43d8520-45bf-11ef-b8c3-a13625245eca') {
-            console.log('convertedData', convertedData);
-        }
         if (JSON.stringify(lastProductionValues[deviceId]) !== JSON.stringify(data)) {
             dataQueues[deviceId].push({ data: convertedData, apiUrl: PRODUCTION_API_URL });
             lastProductionValues[deviceId] = data;
@@ -127,7 +263,7 @@ function enqueueData(deviceId, data) {
     }
 
     // Chuyển đổi và đẩy dữ liệu thông số máy
-    if (data['HMI_Mixing:Tem_Vo'] && data['HMI_Mixing:Tem_Lieu']) {
+    if (deviceFieldConfig[deviceId]) {
         let convertedData = convertMachineInfoData(data, deviceId);
         dataQueues[deviceId].push({ data: convertedData, apiUrl: MACHINE_INFO_API_URL });
     }
@@ -135,6 +271,7 @@ function enqueueData(deviceId, data) {
     // Chuyển đổi và đẩy dữ liệu trạng thái máy
     if (data['PLC:STATUS']) {
         let convertedData = convertMachineStatusData(data, deviceId);
+        console.log('convertedData', convertedData);
         if (JSON.stringify(lastMachineStatusValues[deviceId]) !== JSON.stringify(data)) {
             dataQueues[deviceId].push({ data: convertedData, apiUrl: MACHINE_STATUS_API_URL });
             lastMachineStatusValues[deviceId] = data;
