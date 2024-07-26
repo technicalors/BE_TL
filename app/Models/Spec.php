@@ -10,6 +10,13 @@ class Spec extends Model
     use HasFactory;
     use \Awobaz\Compoships\Compoships;
     protected $table = "spec";
+    protected $fillable = [
+        'product_id',
+        'line_id',
+        'slug',
+        'value',
+        'name',
+    ];
 
     public function product()
     {

@@ -234,6 +234,7 @@ class ProductController extends Controller
 
         $line_id = [];
         $spec_data = [];
+        Spec::where('product_id', $product_id)->delete();
         foreach ($currRow as $key => $item) {
             if ($key == "DI") {
                 $line_id = [20];//IQC
@@ -250,16 +251,8 @@ class ProductController extends Controller
             } else if ($key == "IW") {
                 $line_id = [13, 15, 29];
             }
-
+            
             foreach ($line_id as $id) {
-                // if (!isset($title[$key])) continue;
-                // $spec = new Spec();
-                // $spec->name = $title[$key];
-                // $spec->value = $item;
-                // $spec->product_id = $product_id;
-                // $spec->slug = Str::slug($spec->name);
-                // $spec->line_id = $id;
-                // $spec->save();
                 $input = [];
                 $input['name'] = $title[$key];
                 $input['value'] = $item;
@@ -268,8 +261,8 @@ class ProductController extends Controller
                 $input['line_id'] = $id;
                 $spec_data[] = $input;
             }
-            Spec::insert($spec_data);
         }
+        Spec::insert($spec_data);
     }
 
     public function export(Request $request)
