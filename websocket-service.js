@@ -266,9 +266,8 @@ function enqueueData(deviceId, data) {
     if (deviceFieldConfig[deviceId]) {
         let convertedData = convertMachineInfoData(data, deviceId);
         if(Object.keys(convertedData).length > 1){
-            console.log('convertedData', convertedData);
+            dataQueues[deviceId].push({ data: convertedData, apiUrl: MACHINE_INFO_API_URL });
         }
-        dataQueues[deviceId].push({ data: convertedData, apiUrl: MACHINE_INFO_API_URL });
     }
 
     // Chuyển đổi và đẩy dữ liệu trạng thái máy
