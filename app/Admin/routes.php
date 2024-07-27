@@ -598,6 +598,7 @@ Route::group([
     $router->post('find-error', [Phase2OIApiController::class, 'findError']);
     $router->post('update-lot-error-log', [Phase2OIApiController::class, 'updateLotErrorLog']);
     $router->post('end-of-production', [Phase2OIApiController::class, 'endOfProduction']);
+    $router->post('scan-for-selection-line', [Phase2OIApiController::class, 'scanForSelectionLine']);
 
     //Chất lượng
     $router->get('qc-overall', [Phase2OIApiController::class, 'getQCOverall']);

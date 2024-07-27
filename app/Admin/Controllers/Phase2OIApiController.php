@@ -190,9 +190,9 @@ class Phase2OIApiController extends Controller
             $data =  [
                 "lo_sx" => $item->lo_sx,
                 "lot_id" => $item->lot_id,
-                "ma_hang" => $item ? $item->product->id : '',
-                "ten_sp" => $item ? $item->product->name : '',
-                "ma_hang" => $item ? $item->product->id : '',
+                "ma_hang" => $item->product->id ?? '',
+                "ten_sp" => $item->product->name ?? '',
+                "ma_hang" => $item->product->id ?? '',
                 "sl_ke_hoach" => $item->sl_kh ?? 0,
                 'thoi_gian_bat_dau_kh' => $item->plan ? date('d/m/Y H:i:s', strtotime($item->plan->thoi_gian_bat_dau)) : "",
                 "thoi_gian_ket_thuc_kh" => $item->plan ? date('d/m/Y H:i:s', strtotime($item->plan->thoi_gian_ket_thuc)) : "", "",
@@ -514,6 +514,41 @@ class Phase2OIApiController extends Controller
         $data['nguoi_sx'] = $user->name ?? "";
         $data['ghi_chu'] = $ghi_chu ?? "";
         return $data;
+    }
+
+    //San lot khi vào công đoạn chọn
+    public function scanForSelectionLine(Request $request){
+        $line = Line::find($request->line_id);
+        if (!$line) {
+            return $this->failure([], "Không tìm thấy công đoạn");
+        }
+        $lot = Lot::find($request->lot_id);
+        if (!$lot) {
+            return $this->failure([], "Lot này chưa được sản xuất");
+        }
+        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->first();
+        if ($infoCongDoan) {
+            return $this->failure([], "Đã quét lot này");
+        }
+        try {
+            DB::beginTransaction();
+            InfoCongDoan::create([
+                'lot_id' => $request->lot_id,
+                'lo_sx' => $lot->lo_sx,
+                'line_id' => $line->id,
+                'product_id' => $lot->product_id,
+                'sl_kh' => $lot->so_luong,
+                'sl_dau_vao_hang_loat' => $lot->so_luong,
+                'thoi_gian_bat_dau' => Carbon::now(),
+                'user_id' => $request->user()->id,
+                'status' => InfoCongDoan::STATUS_INPROGRESS
+            ]);
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return $this->failure($th, "Lỗi quét lot");
+        }
+        return $this->success([], "Bắt đầu sản xuất");
     }
 
     //============================Chất lượng============================
