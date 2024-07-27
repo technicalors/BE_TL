@@ -73,7 +73,8 @@ class IOTController extends AdminController
         $iot_log->data = $request->all();
         $iot_log->save();
         $machine = Machine::where('device_id', $request->device_id)->first();
-        $obj = new stdClass($request);
+        $obj = new stdClass();
+        $obj->status = $request->status;
         $obj->machine_id = $machine->code;
         $obj->type = 1;
         $tracking = Tracking::where('machine_id', $machine->code)->first();
