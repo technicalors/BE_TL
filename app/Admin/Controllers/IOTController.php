@@ -74,9 +74,9 @@ class IOTController extends AdminController
         $machine = Machine::where('device_id', $request->device_id)->first();
         $tracking = Tracking::where('machine_id', $machine->code)->first();
         $tracking->update(['status' => $request->status]);
-        if ($tracking->lot_id) {
-            MachineStatus::setValue($machine->code, $request->status);
-        }
+        // if ($tracking->lot_id) {
+            MachineLog::UpdateStatus($request);
+        // }
         return response()->json(['message' => 'Equipment status updated successfully'], 200);
     }
 
