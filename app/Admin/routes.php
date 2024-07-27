@@ -509,12 +509,12 @@ Route::group([
     $router->get('product-order/export', [App\Admin\Controllers\ProductOrderController::class, 'exportLine']);
     $router->post('product-order/import', [App\Admin\Controllers\ProductOrderController::class, 'import']);
 
-    $router->get('template/list', [App\Admin\Controllers\ProductOrderController::class, 'list']);
-    $router->patch('template/update/{id}', [App\Admin\Controllers\ProductOrderController::class, 'update']);
-    $router->post('template/create', [App\Admin\Controllers\ProductOrderController::class, 'create']);
-    $router->delete('template/delete/{id}', [App\Admin\Controllers\ProductOrderController::class, 'delete']);
-    $router->post('templates/delete', [App\Admin\Controllers\ProductOrderController::class, 'deleteMultiple']);
-    $router->post('template/import', [App\Admin\Controllers\ProductOrderController::class, 'import']);
+    $router->get('template/list', [App\Admin\Controllers\TemplateController::class, 'list']);
+    $router->patch('template/update/{id}', [App\Admin\Controllers\TemplateController::class, 'update']);
+    $router->post('template/create', [App\Admin\Controllers\TemplateController::class, 'create']);
+    $router->delete('template/delete/{id}', [App\Admin\Controllers\TemplateController::class, 'delete']);
+    $router->post('templates/delete', [App\Admin\Controllers\TemplateController::class, 'deleteMultiple']);
+    $router->post('template/import', [App\Admin\Controllers\TemplateController::class, 'import']);
 
     $router->get('user-info/list', [App\Admin\Controllers\UserInfoController::class, 'list']);
     $router->patch('user-info/update/{id}', [App\Admin\Controllers\UserInfoController::class, 'update']);
