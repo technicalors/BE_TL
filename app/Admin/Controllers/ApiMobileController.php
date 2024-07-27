@@ -2905,7 +2905,7 @@ class ApiMobileController extends AdminController
                         } else {
                             throw new Exception("Không tìm thấy định mức cuộn");
                         }
-                        $numbers = $this->getQuantityArray($input['sl_giao_sx'], 1000);
+                        $numbers = $this->getQuantityArray($input['sl_giao_sx'], $lotsize);
                         $countLot = InfoCongDoan::query()->where([
                             ['lo_sx', $input['lo_sx']],
                             ['line_id', $input['line_id']],
@@ -2933,7 +2933,7 @@ class ApiMobileController extends AdminController
                                 'powerM' => null,
                                 'status' => $input['status'],
                                 'machine_code' => $input['machine_id'],
-                                'sl_kh' => $input['so_bat'] * $input['sl_thanh_pham'], // 
+                                'sl_kh' => $lotsize, // 
                                 'user_id' => auth()->user()->id,
                             ]);
                         }
