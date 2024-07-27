@@ -4,6 +4,7 @@ namespace App\Admin\Controllers;
 
 use App\Events\ProductionUpdated;
 use App\Http\Controllers\Controller;
+use App\Models\Assignment;
 use App\Models\CustomUser;
 use App\Models\Error;
 use App\Models\Factory;
@@ -32,6 +33,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class Phase2OIApiController extends Controller
@@ -517,7 +519,8 @@ class Phase2OIApiController extends Controller
     }
 
     //San lot khi vào công đoạn chọn
-    public function scanForSelectionLine(Request $request){
+    public function scanForSelectionLine(Request $request)
+    {
         $line = Line::find($request->line_id);
         if (!$line) {
             return $this->failure([], "Không tìm thấy công đoạn");
@@ -551,6 +554,180 @@ class Phase2OIApiController extends Controller
         return $this->success([], "Bắt đầu sản xuất");
     }
 
+    //Lấy dữ liệu giao việc
+    public function getAssignment(Request $request)
+    {
+        $lot = Lot::find($request->lot_id);
+        if (!$lot) {
+            return $this->failure([], "Không tìm thấy lot");
+        }
+        $assignment = Assignment::with(['worker:id,name', 'lot'])->where('lot_id', $request->lot_id)->get();
+        foreach($assignment as $item){
+            $item['so_luong']= $item->lot->so_luong ?? 0;
+        }
+        return $this->success($assignment);
+    }
+
+    //Tạo dữ liệu cho bảng Assignment
+    public function createAssignment(Request $request)
+    {
+        $lot = Lot::find($request->lot_id);
+        if (!$lot) {
+            return $this->failure([], "Không tìm thấy lot");
+        }
+        try {
+            DB::beginTransaction();
+            $assignment = Assignment::updateOrCreate(
+                ['lot_id' => $request->lot_id],
+                [
+                    'lot_id' => $request->lot_id,
+                    'assigned_quantity' => $lot->so_luong,
+                    'worker_id' => $request->worker_id
+                ]
+            );
+            DB::commit();
+        } catch (\Throwable $th) {
+            //throw $th;
+            DB::rollBack();
+            return $this->failure($th, "Lỗi tạo giao việc");
+        }
+
+        return $this->success($assignment);
+    }
+
+    //Xoá dữ liệu cho bảng Assignment
+    public function deleteAssignment(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $assignment = Assignment::find($id);
+            if($assignment->actual_quantity > 0){
+                return $this->failure([], "Không thể xoá giao việc đã thực hiện");
+            }
+            $assignment->delete();
+            DB::commit();
+        } catch (\Throwable $th) {
+            //throw $th;
+            DB::rollBack();
+            return $this->failure($th, "Lỗi xoá giao việc");
+        }
+
+        return $this->success($assignment);
+    }
+
+    //Cập nhật dữ liệu cho bảng Assignment
+    public function updateAssignment(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $assignment = Assignment::find($id);
+            if(!$assignment){
+                return $this->failure([], "Lot này chưa được giao việc");
+            }
+            $assignment->update([
+                'actual_quantity' => $request->actual_quantity ?? 0,
+                'ok_quantity' => $request->ok_quantity ?? 0,
+            ]);
+            $infoCongDoan = InfoCongDoan::where('lot_id', $assignment->lot_id)->where('line_id', $request->line_id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
+            if($infoCongDoan){
+                $infoCongDoan->update([
+                    'sl_dau_vao_hang_loat' => $request->actual_quantity ?? 0,
+                    'sl_dau_ra_hang_loat' => $request->ok_quantity ?? 0,
+                ]);
+                $lot = Lot::where('id', $assignment->lot_id)->update([
+                    'so_luong' => $request->ok_quantity ?? 0,
+                ]);
+            }
+            DB::commit();
+        } catch (\Throwable $th) {
+            //throw $th;
+            DB::rollBack();
+            return $this->failure($th, "Lỗi xoá giao việc");
+        }
+
+        return $this->success($assignment);
+    }
+
+    //In tem tại công đoạn Chọn
+    public function printTemSelectionLine(Request $request){
+        $line = Line::find($request->line_id);
+        if (!$line) {
+            return $this->failure([], "Không tìm thấy công đoạn");
+        }
+        $lot = Lot::find($request->lot_id);
+        if (!$lot) {
+            return $this->failure([], "Lot này chưa được sản xuất");
+        }
+        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->first();
+        if (!$infoCongDoan) {
+            return $this->failure([], "Chưa quét lot này");
+        }
+        if(!$request->sl_in_tem){
+            return $this->failure([], "Số lượng in tem không hợp lệ");
+        }
+        $data = [];
+        try {
+            DB::beginTransaction();
+            $counter = floor($lot->so_luong / $request->sl_in_tem);
+            if($counter <= 0){
+                return $this->failure([], "Số lượng in tem không hợp lệ");
+            }
+            $quantity = 0;
+            $counterT = Lot::where('id', $lot->id . '-T%')->count() + 1;
+            for($i = 0; $i < $counter; $i++){
+                $id = $lot->id . '-T';
+                $thung = Lot::firstOrCreate([
+                    'id' => $id . ($i+$counterT),
+                    'product_id' => $lot->product_id,
+                    'lo_sx' => $lot->lo_sx,
+                    'so_luong' => $request->sl_in_tem,
+                    'type' => Lot::TYPE_THUNG
+                ]);
+                $quantity += $request->sl_in_tem;
+                $data[] = $this->formatTemChon($thung, $infoCongDoan);
+            }
+            $lot->update([
+                'so_luong' => $lot->so_luong - $quantity
+            ]);
+            DB::commit();
+        } catch (\Throwable $th) {
+            Log::info($th);
+            DB::rollBack();
+            return $this->failure($th, "Lỗi quét lot");
+        }
+        return $this->success($data);
+    }
+
+    public function formatTemChon($lot, $infoCongDoan){
+        $product = $lot->product;
+        $line = $infoCongDoan->line;
+        $next_line = Line::where('ordering', '>', $line->ordering)->orderBy('ordering')->first();
+        $user = CustomUser::find($infoCongDoan->user_id ?? "");
+        $lotErrorLog = LotErrorLog::where('lot_id', $infoCongDoan->lot_id)->orderBy('line_id')->get();
+        $log = [];
+        foreach ($lotErrorLog as $item) {
+            foreach ($item->log ?? [] as $key => $value) {
+                $log[$key] = ($log[$key] ?? 0) + $value;
+            }
+        }
+        $errors = [];
+        foreach ($log as $key => $value) {
+            $errors[] = "$key: $value";
+        }
+        $ghi_chu = implode(', ', $errors);
+        $data = [];
+        $data['lot_id'] = $lot->id;
+        $data['lsx'] = $lot->lo_sx;
+        $data['ten_sp'] = $product->name ?? "";
+        $data['soluongtp'] = $lot->so_luong;
+        $data['his'] = $product->his ?? "";
+        $data['ver'] = $product->ver ?? "";
+        $data['cd_thuc_hien'] = $line->name ?? "";
+        $data['cd_tiep_theo'] = $next_line->name ?? "";
+        $data['nguoi_sx'] = $user->name ?? "";
+        $data['ghi_chu'] = $ghi_chu ?? "";
+        return $data;
+    }
     //============================Chất lượng============================
     //Số liệu tổng quan Chất lượng
     public function getQCOverall(Request $request)
