@@ -178,7 +178,6 @@ async function pushDataToMESAPI(data, apiUrl) {
                 'Content-Type': 'application/json'
             }
         });
-        // console.log(`Data pushed to API ${apiUrl}:`, response.data);
     } catch (error) {
         if (error.response && error.response.status === 401) {
             // Token hết hạn, lấy lại token mới và thử lại
@@ -225,7 +224,6 @@ function convertMachineInfoData(data, deviceId) {
     // Chuyển đổi các trường riêng
     for (const [field, path] of Object.entries(specificFields)) {
         if (data[path]) {
-            console.log('data', data[path][0][1]);
             convertedData[field] = data[path][0][1];
         }
     }
@@ -273,6 +271,7 @@ function enqueueData(deviceId, data) {
     // Chuyển đổi và đẩy dữ liệu trạng thái máy
     if (data['PLC:STATUS']) {
         let convertedData = convertMachineStatusData(data, deviceId);
+        console.log('convertedData', convertedData);
         if (JSON.stringify(lastMachineStatusValues[deviceId]) !== JSON.stringify(data)) {
             dataQueues[deviceId].push({ data: convertedData, apiUrl: MACHINE_STATUS_API_URL });
             lastMachineStatusValues[deviceId] = data;
@@ -320,8 +319,6 @@ async function connectWebSocket(deviceId) {
     ws.on('message', async (data) => {
         try {
             const parsedData = JSON.parse(data);
-            // console.log(parsedData.data);
-            // console.log(`Received data from ${deviceId}:`, parsedData.data);
 
             // Thêm mã thiết bị vào dữ liệu
             parsedData.data.device_id = deviceId;

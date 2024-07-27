@@ -68,6 +68,9 @@ class IOTController extends AdminController
 
     public function updateStatusFromIot(Request $request)
     {
+        $iot_log = new IOTLog();
+        $iot_log->data = $request->all();
+        $iot_log->save();
         $machine = Machine::where('device_id', $request->device_id)->first();
         $tracking = Tracking::where('machine_id', $machine->code)->first();
         $tracking->update(['status' => $request->status]);
@@ -146,7 +149,7 @@ class IOTController extends AdminController
         if ($info_cong_doan) {
             $info_cong_doan['thoi_gian_bam_may'] = date('Y-m-d H:i:s');
             $info_cong_doan->save();
-        }else{
+        } else {
             return response()->json(['message' => 'InfoCongDoan not found'], 404);
         }
         MachineStatus::active($machine->code);
