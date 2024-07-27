@@ -19,6 +19,7 @@ use Encore\Admin\Controllers\AdminController;
 use Illuminate\Http\Request;
 use App\Traits\API;
 use Carbon\Carbon;
+use stdClass;
 
 class IOTController extends AdminController
 {
@@ -72,10 +73,13 @@ class IOTController extends AdminController
         $iot_log->data = $request->all();
         $iot_log->save();
         $machine = Machine::where('device_id', $request->device_id)->first();
+        $obj = new stdClass($request);
+        $obj->machine_id = $machine->code;
+        $obj->type = 1;
         $tracking = Tracking::where('machine_id', $machine->code)->first();
         $tracking->update(['status' => $request->status]);
         // if ($tracking->lot_id) {
-            MachineLog::UpdateStatus($request);
+        MachineLog::UpdateStatus($obj);
         // }
         return response()->json(['message' => 'Equipment status updated successfully'], 200);
     }
