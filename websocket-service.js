@@ -265,13 +265,15 @@ function enqueueData(deviceId, data) {
     // Chuyển đổi và đẩy dữ liệu thông số máy
     if (deviceFieldConfig[deviceId]) {
         let convertedData = convertMachineInfoData(data, deviceId);
+        if(Object.keys(convertedData).length > 1){
+            console.log('convertedData', convertedData);
+        }
         dataQueues[deviceId].push({ data: convertedData, apiUrl: MACHINE_INFO_API_URL });
     }
 
     // Chuyển đổi và đẩy dữ liệu trạng thái máy
     if (data['PLC:STATUS']) {
         let convertedData = convertMachineStatusData(data, deviceId);
-        console.log('convertedData', convertedData);
         if (JSON.stringify(lastMachineStatusValues[deviceId]) !== JSON.stringify(data)) {
             dataQueues[deviceId].push({ data: convertedData, apiUrl: MACHINE_STATUS_API_URL });
             lastMachineStatusValues[deviceId] = data;
