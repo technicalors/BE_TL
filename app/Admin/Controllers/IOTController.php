@@ -96,14 +96,14 @@ class IOTController extends AdminController
         if (!$tracking) {
             $tracking = new Tracking();
             $tracking->machine_id = $machine->code;
-            $tracking->timestamp = $request->timestamp;
+            $tracking->timestamp = strtotime(now());
             $tracking->save();
         }
         if (is_null($tracking->timestamp)) {
-            $tracking->update(['timestamp' => $request->timestamp]);
+            $tracking->update(['timestamp' => strtotime(now())]);
         }
         if (!is_null($tracking->timestamp)) {
-            if ($request->timestamp  >= ($tracking->timestamp +  300)) {
+            if (strtotime(now())  >= ($tracking->timestamp +  300)) {
                 $start = $tracking->timestamp;
                 $end = $tracking->timestamp +  300;
                 $logs = MachineIot::where('data->record_type', "cl")->where('data->machine_id', $machine->code)->where('data->timestamp', '>=', $start)->where('data->timestamp', '<=', $end)->pluck('data')->toArray();
@@ -118,14 +118,14 @@ class IOTController extends AdminController
                     }
                 }
                 MachineIot::where('data->record_type', "cl")->where('data->machine_id', $machine->code)->delete();
-                Tracking::where('machine_id', $machine->code)->update(['timestamp' => $request->timestamp]);
-                MachineParameterLogs::where('machine_id', $machine->code)->where('start_time', '<=', date('Y-m-d H:i:s', $request->timestamp))->where('end_time', '>=', date('Y-m-d H:i:s', $request->timestamp))->update(['data_if' => $arr]);
+                Tracking::where('machine_id', $machine->code)->update(['timestamp' =>  strtotime(now())]);
+                MachineParameterLogs::where('machine_id', $machine->code)->where('start_time', '<=', date('Y-m-d H:i:s',  strtotime(now())))->where('end_time', '>=', date('Y-m-d H:i:s',  strtotime(now())))->update(['data_if' => $arr]);
                 if ($machine) {
                     $line = $machine->line;
                     $updated_tracking = Tracking::where('machine_id', $machine->code)->first();
                     $lot = Lot::find($updated_tracking->lot_id);
                     $thong_so_may = new ThongSoMay();
-                    $ca = (int)date('H', $request->timestamp);
+                    $ca = (int)date('H',  strtotime(now()));
                     $thong_so_may['ngay_sx'] = date('Y-m-d H:i:s');
                     $thong_so_may['ca_sx'] = ($ca >= 7 && $ca <= 17) ? 1 : 2;
                     $thong_so_may['xuong'] = '';
@@ -134,7 +134,7 @@ class IOTController extends AdminController
                     $thong_so_may['lo_sx'] = $lot ? $lot->lo_sx : null;
                     $thong_so_may['machine_code'] = $machine->code;
                     $thong_so_may['data_if'] = $arr;
-                    $thong_so_may['date_if'] = date('Y-m-d H:i:s', $request->timestamp);
+                    $thong_so_may['date_if'] = date('Y-m-d H:i:s',  strtotime(now()));
                     $thong_so_may->save();
                 }
             }
