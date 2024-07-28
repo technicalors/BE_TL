@@ -39,22 +39,17 @@ class IOTController extends AdminController
         $d_output = $request->output - $tracking->output;
         if ($d_input < 0) $d_input = 0;
         if ($d_output < 0) $d_output = 0;
-        Tracking::updateData($machine->code, $request->input, $request->output);
         if ($info_cong_doan) {
             $status = MachineStatus::getStatus($machine->code);
             if ($status == 0) { //chạy thử/vào hàng
-                if (!isset($info_cong_doan->sl_dau_vao_chay_thu)) $info_cong_doan->sl_dau_vao_chay_thu = 0;
-                $info_cong_doan->sl_dau_vao_chay_thu += $d_input;
-
-                if (!isset($info_cong_doan->sl_dau_ra_chay_thu)) $info_cong_doan->sl_dau_ra_chay_thu = 0;
-                $info_cong_doan->sl_dau_ra_chay_thu += $d_output;
+                if (is_null($tracking->input) || is_null($tracking->output)) {
+                    $tracking->update(['input' => $request->input, 'output' => $request->output]);
+                }
+                $info_cong_doan->sl_dau_vao_chay_thu = $request->input - $tracking->input;
+                $info_cong_doan->sl_dau_ra_chay_thu = $request->output - $tracking->output;
             } else if ($status == 1 || $status == 2) { // chạy hàng loạt
-                if (!isset($info_cong_doan->thoi_gian_bam_may)) $info_cong_doan->thoi_gian_bam_may = Carbon::now();
-                if (!isset($info_cong_doan->sl_dau_vao_hang_loat)) $info_cong_doan->sl_dau_vao_hang_loat = 0;
-                $info_cong_doan->sl_dau_vao_hang_loat += $d_input;
-
-                if (!isset($info_cong_doan->sl_dau_ra_hang_loat)) $info_cong_doan->sl_dau_ra_hang_loat = 0;
-                $info_cong_doan->sl_dau_ra_hang_loat += $d_output;
+                $info_cong_doan->sl_dau_vao_hang_loat = $request->input - $tracking->input;
+                $info_cong_doan->sl_dau_ra_hang_loat = $request->output - $tracking->output;
             }
             $productionData = [
                 'lot_id' => $tracking->lot_id,
@@ -144,7 +139,6 @@ class IOTController extends AdminController
 
     public function recordProductOutput(Request $request)
     {
-
         $machine = Machine::where('device_id', $request->device_id)->first();
         $tracking = Tracking::where('machine_id', $machine->code)->first();
         if (!$tracking) {
@@ -152,8 +146,11 @@ class IOTController extends AdminController
         }
         $info_cong_doan = InfoCongDoan::where('line_id', $machine->line_id)->where('lot_id', $tracking->lot_id)->first();
         if ($info_cong_doan) {
-            $info_cong_doan['thoi_gian_bam_may'] = date('Y-m-d H:i:s');
-            $info_cong_doan->save();
+            if (is_null($info_cong_doan['thoi_gian_bam_may'])) {
+                $info_cong_doan['thoi_gian_bam_may'] = date('Y-m-d H:i:s');
+                $info_cong_doan->save();
+                $tracking->update(['input' => $request->input, 'output' => $request->output]);
+            }
         } else {
             return response()->json(['message' => 'InfoCongDoan not found'], 404);
         }
