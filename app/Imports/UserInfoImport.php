@@ -40,7 +40,7 @@ class UserInfoImport implements ToCollection, WithHeadingRow, WithStartRow
         $id = $row['id'] ?? null;
         $name = $row['name'] ?? null;
         $dateJoinCompany = $row['date_join_company'] ?? null;
-        $dateEndTrial = $row['date_end_trial'] ?? null;
+        // $dateEndTrial = $row['date_end_trial'] ?? null;
         $category1 = $row['category_1'] ?? null;
         $category2 = $row['category_2'] ?? null;
         $category3 = $row['category_3'] ?? null;
@@ -51,7 +51,7 @@ class UserInfoImport implements ToCollection, WithHeadingRow, WithStartRow
         if (!$id || !$name || !$dateJoinCompany) return;
 
         $dateJoinCompany = $this->transformDate($dateJoinCompany);
-        if (!empty($dateEndTrial)) $dateEndTrial = $this->transformDate($dateEndTrial);
+        $dateEndTrial = Carbon::parse($dateJoinCompany)->addDays(60)->format('Y-m-d');
 
         // Create product_order
         UserInfo::create([
