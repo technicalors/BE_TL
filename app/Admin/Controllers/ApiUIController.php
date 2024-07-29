@@ -4891,7 +4891,7 @@ class ApiUIController extends AdminController
             $power = $record->sum('powerM') + $over_power;
             $hours = $seconds / 3600;
             $hours += $over_time;
-            $power_per_hour = $power / $hours;
+            $power_per_hour = $hours > 0 ? ($power / $hours) : $power;
             if ($hours > 24) {
                 $over_time = $hours - 24;
                 $hours = 24;
@@ -5328,7 +5328,8 @@ class ApiUIController extends AdminController
         }
     }
 
-    public function test(){
+    public function test()
+    {
         // $info = InfoCongDoan::all();
         // foreach ($info as $key => $record) {
         //     $status = 0;
