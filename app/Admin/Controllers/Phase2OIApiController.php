@@ -264,6 +264,7 @@ class Phase2OIApiController extends Controller
         }
         try {
             DB::beginTransaction();
+            MachineStatus::reset($machine->code);
             $infoCongDoan->update([
                 'thoi_gian_bat_dau' => Carbon::now(),
                 'user_id' => $request->user()->id,
@@ -300,6 +301,7 @@ class Phase2OIApiController extends Controller
         if (!$check) {
             try {
                 DB::beginTransaction();
+                MachineStatus::reset($machine->code);
                 $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $machine->line->id)->where('status', InfoCongDoan::STATUS_PLANNED)->first();
                 if (!$infoCongDoan) {
                     if (str_contains($request->lot_id, '.TV')) {
@@ -1464,7 +1466,7 @@ class Phase2OIApiController extends Controller
         $data->khach_hang = $product->customer_id ?? "";
         $data->ten_san_pham = $product->name ?? "";
         $data->ma_thung = $input['lot_id'];
-        
+
         $cell_check = Cell::where('product_id', $product->id)->count();
         $number_of_bin = 5;
         if ($product->chieu_rong_thung >= 340) {
