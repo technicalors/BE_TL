@@ -42,7 +42,7 @@ class IOTController extends AdminController
         if ($info_cong_doan) {
             $status = MachineStatus::getStatus($machine->code);
             if ($status == 0) { //chạy thử/vào hàng
-                if (is_null($tracking->input) || is_null($tracking->output)) {
+                if (is_null($tracking->input) || $tracking->input == 0  || is_null($tracking->output) || $tracking->output == 0) {
                     $tracking->update(['input' => $request->input, 'output' => $request->output]);
                 }
                 $info_cong_doan->sl_dau_vao_chay_thu = $request->input - $tracking->input;
