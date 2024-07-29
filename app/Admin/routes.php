@@ -622,9 +622,13 @@ Route::group([
     $router->post('update-tem-vang-quantity', [Phase2OIApiController::class, 'updateTemVangQuantity']);
     $router->post('check-eligible-for-printing', [Phase2OIApiController::class, 'checkEligibleForPrinting']);
     $router->post('print-tem-vang', [Phase2OIApiController::class, 'printTemVang']);
+    $router->post('scan-oqc', [Phase2OIApiController::class, 'scanOQC']);
 
     //Thiết bị
     $router->get('machine-overall', [Phase2OIApiController::class, 'getMachineOverall']);
+
+    //Kho
+    $router->get('scan-import', [Phase2OIApiController::class, 'scanImport']);
 });
 //UI
 Route::group([

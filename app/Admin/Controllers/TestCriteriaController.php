@@ -358,13 +358,13 @@ class TestCriteriaController extends AdminController
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
         $data = [];
         $line_arr = [];
-        $lines = Line::all();
+        $lines = Line::where('factory_id', 2)->get();
         foreach ($lines as $line) {
             $line_arr[Str::slug($line->name)] = $line->id;
         }
         $id_arr = [];
         $last_criteria = TestCriteria::orderByRaw('CHAR_LENGTH(id) DESC')->orderBy('id', 'DESC')->first();
-        $index = ((int) filter_var($last_criteria->id, FILTER_SANITIZE_NUMBER_INT) ?? 0) + 1;
+        $index = ((int) filter_var($last_criteria->id ?? "", FILTER_SANITIZE_NUMBER_INT) ?? 0) + 1;
         $i = 0;
         foreach ($allDataInSheet as $key => $row) {
             //Lấy dứ liệu từ dòng thứ 3
@@ -383,9 +383,9 @@ class TestCriteriaController extends AdminController
                 }
                 $input['hang_muc'] = str_replace(array("\n", "\r\n", "\r"), ' ', $row['C']);
                 $input['chi_tieu'] = $row['D'];
-                $input['tieu_chuan'] = $row['E'];
-                $input['phan_dinh'] = $row['F'];
-                $input['reference'] = isset($line_arr[Str::slug($row['G'])]) ? $line_arr[Str::slug($row['G'])] : '';
+                $input['tieu_chuan'] = $row['F'];
+                $input['phan_dinh'] = $row['H'];
+                $input['reference'] = isset($line_arr[Str::slug($row['I'])]) ? $line_arr[Str::slug($row['I'])] : '';
                 $validated = TestCriteria::validateUpdate($input);
                 if ($validated->fails()) {
                     admin_error('Lỗi dòng thứ ' . ($key) . ': ' . $validated->errors()->first());
