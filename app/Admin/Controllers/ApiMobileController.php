@@ -279,7 +279,7 @@ class ApiMobileController extends AdminController
     public function logsMachine(Request $request)
     {
         $machine_id = $request->machine_id;
-        $machine = Machine::find($machine_id);
+        $machine = Machine::where('code', $machine_id)->first();
         if (!$machine) {
             return $this->failure([], 'Không tìm thấy mã máy');
         }
@@ -348,7 +348,7 @@ class ApiMobileController extends AdminController
 
     public function machineOverall(Request $request)
     {
-        $machine = Machine::find($request->machine_id);
+        $machine = Machine::where('code', $request->machine_id)->first();
         if (!$machine) return $this->failure([], 'Không tìm thấy mã máy');
         $logs = MachineLog::where('machine_id', $machine->code)->whereNotNull(['info->start_time', 'info->end_time'])->whereDate('created_at', date('Y-m-d'))->get();
         $tg_dung = 0;

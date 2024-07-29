@@ -28,6 +28,7 @@ let isProcessing = {};
 // Biến lưu trữ giá trị cuối cùng cho sản lượng và trạng thái máy
 let lastProductionValues = {};
 let lastMachineStatusValues = {};
+let lastMachineRecordValues = {};
 
 const deviceFieldConfig = {
     '22d821e0-45bd-11ef-b8c3-a13625245eca': {
@@ -178,7 +179,6 @@ async function pushDataToMESAPI(data, apiUrl) {
                 'Content-Type': 'application/json'
             }
         });
-        // console.log(`Data pushed to API ${apiUrl}:`, response.data);
     } catch (error) {
         if (error.response && error.response.status === 401) {
             // Token hết hạn, lấy lại token mới và thử lại
@@ -225,7 +225,6 @@ function convertMachineInfoData(data, deviceId) {
     // Chuyển đổi các trường riêng
     for (const [field, path] of Object.entries(specificFields)) {
         if (data[path]) {
-            console.log('data', data[path][0][1]);
             convertedData[field] = data[path][0][1];
         }
     }
@@ -251,7 +250,7 @@ function convertMachineRecordData(data, deviceId) {
 }
 
 // Hàm phân loại dữ liệu và đẩy vào hàng đợi
-function enqueueData(deviceId, data) {
+async function enqueueData(deviceId, data) {
     // console.log('data',data);
     // Chuyển đổi và đẩy dữ liệu sản lượngPLC:Num_Out
     if (data['PLC:Num_Input'] || data['PLC:Num_Out']) {
@@ -265,13 +264,14 @@ function enqueueData(deviceId, data) {
     // Chuyển đổi và đẩy dữ liệu thông số máy
     if (deviceFieldConfig[deviceId]) {
         let convertedData = convertMachineInfoData(data, deviceId);
-        dataQueues[deviceId].push({ data: convertedData, apiUrl: MACHINE_INFO_API_URL });
+        if (Object.keys(convertedData).length > 1) {
+            dataQueues[deviceId].push({ data: convertedData, apiUrl: MACHINE_INFO_API_URL });
+        }
     }
 
     // Chuyển đổi và đẩy dữ liệu trạng thái máy
     if (data['PLC:STATUS']) {
         let convertedData = convertMachineStatusData(data, deviceId);
-        console.log('convertedData', convertedData);
         if (JSON.stringify(lastMachineStatusValues[deviceId]) !== JSON.stringify(data)) {
             dataQueues[deviceId].push({ data: convertedData, apiUrl: MACHINE_STATUS_API_URL });
             lastMachineStatusValues[deviceId] = data;
@@ -280,11 +280,15 @@ function enqueueData(deviceId, data) {
 
     if (data['PLC:Count_En']) {
         let convertedData = convertMachineRecordData(data, deviceId);
-        if (JSON.stringify(lastMachineStatusValues[deviceId]) !== JSON.stringify(data)) {
+        if (JSON.stringify(lastMachineRecordValues[deviceId]) !== JSON.stringify(data)) {
             if (data['PLC:Count_En'][0][1] == 1) {
+                const result = await axios.get("http://103.77.215.18:3030/api/plugins/telemetry/DEVICE/" + deviceId + "/values/timeseries?keys=PLC:Num_Input,PLC:Num_Out", { headers: { 'Authorization': 'Bearer ' + authToken } });
+                convertedData.input = result.data['PLC:Num_Input'] ? result.data['PLC:Num_Input'][0]['value'] : 0;
+                convertedData.output = result.data['PLC:Num_Out'][0]['value'];
+                console.log(convertedData);
                 dataQueues[deviceId].push({ data: convertedData, apiUrl: MACHINE_RECORD_API_URL });
             }
-            lastMachineStatusValues[deviceId] = data;
+            lastMachineRecordValues[deviceId] = data;
         }
     }
 
@@ -319,8 +323,6 @@ async function connectWebSocket(deviceId) {
     ws.on('message', async (data) => {
         try {
             const parsedData = JSON.parse(data);
-            // console.log(parsedData.data);
-            // console.log(`Received data from ${deviceId}:`, parsedData.data);
 
             // Thêm mã thiết bị vào dữ liệu
             parsedData.data.device_id = deviceId;
@@ -351,12 +353,13 @@ function reconnectWebSocket(deviceId) {
 // Kết nối tới WebSocket cho từng thiết bị trong danh sách
 async function connectAllDevices() {
     await getAuthToken();
-
+    const result = await axios.get("http://103.77.215.18:3030/api/plugins/telemetry/DEVICE/f7f77560-45bd-11ef-b8c3-a13625245eca/values/timeseries?keys=PLC:Num_Input,PLC:Num_Out", { headers: { 'Authorization': 'Bearer ' + authToken } });
     for (const deviceId of DEVICE_IDS) {
         dataQueues[deviceId] = [];
         isProcessing[deviceId] = false;
         lastProductionValues[deviceId] = null;
         lastMachineStatusValues[deviceId] = null;
+        lastMachineRecordValues[deviceId] = null;
         connectWebSocket(deviceId).catch(error => {
             console.error(`Failed to connect to WebSocket for device ${deviceId}:`, error.message);
             setTimeout(() => reconnectWebSocket(deviceId), 5000);

@@ -19,6 +19,7 @@ use Encore\Admin\Controllers\AdminController;
 use Illuminate\Http\Request;
 use App\Traits\API;
 use Carbon\Carbon;
+use stdClass;
 
 class IOTController extends AdminController
 {
@@ -38,22 +39,17 @@ class IOTController extends AdminController
         $d_output = $request->output - $tracking->output;
         if ($d_input < 0) $d_input = 0;
         if ($d_output < 0) $d_output = 0;
-        Tracking::updateData($machine->code, $request->input, $request->output);
         if ($info_cong_doan) {
             $status = MachineStatus::getStatus($machine->code);
             if ($status == 0) { //chạy thử/vào hàng
-                if (!isset($info_cong_doan->sl_dau_vao_chay_thu)) $info_cong_doan->sl_dau_vao_chay_thu = 0;
-                $info_cong_doan->sl_dau_vao_chay_thu += $d_input;
-
-                if (!isset($info_cong_doan->sl_dau_ra_chay_thu)) $info_cong_doan->sl_dau_ra_chay_thu = 0;
-                $info_cong_doan->sl_dau_ra_chay_thu += $d_output;
+                if (is_null($tracking->input) || is_null($tracking->output)) {
+                    $tracking->update(['input' => $request->input, 'output' => $request->output]);
+                }
+                $info_cong_doan->sl_dau_vao_chay_thu = $request->input - $tracking->input;
+                $info_cong_doan->sl_dau_ra_chay_thu = $request->output - $tracking->output;
             } else if ($status == 1 || $status == 2) { // chạy hàng loạt
-                if (!isset($info_cong_doan->thoi_gian_bam_may)) $info_cong_doan->thoi_gian_bam_may = Carbon::now();
-                if (!isset($info_cong_doan->sl_dau_vao_hang_loat)) $info_cong_doan->sl_dau_vao_hang_loat = 0;
-                $info_cong_doan->sl_dau_vao_hang_loat += $d_input;
-
-                if (!isset($info_cong_doan->sl_dau_ra_hang_loat)) $info_cong_doan->sl_dau_ra_hang_loat = 0;
-                $info_cong_doan->sl_dau_ra_hang_loat += $d_output;
+                $info_cong_doan->sl_dau_vao_hang_loat = $request->input - $tracking->input;
+                $info_cong_doan->sl_dau_ra_hang_loat = $request->output - $tracking->output;
             }
             $productionData = [
                 'lot_id' => $tracking->lot_id,
@@ -68,12 +64,19 @@ class IOTController extends AdminController
 
     public function updateStatusFromIot(Request $request)
     {
+        $iot_log = new IOTLog();
+        $iot_log->data = $request->all();
+        $iot_log->save();
         $machine = Machine::where('device_id', $request->device_id)->first();
+        $obj = new stdClass();
+        $obj->status = $request->status;
+        $obj->machine_id = $machine->code;
+        $obj->type = 1;
         $tracking = Tracking::where('machine_id', $machine->code)->first();
         $tracking->update(['status' => $request->status]);
-        if ($tracking->lot_id) {
-            MachineStatus::setValue($machine->code, $request->status);
-        }
+        // if ($tracking->lot_id) {
+        MachineLog::UpdateStatus($obj);
+        // }
         return response()->json(['message' => 'Equipment status updated successfully'], 200);
     }
 
@@ -88,14 +91,14 @@ class IOTController extends AdminController
         if (!$tracking) {
             $tracking = new Tracking();
             $tracking->machine_id = $machine->code;
-            $tracking->timestamp = $request->timestamp;
+            $tracking->timestamp = strtotime(now());
             $tracking->save();
         }
         if (is_null($tracking->timestamp)) {
-            $tracking->update(['timestamp' => $request->timestamp]);
+            $tracking->update(['timestamp' => strtotime(now())]);
         }
         if (!is_null($tracking->timestamp)) {
-            if ($request->timestamp  >= ($tracking->timestamp +  300)) {
+            if (strtotime(now())  >= ($tracking->timestamp +  300)) {
                 $start = $tracking->timestamp;
                 $end = $tracking->timestamp +  300;
                 $logs = MachineIot::where('data->record_type', "cl")->where('data->machine_id', $machine->code)->where('data->timestamp', '>=', $start)->where('data->timestamp', '<=', $end)->pluck('data')->toArray();
@@ -110,14 +113,14 @@ class IOTController extends AdminController
                     }
                 }
                 MachineIot::where('data->record_type', "cl")->where('data->machine_id', $machine->code)->delete();
-                Tracking::where('machine_id', $machine->code)->update(['timestamp' => $request->timestamp]);
-                MachineParameterLogs::where('machine_id', $machine->code)->where('start_time', '<=', date('Y-m-d H:i:s', $request->timestamp))->where('end_time', '>=', date('Y-m-d H:i:s', $request->timestamp))->update(['data_if' => $arr]);
+                Tracking::where('machine_id', $machine->code)->update(['timestamp' =>  strtotime(now())]);
+                MachineParameterLogs::where('machine_id', $machine->code)->where('start_time', '<=', date('Y-m-d H:i:s',  strtotime(now())))->where('end_time', '>=', date('Y-m-d H:i:s',  strtotime(now())))->update(['data_if' => $arr]);
                 if ($machine) {
                     $line = $machine->line;
                     $updated_tracking = Tracking::where('machine_id', $machine->code)->first();
                     $lot = Lot::find($updated_tracking->lot_id);
                     $thong_so_may = new ThongSoMay();
-                    $ca = (int)date('H', $request->timestamp);
+                    $ca = (int)date('H',  strtotime(now()));
                     $thong_so_may['ngay_sx'] = date('Y-m-d H:i:s');
                     $thong_so_may['ca_sx'] = ($ca >= 7 && $ca <= 17) ? 1 : 2;
                     $thong_so_may['xuong'] = '';
@@ -126,7 +129,7 @@ class IOTController extends AdminController
                     $thong_so_may['lo_sx'] = $lot ? $lot->lo_sx : null;
                     $thong_so_may['machine_code'] = $machine->code;
                     $thong_so_may['data_if'] = $arr;
-                    $thong_so_may['date_if'] = date('Y-m-d H:i:s', $request->timestamp);
+                    $thong_so_may['date_if'] = date('Y-m-d H:i:s',  strtotime(now()));
                     $thong_so_may->save();
                 }
             }
@@ -136,7 +139,6 @@ class IOTController extends AdminController
 
     public function recordProductOutput(Request $request)
     {
-
         $machine = Machine::where('device_id', $request->device_id)->first();
         $tracking = Tracking::where('machine_id', $machine->code)->first();
         if (!$tracking) {
@@ -144,9 +146,12 @@ class IOTController extends AdminController
         }
         $info_cong_doan = InfoCongDoan::where('line_id', $machine->line_id)->where('lot_id', $tracking->lot_id)->first();
         if ($info_cong_doan) {
-            $info_cong_doan['thoi_gian_bam_may'] = date('Y-m-d H:i:s');
-            $info_cong_doan->save();
-        }else{
+            if (is_null($info_cong_doan['thoi_gian_bam_may'])) {
+                $info_cong_doan['thoi_gian_bam_may'] = date('Y-m-d H:i:s');
+                $info_cong_doan->save();
+                $tracking->update(['input' => $request->input, 'output' => $request->output]);
+            }
+        } else {
             return response()->json(['message' => 'InfoCongDoan not found'], 404);
         }
         MachineStatus::active($machine->code);

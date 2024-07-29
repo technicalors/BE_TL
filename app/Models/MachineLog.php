@@ -30,7 +30,7 @@ class MachineLog extends Model
         $res = self::getLatestRecord($request->machine_id);
         if ((int)$isRun == 1 && isset($res) && !isset($res->info['end_time'])) {
             $info = $res->info;
-            $info['end_time'] = $request->timestamp;
+            $info['end_time'] = strtotime(now());
             $res->info = $info;
             $res->save();
             return $res;
@@ -40,7 +40,7 @@ class MachineLog extends Model
             $res = new MachineLog();
             $res->machine_id = $request->machine_id;
             $info = [
-                "start_time" => $request->timestamp
+                "start_time" => strtotime(now()),
             ];
             if ($tracking->lot_id) {
                 $info['lot_id'] = $tracking->lot_id;
