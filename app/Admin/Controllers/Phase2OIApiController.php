@@ -499,27 +499,41 @@ class Phase2OIApiController extends Controller
                 if ($sl_con_lai < 0) {
                     return $this->failure([], "Số lượng sản xuất không hợp lệ");
                 } elseif ($sl_con_lai === 0) {
-                    Lot::create([
-                        'id' => $infoCongDoan->lot_id,
-                        'product_id' => $infoCongDoan->product_id,
-                        'lo_sx' => $infoCongDoan->lo_sx,
-                        'so_luong' => 0,
-                        'type' => Lot::TYPE_TEM_TRANG
-                    ]);
+                    $lot = Lot::find($infoCongDoan->lot_id);
+                    if (!$lot) {
+                        Lot::create([
+                            'id' => $infoCongDoan->lot_id,
+                            'product_id' => $infoCongDoan->product_id,
+                            'lo_sx' => $infoCongDoan->lo_sx,
+                            'so_luong' => 0,
+                            'type' => Lot::TYPE_TEM_TRANG
+                        ]);
+                    } else {
+                        $lot->update([
+                            'so_luong' => 0
+                        ]);
+                    }
                 } else {
-                    Lot::create([
-                        'id' => $infoCongDoan->lot_id,
-                        'product_id' => $infoCongDoan->product_id,
-                        'lo_sx' => $infoCongDoan->lo_sx,
-                        'so_luong' => $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang,
-                        'type' => Lot::TYPE_TEM_TRANG
-                    ]);
+                    $lot = Lot::find($infoCongDoan->lot_id);
+                    if (!$lot) {
+                        Lot::create([
+                            'id' => $infoCongDoan->lot_id,
+                            'product_id' => $infoCongDoan->product_id,
+                            'lo_sx' => $infoCongDoan->lo_sx,
+                            'so_luong' => $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang,
+                            'type' => Lot::TYPE_TEM_TRANG
+                        ]);
+                    } else {
+                        $lot->update([
+                            'so_luong' => $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang
+                        ]);
+                    }
                 }
                 $infoCongDoan->update([
                     'thoi_gian_ket_thuc' => Carbon::now(),
                     'status' => InfoCongDoan::STATUS_COMPLETED
                 ]);
-
+                MachineStatus::deactive($machine->code);
                 $tracking->update([
                     'lot_id' => null,
                     'input' => 0,
