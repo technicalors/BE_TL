@@ -13,6 +13,9 @@ class Losx extends Model
     protected $fillable = [
         'product_order_id'
     ];
+    protected $primaryKey = 'id';
+    public $incrementing = false;
+    protected $keyType = 'string';
     public static function boot()
     {
         parent::boot();

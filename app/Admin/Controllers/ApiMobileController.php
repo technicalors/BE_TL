@@ -2827,7 +2827,7 @@ class ApiMobileController extends AdminController
                             $input['lo_sx'] = $losx->id;
                         } else {
                             $losx = Losx::create([
-                                'product_order_id' => $row['L']
+                                'product_order_id' => $row['L'],
                             ]);
                             $input['lo_sx'] = $losx->id;
                         }
