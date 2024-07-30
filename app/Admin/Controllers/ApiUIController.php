@@ -4898,9 +4898,9 @@ class ApiUIController extends AdminController
             }
             $over_power = $over_time * $power_per_hour;
             $sum += $power - $over_power > 0 ? number_format($power - $over_power, 1) : 0;
-            $power_sum[date('j', strtotime($key))] = number_format($power - $over_power, 1);
-            $total_hours[date('j', strtotime($key))] = number_format($hours, 1);
-            $result[date('j', strtotime($key))] = $hours ? number_format($power_per_hour, 1) : 0;
+            $power_sum[date('j', strtotime($key))] = ($power - $over_power) > 0 ? number_format($power - $over_power, 1) : 0;
+            $total_hours[date('j', strtotime($key))] = $hours > 0 ? number_format($hours, 1) : 0;
+            $result[date('j', strtotime($key))] = $hours > 0 ? number_format($power_per_hour, 1) : 0;
         }
         $data = [$power_sum, $total_hours, $result];
         return $this->success(['data' => $data, 'sum' => round($sum, 1)]);
