@@ -4886,7 +4886,7 @@ class ApiUIController extends AdminController
             $over_time = 0;
             $over_power = 0;
             $seconds = $record->map(function ($info) {
-                return $info->ket_thuc - $info->bat_dau;
+                return abs($info->ket_thuc - $info->bat_dau);
             })->sum();
             $power = $record->sum('powerM') + $over_power;
             $hours = $seconds / 3600;
@@ -4896,7 +4896,7 @@ class ApiUIController extends AdminController
                 $over_time = $hours - 24;
                 $hours = 24;
             }
-            $over_power = $over_time * $power_per_hour;
+            $over_power = abs($over_time * $power_per_hour);
             $sum += $power - $over_power > 0 ? number_format($power - $over_power, 1) : 0;
             $power_sum[date('j', strtotime($key))] = ($power - $over_power) > 0 ? number_format($power - $over_power, 1) : 0;
             $total_hours[date('j', strtotime($key))] = $hours > 0 ? number_format($hours, 1) : 0;
