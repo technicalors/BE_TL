@@ -542,6 +542,7 @@ Route::group([
     $router->get('ui/iqc', [ApiUIController::class, 'iqcCheckedList']);
     $router->get('ui/iqc/export', [ApiUIController::class, 'exportIQCHistory']);
     $router->get('ui/equipment/power-consume-by-month', [ApiUIController::class, 'powerConsumeByMonth']);
+    $router->get('ui/equipment/power-consume-by-month-chart', [ApiUIController::class, 'powerConsumeByMonthChart']);
     $router->get('ui/equipment/power-consume-by-product', [ApiUIController::class, 'powerConsumeByProduct']);
     $router->get('ui/export/power-consume-by-product', [ApiUIController::class, 'exportPowerConsumeByProduct']);
 
