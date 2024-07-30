@@ -4877,7 +4877,7 @@ class ApiUIController extends AdminController
         $datediff = strtotime($input['end_date']) - strtotime($input['start_date']);
         $days = round($datediff / (60 * 60 * 24));
         $data = [];
-        $power_sum = ['col' => 'Tổng điện năng (kWh)'];
+        $power_sum = ['col' => 'Tổng điện năng (kW)'];
         $total_hours = ['col' => 'Số giờ'];
         $result = ['col' => 'TB điện năng tiêu thụ (kWh)'];
         // return $records;
