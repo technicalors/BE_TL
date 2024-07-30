@@ -16,7 +16,7 @@ class ProductionUpdated implements ShouldBroadcast
 
     public $productionData;
 
-    public function __construct($productionData)
+    public function __construct($productionData = null)
     {
         $this->productionData = $productionData;
     }
