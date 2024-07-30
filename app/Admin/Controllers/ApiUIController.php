@@ -4877,7 +4877,7 @@ class ApiUIController extends AdminController
         $datediff = strtotime($input['end_date']) - strtotime($input['start_date']);
         $days = round($datediff / (60 * 60 * 24));
         $data = [];
-        $power_sum = ['col' => 'Tổng điện năng (kW)'];
+        $power_sum = ['col' => 'Tổng điện năng (kWh)'];
         $total_hours = ['col' => 'Số giờ'];
         $result = ['col' => 'TB điện năng tiêu thụ (kWh)'];
         // return $records;
@@ -4897,13 +4897,123 @@ class ApiUIController extends AdminController
                 $hours = 24;
             }
             $over_power = $over_time * $power_per_hour;
-            $sum += $power - $over_power > 0 ? number_format($power - $over_power, 1) : 0;
-            $power_sum[date('j', strtotime($key))] = number_format($power - $over_power, 1);
-            $total_hours[date('j', strtotime($key))] = number_format($hours, 1);
-            $result[date('j', strtotime($key))] = $hours ? number_format($power_per_hour, 1) : 0;
+            $sum += $power - $over_power > 0 ? round($power - $over_power, 1) : 0;
+            $power_sum[date('j', strtotime($key))] = round($power - $over_power, 1);
+            $total_hours[date('j', strtotime($key))] = round($hours, 1);
+            $result[date('j', strtotime($key))] = $hours ? round($power_per_hour, 1) : 0;
         }
         $data = [$power_sum, $total_hours, $result];
         return $this->success(['data' => $data, 'sum' => round($sum, 1)]);
+    }
+
+    public function powerConsumeByMonthChart(Request $request)
+    {
+        $input = $request->all();
+        $input['type'] = 'month';
+        switch ($input['type']) {
+            case 'month':
+                $input['start_date'] = date('Y-m-01 00:00:00', strtotime($input['datetime']));
+                $input['end_date'] = date('Y-m-t 23:59:59', strtotime($input['datetime']));
+                break;
+            case 'day':
+                $input['start_date'] = date('Y-m-d 00:00:00', strtotime($input['datetime']));
+                $input['end_date'] = date('Y-m-d 23:59:59', strtotime($input['datetime']));
+                break;
+            case 'week':
+                $input['start_date'] = date('Y-m-d 00:00:00', strtotime($input['datetime'] . " sunday -1 week +1 day"));
+                $input['end_date'] = date('Y-m-d 23:59:59', strtotime($input['datetime'] . " sunday 0 week"));
+                break;
+            default:
+                # code...
+                break;
+        }
+        $prev_year_input = [];
+        $prev_year_input['start_date'] = date('Y-m-d 00:00:00', strtotime($input['start_date'].' - 1 year'));
+        $prev_year_input['end_date'] = date('Y-m-d 23:59:59', strtotime($input['end_date'].' - 1 year'));
+        //current year data
+        $query = InfoCongDoan::orderBy('created_at');
+        if (isset($input['start_date']) && isset($input['end_date'])) {
+            $query->where('created_at', '>=', $input['start_date'])->where('created_at', '<=', $input['end_date']);
+        }
+        $query->where('line_id', $input['line_id'] ?? 10);
+        $records = $query->whereNotNull(['thoi_gian_ket_thuc', 'thoi_gian_bat_dau'])
+            ->select(
+                'info_cong_doan.*',
+                DB::raw('DATE(thoi_gian_bat_dau) as date'),
+                DB::raw('UNIX_TIMESTAMP(thoi_gian_ket_thuc) as ket_thuc, UNIX_TIMESTAMP(thoi_gian_bat_dau) as bat_dau')
+            )
+            ->get()
+            ->groupBy('date');
+        $datediff = strtotime($input['end_date']) - strtotime($input['start_date']);
+        $current = [];
+        $power_sum = [];
+        $total_hours = [];
+        $result = [];
+        $sum = 0;
+        foreach ($records as $key => $record) {
+            $over_time = 0;
+            $over_power = 0;
+            $seconds = $record->map(function ($info) {
+                return $info->ket_thuc - $info->bat_dau;
+            })->sum();
+            $power = $record->sum('powerM') + $over_power;
+            $hours = $seconds / 3600;
+            $hours += $over_time;
+            $power_per_hour = $hours > 0 ? ($power / $hours) : $power;
+            if ($hours > 24) {
+                $over_time = $hours - 24;
+                $hours = 24;
+            }
+            $over_power = $over_time * $power_per_hour;
+            $sum += $power - $over_power > 0 ? round($power - $over_power, 1) : 0;
+            $power_sum[date('d/m', strtotime($key))] = round($power - $over_power, 1);
+            $total_hours[date('d/m', strtotime($key))] = round($hours, 1);
+            $result[date('d/m', strtotime($key))] = $hours ? round($power_per_hour, 1) : 0;
+        }
+        $current = $power_sum;
+
+        //prev year data
+        $query = InfoCongDoan::orderBy('created_at');
+        if (isset($input['start_date']) && isset($input['end_date'])) {
+            $query->where('created_at', '>=', $prev_year_input['start_date'])->where('created_at', '<=', $prev_year_input['end_date']);
+        }
+        $query->where('line_id', $input['line_id'] ?? 10);
+        $records = $query->whereNotNull(['thoi_gian_ket_thuc', 'thoi_gian_bat_dau'])
+            ->select(
+                'info_cong_doan.*',
+                DB::raw('DATE(thoi_gian_bat_dau) as date'),
+                DB::raw('UNIX_TIMESTAMP(thoi_gian_ket_thuc) as ket_thuc, UNIX_TIMESTAMP(thoi_gian_bat_dau) as bat_dau')
+            )
+            ->get()
+            ->groupBy('date');
+        $previous = [];
+        $power_sum = [];
+        $total_hours = [];
+        $result = [];
+        // return $records;
+        $sum = 0;
+        foreach ($records as $key => $record) {
+            $over_time = 0;
+            $over_power = 0;
+            $seconds = $record->map(function ($info) {
+                return $info->ket_thuc - $info->bat_dau;
+            })->sum();
+            $power = $record->sum('powerM') + $over_power;
+            $hours = $seconds / 3600;
+            $hours += $over_time;
+            $power_per_hour = $hours > 0 ? ($power / $hours) : $power;
+            if ($hours > 24) {
+                $over_time = $hours - 24;
+                $hours = 24;
+            }
+            $over_power = $over_time * $power_per_hour;
+            $sum += $power - $over_power > 0 ? round($power - $over_power, 1) : 0;
+            $power_sum[date('d/m', strtotime($key))] = round($power - $over_power, 1);
+            $total_hours[date('d/m', strtotime($key))] = round($hours, 1);
+            $result[date('d/m', strtotime($key))] = $hours ? round($power_per_hour, 1) : 0;
+        }
+        $previous = $power_sum;
+        return $this->success(['current' => $current, 'previous' => $previous, 'start_date' => $input['start_date'], 'end_date' => $input['end_date']]);
     }
 
     public function powerConsumeByProductQuery(Request $request)
