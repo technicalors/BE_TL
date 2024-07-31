@@ -2908,8 +2908,7 @@ class ApiMobileController extends AdminController
                         $numbers = $this->getQuantityArray($input['sl_giao_sx'], $lotsize);
                         $countLot = InfoCongDoan::query()->where([
                             ['lo_sx', $input['lo_sx']],
-                            ['line_id', $input['line_id']],
-                            ['machine_code', $input['machine_id']],
+                            ['line_id', $input['line_id']]
                         ])->count();
                         foreach ($numbers as $number) {
                             $countLot++;
