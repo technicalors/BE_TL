@@ -743,7 +743,7 @@ class Phase2OIApiController extends Controller
                 ]);
             }
             $quantity = 0;
-            $counterT = Lot::where('id', $lot->id . '-T%')->count() + 1;
+            $counterT = Lot::where('id', 'like', $lot->id . '-T%')->count() + 1;
             for ($i = 0; $i < $counter; $i++) {
                 $id = $lot->id . '-T';
                 $thung = Lot::firstOrCreate([
