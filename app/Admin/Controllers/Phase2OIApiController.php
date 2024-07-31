@@ -739,6 +739,7 @@ class Phase2OIApiController extends Controller
             }
             if($lot->so_luong === $request->sl_in_tem){
                 $infoCongDoan->update([
+                    'thoi_gian_ket_thuc' => Carbon::now(),
                     'status' => InfoCongDoan::STATUS_COMPLETED
                 ]);
             }
