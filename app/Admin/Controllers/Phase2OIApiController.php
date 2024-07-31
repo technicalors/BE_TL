@@ -194,9 +194,13 @@ class Phase2OIApiController extends Controller
             } else {
                 $hao_phi_sx = null;
             }
-            $hao_phi_vao_hang = $product->timeWastages->first(function ($record) use ($item) {
-                return $record->line_id == $item->line_id && $record->type == 1;
-            }) ?? null;
+            if ($product && $product->timeWastages) {
+                $hao_phi_vao_hang = $product->timeWastages->first(function ($record) use ($item) {
+                    return $record->line_id == $item->line_id && $record->type == 1;
+                }) ?? null;
+            } else {
+                $hao_phi_vao_hang = null;
+            }
             $data =  [
                 "lo_sx" => $item->lo_sx,
                 "lot_id" => $item->lot_id,
