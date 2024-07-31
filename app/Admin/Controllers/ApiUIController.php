@@ -4897,7 +4897,7 @@ class ApiUIController extends AdminController
                 $hours = 24;
             }
             $over_power = abs($over_time * $power_per_hour);
-            $sum += $power - $over_power > 0 ? number_format($power - $over_power, 1) : 0;
+            $sum += ($power - $over_power) > 0 ? number_format(abs($power - $over_power), 1) : 0;
             $power_sum[date('j', strtotime($key))] = ($power - $over_power) > 0 ? number_format($power - $over_power, 1) : 0;
             $total_hours[date('j', strtotime($key))] = $hours > 0 ? number_format($hours, 1) : 0;
             $result[date('j', strtotime($key))] = $hours > 0 ? number_format($power_per_hour, 1) : 0;

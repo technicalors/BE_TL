@@ -2889,7 +2889,7 @@ class ApiMobileController extends AdminController
                         }
 
                         $record = ProductionPlan::query()->where([
-                            ['line_id', $line->id],
+                            ['machine_id', $row['H']],
                             ['lo_sx', $losx->id],
                             ['product_id', $input['product_id']],
                         ])->first();
