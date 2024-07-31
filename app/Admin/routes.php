@@ -21,6 +21,7 @@ use App\Admin\Controllers\Phase2DBApiController;
 use App\Admin\Controllers\Phase2OIApiController;
 use App\Admin\Controllers\Phase2UIApiController;
 use App\Admin\Controllers\ParameterController;
+use App\Admin\Controllers\StampController;
 use App\Models\MaintenancePlan;
 use Encore\Admin\Facades\Admin;
 use Illuminate\Routing\Router;
@@ -656,4 +657,15 @@ Route::group([
 
     $router->get('equipment/oee', [Phase2UIApiController::class, 'getOEEData']);
     $router->get('equipment/error-frequency', [Phase2UIApiController::class, 'getErrorFrequencyData']);
+    
+    
+});
+
+//UI
+Route::group([
+    'prefix'        => "/api/p2/ui/master-data",
+    'middleware'    => "auth:sanctum",
+], function (Router $router) {
+    Route::apiResource('stamps', StampController::class);
+    Route::post('stamps/import', [StampController::class, 'import']);
 });
