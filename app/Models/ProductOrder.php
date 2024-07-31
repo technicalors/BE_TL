@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Validator;
 
 class ProductOrder extends Model
@@ -35,5 +36,13 @@ class ProductOrder extends Model
             ]
         );
         return $validated;
+    }
+
+    /**
+     * @return HasOne
+     */
+    public function product(): HasOne
+    {
+        return $this->hasOne(Product::class, 'id', 'product_id');
     }
 }
