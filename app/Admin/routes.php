@@ -590,7 +590,7 @@ Route::group([
     $router->get('/machine-performance', [Phase2DBApiController::class, 'getMachinePerformance']);
     $router->post('/test-api', [Phase2DBApiController::class, 'handle']);
 
-    $router->get('/production-situation-line-gap-dan', [Phase2DBApiController::class, 'getProductionSituationLineGapDan']);
+    $router->get('/production-situation-line-in', [Phase2DBApiController::class, 'getProductionSituationLineIn']);
     $router->get('/production-situation-by-machine', [Phase2DBApiController::class, 'getProductionSituationByMachine']);
 });
 //OI

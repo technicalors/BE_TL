@@ -152,9 +152,9 @@ class Phase2DBApiController extends Controller
         return 'ok';
     }
 
-    public function getProductionSituationLineGapDan(Request $request)
+    public function getProductionSituationLineIn(Request $request)
     {
-        $machines = Machine::with('line')->where('line_id', 24)->orderBy('name')->get();
+        $machines = Machine::with('line')->where('line_id', 25)->orderBy('name')->get();
         $data = [];
         foreach ($machines as $machine) {
             $info = InfoCongDoan::where("line_id", $machine->line_id)->where('machine_code', $machine->code)->with(["lot.plans", "lot.plan.product"])->orderBy('thoi_gian_bat_dau', 'DESC')->first();
@@ -192,7 +192,7 @@ class Phase2DBApiController extends Controller
                 }
                 $tm = [
                     "cong_doan" => mb_strtoupper($info->line->name, 'UTF-8'),
-                    'machine_code' => mb_strtoupper($machine->code, 'UTF-8'),
+                    'machine_code' => $machine->code,
                     'machine_name' => mb_strtoupper($machine->name, 'UTF-8'),
                     "product" => $product ? $product->name : '',
                     "sl_dau_ra_kh" => $info->sl_kh ?? 0,
