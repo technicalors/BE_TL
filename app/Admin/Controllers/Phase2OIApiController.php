@@ -187,7 +187,7 @@ class Phase2OIApiController extends Controller
         foreach ($list as $item) {
             $plan = $item->plan;
             $product = $item->product;
-            if ($product->materialWastages) {
+            if ($product && $product->materialWastages) {
                 $hao_phi_sx = $product->materialWastages->first(function ($record) use ($item) {
                     return $record->line_id == $item->line_id && $record->type == 2;
                 }) ?? null;
