@@ -734,7 +734,7 @@ class Phase2OIApiController extends Controller
         try {
             DB::beginTransaction();
             $counter = floor($lot->so_luong / $request->sl_in_tem);
-            if ($counter <= 0) {
+            if ($counter < 0) {
                 return $this->failure([], "Số lượng in tem không hợp lệ");
             }
             if($lot->so_luong === $request->sl_in_tem){
