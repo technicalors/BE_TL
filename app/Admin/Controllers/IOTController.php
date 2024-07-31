@@ -19,6 +19,7 @@ use Encore\Admin\Controllers\AdminController;
 use Illuminate\Http\Request;
 use App\Traits\API;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 use stdClass;
 
 class IOTController extends AdminController
@@ -98,11 +99,12 @@ class IOTController extends AdminController
             $tracking->update(['timestamp' => strtotime(now())]);
         }
         if (!is_null($tracking->timestamp)) {
-            if (strtotime(now())  >= ($tracking->timestamp +  300)) {
-                $start = $tracking->timestamp;
-                $end = $tracking->timestamp +  300;
-                $machineIotQuery = MachineIot::where('data->device_id', $machine->device_id)->where('created_at', '>=', $start)->where('created_at', '<=', $end);
-                $logs = (clone $machineIotQuery)->get()->pluck('data')->toArray();
+            if (strtotime(now()) >= ($tracking->timestamp +  300)) {
+                $start = date('Y-m-d H:i:s', $tracking->timestamp);
+                $end = date('Y-m-d H:i:s', $tracking->timestamp +  300);
+                $machineIotQuery = MachineIot::where('data->device_id', $machine->device_id)->whereBetween('created_at', [$start, $end]);
+                $logQuery = (clone $machineIotQuery);
+                $logs = $logQuery->get()->pluck('data')->toArray();
                 $parameters = MachineParameters::where('machine_id', $machine->code)->where('is_if', 1)->pluck('parameter_id')->toArray();
                 $arr = [];
                 foreach ($parameters as $key => $parameter) {
