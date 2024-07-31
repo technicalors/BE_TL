@@ -10,5 +10,5 @@ use Illuminate\Support\Facades\Validator;
 class MaterialWastage extends Model
 {
     use HasFactory;
-    protected $fillable = ['product_id','type','line_id', 'value', 'unit_id'];
+    protected $fillable = ['product_id','type','line_id', 'value'];
 }

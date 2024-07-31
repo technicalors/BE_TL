@@ -101,24 +101,23 @@ class IOTController extends AdminController
             if (strtotime(now())  >= ($tracking->timestamp +  300)) {
                 $start = $tracking->timestamp;
                 $end = $tracking->timestamp +  300;
-                $logs = MachineIot::where('data->record_type', "cl")->where('data->machine_id', $machine->code)->where('data->timestamp', '>=', $start)->where('data->timestamp', '<=', $end)->pluck('data')->toArray();
+                $logs = MachineIot::where('data->device_id', $machine->device_id)->where('created_at', '>=', $start)->where('created_at', '<=', $end)->get();
                 $parameters = MachineParameters::where('machine_id', $machine->code)->where('is_if', 1)->pluck('parameter_id')->toArray();
                 $arr = [];
                 foreach ($parameters as $key => $parameter) {
                     $arr[$parameter] = 0;
-                    foreach ((array) $logs as $key => $log) {
+                    foreach ((array) $logs->pluck('data')->toArray() as $key => $log) {
                         if (isset($log[$parameter])) {
                             $arr[$parameter] = (float)$arr[$parameter] + (float)$log[$parameter];
                         }
                     }
                 }
-                MachineIot::where('data->record_type', "cl")->where('data->machine_id', $machine->code)->delete();
+                $logs->delete();
                 Tracking::where('machine_id', $machine->code)->update(['timestamp' =>  strtotime(now())]);
                 MachineParameterLogs::where('machine_id', $machine->code)->where('start_time', '<=', date('Y-m-d H:i:s',  strtotime(now())))->where('end_time', '>=', date('Y-m-d H:i:s',  strtotime(now())))->update(['data_if' => $arr]);
                 if ($machine) {
                     $line = $machine->line;
-                    $updated_tracking = Tracking::where('machine_id', $machine->code)->first();
-                    $lot = Lot::find($updated_tracking->lot_id);
+                    $lot = Lot::find($tracking->lot_id);
                     $thong_so_may = new ThongSoMay();
                     $ca = (int)date('H',  strtotime(now()));
                     $thong_so_may['ngay_sx'] = date('Y-m-d H:i:s');

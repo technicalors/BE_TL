@@ -72,4 +72,12 @@ class Product extends Model
         );
         return $validated;
     }
+
+    public function materialWastages(){
+        return $this->hasMany(MaterialWastage::class);
+    }
+
+    public function timeWastages(){
+        return $this->hasMany(TimeWastage::class);
+    }
 }

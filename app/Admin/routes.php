@@ -654,5 +654,6 @@ Route::group([
     $router->get('maintenance-plans/detail/list', [MaintenancePlanController::class, 'detail']);
     $router->post('maintenance-plans/import', [MaintenanceScheduleController::class, 'import']);
 
-    
+    $router->get('equipment/oee', [Phase2UIApiController::class, 'getOEEData']);
+    $router->get('equipment/error-frequency', [Phase2UIApiController::class, 'getErrorFrequencyData']);
 });
