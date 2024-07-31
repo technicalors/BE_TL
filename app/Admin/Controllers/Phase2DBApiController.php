@@ -221,7 +221,7 @@ class Phase2DBApiController extends Controller
         array_push($order, $firstElement);
         $orderByString = "'" . implode("','", $order) . "'";
 
-        $lines = Line::where('factory_id', 2)->where('id', '<>', 24)->get();
+        $lines = Line::where('factory_id', 2)->where('id', '<>', 25)->get();
         $query = Machine::with('line')->whereIn('line_id', $lines->pluck('id')->toArray());
         if(!empty($request->ordering_machine)){
             $query->orderByRaw(DB::raw("FIELD(code, $orderByString)"));
