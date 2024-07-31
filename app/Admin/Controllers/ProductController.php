@@ -7,9 +7,11 @@ use App\Models\Bom;
 use App\Models\Customer;
 use App\Models\Line;
 use App\Models\Material;
+use App\Models\MaterialWastage;
 use App\Models\Product;
 use App\Models\ProductionJourney;
 use App\Models\Spec;
+use App\Models\TimeWastage;
 use Encore\Admin\Controllers\AdminController;
 use Encore\Admin\Form;
 use Encore\Admin\Grid;
@@ -221,9 +223,6 @@ class ProductController extends Controller
 
     private function importSpec($currRow, $titleRow1, $titleRow2, $product_id)
     {
-
-
-
         $title = [];
         foreach ($titleRow2 as $i => $item) {
             $title[$i] = $titleRow2[$i];
@@ -250,7 +249,9 @@ class ProductController extends Controller
                 $line_id = [12, 14, 26];
             } else if ($key == "IW") {
                 $line_id = [13, 15, 29];
-            }
+            } else if ($key == "JX") {
+                $line_id = [30];
+            } 
             
             foreach ($line_id as $id) {
                 $input = [];
@@ -315,6 +316,10 @@ class ProductController extends Controller
                     $product = Product::firstOrCreate(['id' => trim($row['B'])], array_intersect_key($row, array_flip($this->product_columns)));
                     $production_journey = ProductionJourney::create(['product_id' => $product->id], array_intersect_key($row, array_flip($this->production_journey_column)));
                     $this->importSpec($row, $titleRow1, $titleRow2, $product->id);
+                    $material_wastages_data = array_intersect_key($row, array_flip($this->material_wastage_columns));
+                    $time_wastages_data = array_intersect_key($row, array_flip($this->time_wastage_columns));
+                    $this->importMaterialWastages($material_wastages_data, $product->id);
+                    $this->importTimeWastages($time_wastages_data, $product->id);
                 }
                 $material_data[] = array_intersect_key($row, array_flip($this->material_columns));
                 if (trim($row['I'])) {
@@ -334,9 +339,10 @@ class ProductController extends Controller
                 // $production_modes_data[] = array_intersect_key($row, array_flip($this->production_mode_columns));
             }
             DB::commit();
-        } catch (\Throwable $th) {
+        } catch (\Exception $th) {
             DB::rollBack();
-            return $this->failure($th, 'Import thất bại');
+            return $th;
+            // return $this->failure($th, 'Import thất bại');
         }
 
         return $this->success('', 'Import thành công');
@@ -454,30 +460,117 @@ class ProductController extends Controller
     protected $material_wastage_columns = [
         'AQ', 'AR', 'AS', 'AT', 'AU', 'AV', 'AW', 'AX', 'AY', 'AZ', 'BA', 'BB', 'BC', 'BD', 'BE', 'BF', 'BG', 'BH', 'BI', 'BJ', 'BK'
     ];
+    function importMaterialWastages($data, $product_id){
+        $create_input = [];
+        $line_id = null;
+        $type = 1;
+        foreach($data as $key => $value){
+            if($key == 'AQ'){
+                $type = 1;
+            }
+            if($key == 'BC'){
+                $type = 2;
+            }
+            switch ($key) {
+                case 'AR':
+                case 'BC':
+                    $line_id = 24; //Gap dan lien hoan
+                    break;
+                case 'AU':
+                case 'BE':
+                    $line_id = 25; //In offset
+                    break;
+                case 'AY':
+                case 'BH':
+                    $line_id = 26; //Be - Duc cat
+                    break;
+                case 'AS':
+                case 'BD':
+                    $line_id = 27; //Liner
+                    break;
+                default:
+                    # code...
+                    break;
+            }
+            $input = [];
+            if(!$line_id || !$product_id || !$value){
+                continue;
+            }
+            $input['product_id'] = $product_id;
+            $input['line_id'] = $line_id;
+            $input['type'] = $type;
+            $input['value'] = $value;
+            $create_input[] = $input;
+        }
+        MaterialWastage::insert($create_input);
+    }
     protected $time_wastage_columns = [
-        'BL', 'BM', 'BN', 'BO', 'BP', 'BQ', 'BR', 'BS', 'BT', 'BU', 'BV', 'BW', 'BX', 'BY', 'BZ', 'CA', 'CB', 'CC'
+        'BL', 'BM', 'BN', 'BO', 'BP', 'BQ', 'BR', 'BS', 'BT', 'BU', 'BV', 'BW', 'BX', 'BY', 'BZ', 'CA', 'CB', 'CC', 'CD', 'CE', 'CF', 'CG', 'CH', 'CI', 'CJ', 'CK', 'CL', 'CM'
     ];
+    function importTimeWastages($data, $product_id){
+        $create_input = [];
+        $line_id = null;
+        $type = 1;
+        foreach($data as $key => $value){
+            if($key == 'BL'){
+                $type = 1;
+            }
+            if($key == 'BU'){
+                $type = 2;
+            }
+            if($key == 'CE'){
+                $type = 3;
+            }
+            switch ($key) {
+                case 'BL':
+                case 'BU':
+                case 'CE':
+                    $line_id = 24; //Gap dan lien hoan
+                    break;
+                case 'BN':
+                case 'BW':
+                case 'CG':
+                    $line_id = 25; //In offset
+                    break;
+                case 'BQ':
+                case 'BZ':
+                case 'CJ':
+                    $line_id = 26; //Be - Duc cat
+                    break;
+                case 'BM':
+                case 'BV':
+                case 'CF':
+                    $line_id = 27; //Liner
+                    break;
+                default:
+                    # code...
+                    break;
+            }
+            $input = [];
+            if(!$line_id || !$product_id || !$value){
+                continue;
+            }
+            $input['product_id'] = $product_id;
+            $input['line_id'] = $line_id;
+            $input['type'] = $type;
+            $input['value'] = $value;
+            $create_input[] = $input;
+        }
+        TimeWastage::insert($create_input);
+    }
     protected $line_productivity_columns = [
-        'CD', 'CE', 'CF', 'CG', 'CH', 'CI', 'CJ', 'CK', 'CL', 'CM', 'CN', 'CO'
+        'CN', 'CO', 'CP', 'CQ', 'CR', 'CS', 'CT', 'CU', 'CV', 'CW', 'CX', 'CY'
     ];
     protected $assigned_machine_personnel_columns = [
-        'CP', 'CQ', 'CR', 'CS', 'CT', 'CU', 'CV', 'CW', 'CX'
+        'CX', 'CY', 'CZ', 'DA', 'DB', 'DC', 'DD', 'DE', 'DF', 'DG', 'DH'
     ];
+    //from DI to KJ
     protected $line_standard_columns = [
-        'CY', 'CZ', 'DA', 'DB', 'DC', 'DD', 'DE', 'DF', 'DG', 'DH', 'DI', 'DJ', 'DK', 'DL', 'DM', 'DN', 'DO', 'DP', 'DQ', 'DR',
-        'DS', 'DT', 'DU', 'DV', 'DW', 'DX', 'DY', 'DZ', 'EA', 'EB', 'EC', 'ED', 'EE', 'EF', 'EG', 'EH', 'EI', 'EJ', 'EK', 'EL',
-        'EM', 'EN', 'EO', 'EP', 'EQ', 'ER', 'ES', 'ET', 'EU', 'EV', 'EW', 'EX', 'EY', 'EZ', 'FA', 'FB', 'FC', 'FD', 'FE', 'FF',
-        'FG', 'FH', 'FI', 'FJ', 'FK', 'FL', 'FM', 'FN', 'FO', 'FP', 'FQ', 'FR', 'FS', 'FT', 'FU', 'FV', 'FW', 'FX', 'FY', 'FZ',
-        'GA', 'GB', 'GC', 'GD', 'GE', 'GF', 'GG', 'GH', 'GI', 'GJ', 'GK', 'GL', 'GM', 'GN', 'GO', 'GP', 'GQ', 'GR', 'GS', 'GT',
-        'GU', 'GV', 'GW', 'GX', 'GY', 'GZ', 'HA', 'HB', 'HC', 'HD', 'HE', 'HF', 'HG', 'HH', 'HI', 'HJ', 'HK', 'HL', 'HM', 'HN',
-        'HO', 'HP', 'HQ', 'HR', 'HS', 'HT', 'HU', 'HV', 'HW', 'HX', 'HY', 'HZ', 'IA', 'IB', 'IC', 'ID', 'IE', 'IF', 'IG', 'IH',
-        'II', 'IJ', 'IK', 'IL', 'IM', 'IN', 'IO', 'IP', 'IQ', 'IR', 'IS', 'IT', 'IU', 'IV', 'IW', 'IX', 'IY', 'IZ', 'JA', 'JB',
-        'JC', 'JD', 'JE', 'JF', 'JG', 'JH', 'JI', 'JJ', 'JK', 'JL', 'JM', 'JN', 'JO', 'JP', 'JQ', 'JR', 'JS', 'JT', 'JU', 'JV',
-        'JW', 'JX', 'JY', 'JZ', 'KA', 'KB', 'KC'
+        'DI', 'DJ', 'DK', 'DL', 'DM', 'DN', 'DO', 'DP', 'DQ', 'DR', 'DS', 'DT', 'DU', 'DV', 'DW', 'DX', 'DY', 'DZ', 'EA', 'EB', 'EC', 'ED', 'EE', 'EF', 'EG', 'EH', 'EI', 'EJ', 'EK', 'EL', 'EM', 'EN', 'EO', 'EP', 'EQ', 'ER', 'ES', 'ET', 'EU', 'EV', 'EW', 'EX', 'EY', 'EZ', 'FA', 'FB', 'FC', 'FD', 'FE', 'FF', 'FG', 'FH', 'FI', 'FJ', 'FK', 'FL', 'FM', 'FN', 'FO', 'FP', 'FQ', 'FR', 'FS', 'FT', 'FU', 'FV', 'FW', 'FX', 'FY', 'FZ', 'GA', 'GB', 'GC', 'GD', 'GE', 'GF', 'GG', 'GH', 'GI', 'GJ', 'GK', 'GL', 'GM', 'GN', 'GO', 'GP', 'GQ', 'GR', 'GS', 'GT', 'GU', 'GV', 'GW', 'GX', 'GY', 'GZ', 'HA', 'HB', 'HC', 'HD', 'HE', 'HF', 'HG', 'HH', 'HI', 'HJ', 'HK', 'HL', 'HM', 'HN', 'HO', 'HP', 'HQ', 'HR', 'HS', 'HT', 'HU', 'HV', 'HW', 'HX', 'HY', 'HZ', 'IA', 'IB', 'IC', 'ID', 'IE', 'IF', 'IG', 'IH', 'II', 'IJ', 'IK', 'IL', 'IM', 'IN', 'IO', 'IP', 'IQ', 'IR', 'IS', 'IT', 'IU', 'IV', 'IW', 'IX', 'IY', 'IZ', 'JA', 'JB', 'JC', 'JD', 'JE', 'JF', 'JG', 'JH', 'JI', 'JJ', 'JK', 'JL', 'JM', 'JN', 'JO', 'JP', 'JQ', 'JR', 'JS', 'JT', 'JU', 'JV', 'JW', 'JX', 'JY', 'JZ', 'KA', 'KB', 'KC', 'KD', 'KE', 'KF', 'KG', 'KH', 'KI', 'KJ'
     ];
+    //from KK to MR
     protected $production_mode_columns = [
-        'KD', 'KE', 'KF', 'KG', 'KH', 'KI', 'KJ', 'KK', 'KL', 'KM', 'KN', 'KO', 'KP', 'KQ', 'KR', 'KS', 'KT', 'KU', 'KV', 'KW', 'KX', 'KY', 'KZ',
-        'LA', 'LB', 'LC', 'LD', 'LE', 'LF', 'LG', 'LH', 'LI', 'LJ', 'LK', 'LL', 'LM', 'LN', 'LO', 'LP', 'LQ', 'LR', 'LS'
+        'KK', 'KL', 'KM', 'KN', 'KO', 'KP', 'KQ', 'KR', 'KS', 'KT', 'KU', 'KV', 'KW', 'KX', 'KY', 'KZ', 'LA', 'LB', 'LC', 'LD', 'LE', 'LF', 'LG', 'LH', 'LI', 'LJ', 'LK', 'LL', 'LM', 'LN', 'LO', 'LP', 'LQ', 'LR', 'LS', 'LT', 'LU', 'LV', 'LW', 'LX', 'LY', 'LZ', 'MA', 'MB', 'MC', 'MD', 'ME', 'MF', 'MG', 'MH', 'MI', 'MJ', 'MK', 'ML', 'MM', 'MN', 'MO', 'MP', 'MQ', 'MR'
     ];
 
     /**

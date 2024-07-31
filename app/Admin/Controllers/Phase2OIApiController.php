@@ -168,7 +168,7 @@ class Phase2OIApiController extends Controller
         $line = Line::find($line_id);
         $machine_code = $request->machine_code;
         $date  = date('Y-m-d', strtotime('-5 day'));
-        $query = InfoCongDoan::with('lot', 'product', 'plan', 'lot.log')->with(['spec' => function ($query) {
+        $query = InfoCongDoan::with('lot', 'product.materialWastages', 'product.timeWastages', 'plan')->with(['spec' => function ($query) {
             $query->where('name', 'Hao phí sản xuất các công đoạn (%)');
         }]);
         if (!empty($request->line_id)) {
@@ -185,8 +185,14 @@ class Phase2OIApiController extends Controller
             });
         $records = [];
         foreach ($list as $item) {
-            $hao_phi_sx = $spec[$item->product_id . $item->line_id . 'hao-phi-san-xuat-cac-cong-doan'] ?? null;
-            $hao_phi_vao_hang = $spec[$item->product_id . $item->line_id . 'hao-phi-vao-hang-cac-cong-doan'] ?? null;
+            $plan = $item->plan;
+            $product = $item->product;
+            $hao_phi_sx = $product->materialWastages->first(function($record)use($item){
+                return $record->line_id == $item->line_id && $record->type == 2;
+            }) ?? null;
+            $hao_phi_vao_hang = $product->timeWastages->first(function($record)use($item){
+                return $record->line_id == $item->line_id && $record->type == 1;
+            }) ?? null;
             $data =  [
                 "lo_sx" => $item->lo_sx,
                 "lot_id" => $item->lot_id,
@@ -206,27 +212,18 @@ class Phase2OIApiController extends Controller
                 "sl_tem_vang" => $item->sl_tem_vang,
                 "sl_ng" => $item->sl_ng,
                 "ti_le_ht" => $item->sl_dau_ra_hang_loat > 0 ? round(($item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang) / $item->sl_kh * 100) . '%' : "0%",
-                "uph_an_dinh" => "",
-                "uph_thuc_te" => "",
+                "uph_an_dinh" => $plan->UPH ?? 0,
+                "uph_thuc_te" => 0,
                 "status" => $item->status,
                 "nguoi_sx" => $item->lot->log->info[str::slug($line->name)]['user_name'] ?? "",
                 "thoi_gian_bam_may" => $item->thoi_gian_bam_may,
                 'hao_phi_cong_doan' => $hao_phi_sx ? $hao_phi_sx->value . "%" : "",
+                'sl_dau_vao' => $item->sl_dau_vao_hang_loat,
+                'sl_dau_ra' => $item->sl_dau_ra_hang_loat,
+                'sl_tem_vang' => $item->sl_tem_vang,
+                'sl_tem_ng' => $item->sl_ng,
             ];
-            if (in_array($line_id, $line_arr)) {
-                $data['sl_dau_vao'] = $item->lot->product->so_bat > 0 ? $item->sl_dau_vao_hang_loat / $item->lot->product->so_bat : $item->sl_dau_vao_hang_loat;
-                $data['sl_dau_ra'] = $item->lot->product->so_bat > 0 ? $item->sl_dau_ra_hang_loat / $item->lot->product->so_bat : $item->sl_dau_ra_hang_loat;
-                $data['sl_tem_vang'] = $item->lot->product->so_bat > 0 ? $item->sl_tem_vang / $item->lot->product->so_bat : $item->sl_tem_vang;
-                $data['sl_tem_ng'] = $item->lot->product->so_bat ? $item->sl_ng / $item->lot->product->so_bat : $item->sl_ng;
-                // $data['sl_dau_ra_kh'] = $plan->sl_thanh_pham ?? '';
-            } else {
-                $data['sl_dau_vao'] = $item->sl_dau_vao_hang_loat;
-                $data['sl_dau_ra'] = $item->sl_dau_ra_hang_loat;
-                $data['sl_tem_vang'] = $item->sl_tem_vang;
-                $data['sl_tem_ng'] = $item->sl_ng;
-            }
             $data['sl_dau_ra_ok'] = $data['sl_dau_ra'] - $data['sl_tem_vang'] - $data['sl_tem_ng'];
-            // sl_ng - spec_vao_hang / sl_dau_vao_hang_loat
             $data['hao_phi'] = $data['sl_dau_vao'] ? round((($data['sl_tem_ng'] - (int)($hao_phi_vao_hang->value ?? 0)) > 0 ? ($data['sl_tem_ng'] - (int)($hao_phi_vao_hang->value ?? 0)) : 0 / $data['sl_dau_vao']) * 100) . '%' : "";
             $records[] = $data;
         }
@@ -737,11 +734,17 @@ class Phase2OIApiController extends Controller
         try {
             DB::beginTransaction();
             $counter = floor($lot->so_luong / $request->sl_in_tem);
-            if ($counter <= 0) {
+            if ($counter < 0) {
                 return $this->failure([], "Số lượng in tem không hợp lệ");
             }
+            if($lot->so_luong === $request->sl_in_tem){
+                $infoCongDoan->update([
+                    'thoi_gian_ket_thuc' => Carbon::now(),
+                    'status' => InfoCongDoan::STATUS_COMPLETED
+                ]);
+            }
             $quantity = 0;
-            $counterT = Lot::where('id', $lot->id . '-T%')->count() + 1;
+            $counterT = Lot::where('id', 'like', $lot->id . '-T%')->count() + 1;
             for ($i = 0; $i < $counter; $i++) {
                 $id = $lot->id . '-T';
                 $thung = Lot::firstOrCreate([

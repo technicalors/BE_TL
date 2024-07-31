@@ -8,12 +8,14 @@ use App\Imports\WarehouseLocationImport;
 use App\Models\Customer;
 use App\Models\CustomUser;
 use App\Models\Error;
+use App\Models\ErrorMachine;
 use App\Models\Factory;
 use App\Models\InfoCongDoan;
 use App\Models\Line;
 use App\Models\Lot;
 use App\Models\LSXLog;
 use App\Models\Machine;
+use App\Models\MachineLog;
 use App\Models\Material;
 use App\Models\ProductionPlan;
 use App\Models\QCHistory;
@@ -341,5 +343,96 @@ class Phase2UIApiController extends Controller
             DB::rollBack();
             return $this->failure([], $e->getMessage(), 500);
         }
+    }
+
+    //Lấy dữ liệu biểu đồ oee
+    public function getOEEData(Request $request)
+    {
+        $query = Line::where('factory_id', 2)->whereNotIn('id', [29, 30]);
+        if(isset($request->line_id)){
+            $query->where('id', $request->line_id);
+        }
+        $lines = $query->get();
+        $res = [];
+        foreach ($lines as $key => $line) {
+            $info_cds = InfoCongDoan::with('plan')
+                ->where('line_id', $line->id)
+                ->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->date[0] ?? 'now')))
+                ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->date[1] ?? 'now')))
+                ->orderBy('thoi_gian_bat_dau', 'DESC')
+                ->whereNotNull('thoi_gian_bat_dau')
+                ->whereNotNull('thoi_gian_bam_may')
+                ->whereNotNull('thoi_gian_ket_thuc')
+                ->get();
+            $tong_tg = 0;
+            $tg_tsl = 0;
+            $tong_sl = 0;
+            $tong_sl_dat = 0;
+            $uph = 0;
+            $A = 0;
+            $P = 0;
+            $Q = 0;
+            foreach ($info_cds as $info) {
+                $plan = $info->plan;
+                $tg_tsl += strtotime($info->thoi_gian_ket_thuc) - strtotime($info->thoi_gian_bam_may);
+                $tong_tg += strtotime($info->thoi_gian_ket_thuc) - strtotime($info->thoi_gian_bat_dau);
+                $tong_sl += $info->sl_dau_ra_hang_loat;
+                $tong_sl_dat += $info->sl_dau_ra_hang_loat - $info->sl_ng;
+                $uph += $plan ? $plan->UPH : 0;
+            }
+            $A = $tong_tg > 0 ? ($tg_tsl / $tong_tg) * 100 : 0;
+            $Q = $tong_sl > 0 ? ($tong_sl_dat / $tong_sl) * 100 : 0;
+            $P = ($uph && $tg_tsl >= 0) ? ($tong_sl / ($tg_tsl / 3600) / ($uph / count($info_cds))) * 100 : 0;
+            $OEE = (int)round(($A * $Q * $P) / 10000);
+            $res[] = ['line'=>$line->name, 'A'=>$A, 'Q'=>$Q, 'P'=>$P, 'OEE'=>$OEE];
+        }
+        return $this->success($res);
+    }
+
+    //Lấy dữ liệu biểu đồ tần suất lỗi
+    public function getErrorFrequencyData(Request $request)
+    {
+        $query = MachineLog::with("machine")->whereNotNull('info->error_id');
+        if (isset($request->machine_code)) {
+            $query->where('machine_id', $request->machine_code);
+        }
+        if (isset($request->line_id)) {
+            $machine_codes = Machine::where('line_id', $request->line_id)->pluck('code')->toArray();
+            $query->whereIn('machine_id', $machine_codes);
+        }
+        if (isset($request->lo_sx)) {
+            $query->where('info->lo_sx', $request->lo_sx);
+        }
+        if (isset($request->user_id)) {
+            $query->where('info->user_id', $request->user_id);
+        }
+        if (isset($request->machine_error)) {
+            $query->where('info->error_id', $request->machine_error);
+        }
+        $mc_logs = [];
+        $machine_logs = $query->get();
+        foreach ($machine_logs as $key => $value) {
+            if (($value->info['end_time'] - $value->info['start_time']) > 180) {
+                $mc_logs[] = $value;
+            }
+        }
+        $machine_error = ErrorMachine::all();
+        $mark_err = [];
+        foreach ($machine_error as $err) {
+            $mark_err[$err->id] = $err;
+        }
+        $cnt_err = [];
+        foreach ($machine_logs as $log) {
+            if (isset($log->info['error_id'])) {
+                if (!isset($cnt_err[$log->info['error_id']])) {
+                    $cnt_err[$log->info['error_id']] = [
+                        "name" => $mark_err[$log->info['error_id']]['code'],
+                        "y" => 0,
+                    ];
+                }
+                $cnt_err[$log->info['error_id']]["y"]++;
+            }
+        }
+        return $this->success(array_values($cnt_err));
     }
 }

@@ -21,6 +21,7 @@ use App\Admin\Controllers\Phase2DBApiController;
 use App\Admin\Controllers\Phase2OIApiController;
 use App\Admin\Controllers\Phase2UIApiController;
 use App\Admin\Controllers\ParameterController;
+use App\Admin\Controllers\StampController;
 use App\Models\MaintenancePlan;
 use Encore\Admin\Facades\Admin;
 use Illuminate\Routing\Router;
@@ -589,6 +590,9 @@ Route::group([
     $router->get('/produce/fmb', [Phase2DBApiController::class, 'fmb']);
     $router->get('/machine-performance', [Phase2DBApiController::class, 'getMachinePerformance']);
     $router->post('/test-api', [Phase2DBApiController::class, 'handle']);
+
+    $router->get('/production-situation-line-in', [Phase2DBApiController::class, 'getProductionSituationLineIn']);
+    $router->get('/production-situation-by-machine', [Phase2DBApiController::class, 'getProductionSituationByMachine']);
 });
 //OI
 Route::group([
@@ -651,5 +655,17 @@ Route::group([
     $router->get('maintenance-plans/detail/list', [MaintenancePlanController::class, 'detail']);
     $router->post('maintenance-plans/import', [MaintenanceScheduleController::class, 'import']);
 
+    $router->get('equipment/oee', [Phase2UIApiController::class, 'getOEEData']);
+    $router->get('equipment/error-frequency', [Phase2UIApiController::class, 'getErrorFrequencyData']);
     
+    
+});
+
+//UI
+Route::group([
+    'prefix'        => "/api/p2/ui/master-data",
+    'middleware'    => "auth:sanctum",
+], function (Router $router) {
+    Route::apiResource('stamps', StampController::class);
+    Route::post('stamps/import', [StampController::class, 'import']);
 });
