@@ -186,7 +186,7 @@ async function pushDataToMESAPI(data, apiUrl) {
             await getAuthToken();
             await pushDataToMESAPI(data, apiUrl); // Thử lại với token mới
         } else {
-            console.error(`Error pushing data to API ${apiUrl}:`, error.message);
+            console.error(`Error pushing data to API ${apiUrl}:`, error?.response?.data?.message ?? "");
         }
     }
 }
