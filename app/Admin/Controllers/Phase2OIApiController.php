@@ -737,6 +737,11 @@ class Phase2OIApiController extends Controller
             if ($counter <= 0) {
                 return $this->failure([], "Số lượng in tem không hợp lệ");
             }
+            if($lot->so_luong === $request->sl_in_tem){
+                $infoCongDoan->update([
+                    'status' => InfoCongDoan::STATUS_COMPLETED
+                ]);
+            }
             $quantity = 0;
             $counterT = Lot::where('id', $lot->id . '-T%')->count() + 1;
             for ($i = 0; $i < $counter; $i++) {

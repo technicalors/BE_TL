@@ -3432,10 +3432,10 @@ class ApiMobileController extends AdminController
             $log_export = WareHouseLog::with('creator')->where('lot_id', $lot->id)->where('type', 2)->first();
             $object = new stdClass();
             $object->ngay = $log_import ? date('d/m/Y', strtotime($log_import->created_at)) : '';
-            $object->ma_khach_hang = $lot->product->customer->id;
-            $object->ten_khach_hang = $lot->product->customer->name;
+            $object->ma_khach_hang = $lot->product->customer->id ?? "";
+            $object->ten_khach_hang = $lot->product->customer->name ?? "";
             $object->product_id = $lot->product_id;
-            $object->ten_san_pham = $lot->product->name;
+            $object->ten_san_pham = $lot->product->name ?? "";
             $object->dvt = 'Mảnh';
             $object->lo_sx = $lot->lo_sx;
             $object->vi_tri = $log_import ? $log_import->cell_id : '';
