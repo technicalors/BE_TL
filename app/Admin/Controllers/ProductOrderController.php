@@ -32,6 +32,9 @@ class ProductOrderController extends Controller
             // return $request->page - 1;
             $query->offset((($request->page - 1) ?? 0) * $request->pageSize)->limit($request->pageSize);
         }
+        if (isset($request->withs)) {
+            $query->with($request->withs);
+        }
         $result = $query->get();
         return $this->success(['data' => $result, 'total' => $total]);
     }
