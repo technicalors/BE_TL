@@ -53,6 +53,7 @@ class IOTController extends AdminController
                 $info_cong_doan->sl_dau_ra_hang_loat = $request->output - $tracking->output;
             }
             $productionData = [
+                'machine_code' => $machine->code,
                 'lot_id' => $tracking->lot_id,
                 'sl_dau_vao_hang_loat' => (int)$info_cong_doan->sl_dau_vao_hang_loat,
                 'sl_dau_ra_hang_loat' => (int)$info_cong_doan->sl_dau_ra_hang_loat,
