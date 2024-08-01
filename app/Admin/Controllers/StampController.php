@@ -12,9 +12,14 @@ use Maatwebsite\Excel\Facades\Excel;
 class StampController extends Controller
 {
     use API;
-    public function index()
+    public function index(Request $request)
     {   
-        return $this->success(Stamp::all());
+        $query = Stamp::orderBy('lot_id');
+        if(!empty($request->lot_id)){
+            $query->where('lot_id', 'like', '%' . $request->lot_id . '%');
+        }
+        $result = $query->get();
+        return $this->success($result);
     }
 
     public function store(Request $request)
