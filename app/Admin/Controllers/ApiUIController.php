@@ -895,8 +895,8 @@ class ApiUIController extends AdminController
             $nguoi_xl = '';
             if (isset($log->info['lot_id'])) {
                 $lot = Lot::find($log->info['lot_id']);
-                $lo_sx = $lot->lo_sx;
-                $lot_id = $lot->id;
+                $lo_sx = $lot->lo_sx ?? "";
+                $lot_id = $lot->id ?? "";
             }
             if (isset($log->info['user_name'])) {
                 $nguoi_xl = $log->info['user_name'];
