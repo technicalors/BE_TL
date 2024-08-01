@@ -190,6 +190,9 @@ class Phase2DBApiController extends Controller
                 if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && !is_null($info->thoi_gian_ket_thuc)) {
                     $status = 3;
                 }
+                $upm = $info->sl_kh / (2 * 60);
+                $diff_time = strtotime('now') - strtotime($info->thoi_gian_bat_dau ?? 'now');
+                $target = $upm * ($diff_time / 60);
                 $tm = [
                     "cong_doan" => mb_strtoupper($info->line->name, 'UTF-8'),
                     'machine_code' => $machine->code,
@@ -197,7 +200,7 @@ class Phase2DBApiController extends Controller
                     "product" => $product ? $product->name : '',
                     "sl_dau_ra_kh" => $info->sl_kh ?? 0,
                     "sl_thuc_te" => $info->sl_dau_ra_hang_loat - $info->sl_ng,
-                    "sl_muc_tieu" => $info->sl_kh,
+                    "sl_muc_tieu" => (int)$target,
                     "ti_le_ng" => (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ?  number_format(($info->sl_ng /  $info->sl_dau_ra_hang_loat), 2) : 0)),
                     "ti_le_ht" => (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ? number_format((($info->sl_dau_ra_hang_loat - $info->sl_ng) / $info->sl_dau_ra_hang_loat), 2) : 0)),
                     "status" => $status,
@@ -264,6 +267,9 @@ class Phase2DBApiController extends Controller
                 if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && !is_null($info->thoi_gian_ket_thuc)) {
                     $status = 3;
                 }
+                $upm = $info->sl_kh / (2 * 60);
+                $diff_time = strtotime('now') - strtotime($info->thoi_gian_bat_dau ?? 'now');
+                $target = $upm * ($diff_time / 60);
                 $tm = [
                     "cong_doan" => mb_strtoupper($info->line->name, 'UTF-8'),
                     'machine_code' => mb_strtoupper($machine->code, 'UTF-8'),
@@ -271,7 +277,7 @@ class Phase2DBApiController extends Controller
                     "product" => $product ? $product->name : '',
                     "sl_dau_ra_kh" => $info->sl_kh ?? 0,
                     "sl_thuc_te" => $info->sl_dau_ra_hang_loat - $info->sl_ng,
-                    "sl_muc_tieu" => $info->sl_kh,
+                    "sl_muc_tieu" => (int)$target,
                     "ti_le_ng" => (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ?  number_format(($info->sl_ng /  $info->sl_dau_ra_hang_loat), 2) : 0)),
                     "ti_le_ht" => (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ? number_format((($info->sl_dau_ra_hang_loat - $info->sl_ng) / $info->sl_dau_ra_hang_loat), 2) : 0)),
                     "status" => $status,
