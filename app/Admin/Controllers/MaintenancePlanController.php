@@ -33,7 +33,7 @@ class MaintenancePlanController extends Controller
                 })->count();
                 $numberOfRemain = $numberOfPlan - $numberOfDone;
                 $machine = [
-                    'machine_name' => $value[0]->machine->name,
+                    'machine_name' => $value[0]->machine->name ?? "",
                     'machine_code' => $machine_code,
                     'line_name' => $value[0]->machine->line->name ?? "",
                     'plan' => $numberOfPlan,
