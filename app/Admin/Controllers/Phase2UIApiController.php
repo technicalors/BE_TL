@@ -389,7 +389,7 @@ class Phase2UIApiController extends Controller
         return $this->success($res);
     }
 
-    //Lấy dữ liệu biểu đồ tần suất lỗi
+    //Lấy dữ liệu biểu đồ tần suất lỗi máy
     public function getErrorFrequencyData(Request $request)
     {
         $query = MachineLog::with("machine")->whereNotNull('info->error_id');
@@ -434,5 +434,84 @@ class Phase2UIApiController extends Controller
             }
         }
         return $this->success(array_values($cnt_err));
+    }
+
+    //QC
+
+    public function pqcHistoryQuery(Request $request)
+    {
+        $line_ids = Line::where('factory_id', 2)->pluck('id')->toArray();
+        $query = InfoCongDoan::has('log')->where('line_id', $line_ids)->orderBy('created_at');
+        if (isset($request->line_id)) {
+            if (is_array($request->line_id)) {
+                $query->whereIn('line_id', $request->line_id);
+            } else {
+                $query->where('line_id', $request->line_id);
+            }
+        }
+        if (isset($request->date) && count($request->date)) {
+            $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->date[0])))
+                ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->date[1])));
+        }
+        if (isset($request->product_id)) {
+            $query->where('lot_id', 'like',  '%' . $request->product_id . '%');
+        }
+        if (isset($request->ten_sp)) {
+            $query->where('lot_id', 'like',  '%' . $request->ten_sp . '%');
+        }
+        if (isset($request->khach_hang)) {
+            $khach_hang = Customer::where('id', $request->khach_hang)->first();
+            if ($khach_hang) {
+                $plan = ProductionPlan::where('khach_hang', $khach_hang->name)->get();
+                $product_ids = $plan->pluck('product_id')->toArray();
+                $query->where(function ($qr) use ($product_ids) {
+                    for ($i = 0; $i < count($product_ids); $i++) {
+                        $qr->orwhere('lot_id', 'like',  '%' . $product_ids[$i] . '%');
+                    }
+                });
+            }
+        }
+        if (isset($request->lo_sx)) {
+            $query->where('lot_id', 'like', "%$request->lo_sx%");
+        }
+        $query->whereNotIn('line_id', [9, 21])->whereHas('lot', function ($lot_query) {
+            $lot_query->where(function ($q) {
+                $q->where('info_cong_doan.line_id', 13)->whereIn('type', [0, 2, 3]);
+            })->orWhere(function ($q) {
+                $q->where('info_cong_doan.line_id', '<>', 13)->whereIn('type', [0, 1, 2, 3]);
+            });
+        })->with("lot.product", "log", "plan", "line");
+        return $query;
+    }
+
+    //Danh sách lot PQC
+    public function getQualittyDataTable(Request $request)
+    {
+        $page = $request->page - 1;
+        $pageSize = $request->pageSize;
+        $query = $this->pqcHistoryQuery($request);
+        $dateRange = CarbonPeriod::create(date('Y-m-d', strtotime($request->date[0])), date('Y-m-d', strtotime($request->date[1])));
+        $dates = array_flip(array_map(fn ($date) => $date->format('Y-m-d'), iterator_to_array($dateRange)));
+        $data = $query->get()->filter(function ($value, $key) use ($dates) {
+            $line_key = $this->ID2TEXT[$value->line_id];
+            if (isset($value->log->info['qc'][$line_key]['thoi_gian_vao'])) {
+                $thoi_gian_vao = date('Y-m-d', strtotime($value->log->info['qc'][$line_key]['thoi_gian_vao']));
+                if (isset($dates[$thoi_gian_vao])) {
+                    return $value;
+                }
+            }
+            return false;
+        });
+        $count = $data->count();
+        $records = $data->slice($page * $pageSize, $pageSize);
+        $totalPage = $count;
+        $table = $this->produceTablePQC($records);
+        // $chart = $this->qcError($records);
+        return $this->success([
+            "table" => $table,
+            // "chart_lot" => $chart[1],
+            // "chart" => $chart[0],
+            "totalPage" => $totalPage,
+        ]);
     }
 }

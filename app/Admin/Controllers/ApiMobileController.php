@@ -52,6 +52,7 @@ use App\Models\OddBin;
 use App\Models\ProductOrder;
 use App\Models\Scenario;
 use App\Models\Spec;
+use App\Models\Stamp;
 use App\Models\TestCriteria;
 use App\Models\ThongSoMay;
 use App\Models\Tracking;
@@ -2818,7 +2819,7 @@ class ApiMobileController extends AdminController
                         break;
                     }
 
-                    $line = Line::query()->where('name', 'like', trim($row['G']))->first();
+                    $line = Line::query()->where('factory_id', 2)->where('name', 'like', trim($row['G']))->first();
                     if (empty($line)) throw new Exception('Không tìm thấy công đoạn');
 
                     if (!is_null($row['B'])) {
@@ -2871,8 +2872,12 @@ class ApiMobileController extends AdminController
                         // );
 
                         // Customer
-                        $customer = Customer::query()->where('name', 'like', trim($input['khach_hang']))->first();
-                        if (empty($customer)) throw new Exception('Không tìm thấy khách hàng');
+                        // $customer = Customer::query()->where('name', 'like', trim($input['khach_hang']))->first();
+                        // if (empty($customer)) throw new Exception('Không tìm thấy khách hàng');
+                        $customer = Customer::firstOrCreate(
+                            ['name' => $input['khach_hang']],
+                            ['name' => $input['khach_hang'], 'id' => Str::slug($input['khach_hang'])]
+                        );
 
                         // Product order
                         $productOrder = ProductOrder::find($input['product_order_id']);
@@ -2905,7 +2910,7 @@ class ApiMobileController extends AdminController
                         } else {
                             throw new Exception("Không tìm thấy định mức cuộn");
                         }
-                        $numbers = $this->getQuantityArray($input['sl_giao_sx'], $lotsize);
+                        $numbers = $this->getQuantityArray(intval(str_replace(",","",$input['sl_giao_sx'])), $lotsize);
                         $countLot = InfoCongDoan::query()->where([
                             ['lo_sx', $input['lo_sx']],
                             ['line_id', $input['line_id']],
@@ -2913,28 +2918,50 @@ class ApiMobileController extends AdminController
                         ])->count();
                         foreach ($numbers as $number) {
                             $countLot++;
-                            InfoCongDoan::create([
+                            // InfoCongDoan::create([
+                            //     'lot_id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
+                            //     'lotsize' => $number, // 👈 Định mức cuộn
+                            //     'lo_sx' => $input['lo_sx'],
+                            //     'line_id' => $input['line_id'],
+                            //     'product_id' => $input['product_id'],
+                            //     'thoi_gian_bat_dau' => null,
+                            //     'thoi_gian_bam_may' => null,
+                            //     'thoi_gian_ket_thuc' => null,
+                            //     'sl_dau_vao_chay_thu' => 0,
+                            //     'sl_dau_ra_chay_thu' => 0,
+                            //     'sl_dau_vao_hang_loat' => 0,
+                            //     'sl_dau_ra_hang_loat' => 0,
+                            //     'sl_tem_vang' => 0,
+                            //     'sl_ng' => 0,
+                            //     'start_powerM' => null,
+                            //     'end_powerM' => null,
+                            //     'powerM' => null,
+                            //     'status' => $input['status'],
+                            //     'machine_code' => $input['machine_id'],
+                            //     'sl_kh' => $number, // 
+                            //     'user_id' => auth()->user()->id,
+                            // ]);
+                            Lot::firstOrCreate(
+                                ['id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT)],
+                                [
+                                    'id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
+                                    'lo_sx' => $input['lo_sx'],
+                                    'so_luong' => $number,
+                                    'type' => Lot::TYPE_TEM_TRANG,
+                                    'product_id' => $input['product_id'],
+                                ]
+                            );
+                            Stamp::create([
                                 'lot_id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
-                                'lotsize' => $lotsize, // 👈 Định mức cuộn
-                                'lo_sx' => $input['lo_sx'],
-                                'line_id' => $input['line_id'],
-                                'product_id' => $input['product_id'],
-                                'thoi_gian_bat_dau' => null,
-                                'thoi_gian_bam_may' => null,
-                                'thoi_gian_ket_thuc' => null,
-                                'sl_dau_vao_chay_thu' => 0,
-                                'sl_dau_ra_chay_thu' => 0,
-                                'sl_dau_vao_hang_loat' => 0,
-                                'sl_dau_ra_hang_loat' => 0,
-                                'sl_tem_vang' => 0,
-                                'sl_ng' => 0,
-                                'start_powerM' => null,
-                                'end_powerM' => null,
-                                'powerM' => null,
-                                'status' => $input['status'],
-                                'machine_code' => $input['machine_id'],
-                                'sl_kh' => $lotsize, // 
-                                'user_id' => auth()->user()->id,
+                                'ten_sp' => $row['K'],
+                                'soluongtp' => $number,
+                                'ver' => "",
+                                'his' => "",
+                                'lsx' => $input['lo_sx'],
+                                'cd_thuc_hien' => 'Liner',
+                                'cd_tiep_theo' => 'Chọn',
+                                'nguoi_sx' => "",
+                                'ghi_chu' => "",
                             ]);
                         }
                         unset($input);
@@ -2945,7 +2972,7 @@ class ApiMobileController extends AdminController
             DB::commit();
             return $this->success([], 'Upload thành công');
         } catch (\Exception $ex) {
-            Log::error($ex->getMessage());
+            Log::error($ex);
             DB::rollBack();
             return $this->failure([], $ex->getMessage(), 500);
         }
