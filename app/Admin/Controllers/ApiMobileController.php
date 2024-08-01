@@ -2894,7 +2894,7 @@ class ApiMobileController extends AdminController
                         }
 
                         $record = ProductionPlan::query()->where([
-                            ['line_id', $line->id],
+                            ['machine_id', $row['H']],
                             ['lo_sx', $losx->id],
                             ['product_id', $input['product_id']],
                         ])->first();
@@ -2913,8 +2913,7 @@ class ApiMobileController extends AdminController
                         $numbers = $this->getQuantityArray(intval(str_replace(",","",$input['sl_giao_sx'])), $lotsize);
                         $countLot = InfoCongDoan::query()->where([
                             ['lo_sx', $input['lo_sx']],
-                            ['line_id', $input['line_id']],
-                            ['machine_code', $input['machine_id']],
+                            ['line_id', $input['line_id']]
                         ])->count();
                         foreach ($numbers as $number) {
                             $countLot++;

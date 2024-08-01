@@ -285,7 +285,6 @@ async function enqueueData(deviceId, data) {
                 const result = await axios.get("http://103.77.215.18:3030/api/plugins/telemetry/DEVICE/" + deviceId + "/values/timeseries?keys=PLC:Num_Input,PLC:Num_Out", { headers: { 'Authorization': 'Bearer ' + authToken } });
                 convertedData.input = result.data['PLC:Num_Input'] ? result.data['PLC:Num_Input'][0]['value'] : 0;
                 convertedData.output = result.data['PLC:Num_Out'][0]['value'];
-                console.log(convertedData);
                 dataQueues[deviceId].push({ data: convertedData, apiUrl: MACHINE_RECORD_API_URL });
             }
             lastMachineRecordValues[deviceId] = data;
