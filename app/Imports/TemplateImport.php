@@ -42,7 +42,15 @@ class TemplateImport implements ToCollection, WithHeadingRow, WithStartRow
     {
         $material_id = $row['material_id'] ?? null;
         $quantity = $row['quantity'] ?? 1;
+        $roll_quantity = $row['roll_quantity'] ?? 0;
+        $manufacture_date = $row['manufacture_date'] ?? null;
+        $machine_number = $row['machine_number'] ?? null;
+        $worker_name = $row['worker_name'] ?? null;
         if (empty($material_id)) return;
+
+        if (!empty($manufacture_date)) {
+            $manufacture_date = $this->transformDate($manufacture_date);
+        }
 
         $material = Material::find($material_id);
         if (empty($material)) throw new Exception("Không tìm thấy NVL: $material_id");
@@ -51,10 +59,26 @@ class TemplateImport implements ToCollection, WithHeadingRow, WithStartRow
             Template::create([
                 'material_id' => $material->id,
                 'quantity' => $quantity,
+                'roll_quantity' => $roll_quantity,
+                'manufacture_date' => $manufacture_date,
+                'machine_number' => $machine_number,
+                'worker_name' => $worker_name,
             ]);
         } else {
             $template->quantity = $quantity;
+            $template->roll_quantity = $roll_quantity;
+            $template->manufacture_date = $manufacture_date;
+            $template->machine_number = $machine_number;
+            $template->worker_name = $worker_name;
             $template->save();
         }
+    }
+
+    protected function transformDate($value)
+    {
+        if (is_numeric($value)) {
+            return Carbon::instance(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value))->format('Y-m-d');
+        }
+        return Carbon::createFromFormat('d/m/Y', $value)->format('Y-m-d');
     }
 }
