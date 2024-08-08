@@ -32,6 +32,7 @@ class TemplateImport implements ToCollection, WithHeadingRow, WithStartRow
     }
     public function collection(Collection $collection)
     {
+        Template::query()->delete();
         $this->fields = $collection->toArray();
         foreach ($collection as $row) {
             $this->importRow($row->toArray());
@@ -54,24 +55,24 @@ class TemplateImport implements ToCollection, WithHeadingRow, WithStartRow
 
         $material = Material::find($material_id);
         if (empty($material)) throw new Exception("Không tìm thấy NVL: $material_id");
-        $template = Template::query()->where('material_id', $material->id)->first();
-        if (empty($template)) {
-            Template::create([
-                'material_id' => $material->id,
-                'quantity' => $quantity,
-                'roll_quantity' => $roll_quantity,
-                'manufacture_date' => $manufacture_date,
-                'machine_number' => $machine_number,
-                'worker_name' => $worker_name,
-            ]);
-        } else {
-            $template->quantity = $quantity;
-            $template->roll_quantity = $roll_quantity;
-            $template->manufacture_date = $manufacture_date;
-            $template->machine_number = $machine_number;
-            $template->worker_name = $worker_name;
-            $template->save();
-        }
+        // $template = Template::query()->where('material_id', $material->id)->first();
+        Template::create([
+            'material_id' => $material->id,
+            'quantity' => $quantity,
+            'roll_quantity' => $roll_quantity,
+            'manufacture_date' => $manufacture_date,
+            'machine_number' => $machine_number,
+            'worker_name' => $worker_name,
+        ]);
+        // if (empty($template)) {
+        // } else {
+        //     $template->quantity = $quantity;
+        //     $template->roll_quantity = $roll_quantity;
+        //     $template->manufacture_date = $manufacture_date;
+        //     $template->machine_number = $machine_number;
+        //     $template->worker_name = $worker_name;
+        //     $template->save();
+        // }
     }
 
     protected function transformDate($value)
