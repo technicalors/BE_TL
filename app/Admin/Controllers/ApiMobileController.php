@@ -2776,7 +2776,7 @@ class ApiMobileController extends AdminController
                         return $this->failure([], 'Dòng số ' . $key . ': Thiếu công đoạn sản xuất');
                     }
                     if (is_null($row['H'])) {
-                        return $this->failure([], 'Dòng số ' . $key . ': Thiếu công đoạn sản xuất');
+                        return $this->failure([], 'Dòng số ' . $key . ': Thiếu máy sản xuất');
                     }
                     if (is_null($row['I'])) {
                         return $this->failure([], 'Dòng số ' . $key . ': Thiếu mã sản phẩm');
@@ -2814,7 +2814,7 @@ class ApiMobileController extends AdminController
             ];
             foreach ($allDataInSheet as $key => $row) {
                 //Lấy dứ liệu từ dòng thứ 5
-                if ($key > 3 && !is_null($row['H'])) {
+                if ($key > 2 && !is_null($row['H'])) {
                     if (is_null($row['H'])) {
                         break;
                     }
@@ -2917,7 +2917,7 @@ class ApiMobileController extends AdminController
                         ])->count();
                         foreach ($numbers as $number) {
                             $countLot++;
-                            InfoCongDoan::create([
+                            $info_cong_doan = [
                                 'lot_id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
                                 'lotsize' => $number, // 👈 Định mức cuộn
                                 'lo_sx' => $input['lo_sx'],
@@ -2939,7 +2939,12 @@ class ApiMobileController extends AdminController
                                 'machine_code' => $input['machine_id'],
                                 'sl_kh' => $number, // 
                                 'user_id' => auth()->user()->id,
-                            ]);
+                            ];
+                            if($input['line_id'] === 24){
+                                $info_cong_doan['product_id'] = null;
+                                $info_cong_doan['material_id'] = $input['product_id'];
+                            }
+                            InfoCongDoan::create($info_cong_doan);
                             // Lot::firstOrCreate(
                             //     ['id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT)],
                             //     [

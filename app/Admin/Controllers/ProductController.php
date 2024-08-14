@@ -323,7 +323,7 @@ class ProductController extends Controller
                 }
                 $material_data[] = array_intersect_key($row, array_flip($this->material_columns));
                 if (trim($row['I'])) {
-                    $material = Material::firstOrCreate(['id' => trim($row['I'])], array_intersect_key($row, array_flip($this->material_columns)));
+                    $material = $this->importMaterial(array_intersect_key($row, array_flip($this->material_columns)));
                     if ($material && $product) {
                         Bom::firstOrCreate(['product_id' => $product->id, 'material_id' => $material->id], array_intersect_key($row, array_flip($this->bom_columns)));
                     }
@@ -376,22 +376,25 @@ class ProductController extends Controller
     //import material
     protected function importMaterial($material_data)
     {
-        $material = [];
-        foreach ($material_data as $data) {
-            if (trim($data['I'])) {
-                $input = [];
-                $input['id'] = $data['I'];
-                $input['name'] = $data['J'];
-                $input['material'] = $data['L'];
-                $input['color'] = $data['M'];
-                $input['quantitative'] = $data['N'];
-                $input['thickness'] = $data['O'];
-                $input['meter_per_roll'] = $data['P'];
-                $input['sheet_per_pallet'] = $data['Q'];
-                $material[] = $input;
+        $input['id'] = $material_data['I'];
+        $input['code'] = $material_data['L'];
+        $input['name'] = $material_data['J'];
+        $input['material'] = $material_data['L'];
+        $input['color'] = $material_data['M'];
+        $input['quantitative'] = $material_data['N'];
+        $input['thickness'] = $material_data['O'];
+        $input['meter_per_roll'] = $material_data['P'];
+        $input['sheet_per_pallet'] = $material_data['Q'];
+        if(!empty($input['id'])){
+            $material = Material::find($input['id']);
+            if($material){
+                $material->update($input);
+            }else{
+                $material = Material::create($input);
             }
+            return $material;
         }
-        Material::insert($material);
+        return null;
     }
 
     protected $bom_columns = [
