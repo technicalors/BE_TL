@@ -524,6 +524,7 @@ class Phase2OIApiController extends Controller
                         Lot::create([
                             'id' => $infoCongDoan->lot_id,
                             'product_id' => $infoCongDoan->product_id,
+                            'material_id' => $infoCongDoan->material_id,
                             'lo_sx' => $infoCongDoan->lo_sx,
                             'so_luong' => 0,
                             'type' => Lot::TYPE_TEM_TRANG
@@ -539,6 +540,7 @@ class Phase2OIApiController extends Controller
                         Lot::create([
                             'id' => $infoCongDoan->lot_id,
                             'product_id' => $infoCongDoan->product_id,
+                            'material_id' => $infoCongDoan->material_id,
                             'lo_sx' => $infoCongDoan->lo_sx,
                             'so_luong' => $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang,
                             'type' => Lot::TYPE_TEM_TRANG
@@ -773,6 +775,7 @@ class Phase2OIApiController extends Controller
                 $thung = Lot::firstOrCreate([
                     'id' => $id . ($i + $counterT),
                     'product_id' => $lot->product_id,
+                    'material_id' => $lot->material_id,
                     'lo_sx' => $lot->lo_sx,
                     'so_luong' => $request->sl_in_tem,
                     'type' => Lot::TYPE_THUNG
@@ -1168,6 +1171,7 @@ class Phase2OIApiController extends Controller
                 Lot::create([
                     'id' => $infoCongDoan->lot_id,
                     'product_id' => $infoCongDoan->product_id,
+                    'material_id' => $infoCongDoan->material_id,
                     'lo_sx' => $infoCongDoan->lo_sx,
                     'so_luong' => 0,
                 ]);
@@ -1235,6 +1239,7 @@ class Phase2OIApiController extends Controller
                 Lot::create([
                     'id' => $infoCongDoan->lot_id,
                     'product_id' => $infoCongDoan->product_id,
+                    'material_id' => $infoCongDoan->material_id,
                     'lo_sx' => $infoCongDoan->lo_sx,
                     'so_luong' => 0,
                 ]);
@@ -1397,6 +1402,7 @@ class Phase2OIApiController extends Controller
                 Lot::updateOrCreate(['id' => $infoCongDoan->lot_id], [
                     'id' => $infoCongDoan->lot_id,
                     'product_id' => $infoCongDoan->product_id,
+                    'material_id' => $infoCongDoan->material_id,
                     'lo_sx' => $infoCongDoan->lo_sx,
                     'so_luong' => $infoCongDoan->sl_tem_vang,
                     'type' => Lot::TYPE_TEM_VANG,
