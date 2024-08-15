@@ -72,7 +72,10 @@ class Lot extends Model
     {
         return $this->belongsTo(Product::class);
     }
-
+    public function material()
+    {
+        return $this->belongsTo(Material::class);
+    }
     public function infoCongDoan()
     {
         return $this->hasMany(InfoCongDoan::class);

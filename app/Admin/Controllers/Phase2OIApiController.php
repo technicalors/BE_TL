@@ -562,11 +562,11 @@ class Phase2OIApiController extends Controller
                     'output' => 0
                 ]);
                 DB::commit();
+                return $this->success($this->formatTemTrang($infoCongDoan, $request), "Kết thúc sản xuất thành công");
             } catch (\Throwable $th) {
                 DB::rollBack();
                 return $this->failure($th, "Lỗi kết thúc sản xuất");
             }
-            return $this->success($this->formatTemTrang($infoCongDoan, $request), "Kết thúc sản xuất thành công");
         } else {
             return $this->failure([], "Không tìm thấy lot");
         }
@@ -575,6 +575,7 @@ class Phase2OIApiController extends Controller
     public function formatTemTrang($infoCongDoan, $request)
     {
         $product = $infoCongDoan->product;
+        $material = $infoCongDoan->material;
         $line = $infoCongDoan->line;
         $next_line = Line::where('ordering', '>', $line->ordering)->orderBy('ordering')->first();
         $user = CustomUser::find($infoCongDoan->user_id ?? "");
@@ -593,10 +594,10 @@ class Phase2OIApiController extends Controller
         $data = [];
         $data['lot_id'] = $infoCongDoan->lot_id;
         $data['lsx'] = $infoCongDoan->lo_sx;
-        $data['ten_sp'] = $product->name;
+        $data['ten_sp'] = $product->name ?? $material->name ?? "";
         $data['soluongtp'] = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang;
-        $data['his'] = $product->his;
-        $data['ver'] = $product->ver;
+        $data['his'] = $product->his ?? "";
+        $data['ver'] = $product->ver ?? "";
         $data['cd_thuc_hien'] = $line->name ?? "";
         $data['cd_tiep_theo'] = $next_line->name ?? "";
         $data['nguoi_sx'] = $user->name ?? "";
@@ -798,6 +799,7 @@ class Phase2OIApiController extends Controller
     public function formatTemChon($lot, $infoCongDoan)
     {
         $product = $lot->product;
+        $material = $lot->material;
         $line = $infoCongDoan->line;
         $next_line = Line::where('ordering', '>', $line->ordering)->orderBy('ordering')->first();
         $user = CustomUser::find($infoCongDoan->user_id ?? "");
@@ -816,7 +818,7 @@ class Phase2OIApiController extends Controller
         $data = [];
         $data['lot_id'] = $lot->id;
         $data['lsx'] = $lot->lo_sx;
-        $data['ten_sp'] = $product->name ?? "";
+        $data['ten_sp'] = $product->name ?? $material->name ?? "";
         $data['soluongtp'] = $lot->so_luong;
         $data['his'] = $product->his ?? "";
         $data['ver'] = $product->ver ?? "";
