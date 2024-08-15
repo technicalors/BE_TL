@@ -432,7 +432,7 @@ Route::group([
     $router->post('spec-product/create', [App\Admin\Controllers\ProductController::class, 'createSpecProduct']);
     $router->post('spec-product/delete', [App\Admin\Controllers\ProductController::class, 'deleteSpecProduct']);
     $router->get('spec-product/export', [App\Admin\Controllers\ProductController::class, 'exportSpecProduct']);
-    $router->post('spec-product/import', [App\Admin\Controllers\ProductController::class, 'importSpecProduct']);
+    $router->post('spec-product/import', [App\Admin\Controllers\ProductController::class, 'importNewVersion']);
 
     $router->get('errors/list', [App\Admin\Controllers\ErrorController::class, 'getErrors']);
     $router->patch('errors/update', [App\Admin\Controllers\ErrorController::class, 'updateErrors']);
@@ -484,7 +484,7 @@ Route::group([
     $router->delete('product/delete/{id}', [App\Admin\Controllers\ProductController::class, 'delete']);
     $router->post('products/delete', [App\Admin\Controllers\ProductController::class, 'deleteMultiple']);
     $router->get('product/export', [App\Admin\Controllers\ProductController::class, 'export']);
-    $router->post('product/import', [App\Admin\Controllers\ProductController::class, 'import']);
+    $router->post('product/import', [App\Admin\Controllers\ProductController::class, 'importNewVersion']);
 
     $router->get('material/list', [App\Admin\Controllers\MaterialController::class, 'list']);
     $router->patch('material/update/{id}', [App\Admin\Controllers\MaterialController::class, 'update']);

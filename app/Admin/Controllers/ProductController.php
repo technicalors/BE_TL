@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Bom;
 use App\Models\Customer;
 use App\Models\Line;
+use App\Models\LineProductivity;
 use App\Models\Material;
 use App\Models\MaterialWastage;
 use App\Models\Product;
@@ -233,7 +234,7 @@ class ProductController extends Controller
 
         $line_id = [];
         $spec_data = [];
-        Spec::where('product_id', $product_id)->delete();
+        // Spec::query()->delete();
         foreach ($currRow as $key => $item) {
             if ($key == "DI") {
                 $line_id = [20];//IQC
@@ -306,6 +307,14 @@ class ProductController extends Controller
         $titleRow2 = $allDataInSheet[4];
         try {
             DB::beginTransaction();
+            Product::query()->delete();
+            Material::query()->delete();
+            Bom::query()->delete();
+            ProductionJourney::query()->delete();
+            MaterialWastage::query()->delete();
+            TimeWastage::query()->delete();
+            LineProductivity::query()->delete();
+            Spec::query()->delete();
             foreach ($allDataInSheet as $index => $row) {
                 if ($index < 5) {
                     continue;
@@ -313,8 +322,8 @@ class ProductController extends Controller
                 //Lọc dữ liệu
                 $product_data[] = array_intersect_key($row, array_flip($this->product_columns));
                 if (trim($row['B'])) {
-                    $product = Product::firstOrCreate(['id' => trim($row['B'])], array_intersect_key($row, array_flip($this->product_columns)));
-                    $production_journey = ProductionJourney::create(['product_id' => $product->id], array_intersect_key($row, array_flip($this->production_journey_column)));
+                    $product = $this->importProduct(array_intersect_key($row, array_flip($this->product_columns)));
+                    // $production_journey = ProductionJourney::create(['product_id' => $product->id], array_intersect_key($row, array_flip($this->production_journey_column)));
                     $this->importSpec($row, $titleRow1, $titleRow2, $product->id);
                     $material_wastages_data = array_intersect_key($row, array_flip($this->material_wastage_columns));
                     $time_wastages_data = array_intersect_key($row, array_flip($this->time_wastage_columns));
@@ -353,21 +362,17 @@ class ProductController extends Controller
     //import product
     protected function importProduct($product_data)
     {
-        $product = [];
-        foreach ($product_data as $data) {
-            if (trim($data['B'])) {
-                $input = [];
-                $input['id'] = trim($data['B']);
-                $input['name'] = $data['C'];
-                $input['ver'] = $data['D'];
-                $input['his'] = $data['E'];
-                $input['customer_id'] = $data['F'];
-                $input['weight'] = $data['AO'];
-                $input['paper_norm'] = $data['AP'];
-                $product[] = $input;
-                Product::firstOrCreate(['id' => $input['id']], $input);
-            }
-        }
+        $input = [];
+        $input['id'] = trim($product_data['B']);
+        $input['name'] = $product_data['C'];
+        $input['ver'] = $product_data['D'];
+        $input['his'] = $product_data['E'];
+        $input['customer_id'] = $product_data['F'];
+        $input['weight'] = $product_data['AO'];
+        $input['paper_norm'] = $product_data['AP'];
+        $product[] = $input;
+        $product = Product::firstOrCreate(['id' => $input['id']], $input);
+        return $product;
     }
 
     protected $material_columns = [
