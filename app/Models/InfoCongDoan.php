@@ -97,4 +97,7 @@ class InfoCongDoan extends Model
     {
         return $this->belongsTo(Material::class);
     }
+    public function QCHistory(){
+        return $this->hasOne(QCHistory::class, ['machine_code', 'lot_id', 'line_id'], ['machine_code', 'lot_id', 'line_id']);
+    }
 }

@@ -851,7 +851,7 @@ class Phase2OIApiController extends Controller
         if (!$line) {
             return $this->failure([], "Không tìm thấy công đoạn");
         }
-        $query = InfoCongDoan::where('line_id', $line->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->whereDate('thoi_gian_bat_dau', '>=', Carbon::today()->subDays(30));
+        $query = InfoCongDoan::where('line_id', $line->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->whereDate('created_at', '>=', Carbon::today()->subDays(30));
         $machine = Machine::where('code', $request->machine_code)->first();
         if ($machine) {
             $query->where('machine_code', $machine->code);
@@ -899,6 +899,7 @@ class Phase2OIApiController extends Controller
                 } else {
                     $qc_history = QCHistory::create([
                         'lot_id' => $infoCongDoan->lot_id,
+                        'lo_sx' => $infoCongDoan->lo_sx,
                         'line_id' => $infoCongDoan->line_id,
                         'machine_code' => $infoCongDoan->machine_code,
                         'user_id' => $request->user()->id,
@@ -933,6 +934,7 @@ class Phase2OIApiController extends Controller
                 } else {
                     $qc_history = QCHistory::create([
                         'lot_id' => $infoCongDoan->lot_id,
+                        'lo_sx' => $infoCongDoan->lo_sx,
                         'line_id' => $infoCongDoan->line_id,
                         'user_id' => $request->user()->id,
                         'scanned_time' => Carbon::now(),
@@ -984,6 +986,7 @@ class Phase2OIApiController extends Controller
             } else {
                 $qc_history = QCHistory::create([
                     'lot_id' => $infoCongDoan->lot_id,
+                    'lo_sx' => $infoCongDoan->lo_sx,
                     'line_id' => $infoCongDoan->line_id,
                     'user_id' => $request->user()->id,
                     'scanned_time' => Carbon::now(),

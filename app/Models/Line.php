@@ -44,4 +44,8 @@ class Line extends Model
         );
         return $validated;
     }
+    public function factory()
+    {
+        return $this->belongsTo(Factory::class);
+    }
 }

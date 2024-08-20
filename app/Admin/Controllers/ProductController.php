@@ -232,39 +232,100 @@ class ProductController extends Controller
             }
         }
 
-        $line_id = [];
         $spec_data = [];
-        // Spec::query()->delete();
         foreach ($currRow as $key => $item) {
-            if ($key == "DI") {
-                $line_id = [20];//IQC
-            } else if ($key == "DU") {
-                $line_id = [24];//Gap dan lien hoan
-            } else if ($key == "EQ") {
-                $line_id = [25];
-            } else if ($key == "GA") {
-                $line_id = [27];
-            } else if ($key == "GU") {
-                $line_id = [11, 22];
-            } else if ($key == "HR") {
-                $line_id = [12, 14, 26];
-            } else if ($key == "IW") {
-                $line_id = [13, 15, 29];
-            } else if ($key == "JX") {
-                $line_id = [30];
-            } 
-            
+            $line_id = [];
+            if (in_array($key, $this->excelColumnRange("DU", "EP", "AD", "AR", "BC", "BL", "BU", "CE", "CN", "CZ"))) {
+                $line_id = [24]; //Gap dan lien hoan
+            } else if (in_array($key, $this->excelColumnRange("GA", "GT", "AE", "AS", "BD", "BM", "BV", "CF", "CO", "DA"))) {
+                $line_id = [27]; //Dan liner
+            } else if (in_array($key, $this->excelColumnRange("EQ", "FZ", "AF", "AU", "BE", "BN", "BW", "CG", "CQ", "DC"))) {
+                $line_id = [25]; //In flexo
+            } else if (in_array($key, $this->excelColumnRange("HR", "HU", "AI", "AY", "BH", "BQ", "BZ", "CJ", "CU", "DE"))) {
+                $line_id = [26]; //Duc cat
+            } else if (in_array($key, $this->excelColumnRange("IW", "JW", "AN", "CD", "CY"))) {
+                $line_id = [29]; //Chon Phase2 
+            } else if (in_array($key, $this->excelColumnRange("JX", "KJ"))) {
+                $line_id = [30]; //OQC Phase2
+            }
+
             foreach ($line_id as $id) {
                 $input = [];
-                $input['name'] = $title[$key];
-                $input['value'] = $item;
-                $input['product_id'] = $product_id;
-                $input['slug'] = Str::slug($input['name']);
-                $input['line_id'] = $id;
-                $spec_data[] = $input;
+                if (!empty($item)) {
+                    $input['name'] = "";
+                    if (in_array($key, $this->excelColumnRange("R", "AN"))) {
+                        $input['name'] = 'Hành trình sản xuất';
+                    } else if(in_array($key, $this->excelColumnRange("AR", "BB"))){
+                        $input['name'] = "Hao phí vào hàng các công đoạn";
+                    } else if(in_array($key, $this->excelColumnRange("BC", "BK"))) {
+                        $input["name"] = "Hao phí sản xuất các công đoạn (%)";
+                    } else if(in_array($key, $this->excelColumnRange("BL", "BT"))) {
+                        $input["name"] = "Chuẩn bị(Đầu ca)";
+                    } else if(in_array($key, $this->excelColumnRange("BU", "CD"))) {
+                        $input["name"] = "Vận chuyển (chuyển hàng công đoạn trước sang công đoạn sau)";
+                    } else if(in_array($key, $this->excelColumnRange("CE", "CM"))) {
+                        $input["name"] = "Vào hàng (Setup máy)";
+                    } else if(in_array($key, $this->excelColumnRange("CN", "CY"))) {
+                        $input["name"] = "Năng suất ấn định/giờ";
+                    } else if(in_array($key, $this->excelColumnRange("CZ", "DH"))) {
+                        $input["name"] = "Nhân sự ấn định máy (người)";
+                    } else {
+                        $input['name'] = $title[$key];
+                    }
+                    $input['value'] = $item;
+                    $input['product_id'] = $product_id;
+                    $input['slug'] = Str::slug($input['name']);
+                    $input['line_id'] = $id;
+                    $spec_data[] = $input;
+                }
             }
         }
         Spec::insert($spec_data);
+    }
+
+    // Chuyển đổi tên cột Excel thành số thứ tự
+    function columnToNumber($col) {
+        $num = 0;
+        $len = strlen($col);
+        for ($i = 0; $i < $len; $i++) {
+            $num = $num * 26 + (ord($col[$i]) - ord('A') + 1);
+        }
+        return $num;
+    }
+
+    // Chuyển đổi số thứ tự thành tên cột Excel
+    function numberToColumn($num) {
+        $col = '';
+        while ($num > 0) {
+            $remainder = ($num - 1) % 26;
+            $col = chr(65 + $remainder) . $col;
+            $num = intval(($num - 1) / 26);
+        }
+        return $col;
+    }
+
+    function excelColumnRange($start_col, $end_col = null, ...$additional_cols) {
+        // Nếu không có $end_col, đặt $end_col là $start_col
+        if ($end_col === null) {
+            $end_col = $start_col;
+        }
+    
+        $start_num = $this->columnToNumber($start_col);
+        $end_num = $this->columnToNumber($end_col);
+        
+        $columns = [];
+        for ($i = $start_num; $i <= $end_num; $i++) {
+            $columns[] = $this->numberToColumn($i);
+        }
+        
+        // Thêm các cột bất kỳ vào mảng kết quả
+        foreach ($additional_cols as $col) {
+            if (!in_array($col, $columns)) {
+                $columns[] = $col;
+            }
+        }
+    
+        return $columns;
     }
 
     public function export(Request $request)
@@ -357,7 +418,14 @@ class ProductController extends Controller
         return $this->success('', 'Import thành công');
     }
     protected $product_columns = [
-        'B', 'C', 'D', 'E', 'F', 'G', 'AO', 'AP'
+        'B',
+        'C',
+        'D',
+        'E',
+        'F',
+        'G',
+        'AO',
+        'AP'
     ];
     //import product
     protected function importProduct($product_data)
@@ -376,7 +444,17 @@ class ProductController extends Controller
     }
 
     protected $material_columns = [
-        'B', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q'
+        'B',
+        'H',
+        'I',
+        'J',
+        'K',
+        'L',
+        'M',
+        'N',
+        'O',
+        'P',
+        'Q'
     ];
     //import material
     protected function importMaterial($material_data)
@@ -390,11 +468,11 @@ class ProductController extends Controller
         $input['thickness'] = $material_data['O'];
         $input['meter_per_roll'] = $material_data['P'];
         $input['sheet_per_pallet'] = $material_data['Q'];
-        if(!empty($input['id'])){
+        if (!empty($input['id'])) {
             $material = Material::find($input['id']);
-            if($material){
+            if ($material) {
                 $material->update($input);
-            }else{
+            } else {
                 $material = Material::create($input);
             }
             return $material;
@@ -403,7 +481,10 @@ class ProductController extends Controller
     }
 
     protected $bom_columns = [
-        'B', 'H', 'I', 'K'
+        'B',
+        'H',
+        'I',
+        'K'
     ];
     //import bom
     protected function importBom($bom_data)
@@ -423,7 +504,30 @@ class ProductController extends Controller
     }
 
     protected $production_journey_column = [
-        'B', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF', 'AG', 'AH', 'AI', 'AJ', 'AK', 'AL', 'AM', 'AN'
+        'B',
+        'R',
+        'S',
+        'T',
+        'U',
+        'V',
+        'W',
+        'X',
+        'Y',
+        'Z',
+        'AA',
+        'AB',
+        'AC',
+        'AD',
+        'AE',
+        'AF',
+        'AG',
+        'AH',
+        'AI',
+        'AJ',
+        'AK',
+        'AL',
+        'AM',
+        'AN'
     ];
     public function handleProductionJourney($production_journeys_data)
     {
@@ -466,17 +570,38 @@ class ProductController extends Controller
         ProductionJourney::insert($production_journeys);
     }
     protected $material_wastage_columns = [
-        'AQ', 'AR', 'AS', 'AT', 'AU', 'AV', 'AW', 'AX', 'AY', 'AZ', 'BA', 'BB', 'BC', 'BD', 'BE', 'BF', 'BG', 'BH', 'BI', 'BJ', 'BK'
+        'AQ',
+        'AR',
+        'AS',
+        'AT',
+        'AU',
+        'AV',
+        'AW',
+        'AX',
+        'AY',
+        'AZ',
+        'BA',
+        'BB',
+        'BC',
+        'BD',
+        'BE',
+        'BF',
+        'BG',
+        'BH',
+        'BI',
+        'BJ',
+        'BK'
     ];
-    function importMaterialWastages($data, $product_id){
+    function importMaterialWastages($data, $product_id)
+    {
         $create_input = [];
         $line_id = null;
         $type = 1;
-        foreach($data as $key => $value){
-            if($key == 'AQ'){
+        foreach ($data as $key => $value) {
+            if ($key == 'AQ') {
                 $type = 1;
             }
-            if($key == 'BC'){
+            if ($key == 'BC') {
                 $type = 2;
             }
             switch ($key) {
@@ -501,7 +626,7 @@ class ProductController extends Controller
                     break;
             }
             $input = [];
-            if(!$line_id || !$product_id || !$value){
+            if (!$line_id || !$product_id || !$value) {
                 continue;
             }
             $input['product_id'] = $product_id;
@@ -513,20 +638,48 @@ class ProductController extends Controller
         MaterialWastage::insert($create_input);
     }
     protected $time_wastage_columns = [
-        'BL', 'BM', 'BN', 'BO', 'BP', 'BQ', 'BR', 'BS', 'BT', 'BU', 'BV', 'BW', 'BX', 'BY', 'BZ', 'CA', 'CB', 'CC', 'CD', 'CE', 'CF', 'CG', 'CH', 'CI', 'CJ', 'CK', 'CL', 'CM'
+        'BL',
+        'BM',
+        'BN',
+        'BO',
+        'BP',
+        'BQ',
+        'BR',
+        'BS',
+        'BT',
+        'BU',
+        'BV',
+        'BW',
+        'BX',
+        'BY',
+        'BZ',
+        'CA',
+        'CB',
+        'CC',
+        'CD',
+        'CE',
+        'CF',
+        'CG',
+        'CH',
+        'CI',
+        'CJ',
+        'CK',
+        'CL',
+        'CM'
     ];
-    function importTimeWastages($data, $product_id){
+    function importTimeWastages($data, $product_id)
+    {
         $create_input = [];
         $line_id = null;
         $type = 1;
-        foreach($data as $key => $value){
-            if($key == 'BL'){
+        foreach ($data as $key => $value) {
+            if ($key == 'BL') {
                 $type = 1;
             }
-            if($key == 'BU'){
+            if ($key == 'BU') {
                 $type = 2;
             }
-            if($key == 'CE'){
+            if ($key == 'CE') {
                 $type = 3;
             }
             switch ($key) {
@@ -555,7 +708,7 @@ class ProductController extends Controller
                     break;
             }
             $input = [];
-            if(!$line_id || !$product_id || !$value){
+            if (!$line_id || !$product_id || !$value) {
                 continue;
             }
             $input['product_id'] = $product_id;
@@ -567,18 +720,281 @@ class ProductController extends Controller
         TimeWastage::insert($create_input);
     }
     protected $line_productivity_columns = [
-        'CN', 'CO', 'CP', 'CQ', 'CR', 'CS', 'CT', 'CU', 'CV', 'CW', 'CX', 'CY'
+        'CN',
+        'CO',
+        'CP',
+        'CQ',
+        'CR',
+        'CS',
+        'CT',
+        'CU',
+        'CV',
+        'CW',
+        'CX',
+        'CY'
     ];
     protected $assigned_machine_personnel_columns = [
-        'CX', 'CY', 'CZ', 'DA', 'DB', 'DC', 'DD', 'DE', 'DF', 'DG', 'DH'
+        'CX',
+        'CY',
+        'CZ',
+        'DA',
+        'DB',
+        'DC',
+        'DD',
+        'DE',
+        'DF',
+        'DG',
+        'DH'
     ];
     //from DI to KJ
     protected $line_standard_columns = [
-        'DI', 'DJ', 'DK', 'DL', 'DM', 'DN', 'DO', 'DP', 'DQ', 'DR', 'DS', 'DT', 'DU', 'DV', 'DW', 'DX', 'DY', 'DZ', 'EA', 'EB', 'EC', 'ED', 'EE', 'EF', 'EG', 'EH', 'EI', 'EJ', 'EK', 'EL', 'EM', 'EN', 'EO', 'EP', 'EQ', 'ER', 'ES', 'ET', 'EU', 'EV', 'EW', 'EX', 'EY', 'EZ', 'FA', 'FB', 'FC', 'FD', 'FE', 'FF', 'FG', 'FH', 'FI', 'FJ', 'FK', 'FL', 'FM', 'FN', 'FO', 'FP', 'FQ', 'FR', 'FS', 'FT', 'FU', 'FV', 'FW', 'FX', 'FY', 'FZ', 'GA', 'GB', 'GC', 'GD', 'GE', 'GF', 'GG', 'GH', 'GI', 'GJ', 'GK', 'GL', 'GM', 'GN', 'GO', 'GP', 'GQ', 'GR', 'GS', 'GT', 'GU', 'GV', 'GW', 'GX', 'GY', 'GZ', 'HA', 'HB', 'HC', 'HD', 'HE', 'HF', 'HG', 'HH', 'HI', 'HJ', 'HK', 'HL', 'HM', 'HN', 'HO', 'HP', 'HQ', 'HR', 'HS', 'HT', 'HU', 'HV', 'HW', 'HX', 'HY', 'HZ', 'IA', 'IB', 'IC', 'ID', 'IE', 'IF', 'IG', 'IH', 'II', 'IJ', 'IK', 'IL', 'IM', 'IN', 'IO', 'IP', 'IQ', 'IR', 'IS', 'IT', 'IU', 'IV', 'IW', 'IX', 'IY', 'IZ', 'JA', 'JB', 'JC', 'JD', 'JE', 'JF', 'JG', 'JH', 'JI', 'JJ', 'JK', 'JL', 'JM', 'JN', 'JO', 'JP', 'JQ', 'JR', 'JS', 'JT', 'JU', 'JV', 'JW', 'JX', 'JY', 'JZ', 'KA', 'KB', 'KC', 'KD', 'KE', 'KF', 'KG', 'KH', 'KI', 'KJ'
+        'DI',
+        'DJ',
+        'DK',
+        'DL',
+        'DM',
+        'DN',
+        'DO',
+        'DP',
+        'DQ',
+        'DR',
+        'DS',
+        'DT',
+        'DU',
+        'DV',
+        'DW',
+        'DX',
+        'DY',
+        'DZ',
+        'EA',
+        'EB',
+        'EC',
+        'ED',
+        'EE',
+        'EF',
+        'EG',
+        'EH',
+        'EI',
+        'EJ',
+        'EK',
+        'EL',
+        'EM',
+        'EN',
+        'EO',
+        'EP',
+        'EQ',
+        'ER',
+        'ES',
+        'ET',
+        'EU',
+        'EV',
+        'EW',
+        'EX',
+        'EY',
+        'EZ',
+        'FA',
+        'FB',
+        'FC',
+        'FD',
+        'FE',
+        'FF',
+        'FG',
+        'FH',
+        'FI',
+        'FJ',
+        'FK',
+        'FL',
+        'FM',
+        'FN',
+        'FO',
+        'FP',
+        'FQ',
+        'FR',
+        'FS',
+        'FT',
+        'FU',
+        'FV',
+        'FW',
+        'FX',
+        'FY',
+        'FZ',
+        'GA',
+        'GB',
+        'GC',
+        'GD',
+        'GE',
+        'GF',
+        'GG',
+        'GH',
+        'GI',
+        'GJ',
+        'GK',
+        'GL',
+        'GM',
+        'GN',
+        'GO',
+        'GP',
+        'GQ',
+        'GR',
+        'GS',
+        'GT',
+        'GU',
+        'GV',
+        'GW',
+        'GX',
+        'GY',
+        'GZ',
+        'HA',
+        'HB',
+        'HC',
+        'HD',
+        'HE',
+        'HF',
+        'HG',
+        'HH',
+        'HI',
+        'HJ',
+        'HK',
+        'HL',
+        'HM',
+        'HN',
+        'HO',
+        'HP',
+        'HQ',
+        'HR',
+        'HS',
+        'HT',
+        'HU',
+        'HV',
+        'HW',
+        'HX',
+        'HY',
+        'HZ',
+        'IA',
+        'IB',
+        'IC',
+        'ID',
+        'IE',
+        'IF',
+        'IG',
+        'IH',
+        'II',
+        'IJ',
+        'IK',
+        'IL',
+        'IM',
+        'IN',
+        'IO',
+        'IP',
+        'IQ',
+        'IR',
+        'IS',
+        'IT',
+        'IU',
+        'IV',
+        'IW',
+        'IX',
+        'IY',
+        'IZ',
+        'JA',
+        'JB',
+        'JC',
+        'JD',
+        'JE',
+        'JF',
+        'JG',
+        'JH',
+        'JI',
+        'JJ',
+        'JK',
+        'JL',
+        'JM',
+        'JN',
+        'JO',
+        'JP',
+        'JQ',
+        'JR',
+        'JS',
+        'JT',
+        'JU',
+        'JV',
+        'JW',
+        'JX',
+        'JY',
+        'JZ',
+        'KA',
+        'KB',
+        'KC',
+        'KD',
+        'KE',
+        'KF',
+        'KG',
+        'KH',
+        'KI',
+        'KJ'
     ];
     //from KK to MR
     protected $production_mode_columns = [
-        'KK', 'KL', 'KM', 'KN', 'KO', 'KP', 'KQ', 'KR', 'KS', 'KT', 'KU', 'KV', 'KW', 'KX', 'KY', 'KZ', 'LA', 'LB', 'LC', 'LD', 'LE', 'LF', 'LG', 'LH', 'LI', 'LJ', 'LK', 'LL', 'LM', 'LN', 'LO', 'LP', 'LQ', 'LR', 'LS', 'LT', 'LU', 'LV', 'LW', 'LX', 'LY', 'LZ', 'MA', 'MB', 'MC', 'MD', 'ME', 'MF', 'MG', 'MH', 'MI', 'MJ', 'MK', 'ML', 'MM', 'MN', 'MO', 'MP', 'MQ', 'MR'
+        'KK',
+        'KL',
+        'KM',
+        'KN',
+        'KO',
+        'KP',
+        'KQ',
+        'KR',
+        'KS',
+        'KT',
+        'KU',
+        'KV',
+        'KW',
+        'KX',
+        'KY',
+        'KZ',
+        'LA',
+        'LB',
+        'LC',
+        'LD',
+        'LE',
+        'LF',
+        'LG',
+        'LH',
+        'LI',
+        'LJ',
+        'LK',
+        'LL',
+        'LM',
+        'LN',
+        'LO',
+        'LP',
+        'LQ',
+        'LR',
+        'LS',
+        'LT',
+        'LU',
+        'LV',
+        'LW',
+        'LX',
+        'LY',
+        'LZ',
+        'MA',
+        'MB',
+        'MC',
+        'MD',
+        'ME',
+        'MF',
+        'MG',
+        'MH',
+        'MI',
+        'MJ',
+        'MK',
+        'ML',
+        'MM',
+        'MN',
+        'MO',
+        'MP',
+        'MQ',
+        'MR'
     ];
 
     /**

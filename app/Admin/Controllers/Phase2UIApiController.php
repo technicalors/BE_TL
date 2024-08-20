@@ -438,20 +438,21 @@ class Phase2UIApiController extends Controller
 
     //QC
 
+    //Pre Query QC History
     public function pqcHistoryQuery(Request $request)
     {
         $line_ids = Line::where('factory_id', 2)->pluck('id')->toArray();
-        $query = InfoCongDoan::has('log')->where('line_id', $line_ids)->orderBy('created_at');
+        $query = QCHistory::whereIn('line_id', $line_ids)->orderBy('created_at');
+        if (isset($request->date) && count($request->date) == 2) {
+            $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->date[0])))
+                ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->date[1])));
+        }
         if (isset($request->line_id)) {
             if (is_array($request->line_id)) {
                 $query->whereIn('line_id', $request->line_id);
             } else {
                 $query->where('line_id', $request->line_id);
             }
-        }
-        if (isset($request->date) && count($request->date)) {
-            $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->date[0])))
-                ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->date[1])));
         }
         if (isset($request->product_id)) {
             $query->where('lot_id', 'like',  '%' . $request->product_id . '%');
@@ -474,14 +475,64 @@ class Phase2UIApiController extends Controller
         if (isset($request->lo_sx)) {
             $query->where('lot_id', 'like', "%$request->lo_sx%");
         }
-        $query->whereNotIn('line_id', [9, 21])->whereHas('lot', function ($lot_query) {
-            $lot_query->where(function ($q) {
-                $q->where('info_cong_doan.line_id', 13)->whereIn('type', [0, 2, 3]);
-            })->orWhere(function ($q) {
-                $q->where('info_cong_doan.line_id', '<>', 13)->whereIn('type', [0, 1, 2, 3]);
-            });
-        })->with("lot.product", "log", "plan", "line");
+        $query->with('infoCongDoan.product.customer', 'user', 'line.factory', 'machine', 'plan');
         return $query;
+    }
+
+    public function parseQCData($qc_histories){
+        $record = [];
+        $shifts = Shift::all();
+        foreach($qc_histories as $key => $qc_history) {
+            if(!$qc_history->infoCongDoan){
+                continue;
+            }
+            $ca_sx = $shifts->first(function ($shift) use ($qc_history) {
+                $createdTime = Carbon::parse($qc_history->created_at)->format('H:i:s');
+                return ($shift->start_time < $shift->end_time && $createdTime >= $shift->start_time && $createdTime <= $shift->end_time) ||
+                       ($shift->start_time > $shift->end_time && ($createdTime >= $shift->start_time || $createdTime <= $shift->end_time));
+            })->name ?? "";
+
+            $user_sx = CustomUser::find($qc_history->infoCongDoan->user_id ?? null);
+            $user_qc = CustomUser::find($qc_history->user_id ?? null);
+            $sl_ng_sx = 0;
+            $sl_ng_qc = 0;
+            if(isset($qc_history->log['errors'])){
+                foreach($qc_history->log['errors'] as $error){
+                    foreach($error['data'] as $key => $value){
+                        if($error['type'] === 'sx'){
+                            $sl_ng_sx += $value;
+                        }else{
+                            $sl_ng_qc += $value;
+                        }
+                    }
+                }
+            }
+            $item = [
+                'lot_id' => $qc_history->lot_id,
+                'thoi_gian_kiem_tra' => Carbon::parse($qc_history->created_at)->format('d/m/Y H:i:s'),
+                'ca_sx' => $ca_sx,
+                'xuong' => $qc_history->line->factory->name ?? "",
+                'cong_doan' => $qc_history->line->name ?? '',
+                'machine' => $qc_history->machine->name ??'',
+                'machine_id' => $qc_history->machine_id ??'',
+                'khach_hang' => $qc_history->infoCongDoan->product->customer->name ?? "",
+                'product_id' => $qc_history->infoCongDoan->product_id ?? '',
+                'ten_san_pham' => $qc_history->infoCongDoan->product->name ?? "",
+                'lo_sx' => $qc_history->lo_sx,
+                'lot_id' => $qc_history->lot_id,
+                'sl_dau_ra_hang_loat' => $qc_history->infoCongDoan->sl_dau_ra_hang_loat ?? 0,
+                'sl_dau_ra_ok' => ($qc_history->infoCongDoan->sl_dau_ra_hang_loat ?? 0) - ($qc_history->infoCongDoan->sl_tem_vang ?? 0) - ($qc_history->infoCongDoan->sl_ng ?? 0),
+                'sl_tem_vang' => $qc_history->infoCongDoan->sl_tem_vang ?? 0,
+                'sl_ng_sxkt' => $sl_ng_sx,
+                'sl_ng_pqc' => $sl_ng_qc,
+                'user_sxkt' => $user_sx->name ?? "",
+                'user_pqc' => $user_qc->name ?? "",
+                'sl_ng' => $qc_history->infoCongDoan->sl_ng ?? 0,
+                'ti_le_ng' => (isset($qc_history->infoCongDoan->sl_dau_ra_hang_loat) && $qc_history->infoCongDoan->sl_dau_ra_hang_loat > 0) ? number_format(($qc_history->infoCongDoan->sl_ng / $qc_history->infoCongDoan->sl_dau_ra_hang_loat) * 100)."%" : "0%"
+            ];
+            $record[] = $item;
+        }
+        return $record;
     }
 
     //Danh sách lot PQC
@@ -490,23 +541,11 @@ class Phase2UIApiController extends Controller
         $page = $request->page - 1;
         $pageSize = $request->pageSize;
         $query = $this->pqcHistoryQuery($request);
-        $dateRange = CarbonPeriod::create(date('Y-m-d', strtotime($request->date[0])), date('Y-m-d', strtotime($request->date[1])));
-        $dates = array_flip(array_map(fn ($date) => $date->format('Y-m-d'), iterator_to_array($dateRange)));
-        $data = $query->get()->filter(function ($value, $key) use ($dates) {
-            $line_key = $this->ID2TEXT[$value->line_id];
-            if (isset($value->log->info['qc'][$line_key]['thoi_gian_vao'])) {
-                $thoi_gian_vao = date('Y-m-d', strtotime($value->log->info['qc'][$line_key]['thoi_gian_vao']));
-                if (isset($dates[$thoi_gian_vao])) {
-                    return $value;
-                }
-            }
-            return false;
-        });
+        $data = $query->get();
         $count = $data->count();
         $records = $data->slice($page * $pageSize, $pageSize);
         $totalPage = $count;
-        $table = $this->produceTablePQC($records);
-        // $chart = $this->qcError($records);
+        $table = $this->parseQCData($records);
         return $this->success([
             "table" => $table,
             // "chart_lot" => $chart[1],
