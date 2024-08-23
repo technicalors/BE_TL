@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 class QCHistory extends Model
 {
     use HasFactory, Compoships;
-    protected $fillable = ['lot_id', 'lo_sx', 'machine_code', 'line_id', 'log', 'scanned_time', 'user_id'];
+    protected $fillable = ['lot_id', 'lo_sx', 'machine_code', 'line_id', 'type', 'result', 'user_id'];
     protected $casts = ['log' => 'json'];
 
     public function infoCongDoan(){
@@ -26,5 +26,8 @@ class QCHistory extends Model
     }
     public function plan(){
         return $this->belongsTo(ProductionPlan::class, ['line_id', 'lo_sx', 'machine_code'], ['line_id', 'lo_sx', 'machine_id']);
+    }
+    public function qcDetailHistories(){
+        return $this->hasMany(QCDetailHistory::class, 'q_c_history_id', 'id');
     }
 }

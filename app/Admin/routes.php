@@ -580,6 +580,8 @@ Route::group([
 
     Route::post('/import-parameters', [ParameterController::class, 'import']);
     $router->post('/import-spec', [App\Admin\Controllers\ProductController::class, 'importNewVersion']);
+    $router->get('/update-info-cong-doan', [App\Admin\Controllers\ApiUIController::class,'test']);
+    $router->get('convertQCLog', [App\Admin\Controllers\ApiUIController::class,'convertQCLog']);
 });
 //Dashboard
 Route::group([
@@ -658,8 +660,8 @@ Route::group([
     $router->get('equipment/oee', [Phase2UIApiController::class, 'getOEEData']);
     $router->get('equipment/error-frequency', [Phase2UIApiController::class, 'getErrorFrequencyData']);
     
-    $router->get('quality/pqc/data-table', [Phase2UIApiController::class, 'getQualittyDataTable']);
-    $router->get('quality/pqc/data-chart', [Phase2UIApiController::class, 'getQualittyDataChart']);
+    $router->get('quality/pqc/data-table', [Phase2UIApiController::class, 'getQualityDataTable']);
+    $router->get('quality/pqc/data-chart', [Phase2UIApiController::class, 'getQualityDataChart']);
 });
 
 //UI

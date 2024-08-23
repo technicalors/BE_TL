@@ -35,6 +35,8 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Models\CustomUser;
 use App\Models\LSXLog;
 use App\Models\Material;
+use App\Models\QCDetailHistory;
+use App\Models\QCHistory;
 use Carbon\CarbonPeriod;
 use stdClass;
 use Throwable;
@@ -5441,19 +5443,91 @@ class ApiUIController extends AdminController
 
     public function test()
     {
-        // $info = InfoCongDoan::all();
-        // foreach ($info as $key => $record) {
-        //     $status = 0;
-        //     if($record->thoi_gian_bat_dau){
-        //         if($record->thoi_gian_ket_thuc){
-        //             $status = InfoCongDoan::STATUS_COMPLETED;
-        //         }else{
-        //             $status = InfoCongDoan::STATUS_INPROGRESS;
-        //         }
-        //     }
-        //     $record->update(['status'=>$status]);
-        // }
-        broadcast(new ProductionUpdated())->toOthers();
-        return 'ccc';
+        $info = InfoCongDoan::with('line.machine', 'plan')->get();
+        try {
+            DB::beginTransaction();
+            foreach ($info as $key => $record) {
+                $status = 0;
+                if($record->thoi_gian_bat_dau){
+                    if($record->thoi_gian_ket_thuc){
+                        $status = InfoCongDoan::STATUS_COMPLETED;
+                    }else{
+                        $status = InfoCongDoan::STATUS_INPROGRESS;
+                    }
+                }
+                $record->update([
+                    'status'=>$status,
+                    'product_id'=>explode('.', $record->lot_id)[1] ?? null,
+                    'machine_code'=>$record->line->machine[0]->code ?? null,
+                    'sl_kh'=>$record->plan->sl_thanh_pham ?? (isset($record->plan->so_bat) ? (int)($record->plan->sl_giao_sx / $record->plan->so_bat) : 0),
+                ]);
+            }
+            DB::commit();
+        } catch (\Exception $th) {
+            DB::rollBack();
+            return ($th);
+        }
+        return "o's ke";
+    }
+
+    public function convertQCLog(){
+        $lines = Line::with('machine')->get();
+        $line_keys = [];
+        foreach ($lines as $line) {
+            $line_keys[Str::slug($line->name)] = $line;
+        }
+        $lsx_logs = LSXLog::with('infoCongDoan')->get();
+        try {
+            DB::beginTransaction();
+            foreach($lsx_logs as $log){
+                if(isset($log->info['qc'])){
+                    foreach($log->info['qc'] as $line_key => $info){
+                        $line = $line_keys[$line_key];
+                        $lot_id = $log->lot_id ?? null;
+                        if(!$lot_id || count($log->infoCongDoan) <= 0){
+                            continue;
+                        }
+                        $infoCongDoan = $log->infoCongDoan[0];
+                        $lo_sx = $infoCongDoan->lo_sx ?? explode('.', $infoCongDoan->lot_id)[0] ?? null;
+                        $machine_code = $line->machine_code ?? null;
+                        
+                        $old_qc_data = [];
+
+                        if(isset($info['dac-tinh'])) $old_qc_data['dac-tinh'] = $info['dac-tinh'];
+                        if(isset($info['kich-thuoc'])) $old_qc_data['kich-thuoc'] = $info['kich-thuoc'];
+                        if(isset($info['ngoai-quan'])) $old_qc_data['ngoai-quan'] = $info['ngoai-quan'];
+                        // return $old_qc_data;
+                        foreach ($old_qc_data as $key => $qc_data) {
+                            $qc_history = QCHistory::firstOrCreate([
+                                'lot_id'=>$lot_id,
+                                'lo_sx'=>$lo_sx,
+                                'machine_code'=>$line->machine[0]->code ?? null,
+                                'line_id'=>$line->id,
+                                'type'=>$key,
+                                'result'=>isset($qc_data['result']) ? ($qc_data['result'] === 1 ? 'OK' : 'NG') : null,
+                                'user_id'=>$info['user_id'] ?? null,
+                            ]);
+                            if(isset($qc_data['data'])){
+                                foreach (($qc_data['data'] ?? []) as $key => $data) {
+                                    if(!isset($data['result']) || !isset($data['id'])){
+                                        continue;
+                                    }
+                                    $qc_detail = QCDetailHistory::create([
+                                        'test_criteria_id' => $data['id'],
+                                        'input'=> !isset($data['value']) ? ($data['result'] === 1 ? 'OK' : 'NG') : $data['value'],
+                                        'result' => $data['result'] === 1 ? 'OK' : 'NG',
+                                        'q_c_history_id' => $qc_history->id,
+                                    ]);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return $th;
+        }
     }
 }
