@@ -23,6 +23,7 @@ class ProductOrder extends Model
         $validated = Validator::make(
             $input,
             [
+                'id' => 'required|unique:product_orders,id' . ($id ? ",$id" : ''),
                 'product_id'=>'required',
                 'customer_id'=>'required',
                 'order_number'=>'required',
@@ -30,6 +31,7 @@ class ProductOrder extends Model
                 'quantity'=>'required|integer|min:0',
             ],
             [
+                'id.unique' => 'Mã đơn đã tồn tại',
                 'product_id.required'=>'Vui lòng nhập sản phẩm',
                 'quantity.required'=>'Vui lòng nhập số lượng',
                 'order_date.required'=>'Vui lòng nhập ngày đặt hàng',
