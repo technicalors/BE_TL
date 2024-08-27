@@ -9,25 +9,23 @@ use Illuminate\Database\Eloquent\Model;
 class QCHistory extends Model
 {
     use HasFactory, Compoships;
-    protected $fillable = ['lot_id', 'lo_sx', 'machine_code', 'line_id', 'type', 'result', 'user_id'];
-    protected $casts = ['log' => 'json'];
+    protected $fillable = ['info_cong_doan_id', 'user_id', 'eligible_to_end', 'scanned_time'];
 
     public function infoCongDoan(){
-        return $this->hasOne(InfoCongDoan::class, ['machine_code', 'lot_id', 'line_id'], ['machine_code', 'lot_id', 'line_id']);
+        return $this->belongsTo(InfoCongDoan::class);
     }
     public function user(){
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(CustomUser::class);
     }
-    public function line(){
-        return $this->belongsTo(Line::class);
+    public function testCriteriaHistories(){
+        return $this->hasMany(TestCriteriaHistory::class);
     }
-    public function machine(){
-        return $this->belongsTo(Machine::class, 'machine_code');
+    public function yellowStampHistories(){
+        return $this->hasMany(YellowStampHistory::class);
     }
-    public function plan(){
-        return $this->belongsTo(ProductionPlan::class, ['line_id', 'lo_sx', 'machine_code'], ['line_id', 'lo_sx', 'machine_id']);
+    public function errorHistories(){
+        return $this->hasMany(ErrorHistory::class);
     }
-    public function qcDetailHistories(){
-        return $this->hasMany(QCDetailHistory::class, 'q_c_history_id', 'id');
-    }
+    const NOT_READY_TO_END = 0;
+    CONST READY_TO_END = 1;
 }

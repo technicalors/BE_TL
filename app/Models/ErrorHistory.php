@@ -6,16 +6,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\UUID;
 
-class ErrorLot extends Model
+class ErrorHistory extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'line_id',
-        'lot_id',
-        'machine_code',
+        'q_c_history_id',
         'error_id',
-        'value',
         'user_id',
-        'type'
+        'type',
+        'quantity',
     ];
 }

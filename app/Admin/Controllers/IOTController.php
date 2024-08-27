@@ -58,7 +58,7 @@ class IOTController extends AdminController
                 'sl_dau_vao_hang_loat' => (int)$info_cong_doan->sl_dau_vao_hang_loat,
                 'sl_dau_ra_hang_loat' => (int)$info_cong_doan->sl_dau_ra_hang_loat,
             ];
-            event(new ProductionUpdated($productionData));
+            broadcast(new ProductionUpdated($productionData));
             $info_cong_doan->save();
         }
         return response()->json(['message' => 'Equipment quantity updated successfully'], 200);

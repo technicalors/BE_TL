@@ -618,6 +618,7 @@ Route::group([
     $router->delete('assignment/{id}', [Phase2OIApiController::class, 'deleteAssignment']);
     $router->patch('assignment/{id}', [Phase2OIApiController::class, 'updateAssignment']);
     $router->post('print-tem-selection-line', [Phase2OIApiController::class, 'printTemSelectionLine']);
+    $router->post('start-mass-production', [Phase2OIApiController::class,'startMassProduction']);
 
     //Chất lượng
     $router->get('qc-overall', [Phase2OIApiController::class, 'getQCOverall']);

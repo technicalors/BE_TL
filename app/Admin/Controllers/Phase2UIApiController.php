@@ -441,44 +441,44 @@ class Phase2UIApiController extends Controller
     //Pre Query QC History
     public function pqcHistoryQuery(Request $request)
     {
-        // $line_ids = Line::where('factory_id', 2)->pluck('id')->toArray();
         $line_ids = Line::query()->pluck('id')->toArray();
-        // $lsx_logs = LSXLog::query()->whereDate('created_at', date('Y-m-21'))->get();
-        // dd($lsx_logs->toArray());
-        $query = QCHistory::whereIn('line_id', $line_ids)->orderBy('created_at');
+        $query = QCHistory::orderBy('created_at');
         if (isset($request->date) && count($request->date) == 2) {
-            $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->date[0])))
-                ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->date[1])));
+            $query->whereDate('scanned_time', '>=', date('Y-m-d', strtotime($request->date[0])))
+                ->whereDate('scanned_time', '<=', date('Y-m-d', strtotime($request->date[1])));
         }
-        if (isset($request->line_id)) {
-            if (is_array($request->line_id)) {
-                $query->whereIn('line_id', $request->line_id);
-            } else {
-                $query->where('line_id', $request->line_id);
+        $query->whereHas('infoCongDoan', function ($query) use ($request) {
+            if (isset($request->line_id)) {
+                if (is_array($request->line_id)) {
+                    $query->whereIn('line_id', $request->line_id);
+                } else {
+                    $query->where('line_id', $request->line_id);
+                }
             }
-        }
-        if (isset($request->product_id)) {
-            $query->where('lot_id', 'like',  '%' . $request->product_id . '%');
-        }
-        if (isset($request->ten_sp)) {
-            $query->where('lot_id', 'like',  '%' . $request->ten_sp . '%');
-        }
-        if (isset($request->khach_hang)) {
-            $khach_hang = Customer::where('id', $request->khach_hang)->first();
-            if ($khach_hang) {
-                $plan = ProductionPlan::where('khach_hang', $khach_hang->name)->get();
-                $product_ids = $plan->pluck('product_id')->toArray();
-                $query->where(function ($qr) use ($product_ids) {
-                    for ($i = 0; $i < count($product_ids); $i++) {
-                        $qr->orwhere('lot_id', 'like',  '%' . $product_ids[$i] . '%');
-                    }
-                });
+            if (isset($request->product_id)) {
+                $query->where('lot_id', 'like',  '%' . $request->product_id . '%');
             }
-        }
-        if (isset($request->lo_sx)) {
-            $query->where('lot_id', 'like', "%$request->lo_sx%");
-        }
-        $query->with('infoCongDoan.product.customer', 'user', 'line.factory', 'machine', 'plan');
+            if (isset($request->ten_sp)) {
+                $query->where('lot_id', 'like',  '%' . $request->ten_sp . '%');
+            }
+            if (isset($request->khach_hang)) {
+                $khach_hang = Customer::where('id', $request->khach_hang)->first();
+                if ($khach_hang) {
+                    $plan = ProductionPlan::where('khach_hang', $khach_hang->name)->get();
+                    $product_ids = $plan->pluck('product_id')->toArray();
+                    $query->where(function ($qr) use ($product_ids) {
+                        for ($i = 0; $i < count($product_ids); $i++) {
+                            $qr->orwhere('lot_id', 'like',  '%' . $product_ids[$i] . '%');
+                        }
+                    });
+                }
+            }
+            if (isset($request->lo_sx)) {
+                $query->where('lot_id', 'like', "%$request->lo_sx%");
+            }
+        });
+
+        $query->with('infoCongDoan.product', 'infoCongDoan.line', 'infoCongDoan.machine', 'user', 'errorHistories');
         return $query;
     }
 
@@ -497,17 +497,15 @@ class Phase2UIApiController extends Controller
             })->name ?? "";
 
             $user_sx = CustomUser::find($qc_history->infoCongDoan->user_id ?? null);
-            $user_qc = CustomUser::find($qc_history->user_id ?? null);
+            $user_qc = $qc_history->user;
             $sl_ng_sx = 0;
             $sl_ng_qc = 0;
-            if (isset($qc_history->log['errors'])) {
-                foreach (($qc_history->log['errors'] ?? []) as $error) {
-                    foreach ($error['data'] as $key => $value) {
-                        if ($error['type'] === 'sx') {
-                            $sl_ng_sx += $value;
-                        } else {
-                            $sl_ng_qc += $value;
-                        }
+            if (count($qc_history->error_histories ?? [])) {
+                foreach (($qc_history->error_histories ?? []) as $error) {
+                    if ($error->type === 'sx') {
+                        $sl_ng_sx += $error->quantity;
+                    } else {
+                        $sl_ng_qc += $error->quantity;
                     }
                 }
             }
@@ -515,15 +513,15 @@ class Phase2UIApiController extends Controller
                 'lot_id' => $qc_history->lot_id,
                 'thoi_gian_kiem_tra' => Carbon::parse($qc_history->created_at)->format('d/m/Y H:i:s'),
                 'ca_sx' => $ca_sx,
-                'xuong' => $qc_history->line->factory->name ?? "",
-                'cong_doan' => $qc_history->line->name ?? '',
-                'machine' => $qc_history->machine->name ?? '',
-                'machine_id' => $qc_history->machine_id ?? '',
+                'xuong' => $qc_history->line->factory->name ?? "Giấy",
+                'cong_doan' => $qc_history->infoCongDoan->line->name ?? '',
+                'machine' => $qc_history->infoCongDoan->machine->name ?? '',
+                'machine_id' => $qc_history->infoCongDoan->machine_id ?? '',
                 'khach_hang' => $qc_history->infoCongDoan->product->customer->name ?? "",
                 'product_id' => $qc_history->infoCongDoan->product_id ?? '',
                 'ten_san_pham' => $qc_history->infoCongDoan->product->name ?? "",
-                'lo_sx' => $qc_history->lo_sx,
-                'lot_id' => $qc_history->lot_id,
+                'lo_sx' => $qc_history->infoCongDoan->lo_sx,
+                'lot_id' => $qc_history->infoCongDoan->lot_id,
                 'sl_dau_ra_hang_loat' => $qc_history->infoCongDoan->sl_dau_ra_hang_loat ?? 0,
                 'sl_dau_ra_ok' => ($qc_history->infoCongDoan->sl_dau_ra_hang_loat ?? 0) - ($qc_history->infoCongDoan->sl_tem_vang ?? 0) - ($qc_history->infoCongDoan->sl_ng ?? 0),
                 'sl_tem_vang' => $qc_history->infoCongDoan->sl_tem_vang ?? 0,
@@ -532,7 +530,7 @@ class Phase2UIApiController extends Controller
                 'user_sxkt' => $user_sx->name ?? "",
                 'user_pqc' => $user_qc->name ?? "",
                 'sl_ng' => $qc_history->infoCongDoan->sl_ng ?? 0,
-                'ti_le_ng' => (isset($qc_history->infoCongDoan->sl_dau_ra_hang_loat) && $qc_history->infoCongDoan->sl_dau_ra_hang_loat > 0) ? number_format(($qc_history->infoCongDoan->sl_ng / $qc_history->infoCongDoan->sl_dau_ra_hang_loat) * 100) . "%" : "0%"
+                'ti_le_ng' => (isset($qc_history->infoCongDoan->sl_dau_ra_hang_loat) && $qc_history->infoCongDoan->sl_dau_ra_hang_loat > 0) ? number_format(($qc_history->infoCongDoan->sl_ng / $qc_history->infoCongDoan->sl_dau_ra_hang_loat) * 100) . "%" : "0%",
             ];
             $record[] = $item;
         }
@@ -545,9 +543,8 @@ class Phase2UIApiController extends Controller
         $page = $request->page - 1;
         $pageSize = $request->pageSize;
         $query = $this->pqcHistoryQuery($request);
-        $count = $query->count();
+        $totalPage = $query->count();
         $records = $query->offset($page * $pageSize)->limit($pageSize)->get();
-        $totalPage = $count;
         $data = $this->parseQCData($records);
         return $this->success([
             "data" => $data,
@@ -557,22 +554,20 @@ class Phase2UIApiController extends Controller
 
     public function parseErrorTrendingData($qcHistories)
     {
-        $records = $qcHistories;
+        $qcHistories;
         $data = [];
-        foreach ($records as $record) {
-            $date = date('d/m', strtotime($record->created_at));
-            if (isset($record->log['errors'])) {
-                foreach (($record->log['errors'] ?? []) as $error) {
-                    foreach ($error['data'] as $key => $value) {
-                        if (!isset($data[$key . $date])) {
-                            $data[$key . $date] = [
-                                'error' => $key,
-                                'date' => $date,
-                                'value' => 0
-                            ];
-                        }
-                        $data[$key . $date]['value'] += $value;
+        foreach ($qcHistories as $qc_history) {
+            $date = date('d/m', strtotime($qc_history->scanned_time));
+            if (count($qc_history->errorHistories ?? []) > 0) {
+                foreach (($qc_history->errorHistories ?? []) as $error) {
+                    if (!isset($data[$error->error_id . $date])) {
+                        $data[$error->error_id . $date] = [
+                            'error' => $error->error_id,
+                            'date' => $date,
+                            'value' => 0
+                        ];
                     }
+                    $data[$error->error_id . $date]['value'] += $error->quantity;
                 }
             }
         }
@@ -581,23 +576,20 @@ class Phase2UIApiController extends Controller
 
     public function parseMaterialErrorRatioData($qcHistories)
     {
-        $records = $qcHistories;
         $data = [];
-        foreach ($records as $record) {
-            $date = date('d/m', strtotime($record->created_at));
-            if (isset($record->log['errors'])) {
-                foreach (($record->log['errors'] ?? []) as $error) {
-                    foreach ($error['data'] as $key => $value) {
-                        if (str_contains($key, 'NVL')) {
-                            if (!isset($data[$key . $date])) {
-                                $data[$key . $date] = [
-                                    'error' => $key,
-                                    'date' => $date,
-                                    'value' => 0
-                                ];
-                            }
-                            $data[$key . $date]['value'] += $value;
+        foreach ($qcHistories as $qc_history) {
+            $date = date('d/m', strtotime($qc_history->created_at));
+            if (count($qc_history->errorHistories ?? []) > 0) {
+                foreach (($qc_history->errorHistories ?? []) as $error) {
+                    if (str_contains($error->error_id, 'NVL')) {
+                        if (!isset($data[$error->error_id . $date])) {
+                            $data[$error->error_id . $date] = [
+                                'error' => $error->error_id,
+                                'date' => $date,
+                                'value' => 0
+                            ];
                         }
+                        $data[$error->error_id . $date]['value'] += $error->quantity;
                     }
                 }
             }
@@ -607,25 +599,21 @@ class Phase2UIApiController extends Controller
 
     public function parseErrorRatioData($qcHistories)
     {
-        $records = $qcHistories;
         $data = [];
-        foreach ($records as $record) {
-            $date = date('d/m', strtotime($record->created_at));
-            if (isset($record->log['errors'])) {
-                foreach (($record->log['errors'] ?? []) as $error) {
-                    foreach ($error['data'] as $key => $value) {
-                        if (!isset($data[$key])) {
-                            $data[$key] = [
-                                'name' => $key,
-                                'frequency' => 0,
-                                'value' => 0
-                            ];
-                        }
-                        $sl_ng = $value ?? 0;
-                        $sl_dau_vao_hang_loat = $record->infoCongDoan->sl_dau_vao_hang_loat ?? 0;
-                        $data[$key]['value'] += $sl_dau_vao_hang_loat ? $sl_ng / $sl_dau_vao_hang_loat * 100 : 0;
-                        $data[$key]['frequency'] += 1;
+        foreach ($qcHistories as $qc_history) {
+            if (count($qc_history->errorHistories ?? []) > 0) {
+                foreach (($qc_history->errorHistories ?? []) as $error) {
+                    if (!isset($data[$error->error_id])) {
+                        $data[$error->error_id] = [
+                            'name' => $error->error_id,
+                            'frequency' => 0,
+                            'value' => 0
+                        ];
                     }
+                    $sl_ng = $error->quantity ?? 0;
+                    $sl_dau_vao_hang_loat = $qc_history->infoCongDoan->sl_dau_vao_hang_loat ?? 0;
+                    $data[$error->error_id]['value'] += $sl_dau_vao_hang_loat ? $sl_ng / $sl_dau_vao_hang_loat * 100 : 0;
+                    $data[$error->error_id]['frequency'] += 1;
                 }
             }
         }

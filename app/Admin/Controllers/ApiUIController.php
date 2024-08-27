@@ -33,11 +33,16 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Models\CustomUser;
+use App\Models\ErrorHistory;
 use App\Models\LSXLog;
 use App\Models\Material;
 use App\Models\QCDetailHistory;
 use App\Models\QCHistory;
+use App\Models\TestCriteriaDetailHistory;
+use App\Models\TestCriteriaHistory;
+use App\Models\YellowStampHistory;
 use Carbon\CarbonPeriod;
+use Illuminate\Support\Facades\Log;
 use stdClass;
 use Throwable;
 
@@ -615,7 +620,7 @@ class ApiUIController extends AdminController
     {
         $query = $this->qcHistoryQuery($request);
         $dateRange = CarbonPeriod::create($request->date[0], $request->date[1]);
-        $dates = array_flip(array_map(fn ($date) => $date->format('Y-m-d'), iterator_to_array($dateRange)));
+        $dates = array_flip(array_map(fn($date) => $date->format('Y-m-d'), iterator_to_array($dateRange)));
         $data = $query->get()->filter(function ($value, $key) use ($dates) {
             $line_key = $this->ID2TEXT[$value->line_id];
             if (isset($value->log->info['qc'][$line_key]['thoi_gian_vao'])) {
@@ -813,7 +818,7 @@ class ApiUIController extends AdminController
         $pageSize = $request->pageSize;
         $query = $this->qcHistoryQuery($request);
         $dateRange = CarbonPeriod::create(date('Y-m-d', strtotime($request->date[0])), date('Y-m-d', strtotime($request->date[1])));
-        $dates = array_flip(array_map(fn ($date) => $date->format('Y-m-d'), iterator_to_array($dateRange)));
+        $dates = array_flip(array_map(fn($date) => $date->format('Y-m-d'), iterator_to_array($dateRange)));
         $data = $query->get()->filter(function ($value, $key) use ($dates) {
             $line_key = $this->ID2TEXT[$value->line_id];
             if (isset($value->log->info['qc'][$line_key]['thoi_gian_vao'])) {
@@ -1758,13 +1763,31 @@ class ApiUIController extends AdminController
             ),
         ];
         $header = [
-            'STT', 'Ngày sản xuất', 'Ca sản xuất', 'Xưởng', 'Công đoạn', 'Máy sản xuất', 'Mã máy', 'Tên sản phẩm', 'Khách hàng', 'Mã hàng', 'Mã nguyên vật liệu', 'Lô sản xuất', 'Mã pallet/thùng', 'Đơn vị',
+            'STT',
+            'Ngày sản xuất',
+            'Ca sản xuất',
+            'Xưởng',
+            'Công đoạn',
+            'Máy sản xuất',
+            'Mã máy',
+            'Tên sản phẩm',
+            'Khách hàng',
+            'Mã hàng',
+            'Mã nguyên vật liệu',
+            'Lô sản xuất',
+            'Mã pallet/thùng',
+            'Đơn vị',
             'Kế hoạch' => ['Thời gian bắt đầu', 'Thời gian kết thúc', 'Số lượng đầu vào', 'Số lượng đầu ra'],
             'Thực tế' => [
                 'Vào hàng' => ['Thời gian bắt đầu vào hàng', 'Thời gian kết thúc vào hàng', 'Số lượng đầu vào vào hàng', 'Số lượng đầu ra vào hàng'],
                 'Sản xuất sản lượng' => ['Thời gian bắt đầu sản xuất sản lượng', 'Thời gian kết thúc sản xuất sản lượng', 'Số lượng đầu vào thực tế', 'Số lượng đầu ra thực tế', 'Số lượng đầu ra OK', 'Số lượng tem vàng', 'Số lượng NG']
             ],
-            'Chênh lệch', "tỷ lệ đạt", 'T/T Thực tế (Phút)', 'Leadtime', 'Điện năng tiêu thụ', 'Công nhân sản xuất'
+            'Chênh lệch',
+            "tỷ lệ đạt",
+            'T/T Thực tế (Phút)',
+            'Leadtime',
+            'Điện năng tiêu thụ',
+            'Công nhân sản xuất'
         ];
         $table_key = [
             'A' => 'stt',
@@ -1938,14 +1961,42 @@ class ApiUIController extends AdminController
             ),
         ];
         $header = [
-            'STT', 'Ngày', 'Công đoạn', 'Máy sản xuất', 'Mã máy', "Lô Sản xuất", "Thùng/pallet", "Thời gian bắt đầu dừng", "Thời gian kết thúc dừng", "Thời gian dừng",
-            "Mã lỗi", "Tên lỗi", "Nguyên nhân lỗi", "Biện pháp khắc phục lỗi", "Biện pháp phòng ngừa lỗi", "Tình trạng", "Người xử lý"
+            'STT',
+            'Ngày',
+            'Công đoạn',
+            'Máy sản xuất',
+            'Mã máy',
+            "Lô Sản xuất",
+            "Thùng/pallet",
+            "Thời gian bắt đầu dừng",
+            "Thời gian kết thúc dừng",
+            "Thời gian dừng",
+            "Mã lỗi",
+            "Tên lỗi",
+            "Nguyên nhân lỗi",
+            "Biện pháp khắc phục lỗi",
+            "Biện pháp phòng ngừa lỗi",
+            "Tình trạng",
+            "Người xử lý"
         ];
         $table_key = [
-            'A' => 'stt', 'B' => 'ngay_sx', 'C' => 'cong_doan', 'D' => 'machine_name', 'E' => 'machine_id',
-            'F' => 'lo_sx', 'G' => 'lot_id', 'H' => 'thoi_gian_bat_dau_dung', 'I' => 'thoi_gian_ket_thuc_dung',
-            'J' => 'thoi_gian_dung', 'K' => 'error_id', 'L' => 'error_name', 'M' => 'nguyen_nhan', 'N' => 'bien_phap',
-            'O' => 'phong_ngua', 'P' => 'tinh_trang', 'Q' => 'nguoi_xl',
+            'A' => 'stt',
+            'B' => 'ngay_sx',
+            'C' => 'cong_doan',
+            'D' => 'machine_name',
+            'E' => 'machine_id',
+            'F' => 'lo_sx',
+            'G' => 'lot_id',
+            'H' => 'thoi_gian_bat_dau_dung',
+            'I' => 'thoi_gian_ket_thuc_dung',
+            'J' => 'thoi_gian_dung',
+            'K' => 'error_id',
+            'L' => 'error_name',
+            'M' => 'nguyen_nhan',
+            'N' => 'bien_phap',
+            'O' => 'phong_ngua',
+            'P' => 'tinh_trang',
+            'Q' => 'nguoi_xl',
         ];
         foreach ($header as $key => $cell) {
             if (!is_array($cell)) {
@@ -2236,10 +2287,21 @@ class ApiUIController extends AdminController
             ),
         ];
         $header = [
-            'STT', 'Ngày', 'Mã khách hàng', 'Tên khách hàng', 'Mã hàng', 'Tên sản phẩm', 'Đơn vị tính', 'Lô sản xuất', 'Kho', 'Mã thùng', 'Vị trí',
+            'STT',
+            'Ngày',
+            'Mã khách hàng',
+            'Tên khách hàng',
+            'Mã hàng',
+            'Tên sản phẩm',
+            'Đơn vị tính',
+            'Lô sản xuất',
+            'Kho',
+            'Mã thùng',
+            'Vị trí',
             'Nhập kho' => ['Ngày nhập', 'Số lượng', 'Người nhập'],
             'Xuất kho' => ['Ngày xuất', 'Số lượng', 'Người xuất'],
-            'Tồn kho' => ['Số lượng', 'Số ngày tồn kho'], 'Ghi chú'
+            'Tồn kho' => ['Số lượng', 'Số ngày tồn kho'],
+            'Ghi chú'
         ];
         $table_key = ['A' => 'stt', 'B' => 'ngay', 'C' => 'ma_khach_hang', 'D' => 'ten_khach_hang', 'E' => 'product_id', 'F' => 'ten_san_pham', 'G' => 'dvt', 'H' => 'lo_sx', 'I' => 'kho', 'J' => 'lot_id', 'K' => 'vi_tri', 'L' => 'ngay_nhap', 'M' => 'so_luong_nhap', 'N' => 'nguoi_nhap', 'O' => 'ngay_xuat', 'P' => 'so_luong_xuat', 'Q' => 'nguoi_xuat', 'R' => 'ton_kho', 'S' => 'so_ngay_ton', 'T' => 'note'];
         foreach ($header as $key => $cell) {
@@ -2364,8 +2426,21 @@ class ApiUIController extends AdminController
             ),
         ];
         $header = [
-            'STT', 'Ngày', "Ca sx", 'Xưởng', 'Tên sản phẩm', 'Khách hàng', 'Mã hàng', 'Lô sản xuất', 'Mã pallet/thùng',
-            'Số lượng SX', 'Sl lấy mẫu', 'Số lượng NG', 'Loại lỗi', "Kết luận", "OQC"
+            'STT',
+            'Ngày',
+            "Ca sx",
+            'Xưởng',
+            'Tên sản phẩm',
+            'Khách hàng',
+            'Mã hàng',
+            'Lô sản xuất',
+            'Mã pallet/thùng',
+            'Số lượng SX',
+            'Sl lấy mẫu',
+            'Số lượng NG',
+            'Loại lỗi',
+            "Kết luận",
+            "OQC"
         ];
         $table_key = [
             'A' => 'stt',
@@ -2438,7 +2513,7 @@ class ApiUIController extends AdminController
         ini_set('memory_limit', '1024M');
         $query = $this->qcHistoryQuery($request);
         $dateRange = CarbonPeriod::create($request->date[0], $request->date[1]);
-        $dates = array_flip(array_map(fn ($date) => $date->format('Y-m-d'), iterator_to_array($dateRange)));
+        $dates = array_flip(array_map(fn($date) => $date->format('Y-m-d'), iterator_to_array($dateRange)));
         $data = $query->get()->filter(function ($value, $key) use ($dates) {
             $line_key = $this->ID2TEXT[$value->line_id];
             if (isset($value->log->info['qc'][$line_key]['thoi_gian_vao'])) {
@@ -2486,9 +2561,27 @@ class ApiUIController extends AdminController
             ),
         ];
         $header = [
-            'STT', 'Ngày PQC kiểm tra', "Ca sản xuất", "Xưởng", "Công đoạn", "Máy sản xuất", "Mã máy", 'Tên sản phẩm', "Khách hàng", "Mã hàng",
-            'Lô sản xuất', 'Mã pallet/thùng', "Số lượng sản xuất", "Số lượng OK", 'Số lượng tem vàng',
-            "Số lượng NG (SX tự KT)", 'SX kiểm tra', "Số lượng NG (PQC)", 'QC kiểm tra', "Số lượng NG", "Tỉ lệ NG"
+            'STT',
+            'Ngày PQC kiểm tra',
+            "Ca sản xuất",
+            "Xưởng",
+            "Công đoạn",
+            "Máy sản xuất",
+            "Mã máy",
+            'Tên sản phẩm',
+            "Khách hàng",
+            "Mã hàng",
+            'Lô sản xuất',
+            'Mã pallet/thùng',
+            "Số lượng sản xuất",
+            "Số lượng OK",
+            'Số lượng tem vàng',
+            "Số lượng NG (SX tự KT)",
+            'SX kiểm tra',
+            "Số lượng NG (PQC)",
+            'QC kiểm tra',
+            "Số lượng NG",
+            "Tỉ lệ NG"
         ];
         $table_key = [
             'A' => 'stt',
@@ -2718,9 +2811,25 @@ class ApiUIController extends AdminController
         $header1_row = $start1_row;
         $start1_col = 1;
         $header1 = [
-            'Ngày sản xuất', 'Số máy', "Số nhân sự chạy máy", "Số lượng đầu vào (pcs)", "Số lượng khoanh vùng (tem vàng) (pcs)", "Số lượng OK (pcs)", "Số lượng NG (pcs)",
-            "Tổng thời gian sản xuất", 'Thời gian không ra sản phẩm', "Thời gian chạy sản lượng", "Thời gian vào hàng", "Tỷ lệ NG (%)", 'Tỷ lệ hao phí thời gian (%)',
-            'Leadtime', "Hiệu suất (A)", "Hiệu suất (P)", "Hiệu suất (Q)", "OEE", 'Điện năng'
+            'Ngày sản xuất',
+            'Số máy',
+            "Số nhân sự chạy máy",
+            "Số lượng đầu vào (pcs)",
+            "Số lượng khoanh vùng (tem vàng) (pcs)",
+            "Số lượng OK (pcs)",
+            "Số lượng NG (pcs)",
+            "Tổng thời gian sản xuất",
+            'Thời gian không ra sản phẩm',
+            "Thời gian chạy sản lượng",
+            "Thời gian vào hàng",
+            "Tỷ lệ NG (%)",
+            'Tỷ lệ hao phí thời gian (%)',
+            'Leadtime',
+            "Hiệu suất (A)",
+            "Hiệu suất (P)",
+            "Hiệu suất (Q)",
+            "OEE",
+            'Điện năng'
         ]; //, "Hiệu suất (A)", "Hiệu suất (P)", "Hiệu suất (Q)", "OEE"
         $table_key1 = [
             'A' => 'ngay_sx',
@@ -2848,9 +2957,25 @@ class ApiUIController extends AdminController
         $header2_row = $start2_row;
         $start2_col = 1;
         $header2 = [
-            'Ngày sản xuất', 'Số máy', "Số nhân sự chạy máy", "Số lượng đầu vào (tờ)", "Số lượng khoanh vùng (tem vàng) (tờ)", "Số lượng OK (tờ)", "Số lượng NG (tờ)",
-            "Tổng thời gian sản xuất", 'Thời gian không ra sản phẩm', "Thời gian chạy sản lượng", "Thời gian vào hàng", "Tỷ lệ NG (%)", 'Tỷ lệ hao phí thời gian (%)',
-            'Leadtime', "Hiệu suất (A)", "Hiệu suất (P)", "Hiệu suất (Q)", "OEE", 'Điện năng'
+            'Ngày sản xuất',
+            'Số máy',
+            "Số nhân sự chạy máy",
+            "Số lượng đầu vào (tờ)",
+            "Số lượng khoanh vùng (tem vàng) (tờ)",
+            "Số lượng OK (tờ)",
+            "Số lượng NG (tờ)",
+            "Tổng thời gian sản xuất",
+            'Thời gian không ra sản phẩm',
+            "Thời gian chạy sản lượng",
+            "Thời gian vào hàng",
+            "Tỷ lệ NG (%)",
+            'Tỷ lệ hao phí thời gian (%)',
+            'Leadtime',
+            "Hiệu suất (A)",
+            "Hiệu suất (P)",
+            "Hiệu suất (Q)",
+            "OEE",
+            'Điện năng'
         ]; //, "Hiệu suất (A)", "Hiệu suất (P)", "Hiệu suất (Q)", "OEE"
         $table_key2 = [
             'A' => 'ngay_sx',
@@ -2964,7 +3089,24 @@ class ApiUIController extends AdminController
         $start3_row = $table2_row + 1;
         $start3_col = 1;
         $header3 = [
-            'Ngày', "Số máy", 'Tên sản phẩm', 'Lô sản xuất', "Thời gian kế hoạch giao", "Thời gian thực tế làm", "Số lượng KH giao", "Số lượng đầu vào", "Số lượng OK", "Số lượng tem vàng", "Số lượng NG", 'Tỷ lệ NG', 'Thời gian không ra SP', 'Thời gian máy chạy ra SP', 'Thời gian vào hàng', 'Tỷ lệ hao phí thời gian', 'Tỷ lệ hoàn thành KH', 'Nhân sự chạy máy'
+            'Ngày',
+            "Số máy",
+            'Tên sản phẩm',
+            'Lô sản xuất',
+            "Thời gian kế hoạch giao",
+            "Thời gian thực tế làm",
+            "Số lượng KH giao",
+            "Số lượng đầu vào",
+            "Số lượng OK",
+            "Số lượng tem vàng",
+            "Số lượng NG",
+            'Tỷ lệ NG',
+            'Thời gian không ra SP',
+            'Thời gian máy chạy ra SP',
+            'Thời gian vào hàng',
+            'Tỷ lệ hao phí thời gian',
+            'Tỷ lệ hoàn thành KH',
+            'Nhân sự chạy máy'
         ];
         $table_key3 = [
             'A' => 'ngay_sx',
@@ -3054,7 +3196,10 @@ class ApiUIController extends AdminController
         $start4_row = $table3_row + 1;
         $start4_col = 1;
         $header4 = [
-            'Mã hàng', 'Tên sản phẩm', "Lô sản xuất", "Số bát",
+            'Mã hàng',
+            'Tên sản phẩm',
+            "Lô sản xuất",
+            "Số bát",
             "IN" => ["Ngày sản xuất gần nhất của lô", "Số lượng đầu vào", "Số lượng hàng đạt", 'Tem vàng', "Số lượng NG", "Sản lượng kế hoạch giao", "Tỷ lệ đạt thẳng (%)", "Tỷ lệ tem vàng (%)", "Tỷ lệ NG(%)", "Tỷ lệ hao phí thời gian (%)", "Điện năng", ""],
             "PHỦ" => ["Ngày sản xuất gần nhất của lô", "Số lượng đầu vào", "Số lượng hàng đạt", 'Tem vàng', "Số lượng NG", "Sản lượng kế hoạch giao", "Tỷ lệ đạt thẳng (%)", "Tỷ lệ tem vàng (%)", "Tỷ lệ NG(%)", "Tỷ lệ hao phí thời gian (%)", "Điện năng", ""],
             "IN LƯỚI" => ["Ngày sản xuất gần nhất của lô", "Số lượng đầu vào", "Số lượng hàng đạt", 'Tem vàng', "Số lượng NG", "Sản lượng kế hoạch giao", "Tỷ lệ đạt thẳng (%)", "Tỷ lệ tem vàng (%)", "Tỷ lệ NG(%)", "Tỷ lệ hao phí thời gian (%)", "Điện năng", ""],
@@ -3665,7 +3810,7 @@ class ApiUIController extends AdminController
         ini_set('memory_limit', '1024M');
         $query = $this->qcHistoryQuery($request);
         $dateRange = CarbonPeriod::create($request->date[0], $request->date[1]);
-        $dates = array_flip(array_map(fn ($date) => $date->format('Y-m-d'), iterator_to_array($dateRange)));
+        $dates = array_flip(array_map(fn($date) => $date->format('Y-m-d'), iterator_to_array($dateRange)));
         $data = $query->get()->filter(function ($value, $key) use ($dates) {
             $line_key = $this->ID2TEXT[$value->line_id];
             if (isset($value->log->info['qc'][$line_key]['thoi_gian_vao'])) {
@@ -3719,9 +3864,27 @@ class ApiUIController extends AdminController
             $start_col = 1;
 
             $header = [
-                'STT', 'Ngày', "Ca sản xuất", "Xưởng", "Công đoạn", "Máy sản xuất", "Mã máy", 'Tên sản phẩm', "Khách hàng", "Mã hàng",
-                'Lô sản xuất', 'Mã pallet/thùng', "Số lượng sản xuất", "Số lượng OK", 'Số lượng tem vàng',
-                "Số lượng NG (SX tự KT)", 'SX kiểm tra', "Số lượng NG (PQC)", 'QC kiểm tra', "Số lượng NG", "Tỉ lệ NG"
+                'STT',
+                'Ngày',
+                "Ca sản xuất",
+                "Xưởng",
+                "Công đoạn",
+                "Máy sản xuất",
+                "Mã máy",
+                'Tên sản phẩm',
+                "Khách hàng",
+                "Mã hàng",
+                'Lô sản xuất',
+                'Mã pallet/thùng',
+                "Số lượng sản xuất",
+                "Số lượng OK",
+                'Số lượng tem vàng',
+                "Số lượng NG (SX tự KT)",
+                'SX kiểm tra',
+                "Số lượng NG (PQC)",
+                'QC kiểm tra',
+                "Số lượng NG",
+                "Tỉ lệ NG"
             ];
             $table_key = [
                 'A' => 'stt',
@@ -3933,7 +4096,13 @@ class ApiUIController extends AdminController
         $start_col = 1;
 
         $header = [
-            'STT', 'Ngày kiểm tra', 'Tên sản phẩm', 'Khách hàng', 'Lô SX', 'Mã pallet/thùng', 'Người kiểm tra'
+            'STT',
+            'Ngày kiểm tra',
+            'Tên sản phẩm',
+            'Khách hàng',
+            'Lô SX',
+            'Mã pallet/thùng',
+            'Người kiểm tra'
         ];
         $table_key = [
             'A' => 'stt',
@@ -4405,7 +4574,7 @@ class ApiUIController extends AdminController
         foreach ($list as $plan) {
             $plan->sl_ke_hoach_manh = $plan->sl_giao_sx;
             $plan->ten_san_pham = $plan->product->name ?? '';
-            if($plan->line_id == 24){
+            if ($plan->line_id == 24) {
                 $plan->ten_san_pham = $plan->material->name ?? "";
                 $plan->product_id = $plan->material->id ?? "";
             }
@@ -4621,8 +4790,18 @@ class ApiUIController extends AdminController
             ),
         ];
         $header1 = [
-            'STT', 'Ngày sản xuất', "Ca sản xuất", "Công đoạn", "Máy sản xuất", 'Tên sản phẩm',
-            'Lô sản xuất', 'Mã pallet/thùng', "ĐV", "OK", "NG", "KV"
+            'STT',
+            'Ngày sản xuất',
+            "Ca sản xuất",
+            "Công đoạn",
+            "Máy sản xuất",
+            'Tên sản phẩm',
+            'Lô sản xuất',
+            'Mã pallet/thùng',
+            "ĐV",
+            "OK",
+            "NG",
+            "KV"
         ];
         $table_key = [
             'A' => 'stt',
@@ -4931,8 +5110,8 @@ class ApiUIController extends AdminController
                 break;
         }
         $prev_year_input = [];
-        $prev_year_input['start_date'] = date('Y-m-d 00:00:00', strtotime($input['start_date'].' - 1 year'));
-        $prev_year_input['end_date'] = date('Y-m-d 23:59:59', strtotime($input['end_date'].' - 1 year'));
+        $prev_year_input['start_date'] = date('Y-m-d 00:00:00', strtotime($input['start_date'] . ' - 1 year'));
+        $prev_year_input['end_date'] = date('Y-m-d 23:59:59', strtotime($input['end_date'] . ' - 1 year'));
         //current year data
         $query = InfoCongDoan::orderBy('created_at');
         if (isset($input['start_date']) && isset($input['end_date'])) {
@@ -5448,18 +5627,18 @@ class ApiUIController extends AdminController
             DB::beginTransaction();
             foreach ($info as $key => $record) {
                 $status = 0;
-                if($record->thoi_gian_bat_dau){
-                    if($record->thoi_gian_ket_thuc){
+                if ($record->thoi_gian_bat_dau) {
+                    if ($record->thoi_gian_ket_thuc) {
                         $status = InfoCongDoan::STATUS_COMPLETED;
-                    }else{
+                    } else {
                         $status = InfoCongDoan::STATUS_INPROGRESS;
                     }
                 }
                 $record->update([
-                    'status'=>$status,
-                    'product_id'=>explode('.', $record->lot_id)[1] ?? null,
-                    'machine_code'=>$record->line->machine[0]->code ?? null,
-                    'sl_kh'=>$record->plan->sl_thanh_pham ?? (isset($record->plan->so_bat) ? (int)($record->plan->sl_giao_sx / $record->plan->so_bat) : 0),
+                    'status' => $status,
+                    'product_id' => explode('.', $record->lot_id)[1] ?? null,
+                    'machine_code' => $record->line->machine[0]->code ?? null,
+                    'sl_kh' => $record->plan->sl_thanh_pham ?? (isset($record->plan->so_bat) ? (int)($record->plan->sl_giao_sx / $record->plan->so_bat) : 0),
                 ]);
             }
             DB::commit();
@@ -5470,64 +5649,216 @@ class ApiUIController extends AdminController
         return "o's ke";
     }
 
-    public function convertQCLog(){
+    public function convertQCLog()
+    {
+        set_time_limit(0);
+        ini_set('memory_limit', '2048M');
         $lines = Line::with('machine')->get();
         $line_keys = [];
         foreach ($lines as $line) {
             $line_keys[Str::slug($line->name)] = $line;
         }
-        $lsx_logs = LSXLog::with('infoCongDoan')->get();
+        $lsx_logs = LSXLog::orderBy('created_at', 'DESC')->get();
+        TestCriteriaHistory::truncate();
+        TestCriteriaDetailHistory::truncate();
+        YellowStampHistory::truncate();
+        QCHistory::truncate();
+        ErrorHistory::truncate();
         try {
             DB::beginTransaction();
-            foreach($lsx_logs as $log){
-                if(isset($log->info['qc'])){
-                    foreach($log->info['qc'] as $line_key => $info){
-                        $line = $line_keys[$line_key];
-                        $lot_id = $log->lot_id ?? null;
-                        if(!$lot_id || count($log->infoCongDoan) <= 0){
-                            continue;
+            foreach ($lsx_logs as $log) {
+                if (isset($log->info['qc'])) {
+                    $lot_id = $log->lot_id ?? null;
+                    if (!$lot_id) {
+                        continue;
+                    }
+                    foreach ($log->info['qc'] as $line_key => $info) {
+                        $line = Line::with('machine')->find($this->TEXT2ID[$line_key] ?? null);
+                        if (!$line) continue;
+                        $infoCongDoan = InfoCongDoan::where(['lot_id' => $lot_id, 'line_id' => $line->id])->first();
+                        if ($infoCongDoan) {
+                            $infoCongDoan->update([
+                                'machine_code' => $line->machine[0]->code ?? null,
+                                'status' => InfoCongDoan::STATUS_COMPLETED,
+                                'user_id' => $log->info[$line_key]['user_id'] ?? null,
+                                'lo_sx' => explode('.', $lot_id)[0],
+                                'product_id' => explode('.', $lot_id)[1],
+                            ]);
+                        } else {
+                            $infoCongDoan = InfoCongDoan::create([
+                                'lot_id' => $lot_id,
+                                'line_id' => $line->id,
+                                'machine_code' => $line->machine[0]->code ?? null,
+                                'status' => InfoCongDoan::STATUS_COMPLETED,
+                                'user_id' => $log->info[$line_key]['user_id'] ?? null,
+                                'lo_sx' => explode('.', $lot_id)[0],
+                                'product_id' => explode('.', $lot_id)[1],
+                            ]);
                         }
-                        $infoCongDoan = $log->infoCongDoan[0];
-                        $lo_sx = $infoCongDoan->lo_sx ?? explode('.', $infoCongDoan->lot_id)[0] ?? null;
-                        $machine_code = $line->machine_code ?? null;
-                        
+                        $qc_history = QCHistory::firstOrCreate(
+                            [
+                                'info_cong_doan_id' => $infoCongDoan->id,
+                                'eligible_to_end' => 0,
+                                'user_id' => $info['user_id'] ?? null,
+                                'scanned_time' => $info['thoi_gian_vao'] ?? null,
+                            ]
+                        );
+                        $line = $line_keys[$line_key];
                         $old_qc_data = [];
-
-                        if(isset($info['dac-tinh'])) $old_qc_data['dac-tinh'] = $info['dac-tinh'];
-                        if(isset($info['kich-thuoc'])) $old_qc_data['kich-thuoc'] = $info['kich-thuoc'];
-                        if(isset($info['ngoai-quan'])) $old_qc_data['ngoai-quan'] = $info['ngoai-quan'];
+                        if (isset($info['dac-tinh'])) $old_qc_data['dac-tinh'] = $info['dac-tinh'];
+                        if (isset($info['kich-thuoc'])) $old_qc_data['kich-thuoc'] = $info['kich-thuoc'];
+                        if (isset($info['ngoai-quan'])) $old_qc_data['ngoai-quan'] = $info['ngoai-quan'];
                         // return $old_qc_data;
                         foreach ($old_qc_data as $key => $qc_data) {
-                            $qc_history = QCHistory::firstOrCreate([
-                                'lot_id'=>$lot_id,
-                                'lo_sx'=>$lo_sx,
-                                'machine_code'=>$line->machine[0]->code ?? null,
-                                'line_id'=>$line->id,
-                                'type'=>$key,
-                                'result'=>isset($qc_data['result']) ? ($qc_data['result'] === 1 ? 'OK' : 'NG') : null,
-                                'user_id'=>$info['user_id'] ?? null,
-                            ]);
-                            if(isset($qc_data['data'])){
-                                foreach (($qc_data['data'] ?? []) as $key => $data) {
-                                    if(!isset($data['result']) || !isset($data['id'])){
+                            if (isset($qc_data['data'])) {
+                                $test_criteria_history = TestCriteriaHistory::create([
+                                    'type' => $key,
+                                    'result' => $qc_data['result'] === 1 ? 'OK' : 'NG',
+                                    'q_c_history_id' => $qc_history->id,
+                                ]);
+                                foreach (($qc_data['data'] ?? []) as $data) {
+                                    if (!isset($data['result']) || !isset($data['id'])) {
                                         continue;
                                     }
-                                    $qc_detail = QCDetailHistory::create([
+                                    TestCriteriaDetailHistory::create([
+                                        'test_criteria_history_id' => $test_criteria_history->id,
                                         'test_criteria_id' => $data['id'],
-                                        'input'=> !isset($data['value']) ? ($data['result'] === 1 ? 'OK' : 'NG') : $data['value'],
+                                        'input' => !isset($data['value']) ? ($data['result'] === 1 ? 'OK' : 'NG') : $data['value'],
                                         'result' => $data['result'] === 1 ? 'OK' : 'NG',
-                                        'q_c_history_id' => $qc_history->id,
+                                        'type' => $key,
                                     ]);
                                 }
                             }
                         }
+                        if (isset($info['errors'])) {
+                            foreach ($info['errors'] as $error) {
+                                foreach (($error['data'] ?? []) as $error_id => $value) {
+                                    ErrorHistory::create([
+                                        'q_c_history_id' => $qc_history->id,
+                                        'error_id' => $error_id,
+                                        'quantity' => $value,
+                                        'user_id' => $error['user_id'],
+                                        'type' => $error['type'],
+                                    ]);
+                                }
+                            }
+                        }
+                        if (isset($info['sl_tem_vang']) && isset($info['loi_tem_vang'])) {
+                            YellowStampHistory::create([
+                                'q_c_history_id' => $qc_history->id,
+                                'errors' => implode(',', array_unique($this->flatten($info['loi_tem_vang'] ?? []))),
+                                'sl_tem_vang' => $info['sl_tem_vang'],
+                                'user_id' => $info['user_id'] ?? null,
+                            ]);
+                        }
+                        if (isset($info['bat'])) {
+                            $user_qc = $this->convertBatData($info, $log);
+                            if ($user_qc) {
+                                $qc_history->update(['user_id' => $user_qc]);
+                            }
+                        }
+                        // Log::info('qcHistory created', $qc_history);
                     }
                 }
             }
+            // TestCriteriaDetailHistory::insert($test_criteria_detail_histories_data);
+            // ErrorHistory::insert($error_histories_data);
+            // YellowStampHistory::insert($yellow_stamp_histories_data);
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
             return $th;
+            // return $log;
         }
+        return 'update completed';
+    }
+
+    function flatten(array $array)
+    {
+        $return = array();
+        array_walk_recursive($array, function ($a) use (&$return) {
+            $return[] = $a;
+        });
+        return $return;
+    }
+
+    public function convertBatData($info, $log)
+    {
+        $user_qc = null;
+        foreach ($info['bat'] as $bat_id => $bat_info) {
+            if (!$bat_id || is_numeric($bat_id)) {
+                continue;
+            }
+            if (isset($bat_info['user_id'])) {
+                $user_qc = $bat_info['user_id'];
+            }
+            $infoCongDoan = InfoCongDoan::firstOrCreate(
+                ['lot_id' => $bat_id, 'line_id' => 13],
+                [
+                    'machine_code' => 'ACE70CS',
+                    'status' => InfoCongDoan::STATUS_COMPLETED,
+                    'user_id' => $log->info['gap-dan']['user_id'] ?? null,
+                    'lo_sx' => explode('.', $bat_id)[0],
+                    'product_id' => explode('.', $bat_id)[1],
+                ]
+            );
+            $qc_history = QCHistory::firstOrCreate(
+                [
+                    'info_cong_doan_id' => $infoCongDoan->id,
+                    'eligible_to_end' => 0,
+                    'user_id' => $bat_info['user_id'] ?? null,
+                    'scanned_time' => $bat_info['thoi_gian_vao'] ?? null,
+                ]
+            );
+            $bat_qc_data = [];
+            if (isset($bat_info['dac-tinh'])) $bat_qc_data['dac-tinh'] = $bat_info['dac-tinh'];
+            if (isset($bat_info['kich-thuoc'])) $bat_qc_data['kich-thuoc'] = $bat_info['kich-thuoc'];
+            if (isset($bat_info['ngoai-quan'])) $bat_qc_data['ngoai-quan'] = $bat_info['ngoai-quan'];
+
+            foreach ($bat_qc_data as $key => $qc_data) {
+                if (isset($qc_data['data'])) {
+                    $test_criteria_history = TestCriteriaHistory::create([
+                        'type' => $key,
+                        'result' => $qc_data['result'] === 1 ? 'OK' : 'NG',
+                        'q_c_history_id' => $qc_history->id,
+                        'user_id' => $bat_info['user_id'] ?? null,
+                    ]);
+                    foreach (($qc_data['data'] ?? []) as $data) {
+                        if (!isset($data['result']) || !isset($data['id'])) {
+                            continue;
+                        }
+                        TestCriteriaDetailHistory::create([
+                            'test_criteria_history_id' => $test_criteria_history->id,
+                            'test_criteria_id' => $data['id'],
+                            'input' => !isset($data['value']) ? ($data['result'] === 1 ? 'OK' : 'NG') : $data['value'],
+                            'result' => $data['result'] === 1 ? 'OK' : 'NG',
+                            'type' => $key,
+                        ]);
+                    }
+                }
+            }
+            if (isset($bat_info['errors'])) {
+                foreach ($bat_info['errors'] as $error) {
+                    foreach (($error['data'] ?? []) as $error_id => $value) {
+                        ErrorHistory::create([
+                            'q_c_history_id' => $qc_history->id,
+                            'error_id' => $error_id,
+                            'quantity' => $value,
+                            'user_id' => $error['user_id'],
+                            'type' => $error['type'],
+                        ]);
+                    }
+                }
+            }
+            if (isset($bat_info['sl_tem_vang']) && isset($bat_info['loi_tem_vang'])) {
+                YellowStampHistory::create([
+                    'q_c_history_id' => $qc_history->id,
+                    'errors' => implode(',', array_unique($this->flatten($bat_info['loi_tem_vang'] ?? []))),
+                    'sl_tem_vang' => $bat_info['sl_tem_vang'],
+                    'user_id' => $bat_info['user_id'] ?? null,
+                ]);
+            }
+        }
+        return $user_qc;
     }
 }
