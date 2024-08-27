@@ -46,14 +46,16 @@ class ProductOrderController extends Controller
         if ($validated->fails()) {
             return $this->failure('', $validated->errors()->first());
         }
+        DB::beginTransaction();
         try {
-            DB::beginTransaction();
+            Log::debug($input);
             $result = ProductOrder::create($input);
             DB::commit();
-        } catch (\Throwable $th) {
+            return $this->success($result, 'Tạo thành công');
+        } catch (\Exception $e) {
             DB::rollBack();
+            return $this->success($e->getMessage(), 'Thao tác thất bại');
         }
-        return $this->success('', 'Tạo thành công');
     }
 
     public function update(Request $request, $id)
