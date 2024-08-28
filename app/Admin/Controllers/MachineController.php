@@ -109,6 +109,9 @@ class MachineController extends AdminController
         if(isset($request->name)){
             $query->where('name', 'like', "%$request->name%");
         }
+        if(isset($request->withs)){
+            $query->with($request->withs);
+        }
         $machines = $query->get();
         return $this->success($machines);
     }

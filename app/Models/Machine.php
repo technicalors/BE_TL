@@ -19,7 +19,7 @@ class Machine extends Model
 
     public function plan()
     {
-        return $this->hasMany(ProductionPlan::class, 'machine_id', 'ma_so');
+        return $this->hasMany(ProductionPlan::class, 'machine_id', 'code');
     }
 
     public function reason()
