@@ -52,8 +52,8 @@ const deviceFieldConfig = {
         PLC_AP02: 'PLC:AP02',
         PLC_AP03: 'PLC:AP03',
         PM01_TEnergy: 'PM01_TEnergy',
-        Env01_Temper: 'Env01:Temper',
-        Env01_Humi: 'Env01:Humi'
+        Env01_Temper: 'ENV01:TEMPER',
+        Env01_Humi: 'ENV01:HUMI'
     },
     '40a1abc0-45bc-11ef-b8c3-a13625245eca': {
         PLC_UV1: 'PLC:UV1',
@@ -81,8 +81,8 @@ const deviceFieldConfig = {
         PLC_Time_UV7: 'PLC:Time_UV7',
         PLC_Time_UV8: 'PLC:Time_UV8',
         PM01_TEnergy: 'PM01_TEnergy',
-        Env01_Temper: 'Env01:Temper',
-        Env01_Humi: 'Env01:Humi'
+        Env01_Temper: 'ENV01:TEMPER',
+        Env01_Humi: 'ENV01:HUMI'
     },
     '886de160-45be-11ef-b8c3-a13625245eca': {
         PLC_CB01: 'PLC:CB01',
@@ -118,13 +118,13 @@ const deviceFieldConfig = {
         PM01_TEnergy: 'PM01_TEnergy',
     },
     'a43d8520-45bf-11ef-b8c3-a13625245eca': {
-        PLC_F_Thu: 'PLC:F_Thu',
-        PLC_F_xa: 'PLC:F_xa',
+        PLC_F_Thu: 'PLC:F_THU',
+        PLC_F_xa: 'PLC:F_Xa',
         PM01_TEnergy: 'PM01_TEnergy',
     },
     'af35a2e0-45c0-11ef-b8c3-a13625245eca': {
-        PLC_F_Thu: 'PLC:F_Thu',
-        PLC_F_xa: 'PLC:F_xa',
+        PLC_F_Thu: 'PLC:F_THU',
+        PLC_F_xa: 'PLC:F_Xa',
         PM01_TEnergy: 'PM01_TEnergy',
     },
     'da03f550-45be-11ef-b8c3-a13625245eca': {
@@ -210,7 +210,7 @@ function convertProductionData(data, deviceId) {
     return {
         device_id: deviceId,
         input: data['PLC:Num_Input'] ? data['PLC:Num_Input'][0][1] : 0,
-        output: data['PLC:Num_Out'][0][1],
+        output: data['PLC:Num_Out'] ? data['PLC:Num_Out'][0][1] : 0,
     };
 }
 
@@ -263,7 +263,6 @@ async function enqueueData(deviceId, data) {
 
     // Chuyển đổi và đẩy dữ liệu thông số máy
     if (deviceFieldConfig[deviceId]) {
-        console.log('deviceFieldConfig[deviceId]', deviceFieldConfig[deviceId]);
         let convertedData = convertMachineInfoData(data, deviceId);
         if (Object.keys(convertedData).length > 1) {
             dataQueues[deviceId].push({ data: convertedData, apiUrl: MACHINE_INFO_API_URL });
