@@ -657,9 +657,12 @@ Route::group([
 
     $router->get('equipment/oee', [Phase2UIApiController::class, 'getOEEData']);
     $router->get('equipment/error-frequency', [Phase2UIApiController::class, 'getErrorFrequencyData']);
-    
+
     $router->get('quality/data-table', [Phase2UIApiController::class, 'getQualittyDataTable']);
     $router->get('quality/data-chart', [Phase2UIApiController::class, 'getQualittyDataChart']);
+
+    $router->post('plan/generate', [Phase2UIApiController::class, 'generateProductionPlan']);
+    $router->get('plan/store/{order_id}', [Phase2UIApiController::class, 'processProductionPlan']);
 });
 
 //UI

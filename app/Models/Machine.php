@@ -14,7 +14,7 @@ use function Complex\rho;
 class Machine extends Model
 {
     use HasFactory, UUID;
-    protected $fillable = ['name', 'code', 'is_iot', 'line_id', 'kieu_loai', 'cong_suat', 'hang_sx', 'nam_sd', 'don_vi_sd', 'ma_so', 'tinh_trang', 'vi_tri', 'display'];
+    protected $fillable = ['name', 'code', 'is_iot', 'line_id', 'kieu_loai', 'cong_suat', 'hang_sx', 'nam_sd', 'don_vi_sd', 'ma_so', 'tinh_trang', 'vi_tri', 'display', 'available_at'];
     protected $hidden = ['created_at', 'updated_at'];
 
     public function plan()
