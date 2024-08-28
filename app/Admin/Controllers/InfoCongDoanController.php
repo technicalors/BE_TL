@@ -208,7 +208,7 @@ class InfoCongDoanController extends AdminController
     }
 
     public function searchInfoCongDoan(Request $request){
-        $query = InfoCongDoan::with(['line', 'product', 'plan'])->orderBy('lot_id')->orderBy('thoi_gian_bat_dau');
+        $query = InfoCongDoan::with(['line', 'product.customer', 'plan'])->orderBy('lot_id')->orderBy('thoi_gian_bat_dau');
         
         if(isset($request->line_id)){
             if(is_array($request->line_id)){
