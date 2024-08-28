@@ -2813,7 +2813,6 @@ class ApiMobileController extends AdminController
                     $input['ngay_giao_hang'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['M'])));
                     $input['machine_id'] = $row['H']; //
                     $input['product_id'] = $row['I']; //
-                    $input['material_id'] = $row['I'];
                     $input['khach_hang'] = $row['J']; //
                     $input['so_bat'] = $row['T'] ?? 0; //
                     $input['sl_nvl'] = $row['O']; //
@@ -2842,11 +2841,11 @@ class ApiMobileController extends AdminController
             foreach ($data as $key => $input) {
                 $losx = Losx::firstOrCreate(['product_order_id'=>$input['product_order_id']]);
                 $input['lo_sx'] = $losx->id;
-                if ($input['line_id'] == 24) {
-                    $this->createPlanForLineLienHoan($input);
-                } else {
+                // if ($input['line_id'] == 24) {
+                //     $this->createPlanForLineLienHoan($input);
+                // } else {
                     $this->createPlanForOtherLines($input);
-                }
+                // }
             }
             DB::commit();
             return $this->success([], 'Upload thành công');
@@ -2903,7 +2902,6 @@ class ApiMobileController extends AdminController
                 'status' => $input['status'],
                 'machine_code' => $input['machine_id'],
                 'sl_kh' => $number, // 
-                'user_id' => auth()->user()->id,
             ];
             InfoCongDoan::create($info_cong_doan);
         }
@@ -2966,7 +2964,6 @@ class ApiMobileController extends AdminController
                 'status' => $input['status'],
                 'machine_code' => $input['machine_id'],
                 'sl_kh' => $number, // 
-                'user_id' => auth()->user()->id,
             ];
             InfoCongDoan::create($info_cong_doan);
             // Lot::firstOrCreate(

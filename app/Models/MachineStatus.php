@@ -21,10 +21,9 @@ class MachineStatus extends Model
 
     public static function setValue($machine_id, $value)
     {
-        $res =  MachineStatus::where("machine_id", $machine_id)->first();
+        $res = MachineStatus::where("machine_id", $machine_id)->first();
         if (!$res) $res = self::create($machine_id, $value);
-
-        $res->status  = $value;
+        $res->status = $value;
         $res->save();
         return true;
     }
