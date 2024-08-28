@@ -11,7 +11,7 @@ class ProductOrder extends Model
 {
     use HasFactory;
     protected $table = "product_orders";
-    protected $fillable = ['id', 'order_number', 'customer_id', 'product_id', 'order_date', 'delivery_date', 'quantity', 'note'];
+    protected $fillable = ['id', 'order_number', 'customer_id', 'product_id', 'order_date', 'delivery_date', 'quantity', 'note', 'material_id'];
     public $incrementing = false;
     protected $keyType = 'string';
     protected $casts = [
@@ -23,6 +23,7 @@ class ProductOrder extends Model
         $validated = Validator::make(
             $input,
             [
+                'id' => 'required|unique:product_orders,id' . ($id ? ",$id" : ''),
                 'product_id'=>'required',
                 'customer_id'=>'required',
                 'order_number'=>'required',
@@ -30,6 +31,7 @@ class ProductOrder extends Model
                 'quantity'=>'required|integer|min:0',
             ],
             [
+                'id.unique' => 'Mã đơn đã tồn tại',
                 'product_id.required'=>'Vui lòng nhập sản phẩm',
                 'quantity.required'=>'Vui lòng nhập số lượng',
                 'order_date.required'=>'Vui lòng nhập ngày đặt hàng',

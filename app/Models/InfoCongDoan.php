@@ -19,7 +19,7 @@ class InfoCongDoan extends Model
     const STATUS_COMPLETED = 2;
 
     protected $fillable = ['id', 'lot_id', 'lotsize', 'lo_sx', 'line_id', 'product_id', 'thoi_gian_bat_dau', 'thoi_gian_bam_may', 'thoi_gian_ket_thuc', 'sl_dau_vao_chay_thu', 'sl_dau_ra_chay_thu', 
-    'sl_dau_vao_hang_loat', 'sl_dau_ra_hang_loat', 'sl_tem_vang', 'sl_ng', 'start_powerM', 'end_powerM', 'powerM', 'updated_at', 'status', 'machine_code', 'sl_kh', 'user_id'];
+    'sl_dau_vao_hang_loat', 'sl_dau_ra_hang_loat', 'sl_tem_vang', 'sl_ng', 'start_powerM', 'end_powerM', 'powerM', 'updated_at', 'status', 'machine_code', 'sl_kh', 'user_id', 'material_id'];
 
     static function validateStore($input)
     {
@@ -92,5 +92,18 @@ class InfoCongDoan extends Model
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+    public function material()
+    {
+        return $this->belongsTo(Material::class);
+    }
+    public function qcHistory(){
+        return $this->hasOne(QCHistory::class);
+    }
+    public function user(){
+        return $this->belongsTo(CustomUser::class);
+    }
+    public function machine(){
+        return $this->belongsTo(Machine::class, 'machine_code', 'code');
     }
 }

@@ -17,7 +17,7 @@ class Lot extends Model
     const TYPE_THUNG = 3;
     public $incrementing = false;
     protected $table = 'lot';
-    protected $fillable = ['type', 'lo_sx', 'so_luong', 'finish', 'product_id', 'material_export_log_id', 'id', 'p_id'];
+    protected $fillable = ['type', 'lo_sx', 'so_luong', 'finish', 'product_id', 'material_export_log_id', 'id', 'p_id', 'material_id'];
     protected $casts = [
         "id" => "string"
     ];
@@ -72,7 +72,10 @@ class Lot extends Model
     {
         return $this->belongsTo(Product::class);
     }
-
+    public function material()
+    {
+        return $this->belongsTo(Material::class);
+    }
     public function infoCongDoan()
     {
         return $this->hasMany(InfoCongDoan::class);

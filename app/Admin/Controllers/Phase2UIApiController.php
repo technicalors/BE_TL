@@ -39,6 +39,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
+use stdClass;
 
 class Phase2UIApiController extends Controller
 {
@@ -439,83 +440,201 @@ class Phase2UIApiController extends Controller
 
     //QC
 
+    //Pre Query QC History
     public function pqcHistoryQuery(Request $request)
     {
-        $line_ids = Line::where('factory_id', 2)->pluck('id')->toArray();
-        $query = InfoCongDoan::has('log')->where('line_id', $line_ids)->orderBy('created_at');
-        if (isset($request->line_id)) {
-            if (is_array($request->line_id)) {
-                $query->whereIn('line_id', $request->line_id);
-            } else {
-                $query->where('line_id', $request->line_id);
+        $line_ids = Line::query()->pluck('id')->toArray();
+        $query = QCHistory::orderBy('created_at');
+        if (isset($request->date) && count($request->date) == 2) {
+            $query->whereDate('scanned_time', '>=', date('Y-m-d', strtotime($request->date[0])))
+                ->whereDate('scanned_time', '<=', date('Y-m-d', strtotime($request->date[1])));
+        }
+        $query->whereHas('infoCongDoan', function ($query) use ($request) {
+            if (isset($request->line_id)) {
+                if (is_array($request->line_id)) {
+                    $query->whereIn('line_id', $request->line_id);
+                } else {
+                    $query->where('line_id', $request->line_id);
+                }
             }
-        }
-        if (isset($request->date) && count($request->date)) {
-            $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->date[0])))
-                ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->date[1])));
-        }
-        if (isset($request->product_id)) {
-            $query->where('lot_id', 'like',  '%' . $request->product_id . '%');
-        }
-        if (isset($request->ten_sp)) {
-            $query->where('lot_id', 'like',  '%' . $request->ten_sp . '%');
-        }
-        if (isset($request->khach_hang)) {
-            $khach_hang = Customer::where('id', $request->khach_hang)->first();
-            if ($khach_hang) {
-                $plan = ProductionPlan::where('khach_hang', $khach_hang->name)->get();
-                $product_ids = $plan->pluck('product_id')->toArray();
-                $query->where(function ($qr) use ($product_ids) {
-                    for ($i = 0; $i < count($product_ids); $i++) {
-                        $qr->orwhere('lot_id', 'like',  '%' . $product_ids[$i] . '%');
-                    }
-                });
+            if (isset($request->product_id)) {
+                $query->where('lot_id', 'like',  '%' . $request->product_id . '%');
             }
-        }
-        if (isset($request->lo_sx)) {
-            $query->where('lot_id', 'like', "%$request->lo_sx%");
-        }
-        $query->whereNotIn('line_id', [9, 21])->whereHas('lot', function ($lot_query) {
-            $lot_query->where(function ($q) {
-                $q->where('info_cong_doan.line_id', 13)->whereIn('type', [0, 2, 3]);
-            })->orWhere(function ($q) {
-                $q->where('info_cong_doan.line_id', '<>', 13)->whereIn('type', [0, 1, 2, 3]);
-            });
-        })->with("lot.product", "log", "plan", "line");
+            if (isset($request->ten_sp)) {
+                $query->where('lot_id', 'like',  '%' . $request->ten_sp . '%');
+            }
+            if (isset($request->khach_hang)) {
+                $khach_hang = Customer::where('id', $request->khach_hang)->first();
+                if ($khach_hang) {
+                    $plan = ProductionPlan::where('khach_hang', $khach_hang->name)->get();
+                    $product_ids = $plan->pluck('product_id')->toArray();
+                    $query->where(function ($qr) use ($product_ids) {
+                        for ($i = 0; $i < count($product_ids); $i++) {
+                            $qr->orwhere('lot_id', 'like',  '%' . $product_ids[$i] . '%');
+                        }
+                    });
+                }
+            }
+            if (isset($request->lo_sx)) {
+                $query->where('lot_id', 'like', "%$request->lo_sx%");
+            }
+        });
+
+        $query->with('infoCongDoan.product', 'infoCongDoan.line', 'infoCongDoan.machine', 'user', 'errorHistories');
         return $query;
     }
 
+    public function parseQCData($qc_histories)
+    {
+        $record = [];
+        $shifts = Shift::all();
+        foreach ($qc_histories as $key => $qc_history) {
+            if (!$qc_history->infoCongDoan) {
+                continue;
+            }
+            $ca_sx = $shifts->first(function ($shift) use ($qc_history) {
+                $createdTime = Carbon::parse($qc_history->created_at)->format('H:i:s');
+                return ($shift->start_time < $shift->end_time && $createdTime >= $shift->start_time && $createdTime <= $shift->end_time) ||
+                    ($shift->start_time > $shift->end_time && ($createdTime >= $shift->start_time || $createdTime <= $shift->end_time));
+            })->name ?? "";
+
+            $user_sx = CustomUser::find($qc_history->infoCongDoan->user_id ?? null);
+            $user_qc = $qc_history->user;
+            $sl_ng_sx = 0;
+            $sl_ng_qc = 0;
+            if (count($qc_history->error_histories ?? [])) {
+                foreach (($qc_history->error_histories ?? []) as $error) {
+                    if ($error->type === 'sx') {
+                        $sl_ng_sx += $error->quantity;
+                    } else {
+                        $sl_ng_qc += $error->quantity;
+                    }
+                }
+            }
+            $item = [
+                'lot_id' => $qc_history->lot_id,
+                'thoi_gian_kiem_tra' => Carbon::parse($qc_history->created_at)->format('d/m/Y H:i:s'),
+                'ca_sx' => $ca_sx,
+                'xuong' => $qc_history->line->factory->name ?? "Giấy",
+                'cong_doan' => $qc_history->infoCongDoan->line->name ?? '',
+                'machine' => $qc_history->infoCongDoan->machine->name ?? '',
+                'machine_id' => $qc_history->infoCongDoan->machine_id ?? '',
+                'khach_hang' => $qc_history->infoCongDoan->product->customer->name ?? "",
+                'product_id' => $qc_history->infoCongDoan->product_id ?? '',
+                'ten_san_pham' => $qc_history->infoCongDoan->product->name ?? "",
+                'lo_sx' => $qc_history->infoCongDoan->lo_sx,
+                'lot_id' => $qc_history->infoCongDoan->lot_id,
+                'sl_dau_ra_hang_loat' => $qc_history->infoCongDoan->sl_dau_ra_hang_loat ?? 0,
+                'sl_dau_ra_ok' => ($qc_history->infoCongDoan->sl_dau_ra_hang_loat ?? 0) - ($qc_history->infoCongDoan->sl_tem_vang ?? 0) - ($qc_history->infoCongDoan->sl_ng ?? 0),
+                'sl_tem_vang' => $qc_history->infoCongDoan->sl_tem_vang ?? 0,
+                'sl_ng_sxkt' => $sl_ng_sx,
+                'sl_ng_pqc' => $sl_ng_qc,
+                'user_sxkt' => $user_sx->name ?? "",
+                'user_pqc' => $user_qc->name ?? "",
+                'sl_ng' => $qc_history->infoCongDoan->sl_ng ?? 0,
+                'ti_le_ng' => (isset($qc_history->infoCongDoan->sl_dau_ra_hang_loat) && $qc_history->infoCongDoan->sl_dau_ra_hang_loat > 0) ? number_format(($qc_history->infoCongDoan->sl_ng / $qc_history->infoCongDoan->sl_dau_ra_hang_loat) * 100) . "%" : "0%",
+            ];
+            $record[] = $item;
+        }
+        return $record;
+    }
+
     //Danh sách lot PQC
-    public function getQualittyDataTable(Request $request)
+    public function getQualityDataTable(Request $request)
     {
         $page = $request->page - 1;
         $pageSize = $request->pageSize;
         $query = $this->pqcHistoryQuery($request);
-        $dateRange = CarbonPeriod::create(date('Y-m-d', strtotime($request->date[0])), date('Y-m-d', strtotime($request->date[1])));
-        $dates = array_flip(array_map(fn($date) => $date->format('Y-m-d'), iterator_to_array($dateRange)));
-        $data = $query->get()->filter(function ($value, $key) use ($dates) {
-            $line_key = $this->ID2TEXT[$value->line_id];
-            if (isset($value->log->info['qc'][$line_key]['thoi_gian_vao'])) {
-                $thoi_gian_vao = date('Y-m-d', strtotime($value->log->info['qc'][$line_key]['thoi_gian_vao']));
-                if (isset($dates[$thoi_gian_vao])) {
-                    return $value;
-                }
-            }
-            return false;
-        });
-        $count = $data->count();
-        $records = $data->slice($page * $pageSize, $pageSize);
-        $totalPage = $count;
-        $table = $this->produceTablePQC($records);
-        // $chart = $this->qcError($records);
+        $totalPage = $query->count();
+        $records = $query->offset($page * $pageSize)->limit($pageSize)->get();
+        $data = $this->parseQCData($records);
         return $this->success([
-            "table" => $table,
-            // "chart_lot" => $chart[1],
-            // "chart" => $chart[0],
+            "data" => $data,
             "totalPage" => $totalPage,
         ]);
     }
 
+    public function parseErrorTrendingData($qcHistories)
+    {
+        $qcHistories;
+        $data = [];
+        foreach ($qcHistories as $qc_history) {
+            $date = date('d/m', strtotime($qc_history->scanned_time));
+            if (count($qc_history->errorHistories ?? []) > 0) {
+                foreach (($qc_history->errorHistories ?? []) as $error) {
+                    if (!isset($data[$error->error_id . $date])) {
+                        $data[$error->error_id . $date] = [
+                            'error' => $error->error_id,
+                            'date' => $date,
+                            'value' => 0
+                        ];
+                    }
+                    $data[$error->error_id . $date]['value'] += $error->quantity;
+                }
+            }
+        }
+        return $data;
+    }
+
+    public function parseMaterialErrorRatioData($qcHistories)
+    {
+        $data = [];
+        foreach ($qcHistories as $qc_history) {
+            $date = date('d/m', strtotime($qc_history->created_at));
+            if (count($qc_history->errorHistories ?? []) > 0) {
+                foreach (($qc_history->errorHistories ?? []) as $error) {
+                    if (str_contains($error->error_id, 'NVL')) {
+                        if (!isset($data[$error->error_id . $date])) {
+                            $data[$error->error_id . $date] = [
+                                'error' => $error->error_id,
+                                'date' => $date,
+                                'value' => 0
+                            ];
+                        }
+                        $data[$error->error_id . $date]['value'] += $error->quantity;
+                    }
+                }
+            }
+        }
+        return $data;
+    }
+
+    public function parseErrorRatioData($qcHistories)
+    {
+        $data = [];
+        foreach ($qcHistories as $qc_history) {
+            if (count($qc_history->errorHistories ?? []) > 0) {
+                foreach (($qc_history->errorHistories ?? []) as $error) {
+                    if (!isset($data[$error->error_id])) {
+                        $data[$error->error_id] = [
+                            'name' => $error->error_id,
+                            'frequency' => 0,
+                            'value' => 0
+                        ];
+                    }
+                    $sl_ng = $error->quantity ?? 0;
+                    $sl_dau_vao_hang_loat = $qc_history->infoCongDoan->sl_dau_vao_hang_loat ?? 0;
+                    $data[$error->error_id]['value'] += $sl_dau_vao_hang_loat ? $sl_ng / $sl_dau_vao_hang_loat * 100 : 0;
+                    $data[$error->error_id]['frequency'] += 1;
+                }
+            }
+        }
+        return $data;
+    }
+
+    public function getQualityDataChart(Request $request)
+    {
+        $query = $this->pqcHistoryQuery($request);
+        $qcHistories = $query->get();
+        $data = new stdClass;
+        $errorTrending = $this->parseErrorTrendingData($qcHistories);
+        $materialErrorRatio = $this->parseMaterialErrorRatioData($qcHistories);
+        $errorRatio = $this->parseErrorRatioData($qcHistories);
+        $data->errorTrending = array_values($errorTrending);
+        $data->materialErrorRatioData = array_values($materialErrorRatio);
+        $data->errorRatioData = array_values($errorRatio);
+        return $this->success($data);
+    }
     function getProductionSteps($productId)
     {
         // Bước 1: Truy vấn để lấy các công đoạn từ bảng spec theo product_id và slug 'hanh-trinh-san-xuat'

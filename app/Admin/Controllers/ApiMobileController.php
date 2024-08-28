@@ -151,9 +151,7 @@ class ApiMobileController extends AdminController
 
     /* =====================    PLAN   ================*/
 
-    public function overallPlan(Request $request)
-    {
-    }
+    public function overallPlan(Request $request) {}
 
     /* =====================    END-PLAN   ================*/
     /* =====================    MACHINE  ================*/
@@ -1365,7 +1363,8 @@ class ApiMobileController extends AdminController
                 "sl_ke_hoach" => $plan->sl_nvl ?? 0,
                 'thoi_gian_bat_dau_kh' => $item->plan ? date('d/m/Y H:i:s', strtotime($item->plan->thoi_gian_bat_dau)) : "",
                 'thoi_gian_bat_dau' => $item->thoi_gian_bat_dau ? date('d/m/Y H:i:s', strtotime($item->thoi_gian_bat_dau)) : "",
-                "thoi_gian_ket_thuc_kh" => $item->plan ? date('d/m/Y H:i:s', strtotime($item->plan->thoi_gian_ket_thuc)) : "", "",
+                "thoi_gian_ket_thuc_kh" => $item->plan ? date('d/m/Y H:i:s', strtotime($item->plan->thoi_gian_ket_thuc)) : "",
+                "",
                 'thoi_gian_ket_thuc' => $item->thoi_gian_ket_thuc ? date('d/m/Y H:i:s', strtotime($item->thoi_gian_ket_thuc)) : "",
                 'sl_dau_vao_kh' => $plan ? $plan->sl_nvl ?? $plan->sl_giao_sx : 0,
                 'sl_dau_ra_kh' =>  $plan ? ($plan->sl_thanh_pham ? $plan->sl_thanh_pham : $plan->sl_giao_sx) : 0,
@@ -1479,7 +1478,8 @@ class ApiMobileController extends AdminController
         $data = [];
         foreach ($list as $item) {
             $data[] = [
-                "value" => $item->id, "label" => $item->ten_ban
+                "value" => $item->id,
+                "label" => $item->ten_ban
             ];
         }
         return $this->success($data);
@@ -1564,7 +1564,14 @@ class ApiMobileController extends AdminController
     public function infoQCPallet(Request $request)
     {
         $mark = [
-            0, 0, "in", "phu", "be", "boc", "gap-dan", "chon"
+            0,
+            0,
+            "in",
+            "phu",
+            "be",
+            "boc",
+            "gap-dan",
+            "chon"
         ];
         $data = [];
         $data = $this->danhSachPalletQC($request->line_id);
@@ -2755,225 +2762,235 @@ class ApiMobileController extends AdminController
         $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
 
+
+        $data = [];
+        foreach ($allDataInSheet as $key => $row) {
+            //Lấy dứ liệu từ dòng thứ 5
+            if ($key > 3 && !is_null($row['H']) && !is_null($row['I'])) {
+                if (is_null($row['B'])) {
+                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu thứ tự ưu tiên');
+                }
+                if (is_null($row['C'])) {
+                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu thời gian bắt đầu');
+                }
+                if (is_null($row['D'])) {
+                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu thời gian kết thúc');
+                }
+                if (is_null($row['E'])) {
+                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu thời gian ngày sản xuất');
+                }
+                if (is_null($row['G'])) {
+                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu công đoạn sản xuất');
+                }
+                if (is_null($row['H'])) {
+                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu máy sản xuất');
+                }
+                if (is_null($row['I'])) {
+                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu mã sản phẩm');
+                }
+                if (is_null($row['L'])) {
+                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu lô sản xuất');
+                }
+                if (is_null($row['M'])) {
+                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu ngày giao hàng');
+                }
+                if (is_null($row['AD'])) {
+                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu ngày đặt hàng');
+                }
+                if (is_null($row['H'])) {
+                    break;
+                }
+                $line = Line::query()->where('factory_id', 2)->where('name', 'like', trim($row['G']))->first();
+                if (empty($line)) throw new Exception('Không tìm thấy công đoạn');
+
+                if (!is_null($row['B'])) {
+                    $input['product_order_id'] = $row['L'];
+                    $input['ngay_dat_hang'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['AD'])));
+                    $input['cong_doan_sx'] = Str::slug($row['G']); //
+                    $input['line_id'] = $line->id; //
+                    $input['ca_sx'] = $row['F']; //
+                    $input['ngay_sx'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['E'])));
+                    $input['ngay_giao_hang'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['M'])));
+                    $input['machine_id'] = $row['H']; //
+                    $input['product_id'] = $row['I']; //
+                    $input['material_id'] = $row['I'];
+                    $input['khach_hang'] = $row['J']; //
+                    $input['so_bat'] = $row['T'] ?? 0; //
+                    $input['sl_nvl'] = $row['O']; //
+                    $input['sl_tong_don_hang'] = $row['N']; //
+                    $input['sl_giao_sx'] = $row['Q']; //
+                    $input['sl_thanh_pham'] = $row['P'] ?? 0; //
+                    $input['thu_tu_uu_tien'] = $row['B']; //
+                    $input['note'] = $row['AE'] ?? "";
+                    $input['UPH'] = str_replace(',', '', $row['W']); //
+                    $input['nhan_luc'] = $row['AB'];
+                    $input['tong_tg_thuc_hien'] = filter_var($row['AA'], FILTER_SANITIZE_NUMBER_INT); //
+                    $input['kho_giay'] =  $row['U'] ?? "";
+                    $input['toc_do'] =  $row['V'] ? (int)$row['V'] : "";
+                    $input['thoi_gian_chinh_may'] =  $row['X'] ? (float)$row['X'] : "";
+                    $input['thoi_gian_thuc_hien'] =  $row['Y'] ? (float)$row['Y'] : "";
+                    $input['thoi_gian_bat_dau'] = date('Y-m-d H:i:s', strtotime($input['ngay_sx'] . ' ' . $row['C']));
+                    $input['thoi_gian_ket_thuc'] = date('Y-m-d H:i:s', strtotime($input['ngay_sx'] . ' ' . $row['D'] . (strtotime($row['C']) > strtotime($row['D']) ? " +1 day" : "")));
+                    $input['status'] = InfoCongDoan::STATUS_PLANNED;
+                    $data[] = $input;
+                    unset($input);
+                }
+            }
+        }
         DB::beginTransaction();
         try {
-            foreach ($allDataInSheet as $key => $row) {
-                //Lấy dứ liệu từ dòng thứ 5
-                if ($key > 3 && !is_null($row['H']) && !is_null($row['I'])) {
-                    if (is_null($row['B'])) {
-                        return $this->failure([], 'Dòng số ' . $key . ': Thiếu thứ tự ưu tiên');
-                    }
-                    if (is_null($row['C'])) {
-                        return $this->failure([], 'Dòng số ' . $key . ': Thiếu thời gian bắt đầu');
-                    }
-                    if (is_null($row['D'])) {
-                        return $this->failure([], 'Dòng số ' . $key . ': Thiếu thời gian kết thúc');
-                    }
-                    if (is_null($row['E'])) {
-                        return $this->failure([], 'Dòng số ' . $key . ': Thiếu thời gian ngày sản xuất');
-                    }
-                    if (is_null($row['G'])) {
-                        return $this->failure([], 'Dòng số ' . $key . ': Thiếu công đoạn sản xuất');
-                    }
-                    if (is_null($row['H'])) {
-                        return $this->failure([], 'Dòng số ' . $key . ': Thiếu công đoạn sản xuất');
-                    }
-                    if (is_null($row['I'])) {
-                        return $this->failure([], 'Dòng số ' . $key . ': Thiếu mã sản phẩm');
-                    }
-                    if (is_null($row['L'])) {
-                        return $this->failure([], 'Dòng số ' . $key . ': Thiếu lô sản xuất');
-                    }
-                    // if (is_null($row['T'])) {
-                    //     return $this->failure([], 'Dòng số ' . $key . ': Thiếu số bát');
-                    // }
-                    if (is_null($row['M'])) {
-                        return $this->failure([], 'Dòng số ' . $key . ': Thiếu ngày giao hàng');
-                    }
-                    if (is_null($row['AD'])) {
-                        return $this->failure([], 'Dòng số ' . $key . ': Thiếu ngày đặt hàng');
-                    }
-                    // if (Str::slug($row['G']) == 'in') {
-                    //     $check = ProductionPlan::where('lo_sx', $row['L'])->first();
-                    //     if ($check) {
-                    //         return $this->failure([], 'Dòng số ' . $key . ': Lô sản xuất đã tồn tại');
-                    //     }
-                    // }
+            foreach ($data as $key => $input) {
+                $losx = Losx::firstOrCreate(['product_order_id'=>$input['product_order_id']]);
+                $input['lo_sx'] = $losx->id;
+                if ($input['line_id'] == 24) {
+                    $this->createPlanForLineLienHoan($input);
+                } else {
+                    $this->createPlanForOtherLines($input);
                 }
             }
-            $linex = [
-                "kho_bao_on" => 9,
-                "in" => 10,
-                "phu" => 11,
-                "be" => 12,
-                "gap-dan" => 13,
-                "boc" => 14,
-                "chon" => 15,
-                "u" => 21,
-                "in-luoi" => 22,
-            ];
-            foreach ($allDataInSheet as $key => $row) {
-                //Lấy dứ liệu từ dòng thứ 5
-                if ($key > 3 && !is_null($row['H'])) {
-                    if (is_null($row['H'])) {
-                        break;
-                    }
-
-                    $line = Line::query()->where('factory_id', 2)->where('name', 'like', trim($row['G']))->first();
-                    if (empty($line)) throw new Exception('Không tìm thấy công đoạn');
-
-                    if (!is_null($row['B'])) {
-                        $losx = Losx::query()->where('product_order_id', $row['L'])->first();
-                        if ($losx) {
-                            $input['lo_sx'] = $losx->id;
-                        } else {
-                            $losx = Losx::create([
-                                'product_order_id' => $row['L'],
-                            ]);
-                            $input['lo_sx'] = $losx->id;
-                        }
-                        $input['product_order_id'] = $row['L'];
-                        $input['ngay_dat_hang'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['AD'])));
-                        $input['cong_doan_sx'] = Str::slug($row['G']); //
-                        $input['line_id'] = $line->id; //
-                        $input['ca_sx'] = $row['F']; //
-                        $input['ngay_sx'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['E'])));
-                        // $plan->ngay_sx =new Carbon($row['E']);
-                        $input['ngay_giao_hang'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['M'])));
-                        $input['machine_id'] = $row['H']; //
-                        $input['product_id'] = $row['I']; //
-                        $input['khach_hang'] = $row['J']; //
-                        $input['so_bat'] = $row['T'] ?? 0; //
-                        $input['sl_nvl'] = $row['O']; //
-                        $input['sl_tong_don_hang'] = $row['N']; //
-                        $input['sl_giao_sx'] = $row['Q']; //
-                        $input['sl_thanh_pham'] = $row['P'] ?? 0; //
-                        $input['thu_tu_uu_tien'] = $row['B']; //
-                        $input['note'] = $row['AE'] ?? "";
-                        $input['UPH'] = str_replace(',', '', $row['W']); //
-                        $input['nhan_luc'] = $row['AB'];
-                        $input['tong_tg_thuc_hien'] = filter_var($row['AA'], FILTER_SANITIZE_NUMBER_INT); //
-                        $input['kho_giay'] =  $row['U'] ?? "";
-                        $input['toc_do'] =  $row['V'] ? (int)$row['V'] : "";
-                        $input['thoi_gian_chinh_may'] =  $row['X'] ? (float)$row['X'] : "";
-                        $input['thoi_gian_thuc_hien'] =  $row['Y'] ? (float)$row['Y'] : "";
-                        // $plan->thoi_gian_bat_dau = date('Y-m-d H:i:s', strtotime(str_replace('/', '-', $row['C'])));
-                        $input['thoi_gian_bat_dau'] = date('Y-m-d H:i:s', strtotime($input['ngay_sx'] . ' ' . $row['C']));
-                        $input['thoi_gian_ket_thuc'] = date('Y-m-d H:i:s', strtotime($input['ngay_sx'] . ' ' . $row['D'] . (strtotime($row['C']) > strtotime($row['D']) ? " +1 day" : "")));
-                        $input['status'] = 0;
-                        // $input['file'] = $hash;
-                        // $record = ProductionPlan::updateOrCreate(
-                        //     [
-                        //         'cong_doan_sx' => $input['cong_doan_sx'],
-                        //         'lo_sx' => $input['lo_sx'],
-                        //         'product_id' => $input['product_id'],
-                        //     ],
-                        //     $input
-                        // );
-
-                        // Customer
-                        // $customer = Customer::query()->where('name', 'like', trim($input['khach_hang']))->first();
-                        // if (empty($customer)) throw new Exception('Không tìm thấy khách hàng');
-                        $customer = Customer::firstOrCreate(
-                            ['name' => $input['khach_hang']],
-                            ['name' => $input['khach_hang'], 'id' => Str::slug($input['khach_hang'])]
-                        );
-
-                        // Product order
-                        $productOrder = ProductOrder::find($input['product_order_id']);
-                        if (empty($productOrder)) {
-                            $productOrder = ProductOrder::create([
-                                'id' => $input['product_order_id'],
-                                'order_number' => $input['product_order_id'],
-                                'customer_id' => $customer->id,
-                                'product_id' => $input['product_id'],
-                                'order_date' => $input['ngay_dat_hang'],
-                                'quantity' => $input['sl_thanh_pham'],
-                                'delivery_date' => $input['ngay_giao_hang'],
-                            ]);
-                        }
-
-                        $record = ProductionPlan::query()->where([
-                            ['machine_id', $row['H']],
-                            ['lo_sx', $losx->id],
-                            ['product_id', $input['product_id']],
-                        ])->first();
-                        if (isset($record)) throw new Exception("Kế hoạch cho LoSX:{$record->lo_sx} - {$record->product_id} đã được tạo");
-
-                        $record = ProductionPlan::create($input);
-                        // TODO: add field lotsize to info_cong_doan table (lot)
-                        // ID Lot: Mã lô+.L.0001
-                        $spec = Spec::query()->where('product_id', $input['product_id'])->where('line_id', '24')->where('slug', 'so-luong')->first();
-                        if ($spec) {
-                            if (!isset($spec->value)) throw new Exception('Không tìm thấy giá trị của Spec');
-                            $lotsize = $spec->value;
-                        } else {
-                            throw new Exception("Không tìm thấy định mức cuộn");
-                        }
-                        $numbers = $this->getQuantityArray(intval(str_replace(",","",$input['sl_giao_sx'])), $lotsize);
-                        $countLot = InfoCongDoan::query()->where([
-                            ['lo_sx', $input['lo_sx']],
-                            ['line_id', $input['line_id']]
-                        ])->count();
-                        foreach ($numbers as $number) {
-                            $countLot++;
-                            // InfoCongDoan::create([
-                            //     'lot_id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
-                            //     'lotsize' => $number, // 👈 Định mức cuộn
-                            //     'lo_sx' => $input['lo_sx'],
-                            //     'line_id' => $input['line_id'],
-                            //     'product_id' => $input['product_id'],
-                            //     'thoi_gian_bat_dau' => null,
-                            //     'thoi_gian_bam_may' => null,
-                            //     'thoi_gian_ket_thuc' => null,
-                            //     'sl_dau_vao_chay_thu' => 0,
-                            //     'sl_dau_ra_chay_thu' => 0,
-                            //     'sl_dau_vao_hang_loat' => 0,
-                            //     'sl_dau_ra_hang_loat' => 0,
-                            //     'sl_tem_vang' => 0,
-                            //     'sl_ng' => 0,
-                            //     'start_powerM' => null,
-                            //     'end_powerM' => null,
-                            //     'powerM' => null,
-                            //     'status' => $input['status'],
-                            //     'machine_code' => $input['machine_id'],
-                            //     'sl_kh' => $number, // 
-                            //     'user_id' => auth()->user()->id,
-                            // ]);
-                            Lot::firstOrCreate(
-                                ['id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT)],
-                                [
-                                    'id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
-                                    'lo_sx' => $input['lo_sx'],
-                                    'so_luong' => $number,
-                                    'type' => Lot::TYPE_TEM_TRANG,
-                                    'product_id' => $input['product_id'],
-                                ]
-                            );
-                            Stamp::create([
-                                'lot_id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
-                                'ten_sp' => $row['K'],
-                                'soluongtp' => $number,
-                                'ver' => "",
-                                'his' => "",
-                                'lsx' => $input['lo_sx'],
-                                'cd_thuc_hien' => 'Liner',
-                                'cd_tiep_theo' => 'Chọn',
-                                'nguoi_sx' => "",
-                                'ghi_chu' => "",
-                            ]);
-                        }
-                        unset($input);
-                    }
-                }
-            }
-
             DB::commit();
             return $this->success([], 'Upload thành công');
         } catch (\Exception $ex) {
             Log::error($ex);
             DB::rollBack();
             return $this->failure([], $ex->getMessage(), 500);
+        }
+    }
+
+    public function createPlanForLineLienHoan($input)
+    {
+        $customer = Customer::firstOrCreate(
+            ['name' => $input['khach_hang']],
+            ['id' => Str::slug($input['khach_hang'])]
+        );
+        // Product order
+        $productOrder = ProductOrder::find($input['product_order_id']);
+        if (empty($productOrder)) {
+            $productOrder = ProductOrder::create([
+                'id' => $input['product_order_id'],
+                'order_number' => $input['product_order_id'],
+                'customer_id' => $customer->id,
+                'material_id' => $input['material_id'],
+                'order_date' => $input['ngay_dat_hang'],
+                'quantity' => $input['sl_thanh_pham'],
+                'delivery_date' => $input['ngay_giao_hang'],
+            ]);
+        }
+        $record = ProductionPlan::query()->where([
+            ['machine_id', $input['machine_id']],
+            ['lo_sx', $input['lo_sx']],
+            ['material_id', $input['material_id']],
+        ])->first();
+        if (isset($record)) throw new Exception("Kế hoạch cho LoSX:{$record->lo_sx} - {$record->product_id} đã được tạo");
+        $input['product_id'] = null;
+        $record = ProductionPlan::create($input);
+        // TODO: add field lotsize to info_cong_doan table (lot)
+        // ID Lot: Mã lô+.L.0001
+        $lotsize = 11000;
+        $numbers = $this->getQuantityArray(intval(str_replace(",", "", $input['sl_giao_sx'])), $lotsize);
+        $countLot = InfoCongDoan::query()->where([
+            ['lo_sx', $input['lo_sx']],
+            ['line_id', $input['line_id']]
+        ])->count();
+        foreach ($numbers as $number) {
+            $countLot++;
+            $info_cong_doan = [
+                'lot_id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
+                // 'lotsize' => $number, // 👈 Định mức cuộn
+                'lo_sx' => $input['lo_sx'],
+                'line_id' => $input['line_id'],
+                'material_id' => $input['material_id'],
+                'status' => $input['status'],
+                'machine_code' => $input['machine_id'],
+                'sl_kh' => $number, // 
+                'user_id' => auth()->user()->id,
+            ];
+            InfoCongDoan::create($info_cong_doan);
+        }
+    }
+
+    public function createPlanForOtherLines($input)
+    {
+        $customer = Customer::firstOrCreate(
+            ['name' => $input['khach_hang']],
+            ['name' => $input['khach_hang'], 'id' => Str::slug($input['khach_hang'])]
+        );
+        // Product order
+        $productOrder = ProductOrder::find($input['product_order_id']);
+        if (empty($productOrder)) {
+            $productOrder = ProductOrder::create([
+                'id' => $input['product_order_id'],
+                'order_number' => $input['product_order_id'],
+                'customer_id' => $customer->id,
+                'product_id' => $input['product_id'],
+                'order_date' => $input['ngay_dat_hang'],
+                'quantity' => $input['sl_thanh_pham'],
+                'delivery_date' => $input['ngay_giao_hang'],
+            ]);
+        }
+        $record = ProductionPlan::query()->where([
+            ['machine_id', $input['machine_id']],
+            ['lo_sx', $input['lo_sx']],
+            ['product_id', $input['product_id']],
+        ])->first();
+        if (isset($record)) throw new Exception("Kế hoạch cho LoSX:{$record->lo_sx} - {$record->product_id} đã được tạo");
+        $input['material_id'] = null;
+        $record = ProductionPlan::create($input);
+        // TODO: add field lotsize to info_cong_doan table (lot)
+        // ID Lot: Mã lô+.L.0001
+        $spec = Spec::query()->where('product_id', $input['product_id'])->where('line_id', '24')->where('slug', 'so-luong')->first();
+        $lotsize = 1;
+        if ($input['line_id'] === 24) {
+            $info_cong_doan['product_id'] = null;
+            $info_cong_doan['material_id'] = $input['product_id'];
+        }
+        if ($spec) {
+            if (!isset($spec->value)) throw new Exception('Không tìm thấy giá trị của Spec');
+            $lotsize = $spec->value;
+        } else {
+            throw new Exception("Không tìm thấy định mức cuộn");
+        }
+        $numbers = $this->getQuantityArray(intval(str_replace(",", "", $input['sl_giao_sx'])), $lotsize);
+        $countLot = InfoCongDoan::query()->where([
+            ['lo_sx', $input['lo_sx']],
+            ['line_id', $input['line_id']]
+        ])->count();
+        foreach ($numbers as $number) {
+            $countLot++;
+            $info_cong_doan = [
+                'lot_id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
+                // 'lotsize' => $number, // 👈 Định mức cuộn
+                'lo_sx' => $input['lo_sx'],
+                'line_id' => $input['line_id'],
+                'product_id' => $input['product_id'],
+                'status' => $input['status'],
+                'machine_code' => $input['machine_id'],
+                'sl_kh' => $number, // 
+                'user_id' => auth()->user()->id,
+            ];
+            InfoCongDoan::create($info_cong_doan);
+            // Lot::firstOrCreate(
+            //     ['id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT)],
+            //     [
+            //         'id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
+            //         'lo_sx' => $input['lo_sx'],
+            //         'so_luong' => $number,
+            //         'type' => Lot::TYPE_TEM_TRANG,
+            //         'product_id' => $input['product_id'],
+            //     ]
+            // );
+            // Stamp::create([
+            //     'lot_id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
+            //     'ten_sp' => $row['K'],
+            //     'soluongtp' => $number,
+            //     'ver' => "",
+            //     'his' => "",
+            //     'lsx' => $input['lo_sx'],
+            //     'cd_thuc_hien' => 'Liner',
+            //     'cd_tiep_theo' => 'Chọn',
+            //     'nguoi_sx' => "",
+            //     'ghi_chu' => "",
+            // ]);
         }
     }
 

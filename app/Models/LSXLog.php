@@ -17,6 +17,11 @@ class LSXLog extends Model
         return $this->belongsTo(Lot::class);
     }
 
+    public function infoCongDoan()
+    {
+        return $this->hasMany(InfoCongDoan::class, 'lot_id', 'lot_id');
+    }
+
     public static function listPallet($line)
     {
         $now  = date('Y-m-d', strtotime('-4 day'));

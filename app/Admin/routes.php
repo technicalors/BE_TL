@@ -416,6 +416,7 @@ Route::group([
     $router->get('ui/data-filter', [ApiUIController::class, 'getDataFilterUI']);
 
     $router->get('info-cong-doan/list', [InfoCongDoanController::class, 'getInfoCongDoan']);
+    $router->get('info-cong-doan/search', [InfoCongDoanController::class, 'searchInfoCongDoan']);
     $router->post('info-cong-doan/update', [InfoCongDoanController::class, 'updateInfoCongDoan']);
     $router->get('info-cong-doan/export', [InfoCongDoanController::class, 'exportInfoCongDoan']);
     $router->post('info-cong-doan/import', [InfoCongDoanController::class, 'importInfoCongDoan']);
@@ -432,7 +433,7 @@ Route::group([
     $router->post('spec-product/create', [App\Admin\Controllers\ProductController::class, 'createSpecProduct']);
     $router->post('spec-product/delete', [App\Admin\Controllers\ProductController::class, 'deleteSpecProduct']);
     $router->get('spec-product/export', [App\Admin\Controllers\ProductController::class, 'exportSpecProduct']);
-    $router->post('spec-product/import', [App\Admin\Controllers\ProductController::class, 'importSpecProduct']);
+    $router->post('spec-product/import', [App\Admin\Controllers\ProductController::class, 'importNewVersion']);
 
     $router->get('errors/list', [App\Admin\Controllers\ErrorController::class, 'getErrors']);
     $router->patch('errors/update', [App\Admin\Controllers\ErrorController::class, 'updateErrors']);
@@ -484,7 +485,7 @@ Route::group([
     $router->delete('product/delete/{id}', [App\Admin\Controllers\ProductController::class, 'delete']);
     $router->post('products/delete', [App\Admin\Controllers\ProductController::class, 'deleteMultiple']);
     $router->get('product/export', [App\Admin\Controllers\ProductController::class, 'export']);
-    $router->post('product/import', [App\Admin\Controllers\ProductController::class, 'import']);
+    $router->post('product/import', [App\Admin\Controllers\ProductController::class, 'importNewVersion']);
 
     $router->get('material/list', [App\Admin\Controllers\MaterialController::class, 'list']);
     $router->patch('material/update/{id}', [App\Admin\Controllers\MaterialController::class, 'update']);
@@ -580,6 +581,8 @@ Route::group([
 
     Route::post('/import-parameters', [ParameterController::class, 'import']);
     $router->post('/import-spec', [App\Admin\Controllers\ProductController::class, 'importNewVersion']);
+    $router->get('/update-info-cong-doan', [App\Admin\Controllers\ApiUIController::class,'test']);
+    $router->get('convertQCLog', [App\Admin\Controllers\ApiUIController::class,'convertQCLog']);
 });
 //Dashboard
 Route::group([
@@ -616,6 +619,7 @@ Route::group([
     $router->delete('assignment/{id}', [Phase2OIApiController::class, 'deleteAssignment']);
     $router->patch('assignment/{id}', [Phase2OIApiController::class, 'updateAssignment']);
     $router->post('print-tem-selection-line', [Phase2OIApiController::class, 'printTemSelectionLine']);
+    $router->post('update-output-production', [Phase2OIApiController::class,'updateOutputProduction']);
 
     //Chất lượng
     $router->get('qc-overall', [Phase2OIApiController::class, 'getQCOverall']);
@@ -657,11 +661,10 @@ Route::group([
 
     $router->get('equipment/oee', [Phase2UIApiController::class, 'getOEEData']);
     $router->get('equipment/error-frequency', [Phase2UIApiController::class, 'getErrorFrequencyData']);
-
-    $router->get('quality/data-table', [Phase2UIApiController::class, 'getQualittyDataTable']);
-    $router->get('quality/data-chart', [Phase2UIApiController::class, 'getQualittyDataChart']);
-
-    $router->post('plan/generate', [Phase2UIApiController::class, 'generateProductionPlan']);
+    
+    $router->get('quality/pqc/data-table', [Phase2UIApiController::class, 'getQualityDataTable']);
+    $router->get('quality/pqc/data-chart', [Phase2UIApiController::class, 'getQualityDataChart']);
+     $router->post('plan/generate', [Phase2UIApiController::class, 'generateProductionPlan']);
     $router->get('plan/store/{order_id}', [Phase2UIApiController::class, 'processProductionPlan']);
 });
 
