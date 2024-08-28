@@ -235,39 +235,45 @@ class ProductController extends Controller
         $spec_data = [];
         foreach ($currRow as $key => $item) {
             $line_id = [];
-            if (in_array($key, $this->excelColumnRange("DU", "EP", "AD", "AR", "BC", "BL", "BU", "CE", "CN", "CZ"))) {
+            if (in_array($key, $this->excelColumnRange("DW", "ER", "AD", "AR", "BC", "BL", "BU", "CF", "CP", "DB"))) {
                 $line_id = [24]; //Gap dan lien hoan
-            } else if (in_array($key, $this->excelColumnRange("GA", "GT", "AE", "AS", "BD", "BM", "BV", "CF", "CO", "DA"))) {
+            } else if (in_array($key, $this->excelColumnRange("GC", "GV", "AE", "AS", "BD", "BM", "BV", "CG", "CQ", "DC"))) {
                 $line_id = [27]; //Dan liner
-            } else if (in_array($key, $this->excelColumnRange("EQ", "FZ", "AF", "AU", "BE", "BN", "BW", "CG", "CQ", "DC"))) {
+            } else if (in_array($key, $this->excelColumnRange("EQ", "FZ", "AF", "AU", "BE", "BN", "BW", "CH", "CS", "DE"))) {
                 $line_id = [25]; //In flexo
-            } else if (in_array($key, $this->excelColumnRange("HR", "HU", "AI", "AY", "BH", "BQ", "BZ", "CJ", "CU", "DE"))) {
+            } else if (in_array($key, $this->excelColumnRange("HT", "IX", "AI", "AY", "BH", "BQ", "BZ", "CK", "CW", "DG"))) {
                 $line_id = [26]; //Duc cat
-            } else if (in_array($key, $this->excelColumnRange("IW", "JW", "AN", "CD", "CY"))) {
+            } else if (in_array($key, $this->excelColumnRange("IY", "JY", "AN", "CD", "DA"))) {
                 $line_id = [29]; //Chon Phase2 
-            } else if (in_array($key, $this->excelColumnRange("JX", "KJ"))) {
+            } else if (in_array($key, $this->excelColumnRange("JZ", "KL"))) {
                 $line_id = [30]; //OQC Phase2
+            } else if(in_array($key, ["CE", "CO"])){
+                $line_id = [24, 27, 25, 26, 30];
             }
 
             foreach ($line_id as $id) {
                 $input = [];
                 if (!empty($item)) {
                     $input['name'] = "";
-                    if (in_array($key, $this->excelColumnRange("R", "AN"))) {
+                    if ($key === 'CE') {
+                        $input['name'] = 'Thời gian lên xuống cuộn';
+                    } else if ($key === 'CO') {
+                        $input['name'] = 'Số lượng cuộn 1 lần vận chuyển (Cuộn)';
+                    } else if (in_array($key, $this->excelColumnRange("R", "AN"))) {
                         $input['name'] = 'Hành trình sản xuất';
-                    } else if(in_array($key, $this->excelColumnRange("AR", "BB"))){
+                    } else if (in_array($key, $this->excelColumnRange("AR", "BB"))) {
                         $input['name'] = "Hao phí vào hàng các công đoạn";
-                    } else if(in_array($key, $this->excelColumnRange("BC", "BK"))) {
+                    } else if (in_array($key, $this->excelColumnRange("BC", "BK"))) {
                         $input["name"] = "Hao phí sản xuất các công đoạn (%)";
-                    } else if(in_array($key, $this->excelColumnRange("BL", "BT"))) {
+                    } else if (in_array($key, $this->excelColumnRange("BL", "BT"))) {
                         $input["name"] = "Chuẩn bị(Đầu ca)";
-                    } else if(in_array($key, $this->excelColumnRange("BU", "CD"))) {
+                    } else if (in_array($key, $this->excelColumnRange("BU", "CD"))) {
                         $input["name"] = "Vận chuyển (chuyển hàng công đoạn trước sang công đoạn sau)";
-                    } else if(in_array($key, $this->excelColumnRange("CE", "CM"))) {
+                    } else if (in_array($key, $this->excelColumnRange("CF", "CN"))) {
                         $input["name"] = "Vào hàng (Setup máy)";
-                    } else if(in_array($key, $this->excelColumnRange("CN", "CY"))) {
+                    } else if (in_array($key, $this->excelColumnRange("CP", "DA"))) {
                         $input["name"] = "Năng suất ấn định/giờ";
-                    } else if(in_array($key, $this->excelColumnRange("CZ", "DH"))) {
+                    } else if (in_array($key, $this->excelColumnRange("DB", "DI"))) {
                         $input["name"] = "Nhân sự ấn định máy (người)";
                     } else {
                         $input['name'] = $title[$key];
@@ -284,7 +290,8 @@ class ProductController extends Controller
     }
 
     // Chuyển đổi tên cột Excel thành số thứ tự
-    function columnToNumber($col) {
+    function columnToNumber($col)
+    {
         $num = 0;
         $len = strlen($col);
         for ($i = 0; $i < $len; $i++) {
@@ -294,7 +301,8 @@ class ProductController extends Controller
     }
 
     // Chuyển đổi số thứ tự thành tên cột Excel
-    function numberToColumn($num) {
+    function numberToColumn($num)
+    {
         $col = '';
         while ($num > 0) {
             $remainder = ($num - 1) % 26;
@@ -304,27 +312,28 @@ class ProductController extends Controller
         return $col;
     }
 
-    function excelColumnRange($start_col, $end_col = null, ...$additional_cols) {
+    function excelColumnRange($start_col, $end_col = null, ...$additional_cols)
+    {
         // Nếu không có $end_col, đặt $end_col là $start_col
         if ($end_col === null) {
             $end_col = $start_col;
         }
-    
+
         $start_num = $this->columnToNumber($start_col);
         $end_num = $this->columnToNumber($end_col);
-        
+
         $columns = [];
         for ($i = $start_num; $i <= $end_num; $i++) {
             $columns[] = $this->numberToColumn($i);
         }
-        
+
         // Thêm các cột bất kỳ vào mảng kết quả
         foreach ($additional_cols as $col) {
             if (!in_array($col, $columns)) {
                 $columns[] = $col;
             }
         }
-    
+
         return $columns;
     }
 

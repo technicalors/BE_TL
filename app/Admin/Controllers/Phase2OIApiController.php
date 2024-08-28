@@ -522,6 +522,9 @@ class Phase2OIApiController extends Controller
         }
 
         if ($infoCongDoan) {
+            if(!$infoCongDoan->qcHistory){
+                return $this->failure([], 'Chưa kiểm tra QC');
+            }
             if (!$this->checkEligibleForPrinting($infoCongDoan)) {
                 return $this->failure([], "Chưa kiểm tra đủ tiêu chí QC");
             }
@@ -567,7 +570,7 @@ class Phase2OIApiController extends Controller
                     'thoi_gian_ket_thuc' => Carbon::now(),
                     'status' => InfoCongDoan::STATUS_COMPLETED
                 ]);
-                if(isset($machine) && isset($tracking)){
+                if (isset($machine) && isset($tracking)) {
                     MachineStatus::deactive($machine->code);
                     $tracking->update([
                         'lot_id' => null,
@@ -575,7 +578,7 @@ class Phase2OIApiController extends Controller
                         'output' => 0
                     ]);
                 }
-                
+
                 DB::commit();
                 return $this->success($this->formatTemTrang($infoCongDoan, $request), "Kết thúc sản xuất thành công");
             } catch (\Throwable $th) {
@@ -844,20 +847,25 @@ class Phase2OIApiController extends Controller
         return $data;
     }
 
-    public function startMassProduction(Request $request)
+    public function updateOutputProduction(Request $request)
     {
         $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $request->machine_code)->where('line_id', $request->line_id)->first();
         if (!$infoCongDoan) {
             return $this->failure('', 'Không tìm thấy lot');
         }
-        try {
-            DB::beginTransaction();
-            $infoCongDoan->update(['thoi_gian_bam_may' => date('Y-m-d H:i:s')]);
-            DB::commit();
-            return $this->success('', 'Kết thúc chạy thử. Bắt đầu tính sản lượng hàng loạt');
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            return $this->failure('', $th->getMessage());
+        if (!$infoCongDoan->thoi_gian_bam_may) {
+            $infoCongDoan->update([
+                'thoi_gian_bam_may' => date('Y-m-d H:i:s'),
+                'sl_dau_vao_chay_thu' => $request->output,
+                'sl_dau_ra_chay_thu' => $request->output,
+            ]);
+            return $this->success('', 'Đã cập nhật sản lượng vào hàng');
+        } else {
+            $infoCongDoan->update([
+                'sl_dau_vao_hang_loat' => $request->output,
+                'sl_dau_ra_hang_loat' => $request->output,
+            ]);
+            return $this->success('', 'Đã cập nhật sản lượng sản xuất');
         }
     }
     //============================Chất lượng============================
