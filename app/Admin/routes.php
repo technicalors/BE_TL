@@ -416,6 +416,7 @@ Route::group([
     $router->get('ui/data-filter', [ApiUIController::class, 'getDataFilterUI']);
 
     $router->get('info-cong-doan/list', [InfoCongDoanController::class, 'getInfoCongDoan']);
+    $router->get('info-cong-doan/search', [InfoCongDoanController::class, 'searchInfoCongDoan']);
     $router->post('info-cong-doan/update', [InfoCongDoanController::class, 'updateInfoCongDoan']);
     $router->get('info-cong-doan/export', [InfoCongDoanController::class, 'exportInfoCongDoan']);
     $router->post('info-cong-doan/import', [InfoCongDoanController::class, 'importInfoCongDoan']);
