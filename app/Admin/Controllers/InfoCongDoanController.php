@@ -206,4 +206,29 @@ class InfoCongDoanController extends AdminController
         }
         return $this->success([], 'Upload thành công');
     }
+
+    public function searchInfoCongDoan(Request $request){
+        $query = InfoCongDoan::with(['line', 'product', 'plan'])->orderBy('lot_id')->orderBy('thoi_gian_bat_dau');
+        
+        if(isset($request->line_id)){
+            if(is_array($request->line_id)){
+                $query->whereIn('line_id', $request->line_id);
+            }else{
+                $query->where('line_id', $request->line_id);
+            }
+        }
+
+        if(isset($request->lot_id)){
+            $query->where('lot_id', 'like', "%$request->lot_id%");
+        }
+
+        if(isset($request->start_date)) $query->whereDate('created_at', '>=', $request->start_date);
+        else $query->whereDate('created_at', '>=', date('Y-m-d'));
+
+        if(isset($request->end_date)) $query->whereDate('created_at', '<=', $request->end_date);
+        else $query->whereDate('created_at', '<=', date('Y-m-d'));
+
+        $info_cong_doan = $query->get();
+        return $this->success($info_cong_doan);
+    }
 }
