@@ -102,7 +102,7 @@ class MachineController extends AdminController
     }
 
     public function getMachine(Request $request){
-        $query = Machine::with('line')->orderBy('created_at');
+        $query = Machine::with(['line', 'device:id,name'])->orderBy('created_at');
         if(isset($request->code)){
             $query->where('code', 'like', "%$request->code%");
         }
