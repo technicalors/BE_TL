@@ -2938,10 +2938,10 @@ class ApiMobileController extends AdminController
         // ID Lot: Mã lô+.L.0001
         $spec = Spec::query()->where('product_id', $input['product_id'])->where('line_id', '24')->where('slug', 'so-luong')->first();
         $lotsize = 1;
-        if ($input['line_id'] === 24) {
-            $info_cong_doan['product_id'] = null;
-            $info_cong_doan['material_id'] = $input['product_id'];
-        }
+        // if ($input['line_id'] === 24) {
+        //     $info_cong_doan['product_id'] = null;
+        //     $info_cong_doan['material_id'] = $input['product_id'];
+        // }
         if ($spec) {
             if (!isset($spec->value)) throw new Exception('Không tìm thấy giá trị của Spec');
             $lotsize = $spec->value;
