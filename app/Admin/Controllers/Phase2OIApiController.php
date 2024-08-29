@@ -83,7 +83,7 @@ class Phase2OIApiController extends Controller
     public function getLineList(Request $request)
     {
         $list = Line::where("display", "1")
-            // ->where('factory_id', 2)
+            ->where('factory_id', 2)
             ->orderBy('ordering', 'ASC')
             ->get();
         $except = [
@@ -199,7 +199,6 @@ class Phase2OIApiController extends Controller
                 "lot_id" => $item->lot_id,
                 "ma_hang" => $item->product->id ?? '',
                 "ten_sp" => $item->product->name ?? '',
-                "ma_hang" => $item->product->id ?? '',
                 "sl_ke_hoach" => $item->sl_kh ?? 0,
                 'thoi_gian_bat_dau_kh' => $item->plan ? date('d/m/Y H:i:s', strtotime($item->plan->thoi_gian_bat_dau)) : "",
                 "thoi_gian_ket_thuc_kh" => $item->plan ? date('d/m/Y H:i:s', strtotime($item->plan->thoi_gian_ket_thuc)) : "",
@@ -309,7 +308,10 @@ class Phase2OIApiController extends Controller
         if ($tracking->lot_id && $tracking->lot_id !== $request->lot_id) {
             return $this->failure([], "Máy này đang sản xuất lot khác");
         }
-        $check = InfoCongDoan::where('lot_id', $request->scanned_lot)->where('status', '<>', InfoCongDoan::STATUS_COMPLETED)->first();
+        $check = InfoCongDoan::where('lot_id', $request->scanned_lot)
+        ->orderBy('created_at', 'DESC')
+        // ->where('status', '<>', InfoCongDoan::STATUS_COMPLETED)
+        ->first();
         if ($check) {
             $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $machine->line->id)->where('status', InfoCongDoan::STATUS_PLANNED)->first();
             if (!$infoCongDoan) {
@@ -334,9 +336,11 @@ class Phase2OIApiController extends Controller
                     DB::rollBack();
                     return $this->failure($th, "Lỗi quét lot");
                 }
+            }else{
+                return $this->failure([], "Lot này không trùng mã sản phẩm với lot chuẩn bị chạy");
             }
         } else {
-            return $this->failure([], "Lot này đã được quét");
+            return $this->failure([], "Không tìm thấy lot phù hợp");
         }
         return $this->success([], "Quét lot thành công");
     }

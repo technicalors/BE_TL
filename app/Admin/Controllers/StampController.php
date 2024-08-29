@@ -4,6 +4,7 @@ namespace App\Admin\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Imports\StampsImport;
+use App\Models\Material;
 use App\Models\Stamp;
 use App\Traits\API;
 use Illuminate\Http\Request;
@@ -105,5 +106,10 @@ class StampController extends Controller
         } catch (\Exception $e) {
             return $this->failure($e, 'Import failed');
         }
+    }
+
+    public function createTem(){
+        $material = Material::all();
+        return $this->success($material);
     }
 }
