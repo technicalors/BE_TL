@@ -109,7 +109,7 @@ class StampController extends Controller
     }
 
     public function createTem(){
-        $material = Material::all();
-        return $this->success($material);
+        $material = Material::where('id', 'VBD130')->get();
+        return $this->failure($material);
     }
 }
