@@ -248,7 +248,7 @@ class ProductController extends Controller
             } else if (in_array($key, $this->excelColumnRange("JZ", "KL"))) {
                 $line_id = [30]; //OQC Phase2
             } else if(in_array($key, ["CE", "CO"])){
-                $line_id = [24, 27, 25, 26, 30];
+                $line_id = [24, 27, 25, 26, 29, 30];
             }
 
             foreach ($line_id as $id) {

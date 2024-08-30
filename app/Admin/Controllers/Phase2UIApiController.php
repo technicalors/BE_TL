@@ -730,7 +730,7 @@ class Phase2UIApiController extends Controller
         // Truy vấn để lấy số lượng cuộn một lần vận chuyển từ bảng spec theo slug 'so-luong-cuon-1-lan-van-chuyen'
         $rollsPerTransportSpec = Spec::where('line_id', $lineId)
             ->where('product_id', $productId)
-            ->where('slug', 'so-luong-cuon-1-lan-van-chuyen')
+            ->where('slug', 'so-luong-cuon-1-lan-van-chuyen-cuon')
             ->first();
 
         return $rollsPerTransportSpec ? $rollsPerTransportSpec->value : 0;
@@ -940,9 +940,7 @@ class Phase2UIApiController extends Controller
                     // Các công đoạn tiếp theo
                     $startTime = $lots[$orderedSteps[$index - 1]->line_id][$numMachines - 1][$rollsPerTransport]['startTime']->copy()->addMinutes($transportTime);
                 }
-                if ($startTime->greaterThan($machineReadyTime)) {
-                    $startTime = $startTime;
-                } else {
+                if (!$startTime->greaterThan($machineReadyTime)) {
                     $startTime = $machineReadyTime;
                 }
                 // Thời gian kết thúc là thời gian bắt đầu cộng thêm thời gian sản xuất
