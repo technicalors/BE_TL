@@ -35,7 +35,7 @@ class ProductOrderController extends Controller
         if (isset($request->withs)) {
             $query->with($request->withs);
         }
-        $result = $query->get();
+        $result = $query->with('product', 'customer', 'material')->get();
         return $this->success(['data' => $result, 'total' => $total]);
     }
 
