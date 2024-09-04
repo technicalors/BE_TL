@@ -651,7 +651,9 @@ class Phase2UIApiController extends Controller
         return Spec::where('product_id', $productId)
             ->where('slug', 'hanh-trinh-san-xuat')
             ->orderBy('value', 'asc')
-            ->get();
+            ->get()->filter(function ($value) {
+                return is_numeric($value->value);
+            });
     }
 
     function calculateProductionOutput($productId, $lineId, $quantity)
@@ -859,9 +861,11 @@ class Phase2UIApiController extends Controller
     public function generateProductionPlan(Request $request)
     {
         $orderIds = $request->order_id;
+        $data = [];
         foreach ($orderIds as $orderId) {
-            $this->processProductionPlan($orderId);
+            $data[] = $this->processProductionPlan($orderId);
         }
+        return $this->success($data);
     }
 
     public function processProductionPlan($orderId)
@@ -898,6 +902,9 @@ class Phase2UIApiController extends Controller
         foreach ($orderedSteps as $index => $step) {
             $lineId = $step->line_id;
             $quantity = $stepQuantities[$lineId];
+            if (!isset($lots[$lineId])) {
+                $lots[$lineId] = [];
+            }
 
             // Lấy dữ liệu lotsize tại công đoạn với slug 'so-luong'
             $lotSize = $this->getLotSize($productId, $lineId);
@@ -948,39 +955,39 @@ class Phase2UIApiController extends Controller
 
                 // Lưu trữ thời gian bắt đầu và kết thúc vào mảng
                 $stepEndTimes[$lineId] = $endTime;
-                $plan = ProductionPlan::create([
-                    'ngay_dat_hang' => $order->order_date,
-                    'line_id' => $lineId,
-                    'cong_doan_sx' => $lineId,
-                    'ca_sx' => 1,
-                    'ngay_giao_hang' => $order->delivery_date,
-                    'machine_id' => $machine->code,
-                    'product_id' => $order->product_id,
-                    'khach_hang' => 'SamSung',
-                    'lo_sx' => '240801',
-                    'thu_tu_uu_tien' => 1,
-                    'nhan_luc' => 1,
-                    'tong_tg_thuc_hien' => ($quantity * $taskTime) + ($rollChangeTime * $numLots) + $setupTime,
-                    'thoi_gian_bat_dau' => $startTime,
-                    'thoi_gian_ket_thuc' => $endTime,
-                    'sl_giao_sx' => $quantity,
-                ]);
+                // $plan = ProductionPlan::create([
+                //     'ngay_dat_hang' => $order->order_date,
+                //     'line_id' => $lineId,
+                //     'cong_doan_sx' => $lineId,
+                //     'ca_sx' => 1,
+                //     'ngay_giao_hang' => $order->delivery_date,
+                //     'machine_id' => $machine->code,
+                //     'product_id' => $order->product_id,
+                //     'khach_hang' => 'SamSung',
+                //     'lo_sx' => '240801',
+                //     'thu_tu_uu_tien' => 1,
+                //     'nhan_luc' => 1,
+                //     'tong_tg_thuc_hien' => ($quantity * $taskTime) + ($rollChangeTime * $numLots) + $setupTime,
+                //     'thoi_gian_bat_dau' => $startTime,
+                //     'thoi_gian_ket_thuc' => $endTime,
+                //     'sl_giao_sx' => $quantity,
+                // ]);
                 for ($lotIndex = 1; $lotIndex <= $numLots; $lotIndex++) {
                     $lotId = '2408' . str_pad($lotIndexOffset + $lotIndex, 2, '0', STR_PAD_LEFT); // Tạo lot_id với stt lot
                     $lotStartTime = ($lotIndex == 1) ? $startTime : $lots[$lineId][$machineIndex][$lotIndex - 2]['endTime'];
                     list($lotStartTime, $lotEndTime) = $this->adjustTimeWithinShift($lotStartTime, ($taskTime * $lotSize) + $rollChangeTime, $productionShifts, $lotId, $shiftPreparationTime);
                     // Lưu thông tin lot vào object
-                    InfoCongDoan::create([
-                        'lot_id' => $lotId,
-                        'lo_sx' => '240801',
-                        'line_id' => $lineId,
-                        'product_id' => $productId,
-                        'machine_code' => $machine->code,
-                        'thoi_gian_bat_dau' => $lotStartTime,
-                        'thoi_gian_ket_thuc' => $lotEndTime,
-                        'sl_kh' => $lotSize,
-                        'lotSize' => $lotSize,
-                    ]);
+                    // InfoCongDoan::create([
+                    //     'lot_id' => $lotId,
+                    //     'lo_sx' => '240801',
+                    //     'line_id' => $lineId,
+                    //     'product_id' => $productId,
+                    //     'machine_code' => $machine->code,
+                    //     'thoi_gian_bat_dau' => $lotStartTime,
+                    //     'thoi_gian_ket_thuc' => $lotEndTime,
+                    //     'sl_kh' => $lotSize,
+                    //     'lotSize' => $lotSize,
+                    // ]);
                     $lots[$lineId][$machineIndex][] = [
                         'lot_id' => $lotId,
                         'quantity' => $lotSize,
@@ -991,19 +998,19 @@ class Phase2UIApiController extends Controller
 
                 // Thời gian kết thúc của công đoạn là thời gian kết thúc của lot cuối cùng
                 $stepEndTimes[$lineId] = end($lots[$lineId][$machineIndex])['endTime'];
-                $plan->update([
-                    'thoi_gian_ket_thuc' => $stepEndTimes[$lineId],
-                ]);
+                // $plan->update([
+                //     'thoi_gian_ket_thuc' => $stepEndTimes[$lineId],
+                // ]);
 
                 $lotIndexOffset += $numLots;
-                $machine->update([
-                    'available_at' => $stepEndTimes[$lineId],
-                ]);
+                // $machine->update([
+                //     'available_at' => $stepEndTimes[$lineId],
+                // ]);
             }
         }
         // Trả về danh sách các công đoạn và các thông số tính toán
         return [
-            'lots' => $lots, // Danh sách lot tại mỗi công đoạn
+            'lots' => ($lots ?? []), // Danh sách lot tại mỗi công đoạn
         ];
     }
 }
