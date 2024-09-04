@@ -17,6 +17,7 @@ use App\Models\LSXLog;
 use App\Models\Machine;
 use App\Models\MachineLog;
 use App\Models\Material;
+use App\Models\NumberMachineOrder;
 use App\Models\ProductionPlan;
 use App\Models\ProductOrder;
 use App\Models\QCHistory;
@@ -653,7 +654,7 @@ class Phase2UIApiController extends Controller
             ->orderBy('value', 'asc')
             ->get()->filter(function ($value) {
                 return is_numeric($value->value);
-            });
+            })->values();
     }
 
     function calculateProductionOutput($productId, $lineId, $quantity)
@@ -858,6 +859,13 @@ class Phase2UIApiController extends Controller
         return $preparationTimeSpec ? $preparationTimeSpec->value : 0; // Nếu không tìm thấy, trả về 0
     }
 
+    function getNumberMachine($orderId)
+    {
+        // Truy vấn số lượng máy mỗi công đoạn
+        $numberMachineOrders = NumberMachineOrder::where('product_order_id', $orderId)->get();
+        return $numberMachineOrders->pluck('number_machine', 'line_id');
+    }
+
     public function generateProductionPlan(Request $request)
     {
         $orderIds = $request->order_id;
@@ -873,7 +881,7 @@ class Phase2UIApiController extends Controller
         // Lấy thông tin đơn hàng
         $order = ProductOrder::find($orderId);
         $productId = $order->product_id;
-        $initialQuantity = $order->quantity;
+        $initialQuantity = $order->sl_giao_sx;
 
         // Lấy danh sách công đoạn theo thứ tự DESC để tính toán sản lượng
         $productionSteps = $this->getProductionSteps($productId);
@@ -883,8 +891,7 @@ class Phase2UIApiController extends Controller
 
         // Khai báo mảng để lưu trữ sản lượng của từng công đoạn
         $stepQuantities = [];
-        $numberMachineByStep = [];
-
+        $numberMachineByStep = $this->getNumberMachine($orderId);
         // Tính toán sản lượng cho từng công đoạn theo thứ tự DESC
         foreach ($productionSteps as $step) {
             $calculatedQuantity = $this->calculateProductionOutput($productId, $step->line_id, $initialQuantity);
@@ -899,6 +906,8 @@ class Phase2UIApiController extends Controller
         // Khai báo mảng để lưu trữ thời gian bắt đầu và kết thúc của từng công đoạn
         $stepEndTimes = [];
         $lots = [];
+        $plans = [];
+        $infos = [];
         // Tính toán thời gian bắt đầu và kết thúc cho từng công đoạn theo thứ tự ASC
         foreach ($orderedSteps as $index => $step) {
             $lineId = $step->line_id;
@@ -929,17 +938,13 @@ class Phase2UIApiController extends Controller
             // Tính toán số lượng lô cần thiết
 
             // Tính toán thời gian bắt đầu và kết thúc cho từng công đoạn
-            $numMachines  = 1;
-            if ($lineId == 29) {
-                $numMachines  = 5;
-            }
-            $numberMachineByStep[$lineId] = $numMachines;
+            $numMachines  = $numberMachineByStep[$lineId] ?? 0;
             $machines = $this->getMachineReady($lineId, $numMachines);
             // Tính toán số lượng sản xuất cho mỗi máy
-            $quantityPerMachine = ceil($quantity / $numMachines);
+            $quantityPerMachine = $numMachines > 0 ? ceil($quantity / $numMachines) : $quantity;
             $lotIndexOffset = 0; // Offset để đánh số lot cho mỗi máy
 
-            $numLots = ceil($quantityPerMachine  / $lotSize); // Tổng số lot, dùng ceil để làm tròn lên
+            $numLots = ceil($quantityPerMachine / $lotSize); // Tổng số lot, dùng ceil để làm tròn lên
 
             // Chia lot và tính toán thời gian cho từng lot cho máy nàys
             foreach ($machines as $machineIndex => $machine) {
@@ -950,6 +955,10 @@ class Phase2UIApiController extends Controller
                     $startTime = Carbon::parse('2024-08-29 07:30:00', 'Asia/Bangkok');
                 } else {
                     // Các công đoạn tiếp theo
+                    //Nếu số lượng cuộn vận chuyển lớn hơn số lượng lot của công đoạn trước đó thì số lượng cuộn vc = số lượng lot của công đoạn trước đó 
+                    if($rollsPerTransport === 0 && (isset($lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1]) && count($lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1]) < $rollsPerTransport)){
+                        $rollsPerTransport = count($lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1]);
+                    }
                     $startTime = $lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1][$rollsPerTransport]['startTime']->copy()->addMinutes($transportTime);
                 }
                 if (!$startTime->greaterThan($machineReadyTime)) {
@@ -960,14 +969,16 @@ class Phase2UIApiController extends Controller
 
                 // Lưu trữ thời gian bắt đầu và kết thúc vào mảng
                 $stepEndTimes[$lineId] = $endTime;
-                $plan = ProductionPlan::create([
+                $plan_input = [
+                    'product_order_id' => $order->id,
                     'ngay_dat_hang' => $order->order_date,
                     'line_id' => $lineId,
-                    'cong_doan_sx' => $lineId,
+                    'cong_doan_sx' => $step->line->name,
                     'ca_sx' => 1,
-                    'ngay_giao_hang' => $order->delivery_date,
+                    'ngay_giao_hang' => $order->delivery_date ? date('Y-m-d', strtotime($order->delivery_date)) : null,
                     'machine_id' => $machine->code,
                     'product_id' => $order->product_id,
+                    'ten_san_pham' => $order->product->name,
                     'khach_hang' => 'SamSung',
                     'lo_sx' => '240801',
                     'thu_tu_uu_tien' => 1,
@@ -976,12 +987,26 @@ class Phase2UIApiController extends Controller
                     'thoi_gian_bat_dau' => $startTime,
                     'thoi_gian_ket_thuc' => $endTime,
                     'sl_giao_sx' => $quantityPerMachine,
-                ]);
+                ];
+                $plans[] = $plan_input;
+                // $plan = ProductionPlan::create($plan);
                 for ($lotIndex = 1; $lotIndex <= $numLots; $lotIndex++) {
                     $lotId = '2408' . str_pad($lotIndexOffset + $lotIndex, 2, '0', STR_PAD_LEFT); // Tạo lot_id với stt lot
                     $lotStartTime = ($lotIndex == 1) ? $startTime : $lots[$lineId][$machineIndex][$lotIndex - 2]['endTime'];
                     list($lotStartTime, $lotEndTime) = $this->adjustTimeWithinShift($lotStartTime, ($taskTime * $lotSize) + $rollChangeTime, $productionShifts, $lotId, $shiftPreparationTime);
                     // Lưu thông tin lot vào object
+                    $info_input = [
+                        'lot_id' => $lotId,
+                        'lo_sx' => '240801',
+                        'line_id' => $lineId,
+                        'product_id' => $productId,
+                        'machine_code' => $machine->code,
+                        'thoi_gian_bat_dau' => $lotStartTime,
+                        'thoi_gian_ket_thuc' => $lotEndTime,
+                        'sl_kh' => $lotSize,
+                        'lotSize' => $lotSize,
+                    ];
+                    $infos[] = $info_input;
                     // InfoCongDoan::create([
                     //     'lot_id' => $lotId,
                     //     'lo_sx' => '240801',
@@ -1015,8 +1040,10 @@ class Phase2UIApiController extends Controller
         }
         // dd($lots);
         // Trả về danh sách các công đoạn và các thông số tính toán
-        return [
-            'lots' => ($lots ?? []), // Danh sách lot tại mỗi công đoạn
-        ];
+        // return [
+        //     'lots' => ($lots ?? []), // Danh sách lot tại mỗi công đoạn
+        //     'plans' => $plans,
+        // ];
+        return $plans;
     }
 }

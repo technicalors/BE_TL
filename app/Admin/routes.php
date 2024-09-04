@@ -510,6 +510,7 @@ Route::group([
     $router->post('product-orders/delete', [App\Admin\Controllers\ProductOrderController::class, 'deleteMultiple']);
     $router->get('product-order/export', [App\Admin\Controllers\ProductOrderController::class, 'exportLine']);
     $router->post('product-order/import', [App\Admin\Controllers\ProductOrderController::class, 'import']);
+    $router->post('product-order/update-number-machine', [App\Admin\Controllers\ProductOrderController::class,'updateNumberMachine']);
 
     $router->get('template/list', [App\Admin\Controllers\TemplateController::class, 'list']);
     $router->patch('template/update/{id}', [App\Admin\Controllers\TemplateController::class, 'update']);
