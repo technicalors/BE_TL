@@ -2813,6 +2813,7 @@ class ApiMobileController extends AdminController
                     $input['ngay_giao_hang'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['M'])));
                     $input['machine_id'] = $row['H']; //
                     $input['product_id'] = $row['I']; //
+                    $input['product_name'] = $row['K'];
                     $input['khach_hang'] = $row['J']; //
                     $input['so_bat'] = $row['T'] ?? 0; //
                     $input['sl_nvl'] = $row['O']; //
@@ -2938,10 +2939,10 @@ class ApiMobileController extends AdminController
         // ID Lot: Mã lô+.L.0001
         $spec = Spec::query()->where('product_id', $input['product_id'])->where('line_id', '24')->where('slug', 'so-luong')->first();
         $lotsize = 1;
-        if ($input['line_id'] === 24) {
-            $info_cong_doan['product_id'] = null;
-            $info_cong_doan['material_id'] = $input['product_id'];
-        }
+        // if ($input['line_id'] === 24) {
+        //     $info_cong_doan['product_id'] = null;
+        //     $info_cong_doan['material_id'] = $input['product_id'];
+        // }
         if ($spec) {
             if (!isset($spec->value)) throw new Exception('Không tìm thấy giá trị của Spec');
             $lotsize = $spec->value;
@@ -2976,18 +2977,19 @@ class ApiMobileController extends AdminController
             //         'product_id' => $input['product_id'],
             //     ]
             // );
-            // Stamp::create([
-            //     'lot_id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
-            //     'ten_sp' => $row['K'],
-            //     'soluongtp' => $number,
-            //     'ver' => "",
-            //     'his' => "",
-            //     'lsx' => $input['lo_sx'],
-            //     'cd_thuc_hien' => 'Liner',
-            //     'cd_tiep_theo' => 'Chọn',
-            //     'nguoi_sx' => "",
-            //     'ghi_chu' => "",
-            // ]);
+            $line = Line::find($input['line_id']);
+            Stamp::create([
+                'lot_id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
+                'ten_sp' => $input['product_name'] ?? null,
+                'soluongtp' => $number,
+                'ver' => "",
+                'his' => "",
+                'lsx' => $input['lo_sx'],
+                'cd_thuc_hien' => $line->name,
+                'cd_tiep_theo' => Line::where('ordering' , '>', $line->ordering)->first()->name ?? 'Chọn',
+                'nguoi_sx' => "",
+                'ghi_chu' => "",
+            ]);
         }
     }
 

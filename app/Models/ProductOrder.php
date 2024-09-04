@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Awobaz\Compoships\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -43,8 +44,16 @@ class ProductOrder extends Model
     /**
      * @return HasOne
      */
-    public function product(): HasOne
+    public function product()
     {
-        return $this->hasOne(Product::class, 'id', 'product_id');
+        return $this->belongsTo(Product::class);
+    }
+    public function material()
+    {
+        return $this->belongsTo(Material::class);
+    }
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
     }
 }

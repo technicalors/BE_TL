@@ -583,6 +583,7 @@ Route::group([
     $router->post('/import-spec', [App\Admin\Controllers\ProductController::class, 'importNewVersion']);
     $router->get('/update-info-cong-doan', [App\Admin\Controllers\ApiUIController::class,'test']);
     $router->get('convertQCLog', [App\Admin\Controllers\ApiUIController::class,'convertQCLog']);
+    $router->get('get-tem', [App\Admin\Controllers\StampController::class,'createTem']);
 });
 //Dashboard
 Route::group([
