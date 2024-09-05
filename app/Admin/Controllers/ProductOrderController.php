@@ -41,18 +41,18 @@ class ProductOrderController extends Controller
         $result = $query->with('product', 'customer', 'material', 'numberProductOrder')->get();
         foreach ($result as $value) {
             $spec = Spec::with('line')->where('product_id', $value->product_id)
-            ->where('slug', 'hanh-trinh-san-xuat')
-            ->orderBy('value', 'asc')
-            ->groupBy('line_id')
-            ->get()->filter(function ($value) {
-                return is_numeric($value->value);
-            })->values();
+                ->where('slug', 'hanh-trinh-san-xuat')
+                ->orderBy('value', 'asc')
+                ->groupBy('line_id')
+                ->get()->filter(function ($value) {
+                    return is_numeric($value->value);
+                })->values();
             $sl_may = [];
             $numberProductOrder = $value->numberProductOrder;
             foreach ($spec as $key => $data) {
                 $sl_may[$key]['name'] = $data->line->name;
                 $sl_may[$key]['line_id'] = $data->line_id;
-                $sl_may[$key]['value'] = $numberProductOrder->first(function($item)use($data){
+                $sl_may[$key]['value'] = $numberProductOrder->first(function ($item) use ($data) {
                     return $item->line_id == $data->line_id;
                 })->number_machine ?? 0;
             }
@@ -72,6 +72,21 @@ class ProductOrderController extends Controller
         try {
             Log::debug($input);
             $result = ProductOrder::create($input);
+            $spec = Spec::with('line')->where('product_id', $input['product_id'])
+                ->where('slug', 'hanh-trinh-san-xuat')
+                ->orderBy('value', 'asc')
+                ->groupBy('line_id')
+                ->get()->filter(function ($value) {
+                    return is_numeric($value->value);
+                })->values();
+            foreach ($spec as $key => $value) {
+                NumberMachineOrder::create([
+                    'product_order_id' => $result->id,
+                    'line_id' => $value['line_id'],
+                    'number_machine' => $value['value'],
+                    'user_id' => $request->user()->id,
+                ]);
+            }
             DB::commit();
             return $this->success($result, 'Tạo thành công');
         } catch (\Exception $e) {
@@ -134,7 +149,7 @@ class ProductOrderController extends Controller
             'file' => 'required|mimes:xlsx',
         ]);
         try {
-            Excel::import(new ProductOrderImport, $request->file('file'));
+            Excel::import(new ProductOrderImport($request->user()->id), $request->file('file'));
         } catch (\Exception $e) {
             // Handle the exception and return an appropriate response
             return $this->failure(['error' => $e->getMessage()], 'Upload thất bại', 422);
@@ -147,7 +162,8 @@ class ProductOrderController extends Controller
         return $this->success('', 'Export thành công');
     }
 
-    public function updateNumberMachine(Request $request){
+    public function updateNumberMachine(Request $request)
+    {
         try {
             DB::beginTransaction();
             $productOrder = ProductOrder::find($request->id);
@@ -155,7 +171,7 @@ class ProductOrderController extends Controller
             NumberMachineOrder::where('product_order_id', $request->id)->delete();
             foreach ($request->sl_may as $key => $value) {
                 $line = Line::with('machine')->find($value['line_id']);
-                if($value['value'] > count($line->machine ?? [])){
+                if ($value['value'] > count($line->machine ?? [])) {
                     return $this->failure('', 'Số lượng máy của công đoạn "' . $line->name . '" vượt quá số lượng máy thực tế.');
                 }
                 NumberMachineOrder::create([
@@ -170,6 +186,6 @@ class ProductOrderController extends Controller
             DB::rollBack();
             return $this->failure('', 'Đã xảy ra lỗi');
         }
-        return $this->success('','Cập nhật thành công');
+        return $this->success('', 'Cập nhật thành công');
     }
 }
