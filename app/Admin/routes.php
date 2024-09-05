@@ -666,8 +666,9 @@ Route::group([
     
     $router->get('quality/pqc/data-table', [Phase2UIApiController::class, 'getQualityDataTable']);
     $router->get('quality/pqc/data-chart', [Phase2UIApiController::class, 'getQualityDataChart']);
-     $router->post('plan/generate', [Phase2UIApiController::class, 'generateProductionPlan']);
+    $router->post('plan/generate', [Phase2UIApiController::class, 'generateProductionPlan']);
     $router->get('plan/store/{order_id}', [Phase2UIApiController::class, 'processProductionPlan']);
+    $router->post('plan/create', [Phase2UIApiController::class, 'createProductionPlan']);
 });
 
 //UI
