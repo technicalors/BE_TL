@@ -572,7 +572,6 @@ Route::group([
     $router->get('update-material-name', [ApiUIController::class, 'updateMaterialName']);
     $router->get('create-pptx', [ExportFileController::class, 'createPPTX']);
     $router->post('import-btbd', [MaintenanceScheduleController::class, 'import']);
-    $router->post('maintenance-log-images/upload', [MaintenanceLogImageController::class, 'upload']);
 
     $router->post('create-lot-demo', [Phase2OIApiController::class, 'createLotDemo']);
 
@@ -657,6 +656,7 @@ Route::group([
     Route::apiResource('maintenance-schedules', MaintenanceScheduleController::class);
     Route::apiResource('maintenance-logs', MaintenanceLogController::class);
     Route::apiResource('maintenance-log-images', MaintenanceLogImageController::class);
+    $router->post('maintenance-log-images/upload', [MaintenanceLogImageController::class, 'upload']);
 
     $router->get('maintenance-plans/list/plan', [MaintenancePlanController::class, 'list']);
     $router->get('maintenance-plans/detail/list', [MaintenancePlanController::class, 'detail']);
