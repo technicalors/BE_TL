@@ -17,6 +17,7 @@ use App\Models\LotPlan;
 use App\Models\LSXLog;
 use App\Models\Machine;
 use App\Models\MachineLog;
+use App\Models\MachinePriorityOrder;
 use App\Models\Material;
 use App\Models\NumberMachineOrder;
 use App\Models\ProductionPlan;
@@ -39,6 +40,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use stdClass;
@@ -751,12 +753,21 @@ class Phase2UIApiController extends Controller
         return $setupTimeSpec ? $setupTimeSpec->value : 0; // Nếu không tìm thấy, trả về 0
     }
 
-    function getMachineReady($lineId, $numMachines)
+    function getMachineReady($lineId, $numMachines, $productId)
     {
+        //Truy vấn thứ tự ưu tiên
+        $machinePriorityOrder = MachinePriorityOrder::where('product_id', $productId)->where('line_id', $lineId)->orderBy('priority')->pluck('machine_id')->toArray();
+        Log::info($machinePriorityOrder);
         // Truy vấn bảng machine để lấy máy có available_at nhỏ nhất theo line_id
         $machines = Machine::where('line_id', $lineId)
-            ->orderBy('available_at', 'asc')->limit($numMachines)
-            ->get();
+            ->get()
+            ->sortBy(function ($machine) use ($machinePriorityOrder) {
+                $index = array_search($machine->code, $machinePriorityOrder);
+                return $index !== false ? $index : count($machinePriorityOrder);
+            })
+            ->sortBy('available_at')
+            ->take($numMachines)
+            ->values();
         return $machines;
     }
 
@@ -909,6 +920,7 @@ class Phase2UIApiController extends Controller
         $plans = [];
         $lot_plans = [];
         $machine_input = [];
+        $isExceedDeliveryTime = false;
         // Tính toán thời gian bắt đầu và kết thúc cho từng công đoạn theo thứ tự ASC
         foreach ($orderedSteps as $index => $step) {
             $lineId = $step->line_id;
@@ -939,7 +951,7 @@ class Phase2UIApiController extends Controller
 
             // Tính toán thời gian bắt đầu và kết thúc cho từng công đoạn
             $numMachines  = $numberMachineByStep[$lineId] ?? 0;
-            $machines = $this->getMachineReady($lineId, $numMachines);
+            $machines = $this->getMachineReady($lineId, $numMachines, $order->product_id);
             // Tính toán số lượng sản xuất cho mỗi máy
             $quantityPerMachine = $numMachines > 0 ? ceil($quantity / $numMachines) : $quantity;
             $lotIndexOffset = 0; // Offset để đánh số lot cho mỗi máy
@@ -959,7 +971,7 @@ class Phase2UIApiController extends Controller
                     if ($rollsPerTransport === 0 || (isset($lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1]) && count($lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1]) < $rollsPerTransport)) {
                         $rollsPerTransport = count($lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1]);
                     }
-                    $startTime = $lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1][$rollsPerTransport-1]['endTime']->copy()->addMinutes($transportTime);
+                    $startTime = $lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1][$rollsPerTransport - 1]['endTime']->copy()->addMinutes($transportTime);
                     // return ['startTime'=>$startTime, 'lot'=>$lots, 'machineTime'=>$machineReadyTime];
                 }
                 if (!$startTime->greaterThan($machineReadyTime)) {
@@ -997,6 +1009,10 @@ class Phase2UIApiController extends Controller
                     $lotId = '2408' . str_pad($lotIndexOffset + $lotIndex, 2, '0', STR_PAD_LEFT); // Tạo lot_id với stt lot
                     $lotStartTime = ($lotIndex == 1) ? $startTime : $lots[$lineId][$machineIndex][$lotIndex - 2]['endTime'];
                     list($lotStartTime, $lotEndTime) = $this->adjustTimeWithinShift($lotStartTime, ($taskTime * $lotSize) + $rollChangeTime, $productionShifts, $lotId, $shiftPreparationTime);
+                    //Trường hợp thời gian sx vượt quá thời gian giao hàng, đánh dấu KH được tạo
+                    if ($order->delivery_date && $lotStartTime->greaterThan(Carbon::parse($order->delivery_date))) {
+                        $isExceedDeliveryTime = true;
+                    }
                     // Lưu thông tin lot vào object
                     $lot_plan_input = [
                         'lot_id' => $lotId,
@@ -1019,6 +1035,7 @@ class Phase2UIApiController extends Controller
                         'khach_hang' => 'SamSung',
                         'thoi_gian_bat_dau' => $lotStartTime,
                         'thoi_gian_ket_thuc' => $lotEndTime,
+                        'is_exceed_time' => $isExceedDeliveryTime,
                     ];
                     $lot_plans[] = $lot_plan_input;
                     $lot_in_plan[] = $lot_plan_input;
@@ -1029,19 +1046,19 @@ class Phase2UIApiController extends Controller
                         'startTime' => $lotStartTime,
                         'endTime' => $lotEndTime,
                     ];
-                    //Trường hợp đang ở cđ Chọn mà thời gian sx vượt quá thời gian giao hàng 
-                    if ($order->delivery_date && $startTime->greaterThan(Carbon::parse($order->delivery_date))) {
-
-                    }
                 }
                 $plan_input['children'] = $lot_in_plan;
+                $plan_input['is_exceed_time'] = $isExceedDeliveryTime;
 
                 // Thời gian kết thúc của công đoạn là thời gian kết thúc của lot cuối cùng
-                $stepEndTimes[$lineId] = end($lots[$lineId][$machineIndex])['endTime'];
-                $plan_input['thoi_gian_ket_thuc'] = $stepEndTimes[$lineId];
-                // $plan->update([
-                //     'thoi_gian_ket_thuc' => $stepEndTimes[$lineId],
-                // ]);
+
+                if (!empty($lots[$lineId][$machineIndex])) {
+                    $stepEndTimes[$lineId] = end($lots[$lineId][$machineIndex])['endTime'];
+                    $plan_input['thoi_gian_ket_thuc'] = $stepEndTimes[$lineId];
+                    // $plan->update([
+                    //     'thoi_gian_ket_thuc' => $stepEndTimes[$lineId],
+                    // ]);
+                }
 
                 //Tạo kế hoạch
                 $plans[] = $plan_input;

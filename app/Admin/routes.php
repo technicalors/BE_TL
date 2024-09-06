@@ -9,6 +9,7 @@ use App\Admin\Controllers\InfoCongDoanController;
 use App\Admin\Controllers\IOTController;
 use App\Admin\Controllers\KPIController;
 use App\Admin\Controllers\MachineController;
+use App\Admin\Controllers\MachinePriorityOrderController;
 // use App\Admin\Controllers\ProductionPlanController;
 use App\Admin\Controllers\RoleController;
 use App\Admin\Controllers\MaintenanceCategoryController;
@@ -678,4 +679,6 @@ Route::group([
 ], function (Router $router) {
     Route::apiResource('stamps', StampController::class);
     Route::post('stamps/import', [StampController::class, 'import']);
+    Route::apiResource('machine-priority-orders', MachinePriorityOrderController::class);
+    Route::post('machine-priority-orders/delete', [MachinePriorityOrderController::class, 'deleteManyMachinePriorityOrders']);
 });
