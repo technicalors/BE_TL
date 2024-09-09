@@ -72,6 +72,21 @@ class ProductOrderController extends Controller
         try {
             Log::debug($input);
             $result = ProductOrder::create($input);
+            $spec = Spec::with('line')->where('product_id', $input['product_id'])
+                ->where('slug', 'hanh-trinh-san-xuat')
+                ->orderBy('value', 'asc')
+                ->groupBy('line_id')
+                ->get()->filter(function ($value) {
+                    return is_numeric($value->value);
+                })->values();
+            foreach ($spec as $key => $value) {
+                NumberMachineOrder::create([
+                    'product_order_id' => $result->id,
+                    'line_id' => $value['line_id'],
+                    'number_machine' => $value['value'],
+                    'user_id' => $request->user()->id,
+                ]);
+            }
             DB::commit();
             return $this->success($result, 'Tạo thành công');
         } catch (\Exception $e) {
@@ -134,7 +149,7 @@ class ProductOrderController extends Controller
             'file' => 'required|mimes:xlsx',
         ]);
         try {
-            Excel::import(new ProductOrderImport, $request->file('file'));
+            Excel::import(new ProductOrderImport($request->user()->id), $request->file('file'));
         } catch (\Exception $e) {
             // Handle the exception and return an appropriate response
             return $this->failure(['error' => $e->getMessage()], $e->getMessage(), 422);

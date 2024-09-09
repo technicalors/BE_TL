@@ -9,6 +9,7 @@ use App\Admin\Controllers\InfoCongDoanController;
 use App\Admin\Controllers\IOTController;
 use App\Admin\Controllers\KPIController;
 use App\Admin\Controllers\MachineController;
+use App\Admin\Controllers\MachinePriorityOrderController;
 // use App\Admin\Controllers\ProductionPlanController;
 use App\Admin\Controllers\RoleController;
 use App\Admin\Controllers\MaintenanceCategoryController;
@@ -656,6 +657,7 @@ Route::group([
     Route::apiResource('maintenance-schedules', MaintenanceScheduleController::class);
     Route::apiResource('maintenance-logs', MaintenanceLogController::class);
     Route::apiResource('maintenance-log-images', MaintenanceLogImageController::class);
+    $router->post('maintenance-log-images/upload', [MaintenanceLogImageController::class, 'upload']);
 
     $router->get('maintenance-plans/list/plan', [MaintenancePlanController::class, 'list']);
     $router->get('maintenance-plans/detail/list', [MaintenancePlanController::class, 'detail']);
@@ -666,8 +668,9 @@ Route::group([
     
     $router->get('quality/pqc/data-table', [Phase2UIApiController::class, 'getQualityDataTable']);
     $router->get('quality/pqc/data-chart', [Phase2UIApiController::class, 'getQualityDataChart']);
-     $router->post('plan/generate', [Phase2UIApiController::class, 'generateProductionPlan']);
+    $router->post('plan/generate', [Phase2UIApiController::class, 'generateProductionPlan']);
     $router->get('plan/store/{order_id}', [Phase2UIApiController::class, 'processProductionPlan']);
+    $router->post('plan/create', [Phase2UIApiController::class, 'createProductionPlan']);
 });
 
 //UI
@@ -677,4 +680,6 @@ Route::group([
 ], function (Router $router) {
     Route::apiResource('stamps', StampController::class);
     Route::post('stamps/import', [StampController::class, 'import']);
+    Route::apiResource('machine-priority-orders', MachinePriorityOrderController::class);
+    Route::post('machine-priority-orders/delete', [MachinePriorityOrderController::class, 'deleteManyMachinePriorityOrders']);
 });

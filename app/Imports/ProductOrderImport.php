@@ -4,8 +4,10 @@ namespace App\Imports;
 
 use App\Helpers\QueryHelper;
 use App\Models\Customer;
+use App\Models\NumberMachineOrder;
 use App\Models\Product;
 use App\Models\ProductOrder;
+use App\Models\Spec;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -16,6 +18,11 @@ use Maatwebsite\Excel\Concerns\WithStartRow;
 class ProductOrderImport implements ToCollection, WithHeadingRow, WithStartRow
 {
     protected $fields;
+    protected $user_id;
+
+    public function __construct($user_id = null) {
+        $this->user_id = $user_id;
+    }
 
     // Hàm này xác định hàng bắt đầu lấy tiêu đề (heading row)
     public function headingRow(): int
@@ -68,7 +75,7 @@ class ProductOrderImport implements ToCollection, WithHeadingRow, WithStartRow
         }
         $id = QueryHelper::generateNewId(new ProductOrder(), date('Ym'), 2);
         // Create product_order
-        ProductOrder::create([
+        $productOrder = ProductOrder::create([
             'id' => $id,
             'order_number' => $orderNumber,
             'customer_id' => $customerId,
@@ -78,6 +85,21 @@ class ProductOrderImport implements ToCollection, WithHeadingRow, WithStartRow
             'delivery_date' => $deliveryDate,
             'note' => $note,
         ]);
+        $spec = Spec::with('line')->where('product_id', $productId)
+            ->where('slug', 'hanh-trinh-san-xuat')
+            ->orderBy('value', 'asc')
+            ->groupBy('line_id')
+            ->get()->filter(function ($value) {
+                return is_numeric($value->value);
+            })->values();
+        foreach ($spec as $key => $value) {
+            NumberMachineOrder::updateOrCreate([
+                'product_order_id' => $productOrder->id,
+                'line_id' => $value['line_id'],
+                'number_machine' => 1,
+                'user_id' => $this->user_id,
+            ]);
+        }
     }
 
     protected function transformDate($value)
