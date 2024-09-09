@@ -5871,6 +5871,12 @@ class ApiUIController extends AdminController
         }else{
             $query->whereDate('due_date', now());
         }
+        if(isset($request->line_id)) {
+            $lineId = $request->line_id;
+            $query->whereHas('machine', function ($q) use ($lineId) {
+                $q->whereIn('line_id', $lineId);
+            });
+        }
         $schedules = $query->get()->groupBy('machine_code');
         $table = [];
         foreach ($schedules as $machine_code => $schedule) {
