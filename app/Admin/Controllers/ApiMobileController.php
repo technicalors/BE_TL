@@ -3401,7 +3401,6 @@ class ApiMobileController extends AdminController
         $input = $request->all();
         $lot = Lot::find($input['lot_id']);
         $lot->update(['so_luong' => $input['remain_quanlity']]);
-
         $count_lot = Lot::where('p_id', $input['lot_id'])->count();
         $new_lot = new Lot();
         $new_lot->id = $lot->id . '.TC' . ($count_lot + 1);
