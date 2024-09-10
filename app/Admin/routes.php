@@ -413,6 +413,8 @@ Route::group([
     $router->get('/export/warehouse/inventory', [ApiUIController::class, 'exportInventoryWarehouse']);
     $router->get('/export/kpi', [ApiUIController::class, 'exportKPI']);
     $router->get('/export/history-monitors', [ApiUIController::class, 'exportHistoryMonitors']);
+    $router->get('/export/maintanence-detail-status', [ApiUIController::class, 'exportChiTietThucHienKiemTra_TrangThai']);
+    $router->get('/export/maintanence-detail', [ApiUIController::class, 'exportChiTietThucHienKiemTra']);
 
     $router->get('ui/qc-error-list', [ApiUIController::class, 'qcErrorList']);
     $router->get('ui/data-filter', [ApiUIController::class, 'getDataFilterUI']);
@@ -573,6 +575,7 @@ Route::group([
     $router->get('update-material-name', [ApiUIController::class, 'updateMaterialName']);
     $router->get('create-pptx', [ExportFileController::class, 'createPPTX']);
     $router->post('import-btbd', [MaintenanceScheduleController::class, 'import']);
+    $router->put('maintenance-log-images/upload', [MaintenanceLogImageController::class, 'upload']);
 
     $router->post('create-lot-demo', [Phase2OIApiController::class, 'createLotDemo']);
 

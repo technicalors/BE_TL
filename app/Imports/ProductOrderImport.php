@@ -52,19 +52,28 @@ class ProductOrderImport implements ToCollection, WithHeadingRow, WithStartRow
         $productId = $row['product_id'] ?? null;
         $quantity = $row['quantity'] ?? null;
         $note = $row['note'] ?? null;
-        if (!$orderDate || !$productId || !$quantity) return;
-
+        if (!$orderDate) {
+            throw new \Exception("Chưa có ngày đặt hàng");
+        }
+        if (!$productId) {
+            throw new \Exception("Chưa có mã sản phẩm");
+        }
+        if (!$quantity) {
+            throw new \Exception("Chưa có số lượng");
+        }
         $product = Product::find($productId);
-        if (empty($product)) return;
+        if (empty($product)) throw new \Exception("Mã khách hàng không tồn tại");
 
         $customer = Customer::find($customerId);
-        if (empty($customer)) return;
+        if (empty($customer)) throw new \Exception("Mã khách hàng không tồn tại");
 
         $orderDate = $this->transformDate($orderDate);
-        if (!empty($deliveryDate)) $deliveryDate = $this->transformDate($deliveryDate);
-
+        if (!empty($deliveryDate)) {
+            $deliveryDate = $this->transformDate($deliveryDate);
+        } else {
+            $deliveryDate = date('Y-m-d', strtotime($orderDate . ' + 7 days'));
+        }
         $id = QueryHelper::generateNewId(new ProductOrder(), date('Ym'), 2);
-
         // Create product_order
         $productOrder = ProductOrder::create([
             'id' => $id,

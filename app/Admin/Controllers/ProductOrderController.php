@@ -152,7 +152,7 @@ class ProductOrderController extends Controller
             Excel::import(new ProductOrderImport($request->user()->id), $request->file('file'));
         } catch (\Exception $e) {
             // Handle the exception and return an appropriate response
-            return $this->failure(['error' => $e->getMessage()], 'Upload thất bại', 422);
+            return $this->failure(['error' => $e->getMessage()], $e->getMessage(), 422);
         }
         return $this->success('', 'Upload thành công');
     }

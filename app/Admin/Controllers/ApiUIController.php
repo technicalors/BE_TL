@@ -35,6 +35,7 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Models\CustomUser;
 use App\Models\ErrorHistory;
 use App\Models\LSXLog;
+use App\Models\MaintenanceSchedule;
 use App\Models\Material;
 use App\Models\QCDetailHistory;
 use App\Models\QCHistory;
@@ -5860,5 +5861,260 @@ class ApiUIController extends AdminController
             }
         }
         return $user_qc;
+    }
+
+    public function exportChiTietThucHienKiemTra_TrangThai(Request $request)
+    {
+        $query = MaintenanceSchedule::with('machine.line', 'maintenancePlan', 'maintenanceItem.maintenanceCategory', 'maintenanceLog');
+        if(isset($request->date) && count($request->date) === 2) {
+            $query->whereDate('due_date', '>=', date('Y-m-d', strtotime($request->date[0])))->whereDate('due_date', '<=', date('Y-m-d', strtotime($request->date[1])));;
+        }else{
+            $query->whereDate('due_date', now());
+        }
+        if(isset($request->line_id)) {
+            $lineId = $request->line_id;
+            $query->whereHas('machine', function ($q) use ($lineId) {
+                $q->whereIn('line_id', $lineId);
+            });
+        }
+        $schedules = $query->get()->groupBy('machine_code');
+        $table = [];
+        foreach ($schedules as $machine_code => $schedule) {
+            $schedule->sortBy('due_date');
+            $logs = $schedule->filter(function (object $item) {
+                return $item->maintenanceLog;
+            })->sortBy(function (object $item) {
+                return $item->maintenanceLog->log_date;
+            });
+            $table[] = [
+                'machine_code' => $machine_code,
+                'machine_name' => $schedule[0]->machine->name ?? "",
+                'line_name' => $schedule[0]->machine->line->name ?? "",
+                'item_number' => $schedule->count(),
+                'planning_date' => date('d/m/Y', strtotime($schedule[0]->due_date)),
+                'start_date' => isset($logs->first()->maintenanceLog) ? date('d/m/Y', strtotime($logs->first()->maintenanceLog->log_date)) : "",
+            ];
+        }
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $start_row = 2;
+        $start_col = 1;
+        $centerStyle = [
+            'alignment' => [
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+            ],
+            'borders' => array(
+                'outline' => array(
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => array('argb' => '000000'),
+                ),
+            ),
+        ];
+        $headerStyle = array_merge($centerStyle, [
+            'font' => ['bold' => true],
+        ]);
+        $titleStyle = array_merge($centerStyle, [
+            'font' => ['size' => 16, 'bold' => true],
+        ]);
+        $border = [
+            'borders' => array(
+                'allBorders' => array(
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => array('argb' => '000000'),
+                ),
+            ),
+        ];
+        $header = ['STT', 'Công đoạn', 'Tên máy', 'Số hạng mục', 'Kế hoạch', 'Ngày thực hiện', 'Người thực hiện'];
+        $table_key = [
+            'A' => 'stt',
+            'B' => 'line_name',
+            'C' => 'machine_name',
+            'D' => 'item_number',
+            'E' => 'planning_date',
+            'F' => 'start_date',
+            'G' => 'user_name',
+        ];
+        foreach ($header as $key => $cell) {
+            if (!is_array($cell)) {
+                $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row])->getStyle([$start_col, $start_row, $start_col, $start_row])->applyFromArray($headerStyle);
+            }
+            $start_col += 1;
+        }
+        $sheet->setCellValue([1, 1], 'Chi tiết trạng thái BTBD')->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
+        $sheet->getRowDimension(1)->setRowHeight(40);
+        $table_col = 1;
+        $table_row = $start_row + 1;
+        foreach ($table as $key => $row) {
+            $table_col = 1;
+            $row = (array)$row;
+            $sheet->setCellValue([1, $table_row], $key + 1)->getStyle([1, $table_row])->applyFromArray($centerStyle);
+            foreach ($table_key as $k => $value) {
+                if (isset($row[$value])) {
+                    $sheet->setCellValue($k . $table_row, $row[$value])->getStyle($k . $table_row)->applyFromArray($centerStyle);
+                } else {
+                    continue;
+                }
+                $table_col += 1;
+            }
+            $table_row += 1;
+        }
+        foreach ($sheet->getColumnIterator() as $column) {
+            $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+            $sheet->getStyle($column->getColumnIndex() . ($start_row) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
+        }
+        if (!file_exists('exported_files')) {
+            mkdir('exported_files', 0777, true);
+        }
+        header("Content-Description: File Transfer");
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="Chi_tiết_trạng_thái_BTBD.xlsx"');
+        header('Cache-Control: max-age=0');
+        header("Content-Transfer-Encoding: binary");
+        header('Expires: 0');
+        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('exported_files/Chi_tiết_trạng_thái_BTBD.xlsx');
+        $href = '/exported_files/Chi_tiết_trạng_thái_BTBD.xlsx';
+        return $this->success($href);
+    }
+
+    public function exportChiTietThucHienKiemTra(Request $request)
+    {
+        $query = MaintenanceSchedule::with('machine.line', 'maintenancePlan', 'maintenanceItem.maintenanceCategory', 'maintenanceLog.maintenanceLogImages');
+        if(isset($request->date) && count($request->date) === 2) {
+            $query->whereDate('due_date', '>=', date('Y-m-d', strtotime($request->date[0])))->whereDate('due_date', '<=', date('Y-m-d', strtotime($request->date[1])));;
+        }else{
+            $query->whereDate('due_date', now());
+        }
+        if (isset($request->machine_code)) {
+            $query->where('machine_code', $request->machine_code);
+        }
+        $schedules = $query->get();
+        $table = [];
+        foreach ($schedules as $machine_code => $schedule) {
+            $images = [];
+            if ($schedule->maintenanceLog) {
+                foreach ($schedule->maintenanceLog->maintenanceLogImages as $imgIndex => $image) {
+                    $images[] = [
+                        'uid' => $image->id,
+                        'name' => 'Pic' . ($imgIndex + 1) . '.png',
+                        'image_path' => $image->image_path,
+                        'status' =>  'done'
+                    ];
+                }
+            }
+            $table[] = [
+                'id' => $schedule->id,
+                'machine_code' => $schedule->machine_code,
+                'machine_name' => $schedule->machine->name,
+                'line_name' => $schedule->machine->line->name ?? "",
+                'line_id' => $schedule->machine->line->id ?? "",
+                'item_name' => $schedule->maintenanceItem->name ?? "",
+                'item_id' => $schedule->maintenanceItem->id ?? "",
+                'category_name' => $schedule->maintenanceItem->maintenanceCategory->name ?? "",
+                'category_id' => $schedule->maintenanceItem->maintenanceCategory->id ?? "",
+                'planning_date' => date('d/m/Y', strtotime($schedule->due_date)),
+                'start_date' => $schedule->maintenanceLog ? date('d/m/Y', strtotime($schedule->maintenanceLog->log_date)) : "",
+                'log' => $schedule->maintenanceLog ? $schedule->maintenanceLog : "",
+                'images' => $images,
+                'remark' => $schedule->maintenanceLog ? $schedule->maintenanceLog->remark : "",
+                'result' => $schedule->maintenanceLog ? $schedule->maintenanceLog->result : "",
+            ];
+        }
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $start_row = 2;
+        $start_col = 1;
+        $centerStyle = [
+            'alignment' => [
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+            ],
+            'borders' => array(
+                'outline' => array(
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => array('argb' => '000000'),
+                ),
+            ),
+        ];
+        $headerStyle = array_merge($centerStyle, [
+            'font' => ['bold' => true],
+        ]);
+        $titleStyle = array_merge($centerStyle, [
+            'font' => ['size' => 16, 'bold' => true],
+        ]);
+        $border = [
+            'borders' => array(
+                'allBorders' => array(
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => array('argb' => '000000'),
+                ),
+            ),
+        ];
+        $header = [
+            'STT',
+            'Công đoạn',
+            'Tên máy',
+            'Nhóm hạng mục',
+            'Tên công việc',
+            'Kế hoạch',
+            'Ngày thực hiện',
+            'Kết quả',
+            'Nhận xét',
+        ];
+        $table_key = [
+            'A' => 'stt',
+            'B' => 'line_name',
+            'C' => 'machine_name',
+            'D' => 'category_name',
+            'E' => 'item_name',
+            'F' => 'planning_date',
+            'G' => 'start_date',
+            'H' => 'result',
+            'I' => 'remark',
+        ];
+        foreach ($header as $key => $cell) {
+            if (!is_array($cell)) {
+                $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row])->getStyle([$start_col, $start_row, $start_col, $start_row])->applyFromArray($headerStyle);
+            }
+            $start_col += 1;
+        }
+        $sheet->setCellValue([1, 1], 'Chi tiết thực hiện kiểm tra')->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
+        $sheet->getRowDimension(1)->setRowHeight(40);
+        $table_col = 1;
+        $table_row = $start_row + 1;
+        foreach ($table as $key => $row) {
+            $table_col = 1;
+            $row = (array)$row;
+            $sheet->setCellValue([1, $table_row], $key + 1)->getStyle([1, $table_row])->applyFromArray($centerStyle);
+            foreach ($table_key as $k => $value) {
+                if (isset($row[$value])) {
+                    $sheet->setCellValue($k . $table_row, $row[$value])->getStyle($k . $table_row)->applyFromArray($centerStyle);
+                } else {
+                    continue;
+                }
+                $table_col += 1;
+            }
+            $table_row += 1;
+        }
+        foreach ($sheet->getColumnIterator() as $column) {
+            $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+            $sheet->getStyle($column->getColumnIndex() . ($start_row) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
+        }
+        if (!file_exists('exported_files')) {
+            mkdir('exported_files', 0777, true);
+        }
+        header("Content-Description: File Transfer");
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="Chi_tiết_thực_hiện_kiểm_tra.xlsx"');
+        header('Cache-Control: max-age=0');
+        header("Content-Transfer-Encoding: binary");
+        header('Expires: 0');
+        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('exported_files/Chi_tiết_thực_hiện_kiểm_tra.xlsx');
+        $href = '/exported_files/Chi_tiết_thực_hiện_kiểm_tra.xlsx';
+        return $this->success($href);
     }
 }
