@@ -12,7 +12,7 @@ class LotPlan extends Model
     use HasFactory;
     use \Awobaz\Compoships\Compoships;
 
-    protected $fillable = ['lot_id', 'lo_sx', 'line_id', 'product_id', 'start_time', 'end_time', 'quantity', 'machine_code', 'product_order_id', 'customer_id', 'production_plan_id', 'lot_size'];
+    protected $fillable = ['lot_id', 'lo_sx', 'line_id', 'product_id', 'start_time', 'end_time', 'quantity', 'machine_code', 'product_order_id', 'customer_id', 'production_plan_id', 'lot_size', 'info_cong_doan_id'];
 
     public function lot()
     {
@@ -36,5 +36,8 @@ class LotPlan extends Model
     }
     public function machine(){
         return $this->belongsTo(Machine::class, 'machine_code', 'code');
+    }
+    public function infoCongDoan(){
+        return $this->hasOne(InfoCongDoan::class);
     }
 }

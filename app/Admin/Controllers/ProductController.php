@@ -7,6 +7,7 @@ use App\Models\Bom;
 use App\Models\Customer;
 use App\Models\Line;
 use App\Models\LineProductivity;
+use App\Models\MachinePriorityOrder;
 use App\Models\Material;
 use App\Models\MaterialWastage;
 use App\Models\Product;
@@ -247,7 +248,7 @@ class ProductController extends Controller
                 $line_id = [29]; //Chon Phase2 
             } else if (in_array($key, $this->excelColumnRange("JZ", "KL"))) {
                 $line_id = [30]; //OQC Phase2
-            } else if(in_array($key, ["CE", "CO"])){
+            } else if (in_array($key, ["CE", "CO"])) {
                 $line_id = [24, 27, 25, 26, 29, 30];
             }
 
@@ -385,6 +386,7 @@ class ProductController extends Controller
             TimeWastage::query()->delete();
             LineProductivity::query()->delete();
             Spec::query()->delete();
+            MachinePriorityOrder::query()->delete();
             foreach ($allDataInSheet as $index => $row) {
                 if ($index < 5) {
                     continue;
@@ -400,6 +402,7 @@ class ProductController extends Controller
                     $this->importMaterialWastages($material_wastages_data, $product->id);
                     $this->importTimeWastages($time_wastages_data, $product->id);
                 }
+                $this->importMachinePriorityOrder($row, $product->id);
                 $material_data[] = array_intersect_key($row, array_flip($this->material_columns));
                 if (trim($row['I'])) {
                     $material = $this->importMaterial(array_intersect_key($row, array_flip($this->material_columns)));
@@ -1005,6 +1008,38 @@ class ProductController extends Controller
         'MQ',
         'MR'
     ];
+
+    public function importMachinePriorityOrder($row, $productId)
+    {
+        foreach ($row as $key => $value) {
+            $line_id = null;
+            switch ($key) {
+                case 'KT':
+                    $line_id = 24;
+                    break;
+                case 'KZ':
+                    $line_id = 25;
+                    break;
+                case 'MA':
+                    $line_id = 27;
+                    break;
+                case 'MK':
+                    $line_id = 26;
+                    break;
+                default:
+                    break;
+            }
+            if ($line_id && $value) {
+                $machinePriorityOrder = MachinePriorityOrder::where('product_id', $productId)->where('line_id', $line_id)->orderBy('priority', 'DESC')->first();
+                MachinePriorityOrder::create([
+                    'product_id' => $productId,
+                    'line_id' => $line_id,
+                    'machine_id' => $value,
+                    'priority' => (int)($machinePriorityOrder->priority ?? 0) + 1,
+                ]);
+            }
+        }
+    }
 
     /**
      * Make a grid builder.

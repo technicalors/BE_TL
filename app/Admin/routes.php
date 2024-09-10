@@ -4,6 +4,7 @@ use App\Admin\Controllers\ApiMobileController;
 use App\Admin\Controllers\ApiUIController;
 use App\Admin\Controllers\CheckSheetApiController;
 use App\Admin\Controllers\ErrorMachineApiController;
+use App\Admin\Controllers\ExcelHeaderController;
 use App\Admin\Controllers\ExportFileController;
 use App\Admin\Controllers\InfoCongDoanController;
 use App\Admin\Controllers\IOTController;
@@ -681,4 +682,6 @@ Route::group([
     Route::post('stamps/import', [StampController::class, 'import']);
     Route::apiResource('machine-priority-orders', MachinePriorityOrderController::class);
     Route::post('machine-priority-orders/delete', [MachinePriorityOrderController::class, 'deleteManyMachinePriorityOrders']);
+    Route::apiResource('excel-headers', ExcelHeaderController::class);
+    Route::post('excel-headers/export', [ExcelHeaderController::class, 'export']);
 });
