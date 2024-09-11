@@ -5,9 +5,13 @@ namespace App\Admin\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Bom;
 use App\Models\Customer;
+use App\Models\ExcelHeader;
 use App\Models\Line;
 use App\Models\LineProductivity;
+use App\Models\Machine;
 use App\Models\MachinePriorityOrder;
+use App\Models\MachinePriorityOrderAttribute;
+use App\Models\MachinePriorityOrderAttributeValue;
 use App\Models\Material;
 use App\Models\MaterialWastage;
 use App\Models\Product;
@@ -22,6 +26,7 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Traits\API;
+use Exception;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -44,7 +49,7 @@ class ProductController extends Controller
         }
         $total = $query->count();
         if (isset($request->page) && isset($request->pageSize)) {
-            $query->offset(($request->page - 1) ?? 0)->limit($request->page * $request->pageSize);
+            $query->offset((($request->page - 1) ?? 0) * $request->pageSize)->limit($request->pageSize);
         }
         $result = $query->get();
         return $this->success(['data' => $result, 'total' => $total]);
@@ -343,6 +348,54 @@ class ProductController extends Controller
         return $this->success('', 'Export thành công');
     }
 
+    function insertHeader($sheet, $allData, $parent, $start, $range, $mergedCells, &$excel_headers){
+        foreach ($range as $key) {
+            $mergeCell = $this->checkMergedCell($mergedCells, $key . "2");
+            if ($mergeCell) {
+                $excel_headers[] = [
+                    'header_name' => $allData[$start][$key] ?? "",
+                    'column_position' => $key,
+                    'section' => null,
+                    'parent_id' => $parent->id ?? null,
+                    'field_name' => Str::slug($allData[$start][$key] ?? ""),
+                ];
+                $next_row_index = $start + 1;
+                $first_key = preg_replace('/[^a-zA-Z]/', '', explode(':', $mergeCell)[0]);
+                $last_key = preg_replace('/[^a-zA-Z]/', '', explode(':', $mergeCell)[1]);
+                return $this->insertHeader($sheet, $allData, $parent, $next_row_index, $this->excelColumnRange($first_key, $last_key), $mergedCells, $excel_headers);
+            } else {
+                if(isset($allData[$start][$key])){
+                    $excel_headers[] = [
+                        'header_name' => $allData[$start][$key] ?? "",
+                        'column_position' => $key,
+                        'section' => null,
+                        'parent_id' => $parent->id ?? null,
+                        'field_name' => Str::slug($allData[$start][$key] ?? ""),
+                    ];
+                }
+            }
+        }
+        return $excel_headers;
+    }
+
+    function checkMergedCell($mergedCells, $cell)
+        {
+            foreach ($mergedCells as $cells) {
+                // Kiểm tra nếu ô nằm trong vùng hợp nhất
+                if (in_array($cell, explode(':', $cells))) {
+                    // Lấy chỉ số hàng bắt đầu và kết thúc của vùng hợp nhất
+                    $startRow = filter_var(explode(':', $cells)[0], FILTER_SANITIZE_NUMBER_INT);
+                    $endRow = filter_var(explode(':', $cells)[1], FILTER_SANITIZE_NUMBER_INT);
+
+                    // Nếu hàng bắt đầu và kết thúc giống nhau thì ô này là merge cell trên cùng 1 hàng
+                    if ($startRow === $endRow) {
+                        return $cells;
+                    }
+                }
+            }
+            return false;
+        }
+
     public function importNewVersion(Request $request)
     {
         set_time_limit(0);
@@ -361,6 +414,7 @@ class ProductController extends Controller
         }
         // file path
         $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
+        $sheet = $spreadsheet->getActiveSheet();
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
         $product_data = [];
         $material_data = [];
@@ -376,6 +430,16 @@ class ProductController extends Controller
         $material = null;
         $titleRow1 = $allDataInSheet[3];
         $titleRow2 = $allDataInSheet[4];
+        // ExcelHeader::truncate();
+        // $excel_headers = [];
+        // $prevCell = null;
+        // // Check cell is merged or not
+        // $mergedCells = $sheet->getMergeCells();
+        // $parent = null;
+        // $start = 2;
+        // $first_key = array_key_first($allDataInSheet[$start]);
+        // $last_key = array_key_last($allDataInSheet[$start]);
+        // return $this->insertHeader($sheet, array_splice($allDataInSheet, 1, 3), $parent, $start, $this->excelColumnRange($first_key, $last_key), $mergedCells, $excel_headers);
         try {
             DB::beginTransaction();
             Product::query()->delete();
@@ -387,6 +451,8 @@ class ProductController extends Controller
             LineProductivity::query()->delete();
             Spec::query()->delete();
             MachinePriorityOrder::query()->delete();
+            MachinePriorityOrderAttribute::query()->delete();
+            MachinePriorityOrderAttributeValue::query()->delete();
             foreach ($allDataInSheet as $index => $row) {
                 if ($index < 5) {
                     continue;
@@ -402,7 +468,7 @@ class ProductController extends Controller
                     $this->importMaterialWastages($material_wastages_data, $product->id);
                     $this->importTimeWastages($time_wastages_data, $product->id);
                 }
-                $this->importMachinePriorityOrder($row, $product->id);
+                $this->importMachinePriorityOrder($row, $titleRow2, $product->id, $index);
                 $material_data[] = array_intersect_key($row, array_flip($this->material_columns));
                 if (trim($row['I'])) {
                     $material = $this->importMaterial(array_intersect_key($row, array_flip($this->material_columns)));
@@ -410,7 +476,9 @@ class ProductController extends Controller
                         Bom::firstOrCreate(['product_id' => $product->id, 'material_id' => $material->id], array_intersect_key($row, array_flip($this->bom_columns)));
                     }
                 }
-
+                if (trim($row['F'])) {
+                    Customer::updateOrCreate(['id' => $row['F']], ['name' => $row['G']]);
+                }
                 // $bom_data[] = array_intersect_key($row, array_flip($this->bom_columns));
                 // $production_journeys_data[] = array_intersect_key($row, array_flip($this->production_journey_column));
                 // $material_wastages_data[] = array_intersect_key($row, array_flip($this->material_wastage_columns));
@@ -423,8 +491,7 @@ class ProductController extends Controller
             DB::commit();
         } catch (\Exception $th) {
             DB::rollBack();
-            return $th;
-            // return $this->failure($th, 'Import thất bại');
+            return $this->failure('', $th->getMessage());
         }
 
         return $this->success('', 'Import thành công');
@@ -1009,36 +1076,57 @@ class ProductController extends Controller
         'MR'
     ];
 
-    public function importMachinePriorityOrder($row, $productId)
+    public function importMachinePriorityOrder($row, $title, $productId, $rowIndex)
     {
+        $machinePriorityOrderAttributeValues = [];
+        $machinePriorityOrder = null;
         foreach ($row as $key => $value) {
             $line_id = null;
-            switch ($key) {
-                case 'KT':
-                    $line_id = 24;
-                    break;
-                case 'KZ':
-                    $line_id = 25;
-                    break;
-                case 'MA':
-                    $line_id = 27;
-                    break;
-                case 'MK':
-                    $line_id = 26;
-                    break;
-                default:
-                    break;
+            $machine_id = null;
+            if ($key === 'KT') {
+                $line_id = 24;
+                $machine_id = $value;
+            } else if ($key === 'KZ') {
+                $line_id = 25;
+                $machine_id = $value;
+            } else if ($key === 'MA') {
+                $line_id = 27;
+                $machine_id = $value;
+            } else if ($key === 'MK') {
+                $line_id = 26;
+                $machine_id = $value;
+            } else {
+                $line_id = null;
+                $machine_id = null;
             }
-            if ($line_id && $value) {
-                $machinePriorityOrder = MachinePriorityOrder::where('product_id', $productId)->where('line_id', $line_id)->orderBy('priority', 'DESC')->first();
-                MachinePriorityOrder::create([
+            if ($line_id && $machine_id) {
+                $check = Machine::where('code', $machine_id)->exists();
+                if(!$check){
+                    throw new Exception("Mã máy ở ".$key.$rowIndex." không tồn tại", 404);
+                }
+                $previousMachinePriorityOrder = MachinePriorityOrder::where('product_id', $productId)->where('line_id', $line_id)->orderBy('priority', 'DESC')->first();
+                $machinePriorityOrder = MachinePriorityOrder::create([
                     'product_id' => $productId,
                     'line_id' => $line_id,
-                    'machine_id' => $value,
-                    'priority' => (int)($machinePriorityOrder->priority ?? 0) + 1,
+                    'machine_id' => $machine_id,
+                    'priority' => (int)($previousMachinePriorityOrder->priority ?? 0) + 1,
                 ]);
             }
+            if ($machinePriorityOrder && trim($value)) {
+                $machinePriorityOrderAttribute = MachinePriorityOrderAttribute::firstOrCreate([
+                    'name' => $title[$key] ?? "",
+                    'slug' => Str::slug($title[$key] ?? ""),
+                ]);
+                if ($machinePriorityOrderAttribute) {
+                    $machinePriorityOrderAttributeValues[] = [
+                        'machine_priority_order_attribute_id' => $machinePriorityOrderAttribute->id,
+                        'machine_priority_order_id' => $machinePriorityOrder->id,
+                        'value' => $value
+                    ];
+                }
+            }
         }
+        MachinePriorityOrderAttributeValue::insert($machinePriorityOrderAttributeValues);
     }
 
     /**

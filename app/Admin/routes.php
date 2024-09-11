@@ -655,7 +655,6 @@ Route::group([
 
     Route::apiResource('maintenance-categories', MaintenanceCategoryController::class);
     Route::apiResource('maintenance-items', MaintenanceItemController::class);
-    Route::apiResource('machines', MachineController::class);
     Route::apiResource('maintenance-plans', MaintenancePlanController::class);
     Route::apiResource('maintenance-schedules', MaintenanceScheduleController::class);
     Route::apiResource('maintenance-logs', MaintenanceLogController::class);
@@ -687,4 +686,7 @@ Route::group([
     Route::post('machine-priority-orders/delete', [MachinePriorityOrderController::class, 'deleteManyMachinePriorityOrders']);
     Route::apiResource('excel-headers', ExcelHeaderController::class);
     Route::post('excel-headers/export', [ExcelHeaderController::class, 'export']);
+    Route::apiResource('machines', MachineController::class);
+    Route::post('machines/import', [MachineController::class, 'importMachine']);
+    Route::post('machines/export', [MachineController::class, 'exportMachine']);
 });
