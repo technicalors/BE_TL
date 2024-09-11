@@ -294,7 +294,7 @@ class MachineController extends Controller
         try {
             DB::beginTransaction();
             $lines = Line::where('factory_id', 2)->get();
-            Machine::whereIn('line_id', $lines->pluck('id')->toArray())->delete();
+            // Machine::whereIn('line_id', $lines->pluck('id')->toArray())->delete();
             foreach ($lines as $line) {
                 $line_arr[Str::slug($line->name)] = $line->id;
             }

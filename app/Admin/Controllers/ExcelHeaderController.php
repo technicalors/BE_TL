@@ -79,7 +79,7 @@ class ExcelHeaderController extends Controller
     public function export()
     {
         //Tiêu đề
-        $query = ExcelHeader::whereNull('parent_id')->with('children')->orderBy('column_position');
+        $query = ExcelHeader::orderBy('column_position');
         $headers = $query->get();
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -87,75 +87,83 @@ class ExcelHeaderController extends Controller
         //Chèn tiêu đề
         function setValue($sheet, $headers, $row, &$last_row_index)
         {
+            $styleArray = [
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => ['argb' => 'FF000000'],
+                    ],
+                ],
+                'alignment' => [
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                    'wrapText' => true,
+                ],
+            ];
             foreach ($headers as $key => $header) {
-                if (count($header->children) <= 0) {
-                    $sheet->setCellValue($header->column_position . $row, $header->header_name);
+                if (str_contains($header->column_position, ':')) {
+                    $sheet->mergeCells($header->column_position)->setCellValue(explode(':', $header->column_position)[0], $header->header_name)->getStyle($header->column_position)->applyFromArray($styleArray);
                 } else {
-                    $sheet->setCellValue($header->column_position . $row, $header->header_name);
-                    $child_row = $row + 1;
-                    if ($last_row_index < $child_row) {
-                        $last_row_index = $child_row;
-                    }
-                    foreach ($header->children as $index => $child) {
-                        setValue($sheet, $header->children, $child_row, $last_row_index);
-                    }
-                    $sheet->mergeCells($header->column_position . $row . ':' . $child->column_position . $row);
+                    $sheet->setCellValue($header->column_position, $header->header_name)->getStyle($header->column_position)->applyFromArray($styleArray);
                 }
             }
         }
         setValue($sheet, $headers, 1, $last_row_index);
+        foreach ($sheet->getColumnIterator() as $column) {
+            $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+        }
         //Gộp ô
-        function mergeCellDown($sheet, $headers, $current_row_index, $last_row_index)
-        {
-            foreach ($headers as $key => $header) {
-                if (count($header->children) <= 0) {
-                    $sheet->mergeCells($header->column_position . $current_row_index . ':' . $header->column_position . $last_row_index);
-                } else {
-                    $current_row_index += 1;
-                    mergeCellDown($sheet, $header->children, $current_row_index, $last_row_index);
-                }
-            }
-        }
-        mergeCellDown($sheet, $headers, 1, $last_row_index);
+        // function mergeCellDown($sheet, $headers, $current_row_index, $last_row_index)
+        // {
+        //     foreach ($headers as $key => $header) {
+        //         if (count($header->children) <= 0) {
+        //             $sheet->mergeCells($header->column_position . $current_row_index . ':' . $header->column_position . '4');
+        //         } else {
+        //             $current_row_index += 1;
+        //             mergeCellDown($sheet, $header->children, $current_row_index, $last_row_index);
+        //         }
+        //     }
+        // }
+        // mergeCellDown($sheet, $headers, 1, $last_row_index);
 
-        //Nội dung
-        $query = ExcelHeader::whereNotNull('field_name')->orderBy('column_position');
-        $fields = $query->get()->groupBy('section')->map(function ($section) {
-            return $section->pluck('field_name', 'column_position');
-        });
-        // return $fields;
-        $data = DB::table('products as p')
-            ->leftJoin('bom as b', 'p.id', '=', 'b.product_id')
-            ->leftJoin('material as m', 'b.material_id', '=', 'm.id')
-            ->select(
-                'p.id as product_id',
-                'p.name as product_name',  // Đổi tên cột product_name
-                'p.ver',
-                'p.his',
-                'p.customer_id',
-                'b.priority',
-                'b.ratio',
-                'm.id as material_id',
-                'm.name as material_name', // Đổi tên cột material_name
-                'm.material',
-                'm.color',
-                'm.quantitative',
-                'm.thickness',
-                'm.meter_per_roll',
-                'm.sheet_per_pallet'
-            )
-            ->orderBy('p.id')
-            ->orderBy('b.priority')
-            ->get();
-        // return $data;
-        $last_row_index += 1;
-        foreach ($data as $rowIndex => $record) {
-            foreach (ExcelHeader::TABLE_LIST as $value) {
-                foreach ($fields[$value] as $column => $field) {
-                    $sheet->setCellValue($column . ($last_row_index + $rowIndex), $record->$field ?? "");
-                }
-            }
-        }
+        // //Nội dung
+        // $query = ExcelHeader::whereNotNull('field_name')->orderBy('column_position');
+        // $fields = $query->get()->groupBy('section')->map(function ($section) {
+        //     return $section->pluck('field_name', 'column_position');
+        // });
+        // // return $fields;
+        // $data = DB::table('products as p')
+        //     ->leftJoin('bom as b', 'p.id', '=', 'b.product_id')
+        //     ->leftJoin('material as m', 'b.material_id', '=', 'm.id')
+        //     ->select(
+        //         'p.id as product_id',
+        //         'p.name as product_name',  // Đổi tên cột product_name
+        //         'p.ver',
+        //         'p.his',
+        //         'p.customer_id',
+        //         'b.priority',
+        //         'b.ratio',
+        //         'm.id as material_id',
+        //         'm.name as material_name', // Đổi tên cột material_name
+        //         'm.material',
+        //         'm.color',
+        //         'm.quantitative',
+        //         'm.thickness',
+        //         'm.meter_per_roll',
+        //         'm.sheet_per_pallet'
+        //     )
+        //     ->orderBy('p.id')
+        //     ->orderBy('b.priority')
+        //     ->get();
+        // // return $data;
+        // $last_row_index += 1;
+        // foreach ($data as $rowIndex => $record) {
+        //     foreach (ExcelHeader::TABLE_LIST as $value) {
+        //         foreach ($fields[$value] as $column => $field) {
+        //             $sheet->setCellValue($column . ($last_row_index + $rowIndex), $record->$field ?? "");
+        //         }
+        //     }
+        // }
         $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save('exported_files/TestSpec.xlsx');
         $href = '/exported_files/TestSpec.xlsx';

@@ -28,6 +28,7 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Traits\API;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ProductController extends Controller
@@ -348,53 +349,103 @@ class ProductController extends Controller
         return $this->success('', 'Export thành công');
     }
 
-    function insertHeader($sheet, $allData, $parent, $start, $range, $mergedCells, &$excel_headers){
+    function insertHeader($sheet, $allData, $parent, $start, $range, $mergedCells, $start_row)
+    {
         foreach ($range as $key) {
-            $mergeCell = $this->checkMergedCell($mergedCells, $key . "2");
+            if ($start === 0) {
+                $parent = null;
+            }
+            
+            $mergeCell = $this->checkHorizontalMergedCell($mergedCells, $key . $start_row);
             if ($mergeCell) {
-                $excel_headers[] = [
+                $parent = ExcelHeader::firstOrCreate([
                     'header_name' => $allData[$start][$key] ?? "",
-                    'column_position' => $key,
+                    'column_position' => $mergeCell,
                     'section' => null,
                     'parent_id' => $parent->id ?? null,
                     'field_name' => Str::slug($allData[$start][$key] ?? ""),
-                ];
+                ]);
                 $next_row_index = $start + 1;
+                $next_start_row = $start_row + 1;
                 $first_key = preg_replace('/[^a-zA-Z]/', '', explode(':', $mergeCell)[0]);
                 $last_key = preg_replace('/[^a-zA-Z]/', '', explode(':', $mergeCell)[1]);
-                return $this->insertHeader($sheet, $allData, $parent, $next_row_index, $this->excelColumnRange($first_key, $last_key), $mergedCells, $excel_headers);
+                $first_index = filter_var(explode(':', $mergeCell)[0], FILTER_SANITIZE_NUMBER_INT);
+                $last_index = filter_var(explode(':', $mergeCell)[1], FILTER_SANITIZE_NUMBER_INT);
+                if($last_index > $first_index){
+                    $next_row_index += $last_index - $first_index;
+                    $next_start_row += $last_index - $first_index;
+                }
+                if(isset($allData[$next_row_index])){
+                    $this->insertHeader($sheet, $allData, $parent, $next_row_index, $this->excelColumnRange($first_key, $last_key), $mergedCells, $next_start_row);
+                }
             } else {
-                if(isset($allData[$start][$key])){
-                    $excel_headers[] = [
+                
+                if (!empty($allData[$start][$key])) {
+                    $position = $key.$start_row;
+                    $mergeCell = $this->checkVerticalMergedCell($mergedCells, $key.$start_row);
+                    if($mergeCell){
+                        $position = $mergeCell;
+                    }
+                    if($key === 'AQ'){
+                        return $position;
+                    }
+                    $excel_header = ExcelHeader::firstOrCreate([
                         'header_name' => $allData[$start][$key] ?? "",
-                        'column_position' => $key,
+                        'column_position' => $position,
                         'section' => null,
                         'parent_id' => $parent->id ?? null,
                         'field_name' => Str::slug($allData[$start][$key] ?? ""),
-                    ];
-                }
-            }
-        }
-        return $excel_headers;
-    }
-
-    function checkMergedCell($mergedCells, $cell)
-        {
-            foreach ($mergedCells as $cells) {
-                // Kiểm tra nếu ô nằm trong vùng hợp nhất
-                if (in_array($cell, explode(':', $cells))) {
-                    // Lấy chỉ số hàng bắt đầu và kết thúc của vùng hợp nhất
-                    $startRow = filter_var(explode(':', $cells)[0], FILTER_SANITIZE_NUMBER_INT);
-                    $endRow = filter_var(explode(':', $cells)[1], FILTER_SANITIZE_NUMBER_INT);
-
-                    // Nếu hàng bắt đầu và kết thúc giống nhau thì ô này là merge cell trên cùng 1 hàng
-                    if ($startRow === $endRow) {
-                        return $cells;
+                    ]);
+                    if (!empty($allData[$start + 1][$key])) {
+                        $child = ExcelHeader::firstOrCreate([
+                            'header_name' => $allData[$start + 1][$key] ?? "",
+                            'column_position' => $position,
+                            'section' => null,
+                            'parent_id' => $excel_header->id ?? null,
+                            'field_name' => Str::slug($allData[$start + 1][$key] ?? ""),
+                        ]);
                     }
                 }
             }
-            return false;
         }
+        return 'done';
+    }
+
+    function checkHorizontalMergedCell($mergedCells, $cell)
+    {
+        foreach ($mergedCells as $cells) {
+            // Kiểm tra nếu ô nằm trong vùng hợp nhất
+            if ($cell === explode(':', $cells)[0]) {
+                // Lấy chỉ số hàng bắt đầu và kết thúc của vùng hợp nhất
+                $startRow = filter_var(explode(':', $cells)[0], FILTER_SANITIZE_NUMBER_INT);
+                $endRow = filter_var(explode(':', $cells)[1], FILTER_SANITIZE_NUMBER_INT);
+                $startCol = preg_replace('/[^a-zA-Z]/', '', explode(':', $cells)[0]);
+                $endCol = preg_replace('/[^a-zA-Z]/', '', explode(':', $cells)[1]);
+                // Nếu hàng bắt đầu và kết thúc giống nhau thì ô này là merge cell trên cùng 1 hàng
+                if ($startRow === $endRow || $startCol !== $endCol) {
+                    return $cells;
+                }
+            }
+        }
+        return false;
+    }
+
+    function checkVerticalMergedCell($mergedCells, $cell)
+    {
+        foreach ($mergedCells as $cells) {
+            // Kiểm tra nếu ô nằm trong vùng hợp nhất
+            if ($cell === explode(':', $cells)[0]) {
+                // Lấy chỉ số hàng bắt đầu và kết thúc của vùng hợp nhất
+                $startCol = preg_replace('/[^a-zA-Z]/', '', explode(':', $cells)[0]);
+                $endCol = preg_replace('/[^a-zA-Z]/', '', explode(':', $cells)[1]);
+                // Nếu hàng bắt đầu và kết thúc giống nhau thì ô này là merge cell trên cùng 1 hàng
+                if ($startCol === $endCol) {
+                    return $cells;
+                }
+            }
+        }
+        return false;
+    }
 
     public function importNewVersion(Request $request)
     {
@@ -430,16 +481,16 @@ class ProductController extends Controller
         $material = null;
         $titleRow1 = $allDataInSheet[3];
         $titleRow2 = $allDataInSheet[4];
-        // ExcelHeader::truncate();
-        // $excel_headers = [];
-        // $prevCell = null;
-        // // Check cell is merged or not
-        // $mergedCells = $sheet->getMergeCells();
-        // $parent = null;
-        // $start = 2;
-        // $first_key = array_key_first($allDataInSheet[$start]);
-        // $last_key = array_key_last($allDataInSheet[$start]);
-        // return $this->insertHeader($sheet, array_splice($allDataInSheet, 1, 3), $parent, $start, $this->excelColumnRange($first_key, $last_key), $mergedCells, $excel_headers);
+        ExcelHeader::truncate();
+        $excel_headers = [];
+        $prevCell = null;
+        // Check cell is merged or not
+        $mergedCells = $sheet->getMergeCells();
+        $parent = null;
+        $start = 0;
+        $first_key = array_key_first($allDataInSheet[2]);
+        $last_key = array_key_last($allDataInSheet[2]);
+        return $this->insertHeader($sheet, array_splice($allDataInSheet, 1, 3), $parent, $start, $this->excelColumnRange($first_key, $last_key), $mergedCells, 2);
         try {
             DB::beginTransaction();
             Product::query()->delete();
@@ -468,7 +519,9 @@ class ProductController extends Controller
                     $this->importMaterialWastages($material_wastages_data, $product->id);
                     $this->importTimeWastages($time_wastages_data, $product->id);
                 }
-                $this->importMachinePriorityOrder($row, $titleRow2, $product->id, $index);
+                if($product){
+                    $this->importMachinePriorityOrder($row, $titleRow2, $product->id, $index);
+                }
                 $material_data[] = array_intersect_key($row, array_flip($this->material_columns));
                 if (trim($row['I'])) {
                     $material = $this->importMaterial(array_intersect_key($row, array_flip($this->material_columns)));
@@ -491,6 +544,7 @@ class ProductController extends Controller
             DB::commit();
         } catch (\Exception $th) {
             DB::rollBack();
+            Log::debug($th);
             return $this->failure('', $th->getMessage());
         }
 
@@ -1101,8 +1155,8 @@ class ProductController extends Controller
             }
             if ($line_id && $machine_id) {
                 $check = Machine::where('code', $machine_id)->exists();
-                if(!$check){
-                    throw new Exception("Mã máy ở ".$key.$rowIndex." không tồn tại", 404);
+                if (!$check) {
+                    throw new Exception("Mã máy ở " . $key . $rowIndex . " không tồn tại", 404);
                 }
                 $previousMachinePriorityOrder = MachinePriorityOrder::where('product_id', $productId)->where('line_id', $line_id)->orderBy('priority', 'DESC')->first();
                 $machinePriorityOrder = MachinePriorityOrder::create([
