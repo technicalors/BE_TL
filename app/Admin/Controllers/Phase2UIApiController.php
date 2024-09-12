@@ -754,22 +754,26 @@ class Phase2UIApiController extends Controller
         return $setupTimeSpec ? $setupTimeSpec->value : 0; // Nếu không tìm thấy, trả về 0
     }
 
-    function getMachineReady($lineId, $numMachines, $productId)
+    function getMachineReady($lineId, $numMachines, $productId, $machine_available_list)
     {
+        Log::info([$productId, $lineId, $machine_available_list]);
         //Truy vấn thứ tự ưu tiên
         $machinePriorityOrder = MachinePriorityOrder::where('product_id', $productId)->where('line_id', $lineId)->orderBy('priority')->pluck('machine_id')->toArray();
-        Log::info($machinePriorityOrder);
         // Truy vấn bảng machine để lấy máy có available_at nhỏ nhất theo line_id
         $machines = Machine::where('line_id', $lineId)
-            ->get()
-            ->sortBy(function ($machine) use ($machinePriorityOrder) {
-                $index = array_search($machine->code, $machinePriorityOrder);
-                return $index !== false ? $index : count($machinePriorityOrder);
-            })
-            ->sortBy('available_at')
-            ->take($numMachines)
-            ->values();
-        return $machines;
+            ->get();
+        foreach ($machines as $key => $machine) {
+            if (isset($machine_available_list[$machine->code])) {
+                $machine->available_at = $machine_available_list[$machine->code];
+            }
+        }
+        return $machines->sortBy(function ($machine) use ($machinePriorityOrder) {
+            $index = array_search($machine->code, $machinePriorityOrder);
+            return $index !== false ? $index : count($machinePriorityOrder);
+        })
+        ->sortBy('available_at')
+        ->take($numMachines)
+        ->values();
     }
 
     function getProductionShifts()
@@ -883,13 +887,14 @@ class Phase2UIApiController extends Controller
     {
         $orderIds = $request->order_id;
         $data = [];
-        foreach ($orderIds as $orderId) {
-            $data[] = $this->processProductionPlan($orderId);
+        $machine_available_list = [];
+        foreach ($orderIds as $index => $orderId) {
+            $data[] = $this->processProductionPlan($orderId, $index, $machine_available_list);
         }
         return $this->success($data);
     }
 
-    public function processProductionPlan($orderId)
+    public function processProductionPlan($orderId, $orderIndex, &$machine_available_list = [])
     {
         // Lấy thông tin đơn hàng
         $order = ProductOrder::find($orderId);
@@ -952,7 +957,7 @@ class Phase2UIApiController extends Controller
 
             // Tính toán thời gian bắt đầu và kết thúc cho từng công đoạn
             $numMachines  = $numberMachineByStep[$lineId] ?? 0;
-            $machines = $this->getMachineReady($lineId, $numMachines, $order->product_id);
+            $machines = $this->getMachineReady($lineId, $numMachines, $order->product_id, $machine_available_list);
             // Tính toán số lượng sản xuất cho mỗi máy
             $quantityPerMachine = $numMachines > 0 ? ceil($quantity / $numMachines) : $quantity;
             $lotIndexOffset = 0; // Offset để đánh số lot cho mỗi máy
@@ -986,9 +991,9 @@ class Phase2UIApiController extends Controller
                 $stepEndTimes[$lineId] = $endTime;
 
                 //Mã mã lô, nếu đon hàng đã tồn tại lo_sx thì lấy lô cũ, nếu không tạo lô mới
-                $losx_id = Losx::generateUniqueId();
+                $losx_id = Losx::generateUniqueIdPreview($orderIndex);
                 $lo_sx = Losx::where('product_order_id', $order->id)->first();
-                if($lo_sx){
+                if ($lo_sx) {
                     $losx_id = $lo_sx->id;
                 }
                 $plan_input = [
@@ -1014,8 +1019,8 @@ class Phase2UIApiController extends Controller
                 ];
                 $lot_in_plan = [];
                 $countLot = InfoCongDoan::query()->where([
-                    ['lo_sx', $losx_id],
-                    ['line_id', $lineId]
+                    'lo_sx' => $losx_id,
+                    'line_id' => $lineId
                 ])->count();
                 for ($lotIndex = 1; $lotIndex <= $numLots; $lotIndex++) {
                     $countLot += $lotIndex;
@@ -1082,6 +1087,9 @@ class Phase2UIApiController extends Controller
                 //     'available_at' => $stepEndTimes[$lineId],
                 // ]);
                 $machine_input[] = ['machine_code' => $machine->code, 'available_at' => $stepEndTimes[$lineId]];
+                if (!isset($machine_available_list[$machine->code]) || $stepEndTimes[$lineId]->greaterThan($machine_available_list[$machine->code])) {
+                    $machine_available_list[$machine->code] = $stepEndTimes[$lineId];
+                }
             }
         }
         // dd($lots);

@@ -42,4 +42,22 @@ class Losx extends Model
 
         return $currentMonth . $newSequence;
     }
+
+    public static function generateUniqueIdPreview($index)
+    {
+        $currentMonth = Carbon::now()->format('ym');
+        $latestLosx = self::where('id', 'LIKE', $currentMonth . '%')
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if ($latestLosx) {
+            $lastSequence = (int) substr($latestLosx->id, -3);
+        } else {
+            $lastSequence = 0;
+        }
+
+        $newSequence = str_pad($lastSequence + $index + 1, 3, '0', STR_PAD_LEFT);
+
+        return $currentMonth . $newSequence;
+    }
 }
