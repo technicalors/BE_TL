@@ -12,6 +12,7 @@ use App\Models\ErrorMachine;
 use App\Models\Factory;
 use App\Models\InfoCongDoan;
 use App\Models\Line;
+use App\Models\Losx;
 use App\Models\Lot;
 use App\Models\LotPlan;
 use App\Models\LSXLog;
@@ -983,6 +984,13 @@ class Phase2UIApiController extends Controller
 
                 // Lưu trữ thời gian bắt đầu và kết thúc vào mảng
                 $stepEndTimes[$lineId] = $endTime;
+
+                //Mã mã lô, nếu đon hàng đã tồn tại lo_sx thì lấy lô cũ, nếu không tạo lô mới
+                $losx_id = Losx::generateUniqueId();
+                $lo_sx = Losx::where('product_order_id', $order->id)->first();
+                if($lo_sx){
+                    $losx_id = $lo_sx->id;
+                }
                 $plan_input = [
                     'product_order_id' => $order->id,
                     'ngay_dat_hang' => $order->order_date,
@@ -996,7 +1004,7 @@ class Phase2UIApiController extends Controller
                     'product_id' => $order->product_id,
                     'ten_san_pham' => $order->product->name,
                     'khach_hang' => 'SamSung',
-                    'lo_sx' => '240801',
+                    'lo_sx' => $losx_id,
                     'thu_tu_uu_tien' => 1,
                     'nhan_luc' => 1,
                     'tong_tg_thuc_hien' => ($quantity * $taskTime) + ($rollChangeTime * $numLots) + $setupTime,
@@ -1005,8 +1013,13 @@ class Phase2UIApiController extends Controller
                     'sl_giao_sx' => $quantityPerMachine,
                 ];
                 $lot_in_plan = [];
+                $countLot = InfoCongDoan::query()->where([
+                    ['lo_sx', $losx_id],
+                    ['line_id', $lineId]
+                ])->count();
                 for ($lotIndex = 1; $lotIndex <= $numLots; $lotIndex++) {
-                    $lotId = '2408' . str_pad($lotIndexOffset + $lotIndex, 2, '0', STR_PAD_LEFT); // Tạo lot_id với stt lot
+                    $countLot += $lotIndex;
+                    $lotId = $losx_id . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT); // Tạo lot_id với stt lot
                     $lotStartTime = ($lotIndex == 1) ? $startTime : $lots[$lineId][$machineIndex][$lotIndex - 2]['endTime'];
                     list($lotStartTime, $lotEndTime) = $this->adjustTimeWithinShift($lotStartTime, ($taskTime * $lotSize) + $rollChangeTime, $productionShifts, $lotId, $shiftPreparationTime);
                     //Trường hợp thời gian sx vượt quá thời gian giao hàng, đánh dấu KH được tạo
@@ -1016,7 +1029,7 @@ class Phase2UIApiController extends Controller
                     // Lưu thông tin lot vào object
                     $lot_plan_input = [
                         'lot_id' => $lotId,
-                        'lo_sx' => '240801',
+                        'lo_sx' => $losx_id,
                         'line_id' => $lineId,
                         'product_id' => $productId,
                         'machine_code' => $machine->code,

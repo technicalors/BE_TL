@@ -685,6 +685,7 @@ Route::group([
     Route::apiResource('machine-priority-orders', MachinePriorityOrderController::class);
     Route::post('machine-priority-orders/delete', [MachinePriorityOrderController::class, 'deleteManyMachinePriorityOrders']);
     Route::apiResource('excel-headers', ExcelHeaderController::class);
+    Route::post('excel-headers/import', [ExcelHeaderController::class, 'import']);
     Route::post('excel-headers/export', [ExcelHeaderController::class, 'export']);
     Route::apiResource('machines', MachineController::class);
     Route::post('machines/import', [MachineController::class, 'importMachine']);

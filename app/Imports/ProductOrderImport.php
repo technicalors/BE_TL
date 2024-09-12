@@ -84,6 +84,8 @@ class ProductOrderImport implements ToCollection, WithHeadingRow, WithStartRow
             'quantity' => $quantity,
             'delivery_date' => $deliveryDate,
             'note' => $note,
+            'fc_quantity' => 0,
+            'sl_giao_sx' => $quantity
         ]);
         $spec = Spec::with('line')->where('product_id', $productId)
             ->where('slug', 'hanh-trinh-san-xuat')

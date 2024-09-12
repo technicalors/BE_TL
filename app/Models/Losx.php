@@ -25,7 +25,7 @@ class Losx extends Model
         });
     }
 
-    private static function generateUniqueId()
+    public static function generateUniqueId()
     {
         $currentMonth = Carbon::now()->format('ym');
         $latestLosx = self::where('id', 'LIKE', $currentMonth . '%')
