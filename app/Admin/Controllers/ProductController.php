@@ -247,7 +247,7 @@ class ProductController extends Controller
                 $line_id = [29]; //Chon Phase2 
             } else if (in_array($key, $this->excelColumnRange("JZ", "KL"))) {
                 $line_id = [30]; //OQC Phase2
-            } else if(in_array($key, ["CE", "CO"])){
+            } else if (in_array($key, ["CE", "CO"])) {
                 $line_id = [24, 27, 25, 26, 29, 30];
             }
 
@@ -449,6 +449,10 @@ class ProductController extends Controller
         $input['paper_norm'] = $product_data['AP'];
         $product[] = $input;
         $product = Product::firstOrCreate(['id' => $input['id']], $input);
+        $customer = Customer::find($input['customer_id']);
+        if (!$customer && !is_null($input['customer_id'])) {
+            $customer = Customer::firstOrCreate(['id' => $input['customer_id'], 'name' => $product_data['G']]);
+        }
         return $product;
     }
 
