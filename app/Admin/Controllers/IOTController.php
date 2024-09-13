@@ -33,7 +33,7 @@ class IOTController extends AdminController
         $iot_log->save();
         $machine = Machine::where('device_id', $request->device_id)->first();
         $status = MachineStatus::getStatus($machine->code);
-        $info_cong_doan = InfoCongDoan::where('machine_code', $machine->code)->where('status', 1)->first();
+        $info_cong_doan = InfoCongDoan::where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
         // $sl_bat = $info_cong_doan->lot->product->so_bat;
         $tracking = Tracking::getData($machine->code);
         $d_input = $request->input - $tracking->input;

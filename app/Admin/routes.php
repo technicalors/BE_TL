@@ -4,6 +4,7 @@ use App\Admin\Controllers\ApiMobileController;
 use App\Admin\Controllers\ApiUIController;
 use App\Admin\Controllers\CheckSheetApiController;
 use App\Admin\Controllers\ErrorMachineApiController;
+use App\Admin\Controllers\ExcelHeaderController;
 use App\Admin\Controllers\ExportFileController;
 use App\Admin\Controllers\InfoCongDoanController;
 use App\Admin\Controllers\IOTController;
@@ -412,6 +413,8 @@ Route::group([
     $router->get('/export/warehouse/inventory', [ApiUIController::class, 'exportInventoryWarehouse']);
     $router->get('/export/kpi', [ApiUIController::class, 'exportKPI']);
     $router->get('/export/history-monitors', [ApiUIController::class, 'exportHistoryMonitors']);
+    $router->get('/export/maintanence-detail-status', [ApiUIController::class, 'exportChiTietThucHienKiemTra_TrangThai']);
+    $router->get('/export/maintanence-detail', [ApiUIController::class, 'exportChiTietThucHienKiemTra']);
 
     $router->get('ui/qc-error-list', [ApiUIController::class, 'qcErrorList']);
     $router->get('ui/data-filter', [ApiUIController::class, 'getDataFilterUI']);
@@ -652,7 +655,6 @@ Route::group([
 
     Route::apiResource('maintenance-categories', MaintenanceCategoryController::class);
     Route::apiResource('maintenance-items', MaintenanceItemController::class);
-    Route::apiResource('machines', MachineController::class);
     Route::apiResource('maintenance-plans', MaintenancePlanController::class);
     Route::apiResource('maintenance-schedules', MaintenanceScheduleController::class);
     Route::apiResource('maintenance-logs', MaintenanceLogController::class);
@@ -682,4 +684,10 @@ Route::group([
     Route::post('stamps/import', [StampController::class, 'import']);
     Route::apiResource('machine-priority-orders', MachinePriorityOrderController::class);
     Route::post('machine-priority-orders/delete', [MachinePriorityOrderController::class, 'deleteManyMachinePriorityOrders']);
+    Route::apiResource('excel-headers', ExcelHeaderController::class);
+    Route::post('excel-headers/import', [ExcelHeaderController::class, 'import']);
+    Route::post('excel-headers/export', [ExcelHeaderController::class, 'export']);
+    Route::apiResource('machines', MachineController::class);
+    Route::post('machines/import', [MachineController::class, 'importMachine']);
+    Route::post('machines/export', [MachineController::class, 'exportMachine']);
 });

@@ -167,7 +167,7 @@ class ProductOrderController extends Controller
         try {
             DB::beginTransaction();
             $productOrder = ProductOrder::find($request->id);
-            $productOrder->update(['sl_giao_sx' => $request->sl_giao_sx]);
+            $productOrder->update($request->all());
             NumberMachineOrder::where('product_order_id', $request->id)->delete();
             foreach ($request->sl_may as $key => $value) {
                 $line = Line::with('machine')->find($value['line_id']);
@@ -184,7 +184,7 @@ class ProductOrderController extends Controller
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
-            return $this->failure('', 'Đã xảy ra lỗi');
+            return $this->failure('', $th->getMessage());
         }
         return $this->success('', 'Cập nhật thành công');
     }

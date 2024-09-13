@@ -12,7 +12,7 @@ class ProductOrder extends Model
 {
     use HasFactory;
     protected $table = "product_orders";
-    protected $fillable = ['id', 'order_number', 'customer_id', 'product_id', 'order_date', 'delivery_date', 'quantity', 'note', 'material_id', 'sl_giao_sx'];
+    protected $fillable = ['id', 'order_number', 'customer_id', 'product_id', 'order_date', 'delivery_date', 'quantity', 'note', 'material_id', 'sl_giao_sx', 'fc_quantity'];
     public $incrementing = false;
     protected $keyType = 'string';
     protected $casts = [

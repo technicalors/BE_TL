@@ -20,6 +20,12 @@ class MaintenancePlanController extends Controller
         } else {
             $query->whereMonth('due_date', now())->whereYear('due_date', now());
         }
+        if(isset($request->line_id)) {
+            $lineId = $request->line_id;
+            $query->whereHas('machine', function ($q) use ($lineId) {
+                $q->whereIn('line_id', $lineId);
+            });
+        }
         $plan = $query->get()->groupBy(['due_date', 'machine_code']);
         $data = [];
         foreach ($plan as $due_date => $schedule) {
@@ -77,6 +83,12 @@ class MaintenancePlanController extends Controller
             $query->whereDate('due_date', '>=', date('Y-m-d', strtotime($request->date[0])))->whereDate('due_date', '<=', date('Y-m-d', strtotime($request->date[1])));;
         }else{
             $query->whereDate('due_date', now());
+        }
+        if(isset($request->line_id)) {
+            $lineId = $request->line_id;
+            $query->whereHas('machine', function ($q) use ($lineId) {
+                $q->whereIn('line_id', $lineId);
+            });
         }
         $schedules = $query->get()->groupBy('machine_code');
         $data = [];
