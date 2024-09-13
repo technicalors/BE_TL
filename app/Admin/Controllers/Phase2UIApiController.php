@@ -781,18 +781,28 @@ class Phase2UIApiController extends Controller
         if (count($afterStart) > 0) {
             $afterStart = $afterStart->sort(function ($a, $b) use ($startTime) {
                 // Kiểm tra sự tồn tại của 'priority' trong từng máy
-                $priorityA = isset($a['priority']) ? $a['priority'] : PHP_INT_MAX; // Nếu không có 'priority', gán giá trị rất lớn
-                $priorityB = isset($b['priority']) ? $b['priority'] : PHP_INT_MAX; // Nếu không có 'priority', gán giá trị rất lớn
-                // So sánh theo thứ tự ưu tiên trước
-                if ($priorityA == $priorityB) {
-                    // Nếu thứ tự ưu tiên bằng nhau hoặc không có 'priority', so sánh thời gian gần với $startTime
-                    $readyTimeA = Carbon::parse($a['ready_time']);
-                    $readyTimeB = Carbon::parse($b['ready_time']);
-                    return abs($startTime->diffInMinutes($readyTimeA)) - abs($startTime->diffInMinutes($readyTimeB));
+                // $priorityA = isset($a->priority) ? $a->priority : PHP_INT_MAX; // Nếu không có 'priority', gán giá trị rất lớn
+                // $priorityB = isset($b->priority) ? $b->priority : PHP_INT_MAX; // Nếu không có 'priority', gán giá trị rất lớn
+                // // So sánh theo thứ tự ưu tiên trước
+                // if ($priorityA == $priorityB) {
+                //     // Nếu thứ tự ưu tiên bằng nhau hoặc không có 'priority', so sánh thời gian gần với $startTime
+                $readyTimeA = Carbon::parse($a->available_at);
+                $readyTimeB = Carbon::parse($b->available_at);
+                //Nếu thời gian ss của của máy bằng nhau
+                if ($readyTimeA->equalTo($readyTimeB)) {
+                    // Kiểm tra sự tồn tại của 'priority' trong từng máy
+                    $priorityA = isset($a->priority) ? $a->priority : PHP_INT_MAX; // Nếu không có 'priority', gán giá trị rất lớn
+                    $priorityB = isset($b->priority) ? $b->priority : PHP_INT_MAX; // Nếu không có 'priority', gán giá trị rất lớn
+                    // So sánh theo thứ tự ưu tiên
+                    return $priorityA - $priorityB;
                 }
-                return $a->priority - $b->priority; // Thứ tự ưu tiên
+                //Nếu không có máy sẵn sàng trước thời gian sx, thì lấy máy có thời gian sẵn sàng sớm nhất
+                return abs($startTime->diffInMinutes($readyTimeA)) - abs($startTime->diffInMinutes($readyTimeB));
+                // }
+                // return $a->priority - $b->priority; // Thứ tự ưu tiên
             });
         }
+        Log::info(['thoi gian bat dau', $startTime->format('Y-m-d H:i:s')]);
         Log::debug('before', $beforeStart->toArray());
         Log::debug('after', $afterStart->toArray());
         Log::info($numMachines);
@@ -951,6 +961,14 @@ class Phase2UIApiController extends Controller
         $lot_plans = [];
         $machine_input = [];
         $isExceedDeliveryTime = false;
+
+        //Tạo mã lô sx
+        $losx_id = Losx::generateUniqueIdPreview($orderIndex);
+        $lo_sx = Losx::where('product_order_id', $order->id)->first();
+        if ($lo_sx) {
+            $losx_id = $lo_sx->id;
+        }
+        $losx_input = ['product_order_id' => $order->id, 'id' => $losx_id];
         // Tính toán thời gian bắt đầu và kết thúc cho từng công đoạn theo thứ tự ASC
         foreach ($orderedSteps as $index => $step) {
             $lineId = $step->line_id;
@@ -1020,11 +1038,7 @@ class Phase2UIApiController extends Controller
                 $stepEndTimes[$lineId] = $endTime;
 
                 //Mã mã lô, nếu đon hàng đã tồn tại lo_sx thì lấy lô cũ, nếu không tạo lô mới
-                $losx_id = Losx::generateUniqueIdPreview($orderIndex);
-                $lo_sx = Losx::where('product_order_id', $order->id)->first();
-                if ($lo_sx) {
-                    $losx_id = $lo_sx->id;
-                }
+
                 $plan_input = [
                     'product_order_id' => $order->id,
                     'ngay_dat_hang' => $order->order_date,
@@ -1126,7 +1140,8 @@ class Phase2UIApiController extends Controller
         return [
             'lots' => $lot_plans, // Danh sách lot tại mỗi công đoạn
             'plans' => $plans,
-            'machines' => $machine_input
+            'machines' => $machine_input,
+            'lo_sx' => $losx_input,
         ];
         // return $plans;
     }
@@ -1142,6 +1157,7 @@ class Phase2UIApiController extends Controller
             return $this->failure('', 'Không có dữ liệu kế hoạch lot');
         }
         $machines = $request->machines ?? [];
+        $lo_sx = $request->lo_sx ?? [];
         try {
             DB::beginTransaction();
             foreach ($plans as $plan) {
@@ -1153,6 +1169,9 @@ class Phase2UIApiController extends Controller
             }
             foreach ($machines as $machine) {
                 Machine::where('code', $machine['machine_code'])->update(['available_at' => $machine['available_at']]);
+            }
+            foreach ($lo_sx as $value) {
+                Losx::updateOrCreate($value);
             }
             DB::commit();
         } catch (\Throwable $th) {
