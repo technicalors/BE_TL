@@ -923,7 +923,13 @@ class Phase2UIApiController extends Controller
         $data = [];
         $machine_available_list = [];
         foreach ($orderIds as $index => $orderId) {
-            $data[] = $this->processProductionPlan($orderId, $index, $machine_available_list);
+            $result = $this->processProductionPlan($orderId, $index, $machine_available_list);
+            if ($result) {
+                $data[] = $result;
+            }
+        }
+        if(count($data) <= 0){
+            return $this->failure('', 'Không có kế hoạch nào được tạo');
         }
         return $this->success($data);
     }
@@ -931,7 +937,10 @@ class Phase2UIApiController extends Controller
     public function processProductionPlan($orderId, $orderIndex = 0, &$machine_available_list = [])
     {
         // Lấy thông tin đơn hàng
-        $order = ProductOrder::find($orderId);
+        $order = ProductOrder::with('product', 'customer')->find($orderId);
+        if (!$order->sl_giao_sx) {
+            return null;
+        }
         $productId = $order->product_id;
         $initialQuantity = $order->sl_giao_sx;
 
@@ -1047,11 +1056,11 @@ class Phase2UIApiController extends Controller
                     'line_id' => $lineId,
                     'cong_doan_sx' => $step->line->name,
                     'ca_sx' => 1,
-                    'ngay_giao_hang' => $order->delivery_date ? date('Y-m-d', strtotime($order->delivery_date)) : null,
+                    'delivery_date' => $order->delivery_date ? date('Y-m-d', strtotime($order->delivery_date)) : null,
                     'machine_id' => $machine->code,
                     'product_id' => $order->product_id,
                     'ten_san_pham' => $order->product->name,
-                    'khach_hang' => 'SamSung',
+                    'khach_hang' => $order->customer->name ?? "",
                     'lo_sx' => $losx_id,
                     'thu_tu_uu_tien' => 1,
                     'nhan_luc' => 1,
@@ -1108,7 +1117,7 @@ class Phase2UIApiController extends Controller
                         'endTime' => $lotEndTime,
                     ];
                 }
-                $plan_input['children'] = $lot_in_plan;
+                // $plan_input['children'] = $lot_in_plan;
                 $plan_input['is_exceed_time'] = $isExceedDeliveryTime;
 
                 // Thời gian kết thúc của công đoạn là thời gian kết thúc của lot cuối cùng
@@ -1135,7 +1144,16 @@ class Phase2UIApiController extends Controller
                 }
             }
         }
-        // dd($lots);
+        //Gán giá trị cho đơn hàng
+        $losx_input['lo_sx'] = $losx_input['id'];
+        $losx_input['sl_giao_sx'] = $order->sl_giao_sx;
+        $losx_input['product_id'] = $order->product_id;
+        $losx_input['product_name'] = $order->product->name ?? "";
+        $losx_input['thoi_gian_bat_dau'] = !empty($plans) ? (reset($plans)['thoi_gian_bat_dau'] ?? null) : null;
+        $losx_input['thoi_gian_ket_thuc'] = !empty($plans) ? (end($plans)['thoi_gian_ket_thuc'] ?? null) : null;
+        $losx_input['khach_hang'] = $order->customer->name ?? "";
+        $losx_input['delivery_date'] = $order->delivery_date ? date('d/m/Y', strtotime($order->delivery_date)) : null;
+        $losx_input['plans'] = $plans;
         // Trả về danh sách các công đoạn và các thông số tính toán
         return [
             'lots' => $lot_plans, // Danh sách lot tại mỗi công đoạn
@@ -1172,6 +1190,10 @@ class Phase2UIApiController extends Controller
             }
             foreach ($lo_sx as $value) {
                 Losx::updateOrCreate($value);
+                $product_order = ProductOrder::find($value['product_order_id']);
+                if ($product_order) {
+                    $product_order->update(['sl_da_giao' => $product_order->sl_giao_sx, 'sl_giao_sx' => 0]);
+                }
             }
             DB::commit();
         } catch (\Throwable $th) {

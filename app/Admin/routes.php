@@ -9,6 +9,7 @@ use App\Admin\Controllers\ExportFileController;
 use App\Admin\Controllers\InfoCongDoanController;
 use App\Admin\Controllers\IOTController;
 use App\Admin\Controllers\KPIController;
+use App\Admin\Controllers\LotPlanController;
 use App\Admin\Controllers\MachineController;
 use App\Admin\Controllers\MachinePriorityOrderController;
 // use App\Admin\Controllers\ProductionPlanController;
@@ -23,6 +24,7 @@ use App\Admin\Controllers\Phase2DBApiController;
 use App\Admin\Controllers\Phase2OIApiController;
 use App\Admin\Controllers\Phase2UIApiController;
 use App\Admin\Controllers\ParameterController;
+use App\Admin\Controllers\ProductOrderController;
 use App\Admin\Controllers\StampController;
 use App\Http\Controllers\MachineShiftController;
 use App\Http\Controllers\ShiftController;
@@ -30,6 +32,7 @@ use App\Models\MaintenancePlan;
 use Encore\Admin\Facades\Admin;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
+use App\Models\LotPlan;
 
 Admin::routes();
 
@@ -509,15 +512,6 @@ Route::group([
     $router->get('customer/export', [App\Admin\Controllers\CustomerApiController::class, 'exportLine']);
     $router->post('customer/import', [App\Admin\Controllers\CustomerApiController::class, 'import']);
 
-    $router->get('product-order/list', [App\Admin\Controllers\ProductOrderController::class, 'list']);
-    $router->patch('product-order/update/{id}', [App\Admin\Controllers\ProductOrderController::class, 'update']);
-    $router->post('product-order/create', [App\Admin\Controllers\ProductOrderController::class, 'create']);
-    $router->delete('product-order/delete/{id}', [App\Admin\Controllers\ProductOrderController::class, 'delete']);
-    $router->post('product-orders/delete', [App\Admin\Controllers\ProductOrderController::class, 'deleteMultiple']);
-    $router->get('product-order/export', [App\Admin\Controllers\ProductOrderController::class, 'exportLine']);
-    $router->post('product-order/import', [App\Admin\Controllers\ProductOrderController::class, 'import']);
-    $router->post('product-order/update-number-machine', [App\Admin\Controllers\ProductOrderController::class,'updateNumberMachine']);
-
     $router->get('template/list', [App\Admin\Controllers\TemplateController::class, 'list']);
     $router->patch('template/update/{id}', [App\Admin\Controllers\TemplateController::class, 'update']);
     $router->post('template/create', [App\Admin\Controllers\TemplateController::class, 'create']);
@@ -675,6 +669,8 @@ Route::group([
     $router->post('plan/generate', [Phase2UIApiController::class, 'generateProductionPlan']);
     $router->get('plan/store/{order_id}', [Phase2UIApiController::class, 'processProductionPlan']);
     $router->post('plan/create', [Phase2UIApiController::class, 'createProductionPlan']);
+
+    Route::apiResource('lot-plans', LotPlanController::class);
 });
 
 //UI
@@ -684,14 +680,23 @@ Route::group([
 ], function (Router $router) {
     Route::apiResource('stamps', StampController::class);
     Route::post('stamps/import', [StampController::class, 'import']);
+
     Route::apiResource('machine-priority-orders', MachinePriorityOrderController::class);
     Route::post('machine-priority-orders/delete', [MachinePriorityOrderController::class, 'deleteManyMachinePriorityOrders']);
+
     Route::apiResource('excel-headers', ExcelHeaderController::class);
     Route::post('excel-headers/import', [ExcelHeaderController::class, 'import']);
     Route::post('excel-headers/export', [ExcelHeaderController::class, 'export']);
+
     Route::apiResource('machines', MachineController::class);
     Route::post('machines/import', [MachineController::class, 'importMachine']);
     Route::post('machines/export', [MachineController::class, 'exportMachine']);
+
+    Route::apiResource('product-orders', ProductOrderController::class);
+    Route::post('product-orders/import', [ProductOrderController::class, 'import']);
+    Route::post('product-orders/export', [ProductOrderController::class, 'exportLine']);
+    Route::post('product-orders/delete', [ProductOrderController::class, 'deleteMultiple']);
+    Route::post('product-orders/update-number-machine', [ProductOrderController::class, 'updateNumberMachine']);
     Route::get('shifts', [ShiftController::class, 'index']);
     Route::get('machine-shift', [MachineShiftController::class, 'index']);
     Route::post('machine-shift', [MachineShiftController::class, 'store']);
