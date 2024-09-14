@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
@@ -13,6 +14,14 @@ class LotPlan extends Model
     use \Awobaz\Compoships\Compoships;
 
     protected $fillable = ['lot_id', 'lo_sx', 'line_id', 'product_id', 'start_time', 'end_time', 'quantity', 'machine_code', 'product_order_id', 'customer_id', 'production_plan_id', 'lot_size', 'info_cong_doan_id'];
+    public function setStartTimeAttribute($value)
+    {
+        $this->attributes['start_time'] = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh');
+    }
+    public function setEndTimeAttribute($value)
+    {
+        $this->attributes['end_time'] = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh');
+    }
 
     public function lot()
     {

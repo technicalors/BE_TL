@@ -21,7 +21,7 @@ use Maatwebsite\Excel\Facades\Excel;
 class ProductOrderController extends Controller
 {
     use API;
-    public function list(Request $request)
+    public function index(Request $request)
     {
         $query = ProductOrder::orderBy('created_at', 'DESC');
         if (isset($request->id)) {
@@ -59,6 +59,17 @@ class ProductOrderController extends Controller
             $value->sl_may = $sl_may;
         }
         return $this->success(['data' => $result, 'total' => $total]);
+    }
+
+    public function show($id)
+    {
+        $stamp = ProductOrder::find($id);
+
+        if (!$stamp) {
+            return $this->success('', 'Product Order not found');
+        }
+
+        return $this->success($stamp);
     }
 
     public function create(Request $request)
