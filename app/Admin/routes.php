@@ -24,6 +24,8 @@ use App\Admin\Controllers\Phase2OIApiController;
 use App\Admin\Controllers\Phase2UIApiController;
 use App\Admin\Controllers\ParameterController;
 use App\Admin\Controllers\StampController;
+use App\Http\Controllers\MachineShiftController;
+use App\Http\Controllers\ShiftController;
 use App\Models\MaintenancePlan;
 use Encore\Admin\Facades\Admin;
 use Illuminate\Routing\Router;
@@ -690,4 +692,8 @@ Route::group([
     Route::apiResource('machines', MachineController::class);
     Route::post('machines/import', [MachineController::class, 'importMachine']);
     Route::post('machines/export', [MachineController::class, 'exportMachine']);
+    Route::get('shifts', [ShiftController::class, 'index']);
+    Route::get('machine-shift', [MachineShiftController::class, 'index']);
+    Route::post('machine-shift', [MachineShiftController::class, 'store']);
+    Route::put('machine-shift', [MachineShiftController::class, 'update']);
 });
