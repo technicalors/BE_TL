@@ -17,7 +17,7 @@ class Lot extends Model
     const TYPE_THUNG = 3;
     public $incrementing = false;
     protected $table = 'lot';
-    protected $fillable = ['type', 'lo_sx', 'so_luong', 'finish', 'product_id', 'material_export_log_id', 'id', 'p_id', 'material_id'];
+    protected $fillable = ['type', 'lo_sx', 'so_luong', 'finish', 'product_id', 'material_export_log_id', 'id', 'p_id', 'material_id', 'final_line_id'];
     protected $casts = [
         "id" => "string"
     ];
@@ -37,9 +37,9 @@ class Lot extends Model
         return $this->hasMany(Lot::class, "p_id", "id");
     }
 
-    public function oddBin()
+    public function line()
     {
-        // return $this->hasman;
+        return $this->belongsTo(Line::class);
     }
 
 

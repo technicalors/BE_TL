@@ -5,6 +5,7 @@ namespace App\Admin\Controllers;
 use App\Http\Controllers\Controller;
 use App\Imports\ProductOrderImport;
 use App\Models\Line;
+use App\Models\Lot;
 use App\Models\NumberMachineOrder;
 use App\Models\ProductOrder;
 use App\Models\Spec;
@@ -56,7 +57,20 @@ class ProductOrderController extends Controller
                     return $item->line_id == $data->line_id;
                 })->number_machine ?? 0;
             }
+            $ton = [];
+            $san_luong = Lot::where('product_id', $value->product_id)->get()->groupBy('final_line_id');
+            $sl_ton = 0;
+            foreach ($san_luong as $line_id => $data) {
+                $ton[$line_id]['name'] = '';
+                $ton[$line_id]['line_id'] = $line_id;
+                $sl = $data->sum('so_luong');
+                $ton[$line_id]['value'] = $sl;
+                $sl_ton += $sl;
+            }
+            $value->delivery_date = $value->delivery_date ? date('d/m/Y', strtotime($value->delivery_date)) : null;
             $value->sl_may = $sl_may;
+            $value->ton = array_values($ton);
+            $value->sl_ton = $sl_ton;
         }
         return $this->success(['data' => $result, 'total' => $total]);
     }
