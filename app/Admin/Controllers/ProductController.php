@@ -464,6 +464,10 @@ class ProductController extends Controller
         $input['paper_norm'] = $product_data['AP'];
         $product[] = $input;
         $product = Product::firstOrCreate(['id' => $input['id']], $input);
+        $customer = Customer::find($input['customer_id']);
+        if (!$customer && !is_null($input['customer_id'])) {
+            $customer = Customer::firstOrCreate(['id' => $input['customer_id'], 'name' => $product_data['G']]);
+        }
         return $product;
     }
 

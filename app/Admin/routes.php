@@ -26,11 +26,13 @@ use App\Admin\Controllers\Phase2UIApiController;
 use App\Admin\Controllers\ParameterController;
 use App\Admin\Controllers\ProductOrderController;
 use App\Admin\Controllers\StampController;
-use App\Models\LotPlan;
+use App\Http\Controllers\MachineShiftController;
+use App\Http\Controllers\ShiftController;
 use App\Models\MaintenancePlan;
 use Encore\Admin\Facades\Admin;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
+use App\Models\LotPlan;
 
 Admin::routes();
 
@@ -695,4 +697,8 @@ Route::group([
     Route::post('product-orders/export', [ProductOrderController::class, 'exportLine']);
     Route::post('product-orders/delete', [ProductOrderController::class, 'deleteMultiple']);
     Route::post('product-orders/update-number-machine', [ProductOrderController::class, 'updateNumberMachine']);
+    Route::get('shifts', [ShiftController::class, 'index']);
+    Route::get('machine-shift', [MachineShiftController::class, 'index']);
+    Route::post('machine-shift', [MachineShiftController::class, 'store']);
+    Route::put('machine-shift', [MachineShiftController::class, 'update']);
 });

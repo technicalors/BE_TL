@@ -14,7 +14,6 @@ class Customer extends Model
     protected $casts = [
         'id'=>'string',
         'name'=>'string',
-        'created_at'=>'string',
     ];
 
     static function validate($input, $id = null)

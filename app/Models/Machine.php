@@ -104,4 +104,8 @@ class Machine extends Model
         );
         return $validated;
     }
+    public function machineShifts()
+    {
+        return $this->hasMany(MachineShift::class, 'machine_id', 'code');
+    }
 }
