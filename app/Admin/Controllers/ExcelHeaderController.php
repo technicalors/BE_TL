@@ -20,8 +20,8 @@ class ExcelHeaderController extends Controller
     {
         $query = ExcelHeader::orderBy('id');
         $result = $query->get();
-        $columns = $this->buildTree($result);;
-        return $this->success(['data'=>[], 'columns' => $columns]);
+        $columns = $this->buildTree($result);
+        return $this->success(['data'=>$result, 'columns' => $columns]);
     }
 
     function buildTree($headers, $parentId = null) {

@@ -1154,6 +1154,7 @@ class Phase2UIApiController extends Controller
         $losx_input['khach_hang'] = $order->customer->name ?? "";
         $losx_input['delivery_date'] = $order->delivery_date ? date('d/m/Y', strtotime($order->delivery_date)) : null;
         $losx_input['plans'] = $plans;
+        $losx_input['is_exceed_time'] = $isExceedDeliveryTime;
         // Trả về danh sách các công đoạn và các thông số tính toán
         return [
             'lots' => $lot_plans, // Danh sách lot tại mỗi công đoạn
