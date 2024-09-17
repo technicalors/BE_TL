@@ -19,9 +19,79 @@ class ExcelHeaderController extends Controller
     public function index(Request $request)
     {
         $query = ExcelHeader::orderBy('id');
-        $result = $query->get();
-        $columns = $this->buildTree($result);
-        return $this->success(['data'=>$result, 'columns' => $columns]);
+        $column_headers = $query->get();
+        $columns = $this->buildTree($column_headers);
+        $query = Product::with([
+            'customer',
+            'boms.material',
+            'specs.line',
+            'machinePriorityOrders.machine',
+            'machinePriorityOrders.attributeValues.attribute',
+        ]);
+        $total = $query->count();
+        if(isset($request->page) && isset($request->pageSize)){
+            $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);
+        }
+        $products = $query->get();
+        foreach ($products as $product) {
+            foreach ($product->boms as $bom) {
+                $item = [];
+    
+                // Product fields
+                $item['products.id'] = $product->id;
+                $item['products.name'] = $product->name;
+                $item['products.ver'] = $product->ver;
+                $item['products.his'] = $product->his;
+    
+                // Customer fields
+                if ($product->customer) {
+                    $item['customer.id'] = $product->customer->id;
+                    $item['customer.name'] = $product->customer->name;
+                }
+    
+                // BOM fields
+                $item['bom.priority'] = $bom->priority;
+                $item['bom.ratio'] = $bom->ratio;
+    
+                // Material fields
+                if ($bom->material) {
+                    $item['material.id'] = $bom->material->id;
+                    $item['material.name'] = $bom->material->name;
+                    $item['material.material'] = $bom->material->material;
+                    $item['material.color'] = $bom->material->color;
+                    $item['material.quantitative'] = $bom->material->quantitative;
+                    $item['material.thickness'] = $bom->material->thickness;
+                    $item['material.meter_per_roll'] = $bom->material->meter_per_roll;
+                    $item['material.sheet_per_pallet'] = $bom->material->sheet_per_pallet;
+                }
+    
+                // Specs
+                foreach ($product->specs as $spec) {
+                    if ($spec->line) {
+                        $item["spec.{$spec->slug}.{$spec->line->id}"] = $spec->value;
+                    } else {
+                        $item["spec.{$spec->slug}"] = $spec->value;
+                    }
+                }
+    
+                // Machine Priority Orders
+                foreach ($product->machinePriorityOrders as $mpo) {
+                    $line = $mpo->line;
+                    if ($mpo->machine) {
+                        $item["machine_priority_order.machine_id.{$line->id}"] = $mpo->machine->name;
+                    }
+                    foreach ($mpo->attributeValues as $attributeValue) {
+                        $slug = $attributeValue->attribute->slug;
+                        $value = $attributeValue->value;
+            
+                        $item["machine_priority_order.{$slug}.{$line->id}"] = $value;
+                    }
+                }
+    
+                $results[] = $item;
+            }
+        }
+        return $this->success(['data'=>$results, 'total'=>$total, 'columns' => $columns]);
     }
 
     function buildTree($headers, $parentId = null) {

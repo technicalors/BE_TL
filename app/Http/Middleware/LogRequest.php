@@ -12,7 +12,11 @@ class LogRequest
 {
     public function handle(Request $request, Closure $next)
     {
+        
         $response = $next($request);
+        if(!auth()->user()){
+            return $response;
+        }
         $payload = $request->all();
         array_walk_recursive($payload, function (&$item) {
             if (is_string($item) && !mb_check_encoding($item, 'UTF-8')) {

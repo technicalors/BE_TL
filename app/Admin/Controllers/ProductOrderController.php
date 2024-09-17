@@ -67,6 +67,7 @@ class ProductOrderController extends Controller
                 $ton[$line_id]['value'] = $sl;
                 $sl_ton += $sl;
             }
+            $value->order_date = $value->order_date ? date('d/m/Y', strtotime($value->order_date)) : null;
             $value->delivery_date = $value->delivery_date ? date('d/m/Y', strtotime($value->delivery_date)) : null;
             $value->sl_may = $sl_may;
             $value->ton = array_values($ton);

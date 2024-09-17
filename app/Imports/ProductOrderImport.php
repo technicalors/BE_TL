@@ -66,13 +66,22 @@ class ProductOrderImport implements ToCollection, WithHeadingRow, WithStartRow
 
         $customer = Customer::find($customerId);
         if (empty($customer)) throw new \Exception("Mã khách hàng không tồn tại");
-
-        $orderDate = $this->transformDate($orderDate);
-        if (!empty($deliveryDate)) {
-            $deliveryDate = $this->transformDate($deliveryDate);
-        } else {
-            $deliveryDate = date('Y-m-d', strtotime($orderDate . ' + 7 days'));
+        if(empty($orderDate)){
+            $orderDate = Carbon::parse('now');
+        }else{
+            $orderDate = $this->transformDate($orderDate);
         }
+        // if (!empty($deliveryDate)) {
+        //     $deliveryDate = $this->transformDate($deliveryDate);
+        // } else {
+        //     $deliveryDate = date('Y-m-d', strtotime($orderDate . ' + 7 days'));
+        // }
+        if(Carbon::now()->format('H:i:s') < '16:30:00'){
+            $deliveryDate = date('Y-m-d', strtotime($orderDate . ' + 7 days'));
+        }else{
+            $deliveryDate = date('Y-m-d', strtotime($orderDate . ' + 6 days'));
+        }
+
         $id = QueryHelper::generateNewId(new ProductOrder(), date('Ym'), 2);
         // Create product_order
         $productOrder = ProductOrder::create([
@@ -107,8 +116,8 @@ class ProductOrderImport implements ToCollection, WithHeadingRow, WithStartRow
     protected function transformDate($value)
     {
         if (is_numeric($value)) {
-            return Carbon::instance(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value))->format('Y-m-d');
+            return Carbon::instance(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value));
         }
-        return Carbon::createFromFormat('d/m/Y', $value)->format('Y-m-d');
+        return Carbon::createFromFormat('d/m/Y', $value);
     }
 }

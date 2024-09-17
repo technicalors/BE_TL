@@ -80,4 +80,16 @@ class Product extends Model
     public function timeWastages(){
         return $this->hasMany(TimeWastage::class);
     }
+
+    public function boms(){
+        return $this->hasMany(Bom::class);
+    }
+
+    public function specs(){
+        return $this->hasMany(Spec::class);
+    }
+
+    public function machinePriorityOrders(){
+        return $this->hasMany(MachinePriorityOrder::class);
+    }
 }

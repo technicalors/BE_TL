@@ -11,4 +11,9 @@ class MachinePriorityOrderAttribute extends Model
     use HasFactory;
 
     protected $fillable = ['id', 'name', 'slug'];
+
+    public function attributeValues()
+    {
+        return $this->hasMany(MachinePriorityOrderAttributeValue::class);
+    }
 }

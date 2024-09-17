@@ -41,4 +41,8 @@ class MachinePriorityOrder extends Model
     public function machine(){
         return $this->belongsTo(Machine::class, 'machine_id', 'code');
     }
+    public function attributeValues()
+    {
+        return $this->hasMany(MachinePriorityOrderAttributeValue::class);
+    }
 }
