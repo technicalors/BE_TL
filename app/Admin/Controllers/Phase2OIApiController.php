@@ -145,9 +145,6 @@ class Phase2OIApiController extends Controller
     //Trả về dữ liệu tổng quan của sản xuất
     public function getProductionOverall(Request $request)
     {
-        $tong_sl_thuc_te = 0;
-        $tong_sl_ng = 0;
-        $tong_sl_tem_vang = 0;
         $info_query = InfoCongDoan::whereDate("created_at", Carbon::now());
         if (!empty($request->machine_code)) {
             $info_query->where('machine_code', $request->machine_code);

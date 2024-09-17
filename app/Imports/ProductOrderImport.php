@@ -62,7 +62,7 @@ class ProductOrderImport implements ToCollection, WithHeadingRow, WithStartRow
             throw new \Exception("Chưa có số lượng");
         }
         $product = Product::find($productId);
-        if (empty($product)) throw new \Exception("Mã khách hàng không tồn tại");
+        if (empty($product)) throw new \Exception("Mã mã hàng không tồn tại");
 
         $customer = Customer::find($customerId);
         if (empty($customer)) throw new \Exception("Mã khách hàng không tồn tại");
