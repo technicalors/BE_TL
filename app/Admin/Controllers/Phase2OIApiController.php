@@ -130,7 +130,7 @@ class Phase2OIApiController extends Controller
     //Trả về danh sách máy theo dây chuyền
     public function getMachineList(Request $request)
     {
-        $query = Machine::select('id', 'code', 'name');
+        $query = Machine::select('id', 'code', 'name', 'is_iot');
         if (isset($request->line)) {
             $line = Line::with(['machine:id,code,name,line_id'])->find($request->line);
             $query->where('line_id', $line->id);
