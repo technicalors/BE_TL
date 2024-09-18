@@ -32,7 +32,8 @@ class ProductImport implements ToCollection, WithHeadingRow, WithStartRow, WithC
     protected $bom = [];
     protected $excel_headers = [];
 
-    public function __construct($excel_headers = []) {
+    public function __construct($excel_headers = [])
+    {
         $this->excel_headers = $excel_headers;
     }
 
@@ -45,7 +46,7 @@ class ProductImport implements ToCollection, WithHeadingRow, WithStartRow, WithC
     // Hàm này xác định hàng bắt đầu lấy dữ liệu (data row)
     public function startRow(): int
     {
-        return 3;
+        return 6;
     }
     public function collection(Collection $collection)
     {
@@ -56,10 +57,29 @@ class ProductImport implements ToCollection, WithHeadingRow, WithStartRow, WithC
         MachinePriorityOrder::query()->delete();
         MachinePriorityOrderAttribute::query()->delete();
         MachinePriorityOrderAttributeValue::query()->delete();
+        $products = [];
+        $materials = [];
+        $boms = [];
+        $customers = [];
+        $machinePriorityOrders = [];
+        $specsList = [];
         $this->fields = $collection->toArray();
-        foreach ($collection as $index => $row) {
-            if($index > 3){
-                Log::debug($this->handleData($row->toArray()));
+        foreach ($collection as $row) {
+            [$product, $material, $bom, $customer, $specs] = $this->handleData($row->toArray());
+            if(!empty($product)){
+                $products[] = $product;
+            }
+            if(!empty($material)){
+                $materials[] = $material;
+            }
+            if(!empty($bom)){
+                $boms[] = $bom;
+            }
+            if(!empty($customer)){
+                $customers[] = $customer;
+            }
+            if(!empty($specs)){
+                Log::debug($specs);
             }
         }
     }
@@ -71,6 +91,7 @@ class ProductImport implements ToCollection, WithHeadingRow, WithStartRow, WithC
         $bom = [];
         $customer = [];
         $specs = [];
+        // Log::debug($row);
         foreach ($row as $key_field => $value) {
             if (!$key_field || is_numeric($key_field) || !$value) {
                 continue;
@@ -92,27 +113,25 @@ class ProductImport implements ToCollection, WithHeadingRow, WithStartRow, WithC
             if ($table_name === 'customer') {
                 $customer[$slug] = $value;
             }
-            if ($table_name === 'spec' && isset($this->excel_headers[$key_field]) && !is_array($this->excel_headers[$key_field])) {
+            if ($table_name === 'spec' && !empty($product['id']) && isset($this->excel_headers[$key_field]) && !empty($this->excel_headers[$key_field])) {
                 $specs[] = [
                     'name' => $this->excel_headers[$key_field],
                     'slug' => $slug,
-                    'product_id' => $this->product['id'],
+                    'product_id' => $product['id'],
                     'line_id' => $line,
-                    'value'=>$value,
+                    'value' => $value,
                 ];
             }
         }
-        if (!isset($product['id'])) {
-            return;
+        if (!empty($product['id'])) {
+            $this->product = $product;
         }
-        if (isset($material['id']) && $product['id']) {
-            $material['product_id'] = $product['id'];
-            $material = $material;
+        if (isset($material['id']) && !empty($this->product['id'])) {
+            $material['product_id'] = $this->product['id'];
 
-            $bom['product_id'] = $product['id'];
+            $bom['product_id'] = $this->product['id'];
             $bom['material_id'] = $material['id'];
-            $bom = $bom;
         }
-        return ['product' => $product, 'material' => $material, 'bom' => $bom, 'customer' => $customer];
+        return [$product, $material, $bom, $customer, $specs];
     }
 }

@@ -1521,7 +1521,7 @@ class ProductController extends Controller
         ->get()
         ->pluck('header_name', 'field_name')
         ->toArray();
-        return $excel_headers;
+        // return $excel_headers;
         try {
             Excel::import(new ProductImport($excel_headers), $request->file('file'));
         } catch (\Exception $e) {

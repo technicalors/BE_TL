@@ -52,15 +52,19 @@ class Phase2UIApiController extends Controller
     use API;
     public function getTreeSelect(Request $request)
     {
-        $factories = Factory::with('line.machine')
-            // ->select('factories.*', 'id as key', 'name as title', DB::raw("'factory' as type"))
+        $factories = Factory::with(
+            [
+                'line' => function ($query) {
+                    $query->with('machine')->whereHas('machine');
+                },
+            ])
             ->where('id', 2)
             ->get();
         foreach ($factories as $factory) {
             foreach ($factory->line as $line) {
                 foreach ($line->machine as $machine) {
-                    $machine->key = $machine->id;
-                    $machine->title = $machine->name;
+                    $machine->key = $machine->code;
+                    $machine->title = $machine->code;
                     $machine->type = 'machine';
                 }
                 $line->key = $line->id;
@@ -928,7 +932,7 @@ class Phase2UIApiController extends Controller
                 $data[] = $result;
             }
         }
-        if(count($data) <= 0){
+        if (count($data) <= 0) {
             return $this->failure('', 'Không có kế hoạch nào được tạo');
         }
         return $this->success($data);
