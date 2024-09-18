@@ -19,6 +19,7 @@ use App\Models\LSXLog;
 use App\Models\Machine;
 use App\Models\MachineLog;
 use App\Models\MachinePriorityOrder;
+use App\Models\MachineShift;
 use App\Models\Material;
 use App\Models\NumberMachineOrder;
 use App\Models\ProductionPlan;
@@ -810,20 +811,23 @@ class Phase2UIApiController extends Controller
         return $beforeStart->concat($afterStart)->take($numMachines)->values();
     }
 
-    function getProductionShifts()
+    function getProductionShifts($shif_id)
     {
         // Truy vấn để lấy danh sách ca làm việc từ bảng shift_breaks với type_break = 'Sản xuất'
         return ShiftBreak::where('type_break', 'Sản xuất')
+            ->whereIn('shift_id', $shif_id)
             ->orderBy('start_time', 'asc')
             ->get(['start_time', 'end_time']);
     }
 
-    function adjustTimeWithinShift($startTime, $duration, $shifts, $lotId, $shiftPreparationTime)
+    function adjustTimeWithinShift($startTime, $duration, $machineId, $shiftPreparationTime)
     {
         // Thiết lập múi giờ cho startTime
         $startTime->setTimezone('Asia/Bangkok');
         // Kiểm tra và điều chỉnh thời gian trong ca sản xuất
         $startHour = $startTime->toTimeString();
+        $shift_ids = MachineShift::where('machine_id', $machineId)->pluck('shift_id')->toArray();
+        $shifts = $this->getProductionShifts($shift_ids);
         $firstShift = $shifts->first();
         foreach ($shifts as $shift) {
             $shiftStart = Carbon::parse($shift->start_time, 'Asia/Bangkok')->toTimeString();
@@ -831,16 +835,12 @@ class Phase2UIApiController extends Controller
             // Nếu thời gian bắt đầu nằm trong khoảng thời gian sản xuất
             if ($startHour >= $shiftStart && $startHour <= $shiftEnd) {
                 // Tính toán thời gian kết thúc dự kiến
-
                 $endTime = $startTime->copy()->addMinutes($duration);
                 $endHour = $endTime->toTimeString();
-
                 // Nếu thời gian kết thúc vượt quá thời gian kết thúc của ca hiện tại
                 if ($endHour > $shiftEnd) {
                     // Tính toán thời gian dư thừa cần chuyển sang ca tiếp theo
-
                     $remainingDuration = Carbon::parse($endHour)->diffInMinutes(Carbon::parse($shiftEnd));
-
                     // Tìm ca tiếp theo
                     $nextShiftStart = $shifts->where('start_time', '>', $shiftEnd)->first();
                     if ($nextShiftStart) {
@@ -928,7 +928,7 @@ class Phase2UIApiController extends Controller
                 $data[] = $result;
             }
         }
-        if(count($data) <= 0){
+        if (count($data) <= 0) {
             return $this->failure('', 'Không có kế hoạch nào được tạo');
         }
         return $this->success($data);
@@ -948,7 +948,7 @@ class Phase2UIApiController extends Controller
         $productionSteps = $this->getProductionSteps($productId);
 
         // Lấy danh sách ca làm việc
-        $productionShifts = $this->getProductionShifts();
+        // $productionShifts = $this->getProductionShifts();
 
         // Khai báo mảng để lưu trữ sản lượng của từng công đoạn
         $stepQuantities = [];
@@ -1031,11 +1031,9 @@ class Phase2UIApiController extends Controller
             $lotIndexOffset = 0; // Offset để đánh số lot cho mỗi máy
 
             $numLots = ceil($quantityPerMachine / $lotSize); // Tổng số lot, dùng ceil để làm tròn lên
-            // return ['line_id'=>$lineId, 'machine_number'=>$numMachines, 'quantity'=>$quantity, 'numLot'=>$numLots];
             // Chia lot và tính toán thời gian cho từng lot cho máy nàys
             foreach ($machines as $machineIndex => $machine) {
                 $machineReadyTime = Carbon::parse($machine->available_at, 'Asia/Bangkok');
-
                 if (!$startTime->greaterThan($machineReadyTime)) {
                     $startTime = $machineReadyTime;
                 }
@@ -1078,7 +1076,7 @@ class Phase2UIApiController extends Controller
                     $countLot += $lotIndex;
                     $lotId = $losx_id . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT); // Tạo lot_id với stt lot
                     $lotStartTime = ($lotIndex == 1) ? $startTime : $lots[$lineId][$machineIndex][$lotIndex - 2]['endTime'];
-                    list($lotStartTime, $lotEndTime) = $this->adjustTimeWithinShift($lotStartTime, ($taskTime * $lotSize) + $rollChangeTime, $productionShifts, $lotId, $shiftPreparationTime);
+                    list($lotStartTime, $lotEndTime) = $this->adjustTimeWithinShift($lotStartTime, ($taskTime * $lotSize) + $rollChangeTime, $machine->id, $shiftPreparationTime);
                     //Trường hợp thời gian sx vượt quá thời gian giao hàng, đánh dấu KH được tạo
                     if ($order->delivery_date && $lotStartTime->greaterThan(Carbon::parse($order->delivery_date))) {
                         $isExceedDeliveryTime = true;
@@ -1119,9 +1117,7 @@ class Phase2UIApiController extends Controller
                 }
                 // $plan_input['children'] = $lot_in_plan;
                 $plan_input['is_exceed_time'] = $isExceedDeliveryTime;
-
                 // Thời gian kết thúc của công đoạn là thời gian kết thúc của lot cuối cùng
-
                 if (!empty($lots[$lineId][$machineIndex])) {
                     $stepEndTimes[$lineId] = end($lots[$lineId][$machineIndex])['endTime'];
                     $plan_input['thoi_gian_ket_thuc'] = $stepEndTimes[$lineId];
@@ -1129,7 +1125,6 @@ class Phase2UIApiController extends Controller
                     //     'thoi_gian_ket_thuc' => $stepEndTimes[$lineId],
                     // ]);
                 }
-
                 //Tạo kế hoạch
                 $plans[] = $plan_input;
                 // $plan = ProductionPlan::create($plan);
