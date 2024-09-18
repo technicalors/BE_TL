@@ -130,7 +130,7 @@ class Phase2OIApiController extends Controller
     //Trả về danh sách máy theo dây chuyền
     public function getMachineList(Request $request)
     {
-        $query = Machine::select('id', 'code', 'name');
+        $query = Machine::select('id', 'code', 'name', 'is_iot');
         if (isset($request->line)) {
             $line = Line::with(['machine:id,code,name,line_id'])->find($request->line);
             $query->where('line_id', $line->id);
@@ -145,9 +145,6 @@ class Phase2OIApiController extends Controller
     //Trả về dữ liệu tổng quan của sản xuất
     public function getProductionOverall(Request $request)
     {
-        $tong_sl_thuc_te = 0;
-        $tong_sl_ng = 0;
-        $tong_sl_tem_vang = 0;
         $info_query = InfoCongDoan::whereDate("created_at", Carbon::now());
         if (!empty($request->machine_code)) {
             $info_query->where('machine_code', $request->machine_code);
@@ -528,6 +525,7 @@ class Phase2OIApiController extends Controller
                             'material_id' => $infoCongDoan->material_id,
                             'lo_sx' => $infoCongDoan->lo_sx,
                             'so_luong' => 0,
+                            'final_line_id' => $line->id,
                             'type' => Lot::TYPE_TEM_TRANG
                         ]);
                     } else {
@@ -543,6 +541,7 @@ class Phase2OIApiController extends Controller
                             'product_id' => $infoCongDoan->product_id,
                             'material_id' => $infoCongDoan->material_id,
                             'lo_sx' => $infoCongDoan->lo_sx,
+                            'final_line_id' => $line->id,
                             'so_luong' => $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang,
                             'type' => Lot::TYPE_TEM_TRANG
                         ]);
@@ -781,6 +780,7 @@ class Phase2OIApiController extends Controller
                     'id' => $id . ($i + $counterT),
                     'product_id' => $lot->product_id,
                     'material_id' => $lot->material_id,
+                    'final_line_id' => $line->id,
                     'lo_sx' => $lot->lo_sx,
                     'so_luong' => $request->sl_in_tem,
                     'type' => Lot::TYPE_THUNG
@@ -1201,6 +1201,7 @@ class Phase2OIApiController extends Controller
                         'material_id' => $infoCongDoan->material_id,
                         'lo_sx' => $infoCongDoan->lo_sx,
                         'so_luong' => 0,
+                        'final_line_id' => $line->id,
                     ]
                 );
             } else {
@@ -1312,6 +1313,7 @@ class Phase2OIApiController extends Controller
                     'material_id' => $infoCongDoan->material_id,
                     'lo_sx' => $infoCongDoan->lo_sx,
                     'so_luong' => $infoCongDoan->sl_tem_vang,
+                    'final_line_id' => $line->id,
                     'type' => Lot::TYPE_TEM_VANG,
                 ]);
                 $infoCongDoan->update([

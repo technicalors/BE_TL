@@ -11,4 +11,9 @@ class MachinePriorityOrderAttributeValue extends Model
     use HasFactory;
 
     protected $fillable = ['machine_priority_order_id', 'machine_priority_order_attribute_id', 'value'];
+
+    public function attribute()
+    {
+        return $this->belongsTo(MachinePriorityOrderAttribute::class, 'machine_priority_order_attribute_id');
+    }
 }

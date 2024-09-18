@@ -3,6 +3,7 @@
 namespace App\Admin\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Imports\ProductImport;
 use App\Models\Bom;
 use App\Models\Customer;
 use App\Models\ExcelHeader;
@@ -29,6 +30,7 @@ use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ProductController extends Controller
 {
@@ -295,54 +297,6 @@ class ProductController extends Controller
         Spec::insert($spec_data);
     }
 
-    // Chuyển đổi tên cột Excel thành số thứ tự
-    function columnToNumber($col)
-    {
-        $num = 0;
-        $len = strlen($col);
-        for ($i = 0; $i < $len; $i++) {
-            $num = $num * 26 + (ord($col[$i]) - ord('A') + 1);
-        }
-        return $num;
-    }
-
-    // Chuyển đổi số thứ tự thành tên cột Excel
-    function numberToColumn($num)
-    {
-        $col = '';
-        while ($num > 0) {
-            $remainder = ($num - 1) % 26;
-            $col = chr(65 + $remainder) . $col;
-            $num = intval(($num - 1) / 26);
-        }
-        return $col;
-    }
-
-    function excelColumnRange($start_col, $end_col = null, ...$additional_cols)
-    {
-        // Nếu không có $end_col, đặt $end_col là $start_col
-        if ($end_col === null) {
-            $end_col = $start_col;
-        }
-
-        $start_num = $this->columnToNumber($start_col);
-        $end_num = $this->columnToNumber($end_col);
-
-        $columns = [];
-        for ($i = $start_num; $i <= $end_num; $i++) {
-            $columns[] = $this->numberToColumn($i);
-        }
-
-        // Thêm các cột bất kỳ vào mảng kết quả
-        foreach ($additional_cols as $col) {
-            if (!in_array($col, $columns)) {
-                $columns[] = $col;
-            }
-        }
-
-        return $columns;
-    }
-
     public function export(Request $request)
     {
         return $this->success('', 'Export thành công');
@@ -352,11 +306,11 @@ class ProductController extends Controller
     {
         set_time_limit(0);
         ini_set('memory_limit', '2048M');
-        if (!isset($_FILES['files'])) { {
+        if (!isset($_FILES['file'])) { {
                 return $this->failure('', 'Định dạng file không đúng');
             }
         }
-        $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
+        $extension = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
         if ($extension == 'csv') {
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
         } elseif ($extension == 'xlsx') {
@@ -365,7 +319,7 @@ class ProductController extends Controller
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
         }
         // file path
-        $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
+        $spreadsheet = $reader->load($_FILES['file']['tmp_name']);
         $sheet = $spreadsheet->getActiveSheet();
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
         $product_data = [];
@@ -464,10 +418,6 @@ class ProductController extends Controller
         $input['paper_norm'] = $product_data['AP'];
         $product[] = $input;
         $product = Product::firstOrCreate(['id' => $input['id']], $input);
-        $customer = Customer::find($input['customer_id']);
-        if (!$customer && !is_null($input['customer_id'])) {
-            $customer = Customer::firstOrCreate(['id' => $input['customer_id'], 'name' => $product_data['G']]);
-        }
         return $product;
     }
 
@@ -1396,5 +1346,189 @@ class ProductController extends Controller
             }
         }
         return $this->success([], 'Upload thành công');
+    }
+
+    function insertHeader($sheet, $allData, $parent, $start, $range, $mergedCells, $start_row, $slugArray = [])
+    {
+        if (count($allData) < $start) {
+            return 'break';
+        }
+        foreach ($range as $key) {
+            if ($start === 0) {
+                $parent = null;
+            }
+            $mergeCell = $this->checkHorizontalMergedCell($mergedCells, $key . $start_row);
+            if ($mergeCell) {
+                $parent_header = ExcelHeader::firstOrCreate([
+                    'header_name' => $allData[$start][$key] ?? "",
+                    'column_position' => $mergeCell,
+                    'section' => null,
+                    'parent_id' => $parent->id ?? null,
+                    'field_name' => Str::slug($allData[$start][$key] ?? ""),
+                ]);
+                $next_row_index = $start + 1;
+                $next_start_row = $start_row + 1;
+                $first_key = preg_replace('/[^a-zA-Z]/', '', explode(':', $mergeCell)[0]);
+                $last_key = preg_replace('/[^a-zA-Z]/', '', explode(':', $mergeCell)[1]);
+                $first_index = filter_var(explode(':', $mergeCell)[0], FILTER_SANITIZE_NUMBER_INT);
+                $last_index = filter_var(explode(':', $mergeCell)[1], FILTER_SANITIZE_NUMBER_INT);
+                if ($last_index > $first_index) {
+                    $next_row_index += $last_index - $first_index;
+                    $next_start_row += $last_index - $first_index;
+                }
+                $this->insertHeader($sheet, $allData, $parent_header, $next_row_index, $this->excelColumnRange($first_key, $last_key), $mergedCells, $next_start_row, $slugArray);
+            } else {
+                if (!empty($allData[$start][$key])) {
+                    $position = $key . $start_row;
+                    $mergeCell = $this->checkVerticalMergedCell($mergedCells, $key . $start_row);
+                    if ($mergeCell) {
+                        $position = $mergeCell;
+                    }
+                    $excel_header = ExcelHeader::firstOrCreate([
+                        'header_name' => $allData[$start][$key] ?? "",
+                        'column_position' => $position,
+                        'section' => null,
+                        'parent_id' => $parent->id ?? null,
+                        'field_name' => ($slugArray[$key] ?? ""),
+                    ]);
+                    if (!empty($allData[$start + 1][$key])) {
+                        $position = $key . ($start_row + 1);
+                        $child = ExcelHeader::firstOrCreate([
+                            'header_name' => $allData[$start + 1][$key] ?? "",
+                            'column_position' => $position,
+                            'section' => null,
+                            'parent_id' => $excel_header->id ?? null,
+                            'field_name' => ($slugArray[$key] ?? ""),
+                        ]);
+                    }
+                }
+            }
+        }
+        return 'done';
+    }
+
+    function checkHorizontalMergedCell($mergedCells, $cell)
+    {
+        foreach ($mergedCells as $cells) {
+            // Kiểm tra nếu ô nằm trong vùng hợp nhất
+            if ($cell === explode(':', $cells)[0]) {
+                // Lấy chỉ số hàng bắt đầu và kết thúc của vùng hợp nhất
+                $startRow = filter_var(explode(':', $cells)[0], FILTER_SANITIZE_NUMBER_INT);
+                $endRow = filter_var(explode(':', $cells)[1], FILTER_SANITIZE_NUMBER_INT);
+                $startCol = preg_replace('/[^a-zA-Z]/', '', explode(':', $cells)[0]);
+                $endCol = preg_replace('/[^a-zA-Z]/', '', explode(':', $cells)[1]);
+                // Nếu hàng bắt đầu và kết thúc giống nhau thì ô này là merge cell trên cùng 1 hàng
+                if ($startRow === $endRow || $startCol !== $endCol) {
+                    return $cells;
+                }
+            }
+        }
+        return false;
+    }
+
+    function checkVerticalMergedCell($mergedCells, $cell)
+    {
+        foreach ($mergedCells as $cells) {
+            // Kiểm tra nếu ô nằm trong vùng hợp nhất
+            if ($cell === explode(':', $cells)[0]) {
+                // Lấy chỉ số hàng bắt đầu và kết thúc của vùng hợp nhất
+                $startCol = preg_replace('/[^a-zA-Z]/', '', explode(':', $cells)[0]);
+                $endCol = preg_replace('/[^a-zA-Z]/', '', explode(':', $cells)[1]);
+                // Nếu hàng bắt đầu và kết thúc giống nhau thì ô này là merge cell trên cùng 1 hàng
+                if ($startCol === $endCol) {
+                    return $cells;
+                }
+            }
+        }
+        return false;
+    }
+
+    function excelColumnRange($start_col, $end_col = null, ...$additional_cols)
+    {
+        // Nếu không có $end_col, đặt $end_col là $start_col
+        if ($end_col === null) {
+            $end_col = $start_col;
+        }
+
+        $start_num = $this->columnToNumber($start_col);
+        $end_num = $this->columnToNumber($end_col);
+
+        $columns = [];
+        for ($i = $start_num; $i <= $end_num; $i++) {
+            $columns[] = $this->numberToColumn($i);
+        }
+
+        // Thêm các cột bất kỳ vào mảng kết quả
+        foreach ($additional_cols as $col) {
+            if (!in_array($col, $columns)) {
+                $columns[] = $col;
+            }
+        }
+
+        return $columns;
+    }
+
+    // Chuyển đổi tên cột Excel thành số thứ tự
+    function columnToNumber($col)
+    {
+        $num = 0;
+        $len = strlen($col);
+        for ($i = 0; $i < $len; $i++) {
+            $num = $num * 26 + (ord($col[$i]) - ord('A') + 1);
+        }
+        return $num;
+    }
+
+    // Chuyển đổi số thứ tự thành tên cột Excel
+    function numberToColumn($num)
+    {
+        $col = '';
+        while ($num > 0) {
+            $remainder = ($num - 1) % 26;
+            $col = chr(65 + $remainder) . $col;
+            $num = intval(($num - 1) / 26);
+        }
+        return $col;
+    }
+
+    public function importNewVersion2(Request $request)
+    {
+        set_time_limit(0);
+        ini_set('memory_limit', '2048M');
+        $request->validate([
+            'file' => 'required|mimes:xlsx',
+        ]);
+        $extension = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
+        if ($extension == 'csv') {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
+        } elseif ($extension == 'xlsx') {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+        } else {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
+        }
+        $spreadsheet = $reader->load($_FILES['file']['tmp_name']);
+        $sheet = $spreadsheet->getActiveSheet();
+        $allDataInSheet = $sheet->toArray(null, true, true, true);
+        ExcelHeader::truncate();
+        $mergedCells = $sheet->getMergeCells();
+        $parent = null;
+        $start = 0;
+        $first_key = array_key_first($allDataInSheet[1]);
+        $last_key = array_key_last($allDataInSheet[1]);
+        $slugArray = $allDataInSheet[1];
+        $this->insertHeader($sheet, array_splice($allDataInSheet, 2, 3), $parent, $start, $this->excelColumnRange($first_key, $last_key), $mergedCells, 3, $slugArray);
+        $excel_headers = ExcelHeader::query()
+        ->get()
+        ->pluck('header_name', 'field_name')
+        ->toArray();
+        return $excel_headers;
+        try {
+            Excel::import(new ProductImport($excel_headers), $request->file('file'));
+        } catch (\Exception $e) {
+            // Handle the exception and return an appropriate response
+            return $this->failure(['error' => $e->getMessage()], $e->getMessage(), 422);
+        }
+
+        return $this->success('', 'Import thành công');
     }
 }

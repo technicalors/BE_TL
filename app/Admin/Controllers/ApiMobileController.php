@@ -692,7 +692,7 @@ class ApiMobileController extends AdminController
         $machine_iot_ids = $line->machine->where('is_iot', 1)->where('display', 1)->pluck('id');
         if (count($machine_iot_ids)) {
             $checksheet_logs = CheckSheetLog::whereIn('info->machine_id', $machine_iot_ids)->whereDate('created_at', Carbon::today())->get();
-            if (!count($checksheet_logs) > 0 || count($checksheet_logs) !== count($machine_iot_ids)) {
+            if (!count($checksheet_logs) > 0) {
                 return $this->failure([], "Chưa nhập kiểm tra checksheet");
             }
         }
