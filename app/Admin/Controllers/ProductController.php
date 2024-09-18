@@ -1524,9 +1524,10 @@ class ProductController extends Controller
         // return $excel_headers;
         try {
             Excel::import(new ProductImport($excel_headers), $request->file('file'));
+            return Product::all();
         } catch (\Exception $e) {
             // Handle the exception and return an appropriate response
-            return $this->failure(['error' => $e->getMessage()], $e->getMessage(), 422);
+            throw $e;
         }
 
         return $this->success('', 'Import thành công');

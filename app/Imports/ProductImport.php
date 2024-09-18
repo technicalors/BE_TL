@@ -16,15 +16,17 @@ use App\Models\Template;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithCalculatedFormulas;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use Maatwebsite\Excel\Concerns\WithStartRow;
 use Maatwebsite\Excel\Imports\HeadingRowFormatter;
 
 HeadingRowFormatter::default('none');
-class ProductImport implements ToCollection, WithHeadingRow, WithStartRow, WithCalculatedFormulas
+class ProductImport implements ToCollection, WithHeadingRow, WithStartRow, WithCalculatedFormulas, WithMultipleSheets
 {
     protected $fields;
     protected $product = [];
@@ -34,7 +36,15 @@ class ProductImport implements ToCollection, WithHeadingRow, WithStartRow, WithC
 
     public function __construct($excel_headers = [])
     {
+        Log::debug('ProductImport __construct called');
         $this->excel_headers = $excel_headers;
+    }
+
+    public function sheets(): array
+    {
+        return [
+            0 => $this, // Only process the first sheet
+        ];
     }
 
     // Hàm này xác định hàng bắt đầu lấy tiêu đề (heading row)
@@ -50,6 +60,9 @@ class ProductImport implements ToCollection, WithHeadingRow, WithStartRow, WithC
     }
     public function collection(Collection $collection)
     {
+        Log::debug('ProductImport collection called');
+        $products = [];
+        $this->fields = $collection->toArray();
         Product::query()->delete();
         Material::query()->delete();
         Bom::query()->delete();
@@ -57,30 +70,64 @@ class ProductImport implements ToCollection, WithHeadingRow, WithStartRow, WithC
         MachinePriorityOrder::query()->delete();
         MachinePriorityOrderAttribute::query()->delete();
         MachinePriorityOrderAttributeValue::query()->delete();
-        $products = [];
-        $materials = [];
-        $boms = [];
-        $customers = [];
-        $machinePriorityOrders = [];
-        $specsList = [];
-        $this->fields = $collection->toArray();
         foreach ($collection as $row) {
-            [$product, $material, $bom, $customer, $specs] = $this->handleData($row->toArray());
-            if(!empty($product)){
+            [$product, $material, $bom, $customer, $specs, $machine_priority_orders] = $this->handleData($row->toArray());
+            if (!empty($product['id'])) {
                 $products[] = $product;
+                Product::updateOrCreate(
+                    ['id' => $product['id']],
+                    $product,
+                );
             }
-            if(!empty($material)){
-                $materials[] = $material;
+            if (!empty($material['id'])) {
+                Material::updateOrCreate(
+                    ['id' => $material['id']],
+                    $material,
+                );
             }
-            if(!empty($bom)){
-                $boms[] = $bom;
+            if (!empty($bom)) {
+                Bom::create($bom);
             }
-            if(!empty($customer)){
-                $customers[] = $customer;
+            if (!empty($customer['id'])) {
+                Customer::updateOrCreate(
+                    ['id' => $customer['id']],
+                    $customer,
+                );
             }
-            if(!empty($specs)){
-                Log::debug($specs);
+            if (!empty($specs)) {
+                Spec::insert($specs);
             }
+            if (!empty($machine_priority_orders)) {
+                $machinePriorityOrder = null;
+                foreach ($machine_priority_orders as $key => $value) {
+                    if ($value['slug'] === 'machine_id') {
+                        $previousMachinePriorityOrder = MachinePriorityOrder::where('product_id', $value['product_id'])->where('line_id', $value['line_id'])->orderBy('priority', 'DESC')->first();
+                        $machinePriorityOrder = MachinePriorityOrder::create([
+                            'product_id' => $value['product_id'],
+                            'line_id' => $value['line_id'],
+                            'machine_id' => $value['value'],
+                            'priority' => (int)($previousMachinePriorityOrder->priority ?? 0) + 1,
+                        ]);
+                    } else {
+                        if ($machinePriorityOrder && trim($value['value'])) {
+                            $machinePriorityOrderAttribute = MachinePriorityOrderAttribute::firstOrCreate([
+                                'name' => $title[$key] ?? "",
+                                'slug' => $value['slug'],
+                            ]);
+                            if ($machinePriorityOrderAttribute) {
+                                $machinePriorityOrderAttributeValues[] = [
+                                    'machine_priority_order_attribute_id' => $machinePriorityOrderAttribute->id,
+                                    'machine_priority_order_id' => $machinePriorityOrder->id,
+                                    'value' => $value['value']
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (count($products) < 0) {
+            throw new Exception("Đã xảy ra lỗi, không có sản phẩm nào được tạo");
         }
     }
 
@@ -91,7 +138,7 @@ class ProductImport implements ToCollection, WithHeadingRow, WithStartRow, WithC
         $bom = [];
         $customer = [];
         $specs = [];
-        // Log::debug($row);
+        $machine_priority_orders = [];
         foreach ($row as $key_field => $value) {
             if (!$key_field || is_numeric($key_field) || !$value) {
                 continue;
@@ -100,26 +147,34 @@ class ProductImport implements ToCollection, WithHeadingRow, WithStartRow, WithC
             $table_name = $keys[0] ?? null; // Tên bảng
             $slug = $keys[1] ?? null; //Slug
             $line = $keys[2] ?? null; //Công đoạn (nếu có)
-            // Log::debug([$table_name, $slug, $line, $value]);
             if ($table_name === 'products') {
-                $product[$slug] = $value;
+                $product[$slug] = trim($value);
             }
             if ($table_name === 'material') {
-                $material[$slug] = $value;
+                $material[$slug] = trim($value);
             }
             if ($table_name === 'bom') {
-                $bom[$slug] = $value;
+                $bom[$slug] = trim($value);
             }
             if ($table_name === 'customer') {
-                $customer[$slug] = $value;
+                $customer[$slug] = trim($value);
             }
-            if ($table_name === 'spec' && !empty($product['id']) && isset($this->excel_headers[$key_field]) && !empty($this->excel_headers[$key_field])) {
+            if ($table_name === 'spec' && !empty($value) && !empty($product['id']) && isset($this->excel_headers[$key_field]) && !empty($this->excel_headers[$key_field])) {
                 $specs[] = [
                     'name' => $this->excel_headers[$key_field],
                     'slug' => $slug,
                     'product_id' => $product['id'],
                     'line_id' => $line,
-                    'value' => $value,
+                    'value' => trim($value),
+                ];
+            }
+            if ($table_name === 'machine_priority_order' && !empty($value) && !empty($product['id']) && isset($this->excel_headers[$key_field]) && !empty($this->excel_headers[$key_field])) {
+                $machine_priority_orders[] = [
+                    'name' => $this->excel_headers[$key_field],
+                    'slug' => $slug,
+                    'product_id' => $product['id'],
+                    'line_id' => $line,
+                    'value' => trim($value),
                 ];
             }
         }
@@ -127,11 +182,9 @@ class ProductImport implements ToCollection, WithHeadingRow, WithStartRow, WithC
             $this->product = $product;
         }
         if (isset($material['id']) && !empty($this->product['id'])) {
-            $material['product_id'] = $this->product['id'];
-
             $bom['product_id'] = $this->product['id'];
             $bom['material_id'] = $material['id'];
         }
-        return [$product, $material, $bom, $customer, $specs];
+        return [$product, $material, $bom, $customer, $specs, $machine_priority_orders];
     }
 }
