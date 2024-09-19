@@ -20,4 +20,8 @@ class MachineShift extends Model
     {
         return $this->belongsTo(Shift::class);
     }
+    public function shiftBreak()
+    {
+        return $this->belongsTo(ShiftBreak::class, 'shift_id');
+    }
 }

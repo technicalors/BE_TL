@@ -15,12 +15,10 @@ use App\Models\Line;
 use App\Models\Losx;
 use App\Models\Lot;
 use App\Models\LotPlan;
-use App\Models\LSXLog;
 use App\Models\Machine;
 use App\Models\MachineLog;
 use App\Models\MachinePriorityOrder;
 use App\Models\MachineShift;
-use App\Models\Material;
 use App\Models\NumberMachineOrder;
 use App\Models\ProductionPlan;
 use App\Models\ProductOrder;
@@ -28,25 +26,16 @@ use App\Models\QCHistory;
 use App\Models\Shift;
 use App\Models\ShiftBreak;
 use App\Models\Spec;
-use App\Models\TestCriteria;
-use App\Models\Tracking;
-use App\Models\User;
-use App\Models\Workers;
 use App\Traits\API;
 use Carbon\Carbon;
-use Encore\Admin\Controllers\AdminController;
-use Encore\Admin\Form;
-use Encore\Admin\Grid;
-use Encore\Admin\Show;
-use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Maatwebsite\Excel\Concerns\ToArray;
 use Maatwebsite\Excel\Facades\Excel;
 use stdClass;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class Phase2UIApiController extends Controller
 {
@@ -811,93 +800,144 @@ class Phase2UIApiController extends Controller
         return $beforeStart->concat($afterStart)->take($numMachines)->values();
     }
 
-    function getProductionShifts($shif_id)
+    function getMachineProductionShifts($machineId, $date): Collection
     {
-        // Truy vấn để lấy danh sách ca làm việc từ bảng shift_breaks với type_break = 'Sản xuất'
-        return ShiftBreak::where('type_break', 'Sản xuất')
-            ->whereIn('shift_id', $shif_id)
-            ->orderBy('start_time', 'asc')
-            ->get(['start_time', 'end_time']);
+        $cacheKey = "machine_{$machineId}_production_shifts_{$date}";
+
+        return Cache::remember($cacheKey, 60, function () use ($machineId, $date) {
+            // Lấy tất cả các shift_id của máy trong ngày
+            $shiftIds = DB::table('machine_shift')
+                ->where('machine_id', $machineId)
+                ->where('date', $date)
+                ->pluck('shift_id');
+
+            if ($shiftIds->isEmpty()) {
+                return collect();
+            }
+
+            // Lấy tất cả các shift_breaks có type_break là 'Sản xuất' cho các shift_id
+            return DB::table('shift_breaks')
+                ->whereIn('shift_id', $shiftIds)
+                ->where('type_break', 'Sản xuất')
+                ->select('shift_id', 'start_time', 'end_time')
+                ->orderBy('id')
+                ->get();
+        });
     }
 
     function adjustTimeWithinShift($startTime, $duration, $machineId, $shiftPreparationTime)
     {
-        // Thiết lập múi giờ cho startTime
-        $startTime->setTimezone('Asia/Bangkok');
-        // Kiểm tra và điều chỉnh thời gian trong ca sản xuất
-        $startHour = $startTime->toTimeString();
-        $shift_ids = MachineShift::where('machine_id', $machineId)->pluck('shift_id')->toArray();
-        $shifts = $this->getProductionShifts($shift_ids);
-        $firstShift = $shifts->first();
-        foreach ($shifts as $shift) {
-            $shiftStart = Carbon::parse($shift->start_time, 'Asia/Bangkok')->toTimeString();
-            $shiftEnd = Carbon::parse($shift->end_time, 'Asia/Bangkok')->toTimeString();
-            // Nếu thời gian bắt đầu nằm trong khoảng thời gian sản xuất
-            if ($startHour >= $shiftStart && $startHour <= $shiftEnd) {
-                // Tính toán thời gian kết thúc dự kiến
-                $endTime = $startTime->copy()->addMinutes($duration);
-                $endHour = $endTime->toTimeString();
-                // Nếu thời gian kết thúc vượt quá thời gian kết thúc của ca hiện tại
-                if ($endHour > $shiftEnd) {
-                    // Tính toán thời gian dư thừa cần chuyển sang ca tiếp theo
-                    $remainingDuration = Carbon::parse($endHour)->diffInMinutes(Carbon::parse($shiftEnd));
-                    // Tìm ca tiếp theo
-                    $nextShiftStart = $shifts->where('start_time', '>', $shiftEnd)->first();
-                    if ($nextShiftStart) {
-                        if ($nextShiftStart->id == $firstShift->id) {
-                            $endTime =  Carbon::parse($startTime->toDateString() . ' ' . $nextShiftStart->start_time, 'Asia/Bangkok')->copy()->addMinutes($remainingDuration + $shiftPreparationTime); // Thời gian kết thúc mới trong ca tiếp theo
-                        } else {
-                            $endTime =  Carbon::parse($startTime->toDateString() . ' ' . $nextShiftStart->start_time, 'Asia/Bangkok')->copy()->addMinutes($remainingDuration); // Thời gian kết thúc mới trong ca tiếp theo
-                        }
-                    } else {
-                        // Nếu không còn ca tiếp theo, quay lại ca đầu tiên của ngày hôm sau
-                        $startShift = Carbon::parse($startTime->toDateString() . ' ' . $firstShift->start_time, 'Asia/Bangkok')->addDay();
-                        $endTime = $startShift->copy()->addMinutes($remainingDuration + $shiftPreparationTime);
-                    }
-                    return [$startTime, $endTime];
-                } else {
-                    // Thời gian kết thúc nằm trong khoảng thời gian sản xuất, trả về
-                    return [$startTime, $endTime];
-                }
-            } elseif ($startHour < $shiftStart) {
-                // Nếu thời gian bắt đầu nhỏ hơn thời gian bắt đầu của ca sản xuất hiện tại
-                $startTime->setTimeFrom(Carbon::parse($shiftStart, 'Asia/Bangkok'));
-                $endTime = $startTime->copy()->addMinutes($duration);
-
-                // Kiểm tra nếu thời gian kết thúc vượt quá thời gian kết thúc của ca
-                $endHour = $endTime->toTimeString();
-                if ($endHour > $shiftEnd) {
-                    // Tính toán thời gian dư thừa cần chuyển sang ca tiếp theo
-                    $remainingDuration = Carbon::parse($endHour)->diffInMinutes(Carbon::parse($shiftEnd));
-
-                    // Tìm ca tiếp theo
-                    $nextShiftStart = $shifts->where('start_time', '>', $shiftEnd)->first();
-                    if ($nextShiftStart) {
-                        $startShift = Carbon::parse($startTime->toDateString() . ' ' . $nextShiftStart->start_time, 'Asia/Bangkok')->addDay($startTime->dayOfYear != Carbon::now()->dayOfYear ? 0 : 1);
-                        $endTime = $startShift->copy()->addMinutes($remainingDuration); // Thời gian kết thúc mới trong ca tiếp theo
-                    } else {
-                        // Nếu không còn ca tiếp theo, quay lại ca đầu tiên của ngày hôm sau
-                        $startShift = Carbon::parse($startTime->toDateString() . ' ' . $firstShift->start_time, 'Asia/Bangkok')->addDay();
-                        $endTime = $startShift->copy()->addMinutes($remainingDuration);
-                    }
-                }
-
-                return [$startTime, $endTime];
-            }
-        }
-        // Nếu không nằm trong bất kỳ ca sản xuất nào, di chuyển thời gian bắt đầu đến đầu ca sản xuất tiếp theo
-        $nextShiftStart = $shifts->where('start_time', '>', $startHour)->first();
-        if ($nextShiftStart) {
-            $startShift = Carbon::parse($startTime->toDateString() . ' ' . $nextShiftStart->start_time, 'Asia/Bangkok')->addDay($startTime->dayOfYear != Carbon::now()->dayOfYear ? 0 : 1);
-            $endTime = $startShift->copy()->addMinutes($duration);
+        // $startTime = Carbon::parse('2024-09-19 01:22:14', 'Asia/Bangkok');
+        // $duration = 69;
+        // $machineId = 'LH1-A2';
+        // $shiftPreparationTime = 15;
+        // Đảm bảo $startTime là instance của Carbon và đặt múi giờ
+        if (!$startTime instanceof Carbon) {
+            $startTime = Carbon::parse($startTime, 'Asia/Bangkok');
         } else {
-            // Nếu không có ca sản xuất tiếp theo trong ngày, quay lại ca đầu tiên của ngày hôm sau
-            $firstShift = $shifts->first();
-            $startShift = Carbon::parse($startTime->toDateString() . ' ' . $firstShift->start_time, 'Asia/Bangkok')->addDay();
-            $endTime = $startShift->copy()->addMinutes($duration + $shiftPreparationTime);
+            $startTime->setTimezone('Asia/Bangkok');
         }
-        return [$startTime, $endTime];
+
+        $currentTime = $startTime->copy();
+        $remainingDuration = $duration; // Thời gian còn lại cần phân bổ (đơn vị: phút)
+
+        // Đặt giới hạn số ngày để tránh vòng lặp vô hạn
+        $maxDays = 30;
+
+        // Biến đếm số ngày đã xử lý
+        $daysProcessed = 0;
+
+        // Xử lý trường hợp startTime nằm trước 7:00, chuyển sang ngày hôm sau
+        // if ($currentTime->hour < 7) {
+        //     $currentTime->addDay()->startOfDay();
+        //     $daysProcessed++;
+        // }
+
+        while ($remainingDuration > 0 && $daysProcessed < $maxDays) {
+            $currentDate = $currentTime->copy()->startOfDay();
+            $dateString = $currentDate->toDateString();
+
+            // Lấy các shift_breaks sản xuất của máy trong ngày hiện tại
+            $productionShifts = $this->getMachineProductionShifts($machineId, $dateString);
+
+            if ($productionShifts->isEmpty()) {
+                // Nếu không có shift_breaks trong ngày này, chuyển sang ngày tiếp theo
+                $currentTime->addDay()->startOfDay();
+                $daysProcessed++;
+                continue;
+            }
+
+            // Duyệt qua từng shift_break để phân bổ thời gian
+            foreach ($productionShifts as $shift) {
+                $shiftStart = Carbon::parse("{$dateString} {$shift->start_time}", 'Asia/Bangkok');
+                $shiftEnd = Carbon::parse("{$dateString} {$shift->end_time}", 'Asia/Bangkok');
+
+                // Xử lý shift_breaks bắt đầu trước 07:00, gán vào ngày hôm sau
+                if ($shiftStart->hour < 7 && $startTime->hour >= 7) {
+                    $shiftStart->addDay();
+                }
+
+                if ($shiftStart->hour >= 7 && $startTime->hour < 7) {
+                    $shiftStart->subDay();
+                }
+
+                if ($shiftEnd->hour < 7 && $startTime->hour >= 7) {
+                    $shiftEnd->addDay();
+                }
+
+                // if ($shiftEnd->hour >= 7 && $startTime->hour < 7) {
+                //     $shiftEnd->subDay();
+                // }
+
+                // // Xử lý ca làm việc qua đêm
+                // if ($shiftEnd->lessThanOrEqualTo($shiftStart)) {
+                //     $shiftEnd->addDay();
+                // }
+
+                // Nếu currentTime nằm trước thời gian bắt đầu shift_break, chuyển đến shiftStart và thêm shiftPreparationTime nếu không phải lần đầu
+                if ($currentTime->lessThan($shiftStart) && $currentTime->day == $shiftStart->day) {
+                    if (!$currentTime->equalTo($startTime)) {
+                        $currentTime->addMinutes($shiftPreparationTime);
+                    }
+                    $currentTime = $shiftStart->copy();
+                }
+
+                // Nếu currentTime nằm trong shift_break
+                if ($currentTime->between($shiftStart, $shiftEnd) || $currentTime->equalTo($shiftStart)) {
+                    $availableTime = $shiftEnd->diffInMinutes($currentTime);
+
+                    if ($availableTime >= $remainingDuration) {
+                        // Có đủ thời gian để hoàn thành trong shift_break này
+                        $endTime = $currentTime->copy()->addMinutes($remainingDuration);
+                        return [$startTime, $endTime];
+                    } else {
+                        // Phân bổ hết thời gian có trong shift_break này
+                        $currentTime = $shiftEnd->copy();
+                        $remainingDuration -= $availableTime;
+
+                        // Thêm thời gian chuẩn bị cho shift_break tiếp theo
+                        // $currentTime->addMinutes($shiftPreparationTime);
+                    }
+                }
+                // Nếu currentTime lớn hơn shiftEnd, tiếp tục với shift_break tiếp theo
+                elseif ($currentTime->greaterThanOrEqualTo($shiftEnd)) {
+                    continue;
+                }
+            }
+
+            // Chuyển sang ngày tiếp theo sau khi duyệt hết các shift_breaks trong ngày
+            $currentTime->addDay()->startOfDay();
+            $daysProcessed++;
+        }
+        // dd($startTime, $currentTime);
+        // Nếu vẫn còn thời lượng chưa phân bổ sau khi đạt giới hạn ngày
+        return [$startTime, $currentTime];
     }
+
+
+
+
+
 
     function getShiftPreparationTime($productId, $lineId)
     {
@@ -1076,7 +1116,7 @@ class Phase2UIApiController extends Controller
                     $countLot += $lotIndex;
                     $lotId = $losx_id . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT); // Tạo lot_id với stt lot
                     $lotStartTime = ($lotIndex == 1) ? $startTime : $lots[$lineId][$machineIndex][$lotIndex - 2]['endTime'];
-                    list($lotStartTime, $lotEndTime) = $this->adjustTimeWithinShift($lotStartTime, ($taskTime * $lotSize) + $rollChangeTime, $machine->id, $shiftPreparationTime);
+                    list($lotStartTime, $lotEndTime) = $this->adjustTimeWithinShift($lotStartTime, ($taskTime * $lotSize) + $rollChangeTime, $machine->code, $shiftPreparationTime);
                     //Trường hợp thời gian sx vượt quá thời gian giao hàng, đánh dấu KH được tạo
                     if ($order->delivery_date && $lotStartTime->greaterThan(Carbon::parse($order->delivery_date))) {
                         $isExceedDeliveryTime = true;
