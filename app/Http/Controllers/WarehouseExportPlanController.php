@@ -24,7 +24,17 @@ class WarehouseExportPlanController extends Controller
     public function index(Request $request)
     {
         $pageSize = $request->pageSize ?? 25;
-        $records = WareHouseExportPlan::paginate($pageSize);
+        $query = WareHouseExportPlan::query()->orderByDesc('ngay_xuat_hang');
+
+        if (isset($request->start_date)) {
+            $query->whereDate('ngay_xuat_hang', '>=', $request->start_date);
+        }
+
+        if (isset($request->end_date)) {
+            $query->whereDate('ngay_xuat_hang', '<=', $request->end_date);
+        }
+
+        $records = $query->paginate($pageSize);
         return $this->success([
             'data' => $records->items(),
             'paginate' => [
