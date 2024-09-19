@@ -698,7 +698,7 @@ Route::group([
     Route::post('product-orders/export', [ProductOrderController::class, 'exportLine']);
     Route::post('product-orders/delete', [ProductOrderController::class, 'deleteMultiple']);
     Route::post('product-orders/update-number-machine', [ProductOrderController::class, 'updateNumberMachine']);
-    Route::get('shifts', [ShiftController::class, 'index']);
+    Route::apiResource('shifts', ShiftController::class);
     Route::get('machine-shift', [MachineShiftController::class, 'index']);
     Route::post('machine-shift', [MachineShiftController::class, 'store']);
     Route::put('machine-shift', [MachineShiftController::class, 'update']);
