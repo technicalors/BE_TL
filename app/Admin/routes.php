@@ -30,6 +30,7 @@ use App\Admin\Controllers\StampController;
 use App\Http\Controllers\FcPlantController;
 use App\Http\Controllers\MachineShiftController;
 use App\Http\Controllers\ShiftController;
+use App\Http\Controllers\WarehouseExportPlanController;
 use App\Models\MaintenancePlan;
 use Encore\Admin\Facades\Admin;
 use Illuminate\Routing\Router;
@@ -673,8 +674,12 @@ Route::group([
     $router->post('plan/create', [Phase2UIApiController::class, 'createProductionPlan']);
 
     Route::apiResource('lot-plans', LotPlanController::class);
+
     Route::get('fc-plants', [FcPlantController::class, 'index']);
     Route::post('fc-plants-import', [FcPlantController::class, 'import']);
+
+    Route::get('warehouse-export-plans', [WarehouseExportPlanController::class, 'index']);
+    Route::post('warehouse-export-plans-import', [WarehouseExportPlanController::class, 'import']);
 });
 
 //UI
