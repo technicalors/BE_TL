@@ -13,5 +13,10 @@ class ShiftBreak extends Model
         'type_break',
         'start_time',
         'end_time',
+        'duration_minutes'
     ];
+
+    public function shift(){
+        return $this->belongsTo(Shift::class);
+    }
 }

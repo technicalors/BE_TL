@@ -100,7 +100,7 @@ class ExcelHeaderController extends Controller
         foreach ($headers as $header) {
             if ($header->parent_id == $parentId) {
                 // Tính toán width dựa trên độ dài của title
-                $titleLength = strlen($header->header_name) * 20;
+                $titleLength = strlen($header->header_name) * 15;
                 $children = $this->buildTree($headers, $header->id);
                 // Nếu có con, tính width dựa trên tổng độ dài của tất cả các con
                 $nodeWidth = $titleLength;
@@ -114,7 +114,8 @@ class ExcelHeaderController extends Controller
                     'title' => $header->header_name,
                     'dataIndex' => $header->field_name,
                     'width' => $nodeWidth,
-                    'align' => 'center'
+                    'align' => 'center',
+                    'ellipsis' => true,
                 ];
                 // Thêm con nếu có
                 if (!empty($children)) {

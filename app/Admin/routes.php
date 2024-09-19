@@ -25,6 +25,7 @@ use App\Admin\Controllers\Phase2OIApiController;
 use App\Admin\Controllers\Phase2UIApiController;
 use App\Admin\Controllers\ParameterController;
 use App\Admin\Controllers\ProductOrderController;
+use App\Http\Controllers\ShiftBreakController;
 use App\Admin\Controllers\StampController;
 use App\Http\Controllers\MachineShiftController;
 use App\Http\Controllers\ShiftController;
@@ -494,7 +495,7 @@ Route::group([
     $router->delete('product/delete/{id}', [App\Admin\Controllers\ProductController::class, 'delete']);
     $router->post('products/delete', [App\Admin\Controllers\ProductController::class, 'deleteMultiple']);
     $router->get('product/export', [App\Admin\Controllers\ProductController::class, 'export']);
-    $router->post('product/import', [App\Admin\Controllers\ProductController::class, 'importNewVersion']);
+    $router->post('product/import', [App\Admin\Controllers\ProductController::class, 'importNewVersion2']);
 
     $router->get('material/list', [App\Admin\Controllers\MaterialController::class, 'list']);
     $router->patch('material/update/{id}', [App\Admin\Controllers\MaterialController::class, 'update']);
@@ -701,4 +702,6 @@ Route::group([
     Route::get('machine-shift', [MachineShiftController::class, 'index']);
     Route::post('machine-shift', [MachineShiftController::class, 'store']);
     Route::put('machine-shift', [MachineShiftController::class, 'update']);
+
+    Route::apiResource('shift-breaks', ShiftBreakController::class);
 });
