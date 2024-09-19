@@ -10,4 +10,8 @@ class Shift extends Model
     use HasFactory;
     protected $table = 'shifts';
     protected $fillable = ['name','start_time','end_time','code'];
+
+    public function shift_breaks(){
+        return $this->hasMany(ShiftBreak::class);
+    }
 }
