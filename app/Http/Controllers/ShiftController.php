@@ -14,9 +14,13 @@ class ShiftController extends Controller
 {
     use API;
 
-    public function index()
+    public function index(Request $request)
     {
-        $shifts = Shift::all();
+        $query = Shift::query();
+        if(!empty($request->name)){
+            $query->where('name', 'like', "%$request->name%");
+        }
+        $shifts = $query->get();
         return $this->success($shifts);
     }
 
