@@ -40,7 +40,6 @@ class WarehouseExportPlanImport implements ToCollection, WithStartRow, WithCalcu
 
     public function collection(Collection $rows)
     {
-        Log::debug($rows->first()->toArray()[0]);
         $cellDate = $this->extractDateFromString2($rows->first()->toArray()[0]);
         if (empty($cellDate)) throw new Exception('Không lấy được ngày xuất hàng');
 
