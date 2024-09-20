@@ -16,7 +16,7 @@ use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use Maatwebsite\Excel\Concerns\WithStartRow;
 use Maatwebsite\Excel\Concerns\WithSheetName;
 
-class WarehouseExportPlanImport implements ToCollection, WithStartRow, WithCalculatedFormulas, WithMultipleSheets
+class WarehouseExportPlanImport implements ToCollection, WithStartRow, WithCalculatedFormulas//, WithMultipleSheets
 {
     protected int $imported = 0;
 
@@ -25,22 +25,23 @@ class WarehouseExportPlanImport implements ToCollection, WithStartRow, WithCalcu
     //     return 1;
     // }
 
-    public function sheets(): array
-    {
-        return [
-            1 => $this,
-        ];
-    }
+    // public function sheets(): array
+    // {
+    //     return [
+    //         1 => $this,
+    //     ];
+    // }
 
     // Hàm này xác định hàng bắt đầu lấy dữ liệu (data row)
     public function startRow(): int
     {
-        return 4;
+        return 2;
     }
 
     public function collection(Collection $rows)
     {
-        $cellDate = $this->extractDateFromString($rows->first()->toArray()[0]);
+        Log::debug($rows->first()->toArray()[0]);
+        $cellDate = $this->extractDateFromString2($rows->first()->toArray()[0]);
         if (empty($cellDate)) throw new Exception('Không lấy được ngày xuất hàng');
 
         $khachHangPrev = null;
@@ -51,14 +52,14 @@ class WarehouseExportPlanImport implements ToCollection, WithStartRow, WithCalcu
             if ($key > 2) {
                 $product_id = $row[2] ?? null;
                 $ten_san_pham = $row[3] ?? null;
-                $sl_yeu_cau_giao = $row[5] ?? null;
-                $dvt = $row[6] ?? null;
-                $tong_kg = $row[7] ?? null;
-                $ton_kho = $row[8] ?? null;
-                $xac_nhan_sx = $row[9] ?? null;
-                $sl_thuc_xuat = $row[10] ?? null;
-                $quy_cach = $row[11] ?? null;
-                $ghi_chu = $row[13] ?? null;
+                $sl_yeu_cau_giao = $row[4] ?? null;
+                $dvt = $row[5] ?? null;
+                $tong_kg = $row[6] ?? null;
+                $ton_kho = $row[7] ?? null;
+                $xac_nhan_sx = $row[8] ?? null;
+                $sl_thuc_xuat = $row[9] ?? null;
+                $quy_cach = $row[10] ?? null;
+                $ghi_chu = $row[12] ?? null;
 
                 $khach_hang = null;
                 if ($row[1] == null || $row[1] == '') {
@@ -69,17 +70,18 @@ class WarehouseExportPlanImport implements ToCollection, WithStartRow, WithCalcu
                 }
 
                 $cua_xuat_hang = null;
-                if ($row[12] == null || $row[12] == '') {
+                if ($row[11] == null || $row[11] == '') {
                     $cua_xuat_hang = $cuaGiaoHangPrev;
                 } else {
-                    $cua_xuat_hang = $row[12];
-                    $cuaGiaoHangPrev = $row[12];
+                    $cua_xuat_hang = $row[11];
+                    $cuaGiaoHangPrev = $row[11];
                 }
 
                 if (!isset($product_id) || !isset($ten_san_pham) || !isset($sl_yeu_cau_giao) || !isset($dvt)) continue;
                 $product_id = trim($product_id);
 
                 $product = Product::find($product_id);
+                // $product = Product::firstOrCreate(['id' => $product_id, 'name' => $ten_san_pham]);
                 if (empty($product)) throw new Exception("Mã hàng hóa '{$product_id}' không tồn tại!");
 
                 $data[] = [
@@ -110,6 +112,18 @@ class WarehouseExportPlanImport implements ToCollection, WithStartRow, WithCalcu
     private function extractDateFromString($rawDate)
     {
         preg_match('/Ngày (\d{2}) Tháng (\d{2}) Năm (\d{4})/', $rawDate, $matches);
+
+        if (isset($matches[1], $matches[2], $matches[3])) {
+            return $matches[3] . '-' . $matches[2] . '-' . $matches[1];
+        }
+
+        return null;
+    }
+
+    private function extractDateFromString2($rawDate)
+    {
+        $dateString = preg_replace('/\s+/', '', $rawDate);
+        preg_match('/(\d{2})\.(\d{2})\.(\d{4})/', $dateString, $matches);
 
         if (isset($matches[1], $matches[2], $matches[3])) {
             return $matches[3] . '-' . $matches[2] . '-' . $matches[1];
