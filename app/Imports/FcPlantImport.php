@@ -3,8 +3,8 @@
 namespace App\Imports;
 
 use App\Models\FcPlant;
-use App\Models\FcPlantColumn;
 use App\Models\FcPlantDetail;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -39,31 +39,15 @@ class FcPlantImport implements ToCollection, WithStartRow, WithCalculatedFormula
             if (count($row) == 29) {
                 if ($index > 0) {
                     $no = str_pad($key, 4, '0', STR_PAD_LEFT);
-                    $details = [
-                        'G'  => $row[6] ?? 0,
-                        'H'  => $row[7] ?? 0,
-                        'I'  => $row[8] ?? 0,
-                        'J'  => $row[9] ?? 0,
-                        'K'  => $row[10] ?? 0,
-                        'L'  => $row[11] ?? 0,
-                        'M'  => $row[12] ?? 0,
-                        'N'  => $row[13] ?? 0,
-                        'O'  => $row[14] ?? 0,
-                        'P'  => $row[15] ?? 0,
-                        'Q'  => $row[16] ?? 0,
-                        'R'  => $row[17] ?? 0,
-                        'S'  => $row[18] ?? 0,
-                        'T'  => $row[19] ?? 0,
-                        'U'  => $row[20] ?? 0,
-                        'V'  => $row[21] ?? 0,
-                        'W'  => $row[22] ?? 0,
-                        'X'  => $row[23] ?? 0,
-                        'Y'  => $row[24] ?? 0,
-                        'Z'  => $row[25] ?? 0,
-                        'AA' => $row[26] ?? 0,
-                        'AB' => $row[27] ?? 0,
-                        'AC' => $row[28] ?? 0,
-                    ];
+                    $details = [];
+                    foreach ($columns as $index => $column) {
+                        if (isset($row[$index + 6]) && isset($column['name'])) {
+                            $details[$column['name']] = [
+                                'value' => $row[$index + 6],
+                                'date' => $column['date'] ?? null,
+                            ];
+                        }
+                    }
 
                     $plant = $row[0] ?? null;
                     $plant_name = $row[1] ?? null;
@@ -87,7 +71,9 @@ class FcPlantImport implements ToCollection, WithStartRow, WithCalculatedFormula
                         'material' => $row[2] ?? null,
                         'model' => $row[3] ?? null,
                         'po' => $po,
-                        'sum_fc' => array_sum($details),
+                        'sum_fc' => array_sum(array_map(function ($d) {
+                            return $d['value'];
+                        }, $details)),
                     ]);
 
                     if (empty($main)) throw new Exception("Tạo FC thất bại ở dòng $key");
@@ -96,7 +82,8 @@ class FcPlantImport implements ToCollection, WithStartRow, WithCalculatedFormula
                         $data[] = [
                             'fc_plant_id' => $main->id,
                             'col' => $col,
-                            'value' => $detail,
+                            'value' => $detail['value'],
+                            'date' => $detail['date'],
                             'created_at' => now(),
                             'updated_at' => now(),
                         ];
@@ -108,22 +95,27 @@ class FcPlantImport implements ToCollection, WithStartRow, WithCalculatedFormula
                     foreach ($this->cols as $idx => $col) {
                         if (isset($row[$idx + 6])) {
                             $columns[] = [
-                                'value' => $col,
-                                'name' => $row[$idx + 6],
-                                'created_at' => now(),
-                                'updated_at' => now(),
+                                'name' => trim(explode('(', $row[$idx + 6])[0]),
+                                'date' => $this->extractDateFromString($row[$idx + 6]),
                             ];
                         }
-                    }
-                    
-                    if (count($columns) > 0) {
-                        FcPlantColumn::query()->delete();
-                        FcPlantColumn::insert($columns);
                     }
                 }
             }
         }
 
         if ($this->imported == 0) throw new Exception('Không có bản ghi nào được thêm');
+    }
+
+    private function extractDateFromString($rawDate)
+    {
+        $dateString = preg_replace('/\s+/', '', $rawDate);
+        preg_match('/\((\d{2}\/\d{2})\)/', $dateString, $matches);
+
+        if (isset($matches[1])) {
+            return Carbon::createFromFormat('m/d/Y', $matches[1] . '/' . date('Y'));
+        }
+
+        return null;
     }
 }

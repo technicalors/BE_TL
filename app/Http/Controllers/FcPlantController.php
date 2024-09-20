@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Imports\FcPlantImport;
 use App\Models\FcPlant;
-use App\Models\FcPlantColumn;
+use App\Models\FcPlantDetail;
 use App\Models\MachineShift;
 use App\Models\Shift;
 use App\Models\ShiftBreak;
@@ -24,7 +24,7 @@ class FcPlantController extends Controller
     {
         $pageSize = $request->pageSize ?? 25;
         $records = FcPlant::with('details')->paginate($pageSize);
-        $columns = FcPlantColumn::orderBy('id')->get(['id', 'name', 'value']);
+        $columns = FcPlantDetail::query()->select(DB::raw('col as name'), DB::raw('col as value'))->groupBy('col')->get();
         $result = [];
         foreach ($records->items() as $record) {
             $details = (object)[];

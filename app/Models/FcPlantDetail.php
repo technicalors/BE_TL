@@ -13,5 +13,6 @@ class FcPlantDetail extends Model
         'fc_plant_id',
         'col',
         'value',
+        'date',
     ];
 }
