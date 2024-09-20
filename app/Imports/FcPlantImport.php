@@ -64,6 +64,11 @@ class FcPlantImport implements ToCollection, WithStartRow, WithCalculatedFormula
 
                     if (!isset($plant) || !isset($plant_name) || !isset($material) || !isset($model) || !isset($po)) return;
 
+                    if (count(array_values($details)) > 0) {
+                        $start_date = array_values($details)[0]['date'];
+                        $end_date = array_values($details)[count(array_values($details)) - 1]['date'];
+                    }
+
                     $main = FcPlant::create([
                         'code' => "{$time}_{$no}",
                         'plant' => $row[0] ?? null,
@@ -74,6 +79,8 @@ class FcPlantImport implements ToCollection, WithStartRow, WithCalculatedFormula
                         'sum_fc' => array_sum(array_map(function ($d) {
                             return $d['value'];
                         }, $details)),
+                        'start_date' => $start_date,
+                        'end_date' => $end_date,
                     ]);
 
                     if (empty($main)) throw new Exception("Tạo FC thất bại ở dòng $key");
