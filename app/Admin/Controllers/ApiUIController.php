@@ -5866,12 +5866,12 @@ class ApiUIController extends AdminController
     public function exportChiTietThucHienKiemTra_TrangThai(Request $request)
     {
         $query = MaintenanceSchedule::with('machine.line', 'maintenancePlan', 'maintenanceItem.maintenanceCategory', 'maintenanceLog');
-        if(isset($request->date) && count($request->date) === 2) {
+        if (isset($request->date) && count($request->date) === 2) {
             $query->whereDate('due_date', '>=', date('Y-m-d', strtotime($request->date[0])))->whereDate('due_date', '<=', date('Y-m-d', strtotime($request->date[1])));;
-        }else{
+        } else {
             $query->whereDate('due_date', now());
         }
-        if(isset($request->line_id)) {
+        if (isset($request->line_id)) {
             $lineId = $request->line_id;
             $query->whereHas('machine', function ($q) use ($lineId) {
                 $q->whereIn('line_id', $lineId);
@@ -5982,9 +5982,9 @@ class ApiUIController extends AdminController
     public function exportChiTietThucHienKiemTra(Request $request)
     {
         $query = MaintenanceSchedule::with('machine.line', 'maintenancePlan', 'maintenanceItem.maintenanceCategory', 'maintenanceLog.maintenanceLogImages');
-        if(isset($request->date) && count($request->date) === 2) {
+        if (isset($request->date) && count($request->date) === 2) {
             $query->whereDate('due_date', '>=', date('Y-m-d', strtotime($request->date[0])))->whereDate('due_date', '<=', date('Y-m-d', strtotime($request->date[1])));;
-        }else{
+        } else {
             $query->whereDate('due_date', now());
         }
         if (isset($request->machine_code)) {
@@ -6116,5 +6116,46 @@ class ApiUIController extends AdminController
         $writer->save('exported_files/Chi_tiết_thực_hiện_kiểm_tra.xlsx');
         $href = '/exported_files/Chi_tiết_thực_hiện_kiểm_tra.xlsx';
         return $this->success($href);
+    }
+
+    public function fixDataMachineMaintain()
+    {
+        $maintains = MaintenanceSchedule::all();
+        foreach ($maintains as $key => $schedule) {
+            switch ($schedule->machine_code) {
+                case 'DC_01':
+                    $schedule->machine_code = 'DC_1';
+                    break;
+                case 'IN_2_MAU':
+                    $schedule->machine_code = 'IN_2_MAU_01';
+                    break;
+                case 'IN_4_MAU':
+                    $schedule->machine_code = 'IN_4_MAU_01';
+                    break;
+                case 'IN_8_MAU':
+                    $schedule->machine_code = 'IN_8_MAU_01';
+                    break;
+                case 'LH_1':
+                    $schedule->machine_code = 'LH1-A2';
+                    break;
+                case 'LH_2':
+                    $schedule->machine_code = 'LH2-A2';
+                    break;
+                case 'LH_3':
+                    $schedule->machine_code = 'LH3-A2';
+                    break;
+                case 'LINER_2':
+                    $schedule->machine_code = 'LINER_02';
+                    break;
+                case 'LINER_3':
+                    $schedule->machine_code = 'LINER_03';
+                    break;
+                default:
+                    # code...
+                    break;
+            }
+            $schedule->save();
+        }
+        return 'ok';
     }
 }

@@ -588,6 +588,7 @@ Route::group([
     $router->get('/update-info-cong-doan', [App\Admin\Controllers\ApiUIController::class,'test']);
     $router->get('convertQCLog', [App\Admin\Controllers\ApiUIController::class,'convertQCLog']);
     $router->get('get-tem', [App\Admin\Controllers\StampController::class,'createTem']);
+    $router->get('/fix-data-machine-maintain', [ApiUIController::class, 'fixDataMachineMaintain']);
 });
 //Dashboard
 Route::group([
