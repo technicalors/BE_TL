@@ -228,6 +228,6 @@ class ProductOrderController extends Controller
             $initialQuantity = $calculatedQuantity;
         }
         $orderedSteps = $this->getOrderedProductionSteps($productID);
-        foreach
+        // foreach
     }
 }
