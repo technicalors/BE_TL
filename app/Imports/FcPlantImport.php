@@ -34,6 +34,7 @@ class FcPlantImport implements ToCollection, WithStartRow, WithCalculatedFormula
         $time = date('ymdHis');
         $poPreviousValue = null;
         $key = 1;
+        $columns = [];
         foreach ($rows->toArray() as $index => $row) {
             if (count($row) == 29) {
                 if ($index > 0) {
@@ -63,12 +64,12 @@ class FcPlantImport implements ToCollection, WithStartRow, WithCalculatedFormula
                         'AB' => $row[27] ?? 0,
                         'AC' => $row[28] ?? 0,
                     ];
-    
+
                     $plant = $row[0] ?? null;
                     $plant_name = $row[1] ?? null;
                     $material = $row[2] ?? null;
                     $model = $row[3] ?? null;
-    
+
                     $po = null;
                     if ($row[4] == null || $row[4] == '') {
                         $po = $poPreviousValue;
@@ -76,9 +77,9 @@ class FcPlantImport implements ToCollection, WithStartRow, WithCalculatedFormula
                         $po = $row[4];
                         $poPreviousValue = $row[4];
                     }
-    
+
                     if (!isset($plant) || !isset($plant_name) || !isset($material) || !isset($model) || !isset($po)) return;
-    
+
                     $main = FcPlant::create([
                         'code' => "{$time}_{$no}",
                         'plant' => $row[0] ?? null,
@@ -88,7 +89,7 @@ class FcPlantImport implements ToCollection, WithStartRow, WithCalculatedFormula
                         'po' => $po,
                         'sum_fc' => array_sum($details),
                     ]);
-    
+
                     if (empty($main)) throw new Exception("Tạo FC thất bại ở dòng $key");
                     $data = [];
                     foreach ($details as $col => $detail) {
@@ -105,7 +106,19 @@ class FcPlantImport implements ToCollection, WithStartRow, WithCalculatedFormula
                     $key++;
                 } elseif ($index == 0) {
                     foreach ($this->cols as $idx => $col) {
-                        if (isset($row[$idx + 6])) FcPlantColumn::create(['value' => $col, 'name' => $row[$idx + 6]]);
+                        if (isset($row[$idx + 6])) {
+                            $columns[] = [
+                                'value' => $col,
+                                'name' => $row[$idx + 6],
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ];
+                        }
+                    }
+                    
+                    if (count($columns) > 0) {
+                        FcPlantColumn::query()->delete();
+                        FcPlantColumn::insert($columns);
                     }
                 }
             }
