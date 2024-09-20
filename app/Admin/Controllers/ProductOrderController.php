@@ -215,19 +215,19 @@ class ProductOrderController extends Controller
         return $this->success('', 'Cập nhật thành công');
     }
 
-    public function getNumerMachine($productID,$initialQuantity, $time)
-    {
-        $controller = new Phase2UIApiController();
-        $productionSteps = $controller->getProductionSteps($productID);
-        $stepQuantities = [];
-        // Tính toán sản lượng cho từng công đoạn theo thứ tự DESC
-        foreach ($productionSteps as $step) {
-            $calculatedQuantity = $this->calculateProductionOutput($productID, $step->line_id, $initialQuantity);
-            $stepQuantities[$step->line_id] = $calculatedQuantity;
-            // Cập nhật lại initialQuantity cho công đoạn tiếp theo
-            $initialQuantity = $calculatedQuantity;
-        }
-        $orderedSteps = $this->getOrderedProductionSteps($productID);
-        // foreach
-    }
+    // public function getNumerMachine($productID,$initialQuantity, $time)
+    // {
+    //     $controller = new Phase2UIApiController();
+    //     $productionSteps = $controller->getProductionSteps($productID);
+    //     $stepQuantities = [];
+    //     // Tính toán sản lượng cho từng công đoạn theo thứ tự DESC
+    //     foreach ($productionSteps as $step) {
+    //         $calculatedQuantity = $this->calculateProductionOutput($productID, $step->line_id, $initialQuantity);
+    //         $stepQuantities[$step->line_id] = $calculatedQuantity;
+    //         // Cập nhật lại initialQuantity cho công đoạn tiếp theo
+    //         $initialQuantity = $calculatedQuantity;
+    //     }
+    //     $orderedSteps = $this->getOrderedProductionSteps($productID);
+    //     foreach
+    // }
 }
