@@ -635,7 +635,7 @@ class Phase2UIApiController extends Controller
         $data->errorRatioData = array_values($errorRatio);
         return $this->success($data);
     }
-    function getProductionSteps($productId)
+    public function getProductionSteps($productId)
     {
         // Bước 1: Truy vấn để lấy các công đoạn từ bảng spec theo product_id và slug 'hanh-trinh-san-xuat'
         // Sắp xếp theo thứ tự giảm dần (DESC) để tính toán sản lượng
