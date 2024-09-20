@@ -18,6 +18,8 @@ class FcPlant extends Model
         'model',
         'po',
         'sum_fc',
+        'start_date',
+        'end_date',
     ];
 
     /**
