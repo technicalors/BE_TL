@@ -41,25 +41,25 @@ class FcPlantImport implements ToCollection, WithStartRow, WithCalculatedFormula
                     $no = str_pad($key, 4, '0', STR_PAD_LEFT);
                     $details = [];
                     foreach ($columns as $index => $column) {
-                        if (isset($row[$index + 6]) && isset($column['name'])) {
+                        if (isset($row[$index + 7]) && isset($column['name'])) {
                             $details[$column['name']] = [
-                                'value' => $row[$index + 6],
+                                'value' => $row[$index + 7],
                                 'date' => $column['date'] ?? null,
                             ];
                         }
                     }
 
-                    $plant = $row[0] ?? null;
-                    $plant_name = $row[1] ?? null;
-                    $material = $row[2] ?? null;
-                    $model = $row[3] ?? null;
+                    $plant = $row[1] ?? null;
+                    $plant_name = $row[2] ?? null;
+                    $material = $row[3] ?? null;
+                    $model = $row[4] ?? null;
 
                     $po = null;
-                    if ($row[4] == null || $row[4] == '') {
+                    if ($row[5] == null || $row[5] == '') {
                         $po = $poPreviousValue;
                     } else {
-                        $po = $row[4];
-                        $poPreviousValue = $row[4];
+                        $po = $row[5];
+                        $poPreviousValue = $row[5];
                     }
 
                     if (!isset($plant) || !isset($plant_name) || !isset($material) || !isset($model)) return;
@@ -71,10 +71,10 @@ class FcPlantImport implements ToCollection, WithStartRow, WithCalculatedFormula
 
                     $main = FcPlant::create([
                         'code' => "{$time}_{$no}",
-                        'plant' => $row[0] ?? null,
-                        'plant_name' => $row[1] ?? null,
-                        'material' => $row[2] ?? null,
-                        'model' => $row[3] ?? null,
+                        'plant' => $row[1] ?? null,
+                        'plant_name' => $row[2] ?? null,
+                        'material' => $row[3] ?? null,
+                        'model' => $row[4] ?? null,
                         'po' => $po,
                         'sum_fc' => array_sum(array_map(function ($d) {
                             return $d['value'];
@@ -100,10 +100,10 @@ class FcPlantImport implements ToCollection, WithStartRow, WithCalculatedFormula
                     $key++;
                 } elseif ($index == 0) {
                     foreach ($this->cols as $idx => $col) {
-                        if (isset($row[$idx + 6])) {
+                        if (isset($row[$idx + 7])) {
                             $columns[] = [
-                                'name' => trim(explode('(', $row[$idx + 6])[0]),
-                                'date' => $this->extractDateFromString($row[$idx + 6]),
+                                'name' => trim(explode('(', $row[$idx + 7])[0]),
+                                'date' => $this->extractDateFromString($row[$idx + 7]),
                             ];
                         }
                     }
