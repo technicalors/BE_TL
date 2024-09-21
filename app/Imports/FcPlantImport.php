@@ -36,7 +36,7 @@ class FcPlantImport implements ToCollection, WithStartRow, WithCalculatedFormula
         $key = 1;
         $columns = [];
         foreach ($rows->toArray() as $index => $row) {
-            if (count($row) == 29) {
+            if (count($row) >= 29) {
                 if ($index > 0) {
                     $no = str_pad($key, 4, '0', STR_PAD_LEFT);
                     $details = [];
@@ -54,13 +54,13 @@ class FcPlantImport implements ToCollection, WithStartRow, WithCalculatedFormula
                     $material = $row[3] ?? null;
                     $model = $row[4] ?? null;
 
-                    $po = null;
-                    if ($row[5] == null || $row[5] == '') {
-                        $po = $poPreviousValue;
-                    } else {
-                        $po = $row[5];
-                        $poPreviousValue = $row[5];
-                    }
+                    $po = $row[5] ?? 0;
+                    // if ($row[5] == null || $row[5] == '') {
+                    //     $po = $poPreviousValue;
+                    // } else {
+                    //     $po = $row[5];
+                    //     $poPreviousValue = $row[5];
+                    // }
 
                     if (!isset($plant) || !isset($plant_name) || !isset($material) || !isset($model)) return;
 
