@@ -48,8 +48,8 @@ class ProductOrderImport implements ToCollection, WithHeadingRow, WithStartRow
         $orderNumber = $row['order_number'] ?? null;
         $orderDate = $row['order_date'] ?? null;
         $deliveryDate = $row['delivery_date'] ?? null;
-        $customerId = $row['customer_id'] ?? null;
-        $productId = $row['product_id'] ?? null;
+        $customerId = trim($row['customer_id'] ?? "") ?? null;
+        $productId = trim($row['product_id'] ?? "") ?? null;
         $quantity = $row['quantity'] ?? null;
         $note = $row['note'] ?? null;
         if (!$orderDate) {
