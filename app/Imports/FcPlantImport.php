@@ -62,7 +62,7 @@ class FcPlantImport implements ToCollection, WithStartRow, WithCalculatedFormula
                         $poPreviousValue = $row[4];
                     }
 
-                    if (!isset($plant) || !isset($plant_name) || !isset($material) || !isset($model) || !isset($po)) return;
+                    if (!isset($plant) || !isset($plant_name) || !isset($material) || !isset($model)) return;
 
                     if (count(array_values($details)) > 0) {
                         $start_date = array_values($details)[0]['date'];
