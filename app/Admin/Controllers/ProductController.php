@@ -306,11 +306,11 @@ class ProductController extends Controller
     {
         set_time_limit(0);
         ini_set('memory_limit', '2048M');
-        if (!isset($_FILES['files'])) { {
+        if (!isset($_FILES['file'])) { {
                 return $this->failure('', 'Định dạng file không đúng');
             }
         }
-        $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
+        $extension = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
         if ($extension == 'csv') {
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
         } elseif ($extension == 'xlsx') {
@@ -319,7 +319,7 @@ class ProductController extends Controller
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
         }
         // file path
-        $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
+        $spreadsheet = $reader->load($_FILES['file']['tmp_name']);
         $sheet = $spreadsheet->getActiveSheet();
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
         $product_data = [];
