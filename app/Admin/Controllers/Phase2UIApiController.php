@@ -754,7 +754,7 @@ class Phase2UIApiController extends Controller
         //Truy vấn thứ tự ưu tiên máy
         $machinePriorityOrder = MachinePriorityOrder::where('product_id', $productId)->where('line_id', $lineId)->orderBy('priority')->pluck('priority', 'machine_id')->toArray();
         // Truy vấn bảng machine để lấy máy có available_at nhỏ nhất theo line_id
-        $machines = Machine::select('code', 'available_at', 'line_id')->where('line_id', $lineId)->whereIn('machine_id', array_keys($machinePriorityOrder))->get();
+        $machines = Machine::select('code', 'available_at', 'line_id')->where('line_id', $lineId)->whereIn('code', array_keys($machinePriorityOrder))->get();
         foreach ($machines as $key => $machine) {
             if (isset($machine_available_list[$machine->code])) {
                 $machine->available_at = $machine_available_list[$machine->code];
