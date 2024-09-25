@@ -48,8 +48,8 @@ class ProductOrderImport implements ToCollection, WithHeadingRow, WithStartRow
         $orderNumber = $row['order_number'] ?? null;
         $orderDate = $row['order_date'] ?? null;
         $deliveryDate = $row['delivery_date'] ?? null;
-        $customerId = $row['customer_id'] ?? null;
-        $productId = $row['product_id'] ?? null;
+        $customerId = trim($row['customer_id'] ?? "") ?? null;
+        $productId = trim($row['product_id'] ?? "") ?? null;
         $quantity = $row['quantity'] ?? null;
         $note = $row['note'] ?? null;
         if (!$orderDate) {
@@ -62,10 +62,10 @@ class ProductOrderImport implements ToCollection, WithHeadingRow, WithStartRow
             throw new \Exception("Chưa có số lượng");
         }
         $product = Product::find($productId);
-        if (empty($product)) throw new \Exception("Mã mã hàng không tồn tại");
+        if (empty($product)) throw new \Exception("Mã mã hàng ".$productId." không tồn tại");
 
         $customer = Customer::find($customerId);
-        if (empty($customer)) throw new \Exception("Mã khách hàng không tồn tại");
+        if (empty($customer)) throw new \Exception("Mã khách hàng ".$customerId." không tồn tại");
         if(empty($orderDate)){
             $orderDate = Carbon::parse('now');
         }else{

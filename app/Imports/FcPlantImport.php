@@ -3,8 +3,8 @@
 namespace App\Imports;
 
 use App\Models\FcPlant;
-use App\Models\FcPlantColumn;
 use App\Models\FcPlantDetail;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -34,68 +34,63 @@ class FcPlantImport implements ToCollection, WithStartRow, WithCalculatedFormula
         $time = date('ymdHis');
         $poPreviousValue = null;
         $key = 1;
+        $columns = [];
         foreach ($rows->toArray() as $index => $row) {
-            if (count($row) == 29) {
+            if (count($row) >= 29) {
                 if ($index > 0) {
                     $no = str_pad($key, 4, '0', STR_PAD_LEFT);
-                    $details = [
-                        'G'  => $row[6] ?? 0,
-                        'H'  => $row[7] ?? 0,
-                        'I'  => $row[8] ?? 0,
-                        'J'  => $row[9] ?? 0,
-                        'K'  => $row[10] ?? 0,
-                        'L'  => $row[11] ?? 0,
-                        'M'  => $row[12] ?? 0,
-                        'N'  => $row[13] ?? 0,
-                        'O'  => $row[14] ?? 0,
-                        'P'  => $row[15] ?? 0,
-                        'Q'  => $row[16] ?? 0,
-                        'R'  => $row[17] ?? 0,
-                        'S'  => $row[18] ?? 0,
-                        'T'  => $row[19] ?? 0,
-                        'U'  => $row[20] ?? 0,
-                        'V'  => $row[21] ?? 0,
-                        'W'  => $row[22] ?? 0,
-                        'X'  => $row[23] ?? 0,
-                        'Y'  => $row[24] ?? 0,
-                        'Z'  => $row[25] ?? 0,
-                        'AA' => $row[26] ?? 0,
-                        'AB' => $row[27] ?? 0,
-                        'AC' => $row[28] ?? 0,
-                    ];
-    
-                    $plant = $row[0] ?? null;
-                    $plant_name = $row[1] ?? null;
-                    $material = $row[2] ?? null;
-                    $model = $row[3] ?? null;
-    
-                    $po = null;
-                    if ($row[4] == null || $row[4] == '') {
-                        $po = $poPreviousValue;
-                    } else {
-                        $po = $row[4];
-                        $poPreviousValue = $row[4];
+                    $details = [];
+                    foreach ($columns as $index => $column) {
+                        if (isset($row[$index + 7]) && isset($column['name'])) {
+                            $details[$column['name']] = [
+                                'value' => $row[$index + 7],
+                                'date' => $column['date'] ?? null,
+                            ];
+                        }
                     }
-    
-                    if (!isset($plant) || !isset($plant_name) || !isset($material) || !isset($model) || !isset($po)) return;
-    
+
+                    $plant = $row[1] ?? null;
+                    $plant_name = $row[2] ?? null;
+                    $material = $row[3] ?? null;
+                    $model = $row[4] ?? null;
+
+                    $po = $row[5] ?? 0;
+                    // if ($row[5] == null || $row[5] == '') {
+                    //     $po = $poPreviousValue;
+                    // } else {
+                    //     $po = $row[5];
+                    //     $poPreviousValue = $row[5];
+                    // }
+
+                    if (!isset($plant) || !isset($plant_name) || !isset($material) || !isset($model)) return;
+
+                    if (count(array_values($details)) > 0) {
+                        $start_date = array_values($details)[0]['date'];
+                        $end_date = array_values($details)[count(array_values($details)) - 1]['date'];
+                    }
+
                     $main = FcPlant::create([
                         'code' => "{$time}_{$no}",
-                        'plant' => $row[0] ?? null,
-                        'plant_name' => $row[1] ?? null,
-                        'material' => $row[2] ?? null,
-                        'model' => $row[3] ?? null,
+                        'plant' => $row[1] ?? null,
+                        'plant_name' => $row[2] ?? null,
+                        'material' => $row[3] ?? null,
+                        'model' => $row[4] ?? null,
                         'po' => $po,
-                        'sum_fc' => array_sum($details),
+                        'sum_fc' => array_sum(array_map(function ($d) {
+                            return $d['value'];
+                        }, $details)),
+                        'start_date' => $start_date,
+                        'end_date' => $end_date,
                     ]);
-    
+
                     if (empty($main)) throw new Exception("Tạo FC thất bại ở dòng $key");
                     $data = [];
                     foreach ($details as $col => $detail) {
                         $data[] = [
                             'fc_plant_id' => $main->id,
                             'col' => $col,
-                            'value' => $detail,
+                            'value' => $detail['value'],
+                            'date' => $detail['date'],
                             'created_at' => now(),
                             'updated_at' => now(),
                         ];
@@ -105,12 +100,29 @@ class FcPlantImport implements ToCollection, WithStartRow, WithCalculatedFormula
                     $key++;
                 } elseif ($index == 0) {
                     foreach ($this->cols as $idx => $col) {
-                        if (isset($row[$idx + 6])) FcPlantColumn::create(['value' => $col, 'name' => $row[$idx + 6]]);
+                        if (isset($row[$idx + 7])) {
+                            $columns[] = [
+                                'name' => trim(explode('(', $row[$idx + 7])[0]),
+                                'date' => $this->extractDateFromString($row[$idx + 7]),
+                            ];
+                        }
                     }
                 }
             }
         }
 
         if ($this->imported == 0) throw new Exception('Không có bản ghi nào được thêm');
+    }
+
+    private function extractDateFromString($rawDate)
+    {
+        $dateString = preg_replace('/\s+/', '', $rawDate);
+        preg_match('/\((\d{2}\/\d{2})\)/', $dateString, $matches);
+
+        if (isset($matches[1])) {
+            return Carbon::createFromFormat('m/d/Y', $matches[1] . '/' . date('Y'));
+        }
+
+        return null;
     }
 }
