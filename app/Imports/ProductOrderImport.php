@@ -53,9 +53,6 @@ class ProductOrderImport implements ToCollection, WithHeadingRow, WithStartRow
         $quantity = $row['quantity'] ?? null;
         $note = $row['note'] ?? null;
         $productName = $row['product_name'] ?? null;
-        if (!$orderDate) {
-            throw new \Exception("Chưa có ngày đặt hàng");
-        }
         if (!$productId) {
             throw new \Exception("Chưa có mã sản phẩm");
         }
