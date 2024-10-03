@@ -943,11 +943,6 @@ class Phase2UIApiController extends Controller
         return [$startTime, $currentTime];
     }
 
-
-
-
-
-
     function getShiftPreparationTime($productId, $lineId)
     {
         // Truy vấn để lấy giá trị thời gian chuẩn bị đầu ca từ bảng spec theo slug 'chuan-bidau-ca'
