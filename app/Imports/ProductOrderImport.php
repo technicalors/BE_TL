@@ -15,6 +15,8 @@ use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithStartRow;
 
+use function GuzzleHttp\json_encode;
+
 class ProductOrderImport implements ToCollection, WithHeadingRow, WithStartRow
 {
     protected $fields;
