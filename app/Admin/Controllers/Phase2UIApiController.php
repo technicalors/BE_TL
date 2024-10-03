@@ -1164,7 +1164,7 @@ class Phase2UIApiController extends Controller
                         'endTime' => $lotEndTime,
                     ];
                 }
-                // $plan_input['children'] = $lot_in_plan;
+                $plan_input['lots'] = $lot_in_plan;
                 $plan_input['is_exceed_time'] = $isExceedDeliveryTime;
                 // Thời gian kết thúc của công đoạn là thời gian kết thúc của lot cuối cùng
                 if (!empty($lots[$lineId][$machineIndex])) {
@@ -1225,7 +1225,7 @@ class Phase2UIApiController extends Controller
             DB::beginTransaction();
             foreach ($plans as $plan) {
                 $production_plan = ProductionPlan::create($plan);
-                foreach ($plan['children'] ?? [] as $lot_plan) {
+                foreach ($plan['lots'] ?? [] as $lot_plan) {
                     $lot_plan['production_plan_id'] = $production_plan->id;
                     LotPlan::create($lot_plan);
                 }
