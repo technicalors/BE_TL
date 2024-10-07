@@ -44,7 +44,7 @@ class WarehouseExportPlanImport implements ToCollection, WithStartRow, WithCalcu
     {
         $data = [];
         foreach ($rows->toArray() as $key => $row) {
-            if ($key > 2) {
+            if ($key > 0) {
                 if (empty($row[2])) {
                     break;
                 }

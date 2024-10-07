@@ -25,54 +25,27 @@ class ProductOrderController extends Controller
     public function index(Request $request)
     {
         $query = ProductOrder::orderBy('created_at', 'DESC');
+        if (isset($request->start_date) && isset($request->end_date)) {
+            $query->whereDate('order_date', '>=', date('Y-m-d', strtotime($request->start_date)))
+                ->whereDate('order_date', '<=', date('Y-m-d', strtotime($request->end_date)));
+        }
         if (isset($request->id)) {
             $query->where('id', 'like', "%$request->id%");
         }
         if (isset($request->product_id)) {
             $query->where('product_id', 'like', "%$request->product_id%");
         }
+        if (isset($request->khach_hang)) {
+            $query->where('customer_id', 'like', "%$request->customer_id%");
+        }
         $total = $query->count();
         if (isset($request->page) && isset($request->pageSize)) {
-            // return $request->page - 1;
             $query->offset((($request->page - 1) ?? 0) * $request->pageSize)->limit($request->pageSize);
         }
         if (isset($request->withs)) {
             $query->with($request->withs);
         }
         $result = $query->with('product', 'customer', 'material', 'numberProductOrder')->get();
-        foreach ($result as $value) {
-            $spec = Spec::with('line')->where('product_id', $value->product_id)
-                ->where('slug', 'hanh-trinh-san-xuat')
-                ->orderBy('value', 'asc')
-                ->groupBy('line_id')
-                ->get()->filter(function ($value) {
-                    return is_numeric($value->value);
-                })->values();
-            $sl_may = [];
-            $numberProductOrder = $value->numberProductOrder;
-            foreach ($spec as $key => $data) {
-                $sl_may[$key]['name'] = $data->line->name;
-                $sl_may[$key]['line_id'] = $data->line_id;
-                $sl_may[$key]['value'] = $numberProductOrder->first(function ($item) use ($data) {
-                    return $item->line_id == $data->line_id;
-                })->number_machine ?? 0;
-            }
-            $ton = [];
-            $san_luong = Lot::where('product_id', $value->product_id)->get()->groupBy('final_line_id');
-            $sl_ton = 0;
-            foreach ($san_luong as $line_id => $data) {
-                $ton[$line_id]['name'] = '';
-                $ton[$line_id]['line_id'] = $line_id;
-                $sl = $data->sum('so_luong');
-                $ton[$line_id]['value'] = $sl;
-                $sl_ton += $sl;
-            }
-            $value->order_date = $value->order_date ? date('d/m/Y', strtotime($value->order_date)) : null;
-            $value->delivery_date = $value->delivery_date ? date('d/m/Y', strtotime($value->delivery_date)) : null;
-            $value->sl_may = $sl_may;
-            $value->ton = array_values($ton);
-            $value->sl_ton = $sl_ton;
-        }
         return $this->success(['data' => $result, 'total' => $total]);
     }
 

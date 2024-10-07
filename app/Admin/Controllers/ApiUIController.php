@@ -3354,10 +3354,7 @@ class ApiUIController extends AdminController
         $khach_hang = Customer::find($request->khach_hang);
         if ($khach_hang) {
             $plan = ProductionPlan::where('khach_hang', $khach_hang->name)->get();
-            $product_ids = array_unique($plan->pluck('product_id')->toArray());
-            if (count($product_ids)) {
-                $data->product = Product::whereIn('id', $product_ids)->get();
-            }
+            $data->product = Product::whereIn('customer_id', $khach_hang)->get();
             $data->lo_sx = (array)array_unique($plan->pluck('lo_sx')->toArray());
         }
         return $this->success($data, '');

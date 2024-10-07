@@ -28,6 +28,7 @@ use App\Models\ShiftBreak;
 use App\Models\Spec;
 use App\Traits\API;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -755,9 +756,9 @@ class Phase2UIApiController extends Controller
         //Truy vấn thứ tự ưu tiên máy
         $machinePriorityOrder = MachinePriorityOrder::where('product_id', $productId)->where('line_id', $lineId)->orderBy('priority')->pluck('priority', 'machine_id')->toArray();
         // Truy vấn bảng machine để lấy máy có available_at nhỏ nhất theo line_id
-        if($lineId == 29){
+        if ($lineId == 29) {
             $machines = Machine::select('code', 'available_at', 'line_id')->where('line_id', $lineId)->get();
-        }else{
+        } else {
             $machines = Machine::select('code', 'available_at', 'line_id')->where('line_id', $lineId)->whereIn('code', array_keys($machinePriorityOrder))->get();
         }
         foreach ($machines as $key => $machine) {
@@ -836,11 +837,6 @@ class Phase2UIApiController extends Controller
 
     function adjustTimeWithinShift($startTime, $duration, $machineId, $shiftPreparationTime)
     {
-        // $startTime = Carbon::parse('2024-09-19 01:22:14', 'Asia/Bangkok');
-        // $duration = 69;
-        // $machineId = 'LH1-A2';
-        // $shiftPreparationTime = 15;
-        // Đảm bảo $startTime là instance của Carbon và đặt múi giờ
         if (!$startTime instanceof Carbon) {
             $startTime = Carbon::parse($startTime, 'Asia/Bangkok');
         } else {
@@ -848,19 +844,11 @@ class Phase2UIApiController extends Controller
         }
 
         $currentTime = $startTime->copy();
-        $remainingDuration = $duration; // Thời gian còn lại cần phân bổ (đơn vị: phút)
-
-        // Đặt giới hạn số ngày để tránh vòng lặp vô hạn
+        $remainingDuration = $duration;
         $maxDays = 30;
 
         // Biến đếm số ngày đã xử lý
         $daysProcessed = 0;
-
-        // Xử lý trường hợp startTime nằm trước 7:00, chuyển sang ngày hôm sau
-        // if ($currentTime->hour < 7) {
-        //     $currentTime->addDay()->startOfDay();
-        //     $daysProcessed++;
-        // }
 
         while ($remainingDuration > 0 && $daysProcessed < $maxDays) {
             $currentDate = $currentTime->copy()->startOfDay();
@@ -893,16 +881,6 @@ class Phase2UIApiController extends Controller
                 if ($shiftEnd->hour < 7 && $startTime->hour >= 7) {
                     $shiftEnd->addDay();
                 }
-
-                // if ($shiftEnd->hour >= 7 && $startTime->hour < 7) {
-                //     $shiftEnd->subDay();
-                // }
-
-                // // Xử lý ca làm việc qua đêm
-                // if ($shiftEnd->lessThanOrEqualTo($shiftStart)) {
-                //     $shiftEnd->addDay();
-                // }
-
                 // Nếu currentTime nằm trước thời gian bắt đầu shift_break, chuyển đến shiftStart và thêm shiftPreparationTime nếu không phải lần đầu
                 if ($currentTime->lessThan($shiftStart) && $currentTime->day == $shiftStart->day) {
                     if (!$currentTime->equalTo($startTime)) {
@@ -923,9 +901,6 @@ class Phase2UIApiController extends Controller
                         // Phân bổ hết thời gian có trong shift_break này
                         $currentTime = $shiftEnd->copy();
                         $remainingDuration -= $availableTime;
-
-                        // Thêm thời gian chuẩn bị cho shift_break tiếp theo
-                        // $currentTime->addMinutes($shiftPreparationTime);
                     }
                 }
                 // Nếu currentTime lớn hơn shiftEnd, tiếp tục với shift_break tiếp theo
@@ -938,7 +913,6 @@ class Phase2UIApiController extends Controller
             $currentTime->addDay()->startOfDay();
             $daysProcessed++;
         }
-        // dd($startTime, $currentTime);
         // Nếu vẫn còn thời lượng chưa phân bổ sau khi đạt giới hạn ngày
         return [$startTime, $currentTime];
     }
@@ -961,11 +935,70 @@ class Phase2UIApiController extends Controller
         return $numberMachineOrders->pluck('number_machine', 'line_id');
     }
 
+    private function getAvailableMaterialsForProduct($product)
+    {
+        $materials = $product->materials;
+        foreach ($materials as $key => $material) {
+            if ($key == 0) {
+                return $material->material_id;
+            }
+        }
+        throw new Exception("Không có nguyên vật liệu khả dụng cho sản phẩm {$product->name}.");
+    }
+
+    private function groupOrdersByAvailableMaterial($orders)
+    {
+        $groupedOrders = [];
+
+        foreach ($orders as $order) {
+            try {
+                $materialId = $this->getAvailableMaterialsForProduct($order->product);
+                if (!isset($groupedOrders[$materialId])) {
+                    $groupedOrders[$materialId] = [];
+                }
+
+                $groupedOrders[$materialId][] = $order;
+            } catch (Exception $e) {
+                // Xử lý nếu không có nguyên vật liệu khả dụng
+                // Có thể bỏ qua đơn hàng này hoặc thông báo lỗi
+                continue;
+            }
+        }
+
+        return $groupedOrders;
+    }
+
     public function generateProductionPlan(Request $request)
     {
         $orderIds = $request->order_id;
         $data = [];
         $machine_available_list = [];
+        $orders = ProductOrder::with(['product.materials', 'customer'])
+            ->get();
+
+        // Nhóm các đơn hàng theo nguyên vật liệu khả dụng
+        $groupedOrders = $this->groupOrdersByAvailableMaterial($orders);
+
+        $sortedGroups = [];
+        foreach ($groupedOrders as $materialId => $groupOrders) {
+            // Sắp xếp các đơn hàng trong nhóm theo các tiêu chí ưu tiên
+            $sortedOrders = collect($groupOrders)->sort(function ($a, $b) {
+                // So sánh thời hạn giao hàng (EDD)
+                if ($a->delivery_deadline != $b->delivery_deadline) {
+                    return $a->delivery_deadline < $b->delivery_deadline ? -1 : 1;
+                }
+                return 0;
+            });
+
+            $sortedGroups[$materialId] = $sortedOrders;
+        }
+        $sortedMaterialGroups = collect($sortedGroups)->sort(function ($a, $b) {
+            $earliestDeadlineA = $a->min('delivery_deadline');
+            $earliestDeadlineB = $b->min('delivery_deadline');
+            return $earliestDeadlineA <=> $earliestDeadlineB;
+        });
+        $prioritizedOrders = $sortedMaterialGroups->flatten(1);
+        return $prioritizedOrders;
         foreach ($orderIds as $index => $orderId) {
             $result = $this->processProductionPlan($orderId, $index, $machine_available_list);
             if ($result) {
@@ -990,9 +1023,6 @@ class Phase2UIApiController extends Controller
 
         // Lấy danh sách công đoạn theo thứ tự DESC để tính toán sản lượng
         $productionSteps = $this->getProductionSteps($productId);
-
-        // Lấy danh sách ca làm việc
-        // $productionShifts = $this->getProductionShifts();
 
         // Khai báo mảng để lưu trữ sản lượng của từng công đoạn
         $stepQuantities = [];
@@ -1053,15 +1083,12 @@ class Phase2UIApiController extends Controller
             if ($index == 0) {
                 // Công đoạn đầu tiên
                 $startTime = Carbon::now('Asia/Bangkok');
-                // $startTime = Carbon::parse('2024-08-29 07:30:00', 'Asia/Bangkok');
             } else {
-                // Các công đoạn tiếp theo
                 //Nếu số lượng cuộn vận chuyển lớn hơn số lượng lot của công đoạn trước đó thì số lượng cuộn vc = số lượng lot của công đoạn trước đó 
                 if ($rollsPerTransport === 0 || (isset($lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1]) && count($lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1]) < $rollsPerTransport)) {
                     $rollsPerTransport = count($lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1]);
                 }
                 $startTime = $lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1][$rollsPerTransport - 1]['endTime']->copy()->addMinutes($transportTime);
-                // return ['startTime'=>$startTime, 'lot'=>$lots, 'machineTime'=>$machineReadyTime];
             }
 
             // Tính toán thời gian bắt đầu và kết thúc cho từng công đoạn
@@ -1081,7 +1108,6 @@ class Phase2UIApiController extends Controller
                 if (!$startTime->greaterThan($machineReadyTime)) {
                     $startTime = $machineReadyTime;
                 }
-
                 // Thời gian kết thúc là thời gian bắt đầu cộng thêm thời gian sản xuất
                 $endTime = $startTime->copy()->addMinutes(((($taskTime * $lotSize) + $rollChangeTime) * $numLots) + $setupTime);
 
@@ -1165,18 +1191,11 @@ class Phase2UIApiController extends Controller
                 if (!empty($lots[$lineId][$machineIndex])) {
                     $stepEndTimes[$lineId] = end($lots[$lineId][$machineIndex])['endTime'];
                     $plan_input['thoi_gian_ket_thuc'] = $stepEndTimes[$lineId];
-                    // $plan->update([
-                    //     'thoi_gian_ket_thuc' => $stepEndTimes[$lineId],
-                    // ]);
                 }
                 //Tạo kế hoạch
                 $plans[] = $plan_input;
-                // $plan = ProductionPlan::create($plan);
 
                 $lotIndexOffset += $numLots;
-                // $machine->update([
-                //     'available_at' => $stepEndTimes[$lineId],
-                // ]);
                 $machine_input[] = ['machine_code' => $machine->code, 'available_at' => $stepEndTimes[$lineId]];
                 if (!isset($machine_available_list[$machine->code]) || $stepEndTimes[$lineId]->greaterThan($machine_available_list[$machine->code])) {
                     $machine_available_list[$machine->code] = $stepEndTimes[$lineId];
