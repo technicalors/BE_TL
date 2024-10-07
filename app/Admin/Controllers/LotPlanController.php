@@ -19,6 +19,9 @@ class LotPlanController extends Controller
         if (!empty($request->lot_id)) {
             $query->where('lot_id', 'like', '%' . $request->lot_id . '%');
         }
+        if (!empty($request->line_id)) {
+            $query->whereIn('line_id', $request->line_id);
+        }
         $total = $query->count();
         if (isset($request->page) && isset($request->pageSize)) {
             $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);

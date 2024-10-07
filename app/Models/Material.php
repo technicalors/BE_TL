@@ -38,4 +38,10 @@ class Material extends Model
     {
         return $this->hasMany(Bom::class, 'material_id', 'id');
     }
+
+    public function products()
+    {
+        return $this->belongsToMany(Product::class, 'bom', 'material_id', 'product_id')
+            ->withPivot('priority');
+    }
 }

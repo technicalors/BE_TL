@@ -37,9 +37,9 @@ class Product extends Model
 
     public function materials()
     {
-        return $this->belongsToMany(Bom::class)
+        return $this->belongsToMany(Material::class, 'bom', 'product_id', 'material_id')
             ->withPivot('priority')
-            ->orderBy('pivot_priority', 'asc');
+            ->orderBy('priority', 'asc');
     }
 
     public function spec()

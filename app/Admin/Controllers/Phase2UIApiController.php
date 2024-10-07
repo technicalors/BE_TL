@@ -753,60 +753,58 @@ class Phase2UIApiController extends Controller
 
     function getMachineReady($lineId, $numMachines, $productId, $machine_available_list, $startTime)
     {
-        //Truy vấn thứ tự ưu tiên máy
-        $machinePriorityOrder = MachinePriorityOrder::where('product_id', $productId)->where('line_id', $lineId)->orderBy('priority')->pluck('priority', 'machine_id')->toArray();
-        // Truy vấn bảng machine để lấy máy có available_at nhỏ nhất theo line_id
+        // Lấy thứ tự ưu tiên của máy
+        $machinePriorityOrder = MachinePriorityOrder::where('product_id', $productId)
+            ->where('line_id', $lineId)
+            ->orderBy('priority')
+            ->pluck('priority', 'machine_id')
+            ->toArray();
+
+        // Lấy danh sách mã máy từ thứ tự ưu tiên
+        $machineCodes = array_keys($machinePriorityOrder);
+
+        // Truy vấn danh sách máy dựa trên line_id và mã máy
         if ($lineId == 29) {
-            $machines = Machine::select('code', 'available_at', 'line_id')->where('line_id', $lineId)->get();
+            $machines = Machine::select('code', 'available_at', 'line_id')
+                ->where('line_id', $lineId)
+                ->get();
         } else {
-            $machines = Machine::select('code', 'available_at', 'line_id')->where('line_id', $lineId)->whereIn('code', array_keys($machinePriorityOrder))->get();
+            $machines = Machine::select('code', 'available_at', 'line_id')
+                ->where('line_id', $lineId)
+                ->whereIn('code', $machineCodes)
+                ->get();
         }
-        foreach ($machines as $key => $machine) {
+
+        // Cập nhật thời gian sẵn sàng và ưu tiên cho từng máy
+        foreach ($machines as $machine) {
             if (isset($machine_available_list[$machine->code])) {
                 $machine->available_at = $machine_available_list[$machine->code];
             }
-            if (isset($machinePriorityOrder[$machine->code])) {
-                $machine->priority = $machinePriorityOrder[$machine->code];
-            }
+            $machine->priority = $machinePriorityOrder[$machine->code] ?? PHP_INT_MAX;
         }
+
+        // Phân chia máy thành hai nhóm: trước và sau thời gian bắt đầu
         [$beforeStart, $afterStart] = $machines->partition(function ($machine) use ($startTime) {
             $readyTime = Carbon::parse($machine->available_at);
-            return $readyTime->lessThan($startTime) || $machine->available_at === null;
+            return $readyTime->lessThanOrEqualTo($startTime) || is_null($machine->available_at);
         });
-        // Nếu có máy nào sẵn sàng trước thời gian bắt đầu, chọn máy có thứ tự ưu tiên cao nhất
-        if (count($beforeStart) > 0) {
+        // Sắp xếp nhóm trước thời gian bắt đầu theo ưu tiên
+        if ($beforeStart->isNotEmpty()) {
             $beforeStart = $beforeStart->sortBy('priority');
         }
-        // Nếu không có máy nào trước thời gian bắt đầu, chọn máy có thời gian gần nhất với thời gian bắt đầu và ưu tiên theo thứ tự
-        if (count($afterStart) > 0) {
-            $afterStart = $afterStart->sort(function ($a, $b) use ($startTime) {
-                // Kiểm tra sự tồn tại của 'priority' trong từng máy
-                // $priorityA = isset($a->priority) ? $a->priority : PHP_INT_MAX; // Nếu không có 'priority', gán giá trị rất lớn
-                // $priorityB = isset($b->priority) ? $b->priority : PHP_INT_MAX; // Nếu không có 'priority', gán giá trị rất lớn
-                // // So sánh theo thứ tự ưu tiên trước
-                // if ($priorityA == $priorityB) {
-                //     // Nếu thứ tự ưu tiên bằng nhau hoặc không có 'priority', so sánh thời gian gần với $startTime
+
+        // Sắp xếp nhóm sau thời gian bắt đầu theo thời gian sẵn sàng và ưu tiên
+        if ($afterStart->isNotEmpty()) {
+            $afterStart = $afterStart->sort(function ($a, $b) {
                 $readyTimeA = Carbon::parse($a->available_at);
                 $readyTimeB = Carbon::parse($b->available_at);
-                //Nếu thời gian ss của của máy bằng nhau
+
                 if ($readyTimeA->equalTo($readyTimeB)) {
-                    // Kiểm tra sự tồn tại của 'priority' trong từng máy
-                    $priorityA = isset($a->priority) ? $a->priority : PHP_INT_MAX; // Nếu không có 'priority', gán giá trị rất lớn
-                    $priorityB = isset($b->priority) ? $b->priority : PHP_INT_MAX; // Nếu không có 'priority', gán giá trị rất lớn
-                    // So sánh theo thứ tự ưu tiên
-                    return $priorityA - $priorityB;
+                    return $a->priority - $b->priority;
                 }
-                //Nếu không có máy sẵn sàng trước thời gian sx, thì lấy máy có thời gian sẵn sàng sớm nhất
-                return abs($startTime->diffInMinutes($readyTimeA)) - abs($startTime->diffInMinutes($readyTimeB));
-                // }
-                // return $a->priority - $b->priority; // Thứ tự ưu tiên
+                return $readyTimeA->lessThan($readyTimeB) ? -1 : 1;
             });
         }
-        Log::info(['thoi gian bat dau', $startTime->format('Y-m-d H:i:s')]);
-        Log::debug('before', $beforeStart->toArray());
-        Log::debug('after', $afterStart->toArray());
-        Log::info($numMachines);
-        Log::debug($beforeStart->concat($afterStart));
         return $beforeStart->concat($afterStart)->take($numMachines)->values();
     }
 
@@ -940,7 +938,7 @@ class Phase2UIApiController extends Controller
         $materials = $product->materials;
         foreach ($materials as $key => $material) {
             if ($key == 0) {
-                return $material->material_id;
+                return $material->id;
             }
         }
         throw new Exception("Không có nguyên vật liệu khả dụng cho sản phẩm {$product->name}.");
@@ -974,18 +972,18 @@ class Phase2UIApiController extends Controller
         $data = [];
         $machine_available_list = [];
         $orders = ProductOrder::with(['product.materials', 'customer'])
+            ->whereIn('id', $orderIds)
             ->get();
 
         // Nhóm các đơn hàng theo nguyên vật liệu khả dụng
         $groupedOrders = $this->groupOrdersByAvailableMaterial($orders);
-
         $sortedGroups = [];
         foreach ($groupedOrders as $materialId => $groupOrders) {
             // Sắp xếp các đơn hàng trong nhóm theo các tiêu chí ưu tiên
             $sortedOrders = collect($groupOrders)->sort(function ($a, $b) {
                 // So sánh thời hạn giao hàng (EDD)
-                if ($a->delivery_deadline != $b->delivery_deadline) {
-                    return $a->delivery_deadline < $b->delivery_deadline ? -1 : 1;
+                if ($a->delivery_date != $b->delivery_date) {
+                    return $a->delivery_date < $b->delivery_date ? -1 : 1;
                 }
                 return 0;
             });
@@ -993,14 +991,14 @@ class Phase2UIApiController extends Controller
             $sortedGroups[$materialId] = $sortedOrders;
         }
         $sortedMaterialGroups = collect($sortedGroups)->sort(function ($a, $b) {
-            $earliestDeadlineA = $a->min('delivery_deadline');
-            $earliestDeadlineB = $b->min('delivery_deadline');
+            $earliestDeadlineA = $a->min('delivery_date');
+            $earliestDeadlineB = $b->min('delivery_date');
             return $earliestDeadlineA <=> $earliestDeadlineB;
         });
+
         $prioritizedOrders = $sortedMaterialGroups->flatten(1);
-        return $prioritizedOrders;
-        foreach ($orderIds as $index => $orderId) {
-            $result = $this->processProductionPlan($orderId, $index, $machine_available_list);
+        foreach ($prioritizedOrders as $index => $order) {
+            $result = $this->processProductionPlan($order, $index, $machine_available_list);
             if ($result) {
                 $data[] = $result;
             }
@@ -1011,13 +1009,13 @@ class Phase2UIApiController extends Controller
         return $this->success($data);
     }
 
-    public function processProductionPlan($orderId, $orderIndex = 0, &$machine_available_list = [])
+    public function processProductionPlan($order, $orderIndex = 0, &$machine_available_list = [])
     {
         // Lấy thông tin đơn hàng
-        $order = ProductOrder::with('product', 'customer')->find($orderId);
         if (!$order->sl_giao_sx) {
             return null;
         }
+        $orderId = $order->id;
         $productId = $order->product_id;
         $initialQuantity = $order->sl_giao_sx;
 
@@ -1027,6 +1025,7 @@ class Phase2UIApiController extends Controller
         // Khai báo mảng để lưu trữ sản lượng của từng công đoạn
         $stepQuantities = [];
         $numberMachineByStep = $this->getNumberMachine($orderId);
+
         // Tính toán sản lượng cho từng công đoạn theo thứ tự DESC
         foreach ($productionSteps as $step) {
             $calculatedQuantity = $this->calculateProductionOutput($productId, $step->line_id, $initialQuantity);
@@ -1044,6 +1043,7 @@ class Phase2UIApiController extends Controller
         $lot_plans = [];
         $machine_input = [];
         $isExceedDeliveryTime = false;
+        $machine_in_line = [];
 
         //Tạo mã lô sx
         $losx_id = Losx::generateUniqueIdPreview($orderIndex);
@@ -1059,7 +1059,6 @@ class Phase2UIApiController extends Controller
             if (!isset($lots[$lineId])) {
                 $lots[$lineId] = [];
             }
-
             // Lấy dữ liệu lotsize tại công đoạn với slug 'so-luong'
             $lotSize = $this->getLotSize($productId, $lineId);
 
@@ -1085,10 +1084,11 @@ class Phase2UIApiController extends Controller
                 $startTime = Carbon::now('Asia/Bangkok');
             } else {
                 //Nếu số lượng cuộn vận chuyển lớn hơn số lượng lot của công đoạn trước đó thì số lượng cuộn vc = số lượng lot của công đoạn trước đó 
-                if ($rollsPerTransport === 0 || (isset($lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1]) && count($lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1]) < $rollsPerTransport)) {
-                    $rollsPerTransport = count($lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1]);
+                if ($rollsPerTransport === 0 || ceil($quantity / $lotSize) < $rollsPerTransport) {
+                    $rollsPerTransport = ceil($quantity / $lotSize);
                 }
-                $startTime = $lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1][$rollsPerTransport - 1]['endTime']->copy()->addMinutes($transportTime);
+                
+                $startTime = $lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1][($rollsPerTransport / $machine_in_line[$orderedSteps[$index - 1]->line_id]) - 1]['endTime']->copy()->addMinutes($transportTime);
             }
 
             // Tính toán thời gian bắt đầu và kết thúc cho từng công đoạn
@@ -1097,6 +1097,7 @@ class Phase2UIApiController extends Controller
 
             //Tính lại số lượng máy nếu số máy thực tế nhỏ hơn số máy yêu cầu
             $numMachines = count($machines);
+            $machine_in_line[$lineId] = $numMachines;
             // Tính toán số lượng sản xuất cho mỗi máy
             $quantityPerMachine = $numMachines > 0 ? ceil($quantity / $numMachines) : $quantity;
             $lotIndexOffset = 0; // Offset để đánh số lot cho mỗi máy
@@ -1141,7 +1142,7 @@ class Phase2UIApiController extends Controller
                 $countLot = InfoCongDoan::query()->where([
                     'lo_sx' => $losx_id,
                     'line_id' => $lineId
-                ])->count();
+                ])->count() + $lotIndexOffset;
                 for ($lotIndex = 1; $lotIndex <= $numLots; $lotIndex++) {
                     $countLot += 1;
                     $lotId = $losx_id . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT); // Tạo lot_id với stt lot

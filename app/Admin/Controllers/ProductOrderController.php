@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Imports\ProductOrderImport;
 use App\Models\Line;
 use App\Models\Lot;
+use App\Models\MachinePriorityOrder;
 use App\Models\NumberMachineOrder;
 use App\Models\ProductOrder;
 use App\Models\Spec;
@@ -46,6 +47,39 @@ class ProductOrderController extends Controller
             $query->with($request->withs);
         }
         $result = $query->with('product', 'customer', 'material', 'numberProductOrder')->get();
+        foreach ($result as $value) {
+            $spec = Spec::with('line')->where('product_id', $value->product_id)
+                ->where('slug', 'hanh-trinh-san-xuat')
+                ->orderBy('value', 'asc')
+                ->groupBy('line_id')
+                ->get()->filter(function ($value) {
+                    return is_numeric($value->value);
+                })->values();
+            $sl_may = [];
+            $numberProductOrder = $value->numberProductOrder;
+            foreach ($spec as $key => $data) {
+                $sl_may[$key]['name'] = $data->line->name;
+                $sl_may[$key]['line_id'] = $data->line_id;
+                $sl_may[$key]['value'] = $numberProductOrder->first(function ($item) use ($data) {
+                    return $item->line_id == $data->line_id;
+                })->number_machine ?? 0;
+            }
+            $ton = [];
+            $san_luong = Lot::where('product_id', $value->product_id)->get()->groupBy('final_line_id');
+            $sl_ton = 0;
+            foreach ($san_luong as $line_id => $data) {
+                $ton[$line_id]['name'] = '';
+                $ton[$line_id]['line_id'] = $line_id;
+                $sl = $data->sum('so_luong');
+                $ton[$line_id]['value'] = $sl;
+                $sl_ton += $sl;
+            }
+            $value->order_date = $value->order_date ? date('d/m/Y', strtotime($value->order_date)) : null;
+            $value->delivery_date = $value->delivery_date ? date('d/m/Y', strtotime($value->delivery_date)) : null;
+            $value->sl_may = $sl_may;
+            $value->ton = array_values($ton);
+            $value->sl_ton = $sl_ton;
+        }
         return $this->success(['data' => $result, 'total' => $total]);
     }
 
@@ -170,8 +204,11 @@ class ProductOrderController extends Controller
             NumberMachineOrder::where('product_order_id', $request->id)->delete();
             foreach ($request->sl_may as $key => $value) {
                 $line = Line::with('machine')->find($value['line_id']);
-                if ($value['value'] > count($line->machine ?? [])) {
-                    return $this->failure('', 'Số lượng máy của công đoạn "' . $line->name . '" vượt quá số lượng máy thực tế.');
+                $numberMachine = MachinePriorityOrder::where('product_id', $productOrder->product_id)
+                    ->where('line_id', $value['line_id'])
+                    ->count();
+                if ($numberMachine > 0 && $value['value'] > $numberMachine) {
+                    return $this->failure('', 'Số lượng máy của công đoạn "' . $line->name . '" không được vượt quá ' . $numberMachine . ' máy.');
                 }
                 NumberMachineOrder::create([
                     'product_order_id' => $productOrder->id,
