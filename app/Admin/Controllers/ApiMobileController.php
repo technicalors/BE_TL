@@ -11,6 +11,7 @@ use App\Models\ErrorMachine;
 use Illuminate\Support\Str;
 use App\Models\Cell;
 use App\Models\CellProduct;
+use App\Models\CheckSheet;
 use App\Models\Customer;
 use App\Models\CustomUser;
 use App\Models\Error;
@@ -203,22 +204,30 @@ class ApiMobileController extends AdminController
     // lấy list máy của công đoạn
     public function getMachineOfLine(Request $request)
     {
-        $line = Line::find($request->line_id);
-        if (!$line) return $this->success();
-        return $this->success($line->machine);
+        $query = Machine::orderBy('code', 'ASC');
+        if ($request->line_id) {
+            $query->where('line_id', $request->line_id);
+        }
+        if ($request->is_iot) {
+            $query->where('is_iot', $request->is_iot);
+        }
+        $machines = $query->get();
+        return $this->success($machines);
     }
 
     // api TabChecksheet - Màn OI Thiết bị
     public function getChecksheetOfMachine(Request $request)
     {
         $machine_id = $request->machine_id;
-        $machine = Machine::find($machine_id);
+        $machine = Machine::where('code', $machine_id)->first();
         if (!$machine) return $this->success();
         $line = Line::find($machine['line_id']);
-
-        $checksheet_ids = $line->checkSheet->pluck('id');
+        if ($line->id == 25) {
+            $checksheet_ids = CheckSheet::where('machine_id', $machine_id)->pluck('id');
+        } else {
+            $checksheet_ids = CheckSheet::where('line_id', $line->id)->pluck('id');
+        }
         $checkSheetWork = CheckSheetWork::whereIn('check_sheet_id', $checksheet_ids)->with('checksheet')->get();
-
         $startDate = date("Y-m-d 00:00:00");
         $endDate = date("Y-m-d 23:59:59");
         $string = '%"machine_id":"' . $machine_id . '"%';
@@ -417,11 +426,15 @@ class ApiMobileController extends AdminController
 
     public function listMachineOfLine(Request $request)
     {
-        $line_id = $request->line_id;
-        // dd($line_id);
-        $line = Line::find($line_id);
-        $listMachine = $line->machine;
-        return $this->success($listMachine);
+        $query = Machine::orderBy('code', 'ASC');
+        if ($request->line_id) {
+            $query->where('line_id', $request->line_id);
+        }
+        if ($request->is_iot) {
+            $query->where('is_iot', $request->is_iot);
+        }
+        $machines = $query->get();
+        return $this->success($machines);
     }
 
     public function lineOverall(Request $request)
@@ -2840,12 +2853,12 @@ class ApiMobileController extends AdminController
         DB::beginTransaction();
         try {
             foreach ($data as $key => $input) {
-                $losx = Losx::firstOrCreate(['product_order_id'=>$input['product_order_id']]);
+                $losx = Losx::firstOrCreate(['product_order_id' => $input['product_order_id']]);
                 $input['lo_sx'] = $losx->id;
                 // if ($input['line_id'] == 24) {
                 //     $this->createPlanForLineLienHoan($input);
                 // } else {
-                    $this->createPlanForOtherLines($input);
+                $this->createPlanForOtherLines($input);
                 // }
             }
             DB::commit();
@@ -2986,7 +2999,7 @@ class ApiMobileController extends AdminController
                 'his' => "",
                 'lsx' => $input['lo_sx'],
                 'cd_thuc_hien' => $line->name,
-                'cd_tiep_theo' => Line::where('ordering' , '>', $line->ordering)->first()->name ?? 'Chọn',
+                'cd_tiep_theo' => Line::where('ordering', '>', $line->ordering)->first()->name ?? 'Chọn',
                 'nguoi_sx' => "",
                 'ghi_chu' => "",
             ]);

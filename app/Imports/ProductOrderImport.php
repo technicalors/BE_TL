@@ -22,7 +22,8 @@ class ProductOrderImport implements ToCollection, WithHeadingRow, WithStartRow
     protected $fields;
     protected $user_id;
 
-    public function __construct($user_id = null) {
+    public function __construct($user_id = null)
+    {
         $this->user_id = $user_id;
     }
 
@@ -48,7 +49,7 @@ class ProductOrderImport implements ToCollection, WithHeadingRow, WithStartRow
     protected function importRow(array $row)
     {
         $orderNumber = $row['order_number'] ?? null;
-        $orderDate = $row['order_date'] ?? null;
+        $orderDate = date('Y-m-d H:i:s');
         $deliveryDate = $row['delivery_date'] ?? null;
         $customerId = trim($row['customer_id'] ?? "") ?? null;
         $productId = trim($row['product_id'] ?? "") ?? null;
@@ -62,13 +63,13 @@ class ProductOrderImport implements ToCollection, WithHeadingRow, WithStartRow
             throw new \Exception("Chưa có số lượng");
         }
         $product = Product::find($productId);
-        if (empty($product)) throw new \Exception("Mã mã hàng ".$productId." không tồn tại");
+        if (empty($product)) throw new \Exception("Mã mã hàng " . $productId . " không tồn tại");
 
         $customer = Customer::find($customerId);
-        if (empty($customer)) throw new \Exception("Mã khách hàng ".$customerId." không tồn tại");
-        if(empty($orderDate)){
+        if (empty($customer)) throw new \Exception("Mã khách hàng " . $customerId . " không tồn tại");
+        if (empty($orderDate)) {
             $orderDate = Carbon::parse('now');
-        }else{
+        } else {
             $orderDate = $this->transformDate($orderDate);
         }
         // if (!empty($deliveryDate)) {
@@ -76,9 +77,9 @@ class ProductOrderImport implements ToCollection, WithHeadingRow, WithStartRow
         // } else {
         //     $deliveryDate = date('Y-m-d', strtotime($orderDate . ' + 7 days'));
         // }
-        if(Carbon::now()->format('H:i:s') < '16:30:00'){
+        if (Carbon::now()->format('H:i:s') < '16:30:00') {
             $deliveryDate = date('Y-m-d', strtotime($orderDate . ' + 7 days'));
-        }else{
+        } else {
             $deliveryDate = date('Y-m-d', strtotime($orderDate . ' + 6 days'));
         }
 
@@ -89,13 +90,14 @@ class ProductOrderImport implements ToCollection, WithHeadingRow, WithStartRow
             'order_number' => $orderNumber,
             'customer_id' => $customerId,
             'product_id' => $productId,
-            'product_name'=>$productName,
+            'product_name' => $productName,
             'order_date' => $orderDate,
             'quantity' => $quantity,
             'delivery_date' => $deliveryDate,
             'note' => $note,
             'fc_quantity' => 0,
-            'sl_giao_sx' => $quantity
+            'sl_giao_sx' => $quantity,
+            'user_id' => $this->user_id,
         ]);
         $spec = Spec::with('line')->where('product_id', $productId)
             ->where('slug', 'hanh-trinh-san-xuat')
