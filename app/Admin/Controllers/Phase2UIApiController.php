@@ -1053,6 +1053,7 @@ class Phase2UIApiController extends Controller
         }
         $losx_input = ['product_order_id' => $order->id, 'id' => $losx_id];
         // Tính toán thời gian bắt đầu và kết thúc cho từng công đoạn theo thứ tự ASC
+        $lotSize = 11000;
         foreach ($orderedSteps as $index => $step) {
             $lineId = $step->line_id;
             $quantity = $stepQuantities[$lineId];
@@ -1060,7 +1061,9 @@ class Phase2UIApiController extends Controller
                 $lots[$lineId] = [];
             }
             // Lấy dữ liệu lotsize tại công đoạn với slug 'so-luong'
-            $lotSize = $this->getLotSize($productId, $lineId);
+            if ($index == 0) {
+                $lotSize = $this->getLotSize($productId, $lineId);
+            }
 
             // Lấy thời gian lên xuống cuộn tại công đoạn với slug 'thoi-gian-len-xuong-cuon'
             $rollChangeTime = $this->getRollChangeTime($productId, $lineId);
@@ -1087,7 +1090,7 @@ class Phase2UIApiController extends Controller
                 if ($rollsPerTransport === 0 || ceil($quantity / $lotSize) < $rollsPerTransport) {
                     $rollsPerTransport = ceil($quantity / $lotSize);
                 }
-                
+
                 $startTime = $lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1][($rollsPerTransport / $machine_in_line[$orderedSteps[$index - 1]->line_id]) - 1]['endTime']->copy()->addMinutes($transportTime);
             }
 
