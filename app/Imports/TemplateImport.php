@@ -35,7 +35,7 @@ class TemplateImport implements ToCollection, WithHeadingRow, WithStartRow
     }
     public function collection(Collection $collection)
     {
-        Template::query()->delete();
+        // Template::query()->delete();
         foreach ($collection as $row) {
             $this->importRow($row->toArray());
         }
