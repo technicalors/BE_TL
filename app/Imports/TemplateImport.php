@@ -7,6 +7,9 @@ use App\Models\Customer;
 use App\Models\Material;
 use App\Models\Product;
 use App\Models\Template;
+use App\Models\Unit;
+use App\Models\WarehouseHistories;
+use App\Models\WarehouseInventory;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Collection;
@@ -17,7 +20,7 @@ use Maatwebsite\Excel\Concerns\WithStartRow;
 
 class TemplateImport implements ToCollection, WithHeadingRow, WithStartRow
 {
-    protected $fields;
+    protected int $imported = 0;
 
     // Hàm này xác định hàng bắt đầu lấy tiêu đề (heading row)
     public function headingRow(): int
@@ -33,10 +36,11 @@ class TemplateImport implements ToCollection, WithHeadingRow, WithStartRow
     public function collection(Collection $collection)
     {
         Template::query()->delete();
-        $this->fields = $collection->toArray();
         foreach ($collection as $row) {
             $this->importRow($row->toArray());
         }
+
+        if ($this->imported == 0) throw new Exception('Không có bản ghi nào được thêm');
     }
 
     protected function importRow(array $row)
@@ -73,6 +77,28 @@ class TemplateImport implements ToCollection, WithHeadingRow, WithStartRow
         //     $template->worker_name = $worker_name;
         //     $template->save();
         // }
+
+        // Lưu tồn và lịch sử nhập NVL
+        $inventory = WarehouseInventory::where('material_id', $material->id)->first();
+        if (empty($inventory)) {
+            WarehouseInventory::create([
+                'material_id' => $material->id,
+                'quantity' => $quantity,
+                'roll_quantity' => $roll_quantity,
+            ]);
+        } else {
+            $inventory->quantity += $quantity;
+            $inventory->roll_quantity += $roll_quantity;
+            $inventory->save();
+        }
+        WarehouseHistories::create([
+            'type' => WarehouseHistories::TYPE_IMPORT,
+            'material_id' => $material->id,
+            'quantity' => $quantity,
+            'roll_quantity' => $roll_quantity,
+        ]);
+
+        $this->imported++;
     }
 
     protected function transformDate($value)

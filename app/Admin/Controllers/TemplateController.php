@@ -106,12 +106,16 @@ class TemplateController extends Controller
         $request->validate([
             'file' => 'required|mimes:xlsx',
         ]);
+        DB::beginTransaction();
         try {
             Excel::import(new TemplateImport, $request->file('file'));
+            DB::commit();
+            return $this->success('', 'Upload thành công');
         } catch (\Exception $e) {
+            Log::error($e->getMessage());
+            DB::rollBack();
             // Handle the exception and return an appropriate response
             return $this->failure(['error' => $e->getMessage()], $e->getMessage(), 422);
         }
-        return $this->success('', 'Upload thành công');
     }
 }
