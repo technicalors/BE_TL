@@ -67,17 +67,6 @@ class ProductOrderImport implements ToCollection, WithHeadingRow, WithStartRow
 
         $customer = Customer::find($customerId);
         if (empty($customer)) throw new \Exception("Mã khách hàng " . $customerId . " không tồn tại");
-        // dd($orderDate);
-        // if (empty($orderDate)) {
-        //     $orderDate = Carbon::parse('now');
-        // } else {
-        //     $orderDate = $this->transformDate($orderDate);
-        // }
-        // if (!empty($deliveryDate)) {
-        //     $deliveryDate = $this->transformDate($deliveryDate);
-        // } else {
-        //     $deliveryDate = date('Y-m-d', strtotime($orderDate . ' + 7 days'));
-        // }
         if (Carbon::now()->format('H:i:s') < '16:30:00') {
             $deliveryDate = date('Y-m-d', strtotime($orderDate . ' + 7 days'));
         } else {
