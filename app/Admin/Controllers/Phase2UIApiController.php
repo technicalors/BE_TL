@@ -5,6 +5,7 @@ namespace App\Admin\Controllers;
 use App\Http\Controllers\Controller;
 use App\Imports\InfoCongDoanImport;
 use App\Imports\WarehouseLocationImport;
+use App\Models\Bom;
 use App\Models\Customer;
 use App\Models\CustomUser;
 use App\Models\Error;
@@ -20,6 +21,7 @@ use App\Models\MachineLog;
 use App\Models\MachinePriorityOrder;
 use App\Models\MachineShift;
 use App\Models\NumberMachineOrder;
+use App\Models\Product;
 use App\Models\ProductionPlan;
 use App\Models\ProductOrder;
 use App\Models\QCHistory;
@@ -1009,9 +1011,13 @@ class Phase2UIApiController extends Controller
 
         $prioritizedOrders = $sortedMaterialGroups->flatten(1);
         foreach ($prioritizedOrders as $index => $order) {
-            $result = $this->processProductionPlan($order, $index, $machine_available_list);
-            if ($result) {
-                $data[] = $result;
+            try {
+                $result = $this->processProductionPlan($order, $index, $machine_available_list);
+                if ($result) {
+                    $data[] = $result;
+                }
+            } catch (\Throwable $th) {
+                return $this->failure('', $th->getMessage());
             }
         }
         if (count($data) <= 0) {
@@ -1024,7 +1030,7 @@ class Phase2UIApiController extends Controller
     {
         // Lấy thông tin đơn hàng
         if (!$order->sl_giao_sx) {
-            return null;
+            throw new Exception("Không có số lượng giao sản xuất", 1);
         }
         $orderId = $order->id;
         $productId = $order->product_id;
@@ -1066,6 +1072,22 @@ class Phase2UIApiController extends Controller
             $lineId = $step->line_id;
             if (!isset($lots[$lineId])) {
                 $lots[$lineId] = [];
+            }
+            if ($lineId == '24') {
+                $bom = Bom::where('product_id', $productId)->orderBy('priority')->orderBy('created_at')->first();
+                Log::debug($bom);
+                if (!$bom) {
+                    throw new Exception("Không tìm thấy bom của " . $productId . " tại công đoạn Gấp dán", 1);
+                }elseif(!$bom->material_id){
+                    throw new Exception("Không tìm thấy mã NVL của mã sản phẩm" . $productId . " tại công đoạn Gấp dán", 1);
+                }
+                $productId = $bom->material_id;
+            }else{
+                $productId = $order->product_id;
+            }
+            $product = Product::find($productId);
+            if (!$product) {
+                throw new Exception("Không tìm thấy mã sản phẩm " . $productId, 1);
             }
             // Lấy thời gian lên xuống cuộn tại công đoạn với slug 'thoi-gian-len-xuong-cuon'
             $rollChangeTime = $this->getRollChangeTime($productId, $lineId);
@@ -1124,8 +1146,8 @@ class Phase2UIApiController extends Controller
                     'ca_sx' => 1,
                     'delivery_date' => $order->delivery_date ? date('Y-m-d', strtotime($order->delivery_date)) : null,
                     'machine_id' => $machine->code,
-                    'product_id' => $order->product_id,
-                    'ten_san_pham' => $order->product->name ?? "",
+                    'product_id' => $productId,
+                    'ten_san_pham' => $product->name ?? "",
                     'khach_hang' => $order->customer->name ?? "",
                     'lo_sx' => $losx_id,
                     'thu_tu_uu_tien' => 1,
@@ -1171,7 +1193,7 @@ class Phase2UIApiController extends Controller
                         'ca_sx' => 1,
                         'cong_doan_sx' => $step->line->name,
                         'machine_id' => $machine->code,
-                        'ten_san_pham' => $order->product->name ?? "",
+                        'ten_san_pham' => $product->name ?? "",
                         'khach_hang' => $order->customer_id,
                         'thoi_gian_bat_dau' => $lotStartTime,
                         'thoi_gian_ket_thuc' => $lotEndTime,
@@ -1209,8 +1231,8 @@ class Phase2UIApiController extends Controller
         //Gán giá trị cho đơn hàng
         $losx_input['lo_sx'] = $losx_input['id'];
         $losx_input['sl_giao_sx'] = $order->sl_giao_sx;
-        $losx_input['product_id'] = $order->product_id;
-        $losx_input['product_name'] = $order->product->name ?? "";
+        $losx_input['product_id'] = $productId;
+        $losx_input['product_name'] = $product->name ?? "";
         $losx_input['thoi_gian_bat_dau'] = !empty($plans) ? (reset($plans)['thoi_gian_bat_dau'] ?? null) : null;
         $losx_input['thoi_gian_ket_thuc'] = !empty($plans) ? (end($plans)['thoi_gian_ket_thuc'] ?? null) : null;
         $losx_input['khach_hang'] = $order->customer->name ?? "";

@@ -6,6 +6,7 @@ use App\Helpers\QueryHelper;
 use App\Models\Customer;
 use App\Models\Material;
 use App\Models\Product;
+use App\Models\RollMaterial;
 use App\Models\Template;
 use App\Models\Unit;
 use App\Models\WarehouseHistories;
@@ -36,6 +37,7 @@ class TemplateImport implements ToCollection, WithHeadingRow, WithStartRow
     public function collection(Collection $collection)
     {
         // Template::query()->delete();
+        Template::query()->update(['status' => 1]);
         foreach ($collection as $row) {
             $this->importRow($row->toArray());
         }
@@ -59,44 +61,43 @@ class TemplateImport implements ToCollection, WithHeadingRow, WithStartRow
 
         $material = Material::find($material_id);
         if (empty($material)) throw new Exception("Không tìm thấy NVL: $material_id");
-        // $template = Template::query()->where('material_id', $material->id)->first();
-        Template::create([
-            'material_id' => $material->id,
-            'quantity' => $quantity,
-            'roll_quantity' => $roll_quantity,
-            'manufacture_date' => $manufacture_date,
-            'machine_number' => $machine_number,
-            'worker_name' => $worker_name,
-        ]);
-        // if (empty($template)) {
-        // } else {
-        //     $template->quantity = $quantity;
-        //     $template->roll_quantity = $roll_quantity;
-        //     $template->manufacture_date = $manufacture_date;
-        //     $template->machine_number = $machine_number;
-        //     $template->worker_name = $worker_name;
-        //     $template->save();
-        // }
-
-        // Lưu tồn và lịch sử nhập NVL
-        $inventory = WarehouseInventory::where('material_id', $material->id)->first();
-        if (empty($inventory)) {
-            WarehouseInventory::create([
+        for ($i=0; $i<$roll_quantity; $i++) {
+            $template = Template::create([
                 'material_id' => $material->id,
-                'quantity' => $quantity,
-                'roll_quantity' => $roll_quantity,
+                'quantity' => $quantity, // 👈 Số lượng NVL của 1 cuộn
+                'roll_quantity' => 1,
+                'manufacture_date' => $manufacture_date,
+                'machine_number' => $machine_number,
+                'worker_name' => $worker_name,
+                'status' => 0,
             ]);
-        } else {
-            $inventory->quantity += $quantity;
-            $inventory->roll_quantity += $roll_quantity;
-            $inventory->save();
+    
+            // Lưu roll
+            $prefix = 'C' . date('dmy');
+            $roll_id = QueryHelper::generateNewId(new RollMaterial(), $prefix, 3);
+            RollMaterial::create([
+                'id' => $roll_id,
+                'template_id' => $template->id,
+                'material_id' => $material->id,
+                'quantity' => $quantity, // 👈 Số lượng NVL của 1 cuộn
+                'roll_quantity' => 1,
+            ]);
+
+            // Lưu tồn và lịch sử nhập NVL
+            WarehouseInventory::create([
+                'roll_id' => $roll_id,
+                'material_id' => $material->id,
+                'quantity' => $quantity, // Tổng số lượng NVL
+                'roll_quantity' => 1,
+            ]);
+            WarehouseHistories::create([
+                'type' => WarehouseHistories::TYPE_IMPORT,
+                'roll_id' => $roll_id,
+                'material_id' => $material->id,
+                'quantity' => $quantity, // Tổng số lượng NVL
+                'roll_quantity' => 1,
+            ]);
         }
-        WarehouseHistories::create([
-            'type' => WarehouseHistories::TYPE_IMPORT,
-            'material_id' => $material->id,
-            'quantity' => $quantity,
-            'roll_quantity' => $roll_quantity,
-        ]);
 
         $this->imported++;
     }

@@ -6,21 +6,19 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Validator;
 
-class WarehouseHistories extends Model
+class RollMaterial extends Model
 {
     use HasFactory;
-    protected $table = "warehouse_histories";
+    protected $table = "roll_materials";
     protected $fillable = [
-        'roll_id',
-        'type',
-        'roll_id',
+        'id',
+        'template_id',
         'material_id',
         'quantity',
         'roll_quantity',
         'unit_id',
-        'note',
     ];
-
-    public const TYPE_IMPORT = 'import';
-    public const TYPE_EXPORT = 'export';
+    protected $primaryKey = 'id';
+    protected $keyType = 'string';
+    public $incrementing = false;
 }
