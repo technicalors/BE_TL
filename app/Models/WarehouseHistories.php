@@ -11,6 +11,7 @@ class WarehouseHistories extends Model
     use HasFactory;
     protected $table = "warehouse_histories";
     protected $fillable = [
+        'roll_id',
         'type',
         'material_id',
         'quantity',
