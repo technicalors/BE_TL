@@ -3,6 +3,7 @@
 namespace App\Admin\Controllers;
 
 use App\Events\ProductionUpdated;
+use App\Models\Bom;
 use App\Models\Customer;
 use App\Models\Error;
 use App\Models\ErrorMachine;
@@ -34,6 +35,7 @@ use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Models\CustomUser;
 use App\Models\ErrorHistory;
+use App\Models\LotPlan;
 use App\Models\LSXLog;
 use App\Models\MaintenanceSchedule;
 use App\Models\Material;
@@ -6152,6 +6154,32 @@ class ApiUIController extends AdminController
                     break;
             }
             $schedule->save();
+        }
+        return 'ok';
+    }
+
+    public function updateProductToMaterialInLineGapDan(){
+        $plans = ProductionPlan::where('line_id', '24')->whereDate('created_at', date('Y-m-d'))->get();
+        foreach ($plans as $key => $plan) {
+            $bom = Bom::where('product_id', $plan->product_id)->orderBy('priority')->orderBy('created_at')->first();
+            if(!$bom || !$bom->material_id){
+                continue;
+            }
+            $plan->update([
+                'product_id'=>$bom->material_id
+            ]);
+            $lot_plans = LotPlan::where('production_plan_id', $plan->id)->get();
+            foreach ($lot_plans as $key => $lot_plan) {
+                $lot_plan->update([
+                    'product_id'=>$bom->material_id
+                ]);
+                $lot_plan->infoCongDoan()->update([
+                    'product_id'=>$bom->material_id
+                ]);
+                $lot_plan->lot()->update([
+                    'product_id'=>$bom->material_id
+                ]);
+            }
         }
         return 'ok';
     }
