@@ -280,18 +280,14 @@ async function enqueueData(deviceId, data) {
 
     if (data['PLC:Count_En']) {
         let convertedData = convertMachineRecordData(data, deviceId);
-        if (JSON.stringify(lastMachineRecordValues[deviceId]) !== JSON.stringify(data)) {
-            if (data['PLC:Count_En'][0][1] == 1) {
-                const result = await axios.get("http://103.77.215.18:3030/api/plugins/telemetry/DEVICE/" + deviceId + "/values/timeseries?keys=PLC:Num_Input,PLC:Num_Out", { headers: { 'Authorization': 'Bearer ' + authToken } });
-                convertedData.input = result.data['PLC:Num_Input'] ? result.data['PLC:Num_Input'][0]['value'] : 0;
-                convertedData.output = result.data['PLC:Num_Out'][0]['value'];
-                if(deviceId == '22d821e0-45bd-11ef-b8c3-a13625245eca'){
-                    console.log('convertedData',convertedData);
-                    console.log('Data Counter',data['PLC:Count_En'][0][1]);
-                }
-                dataQueues[deviceId].push({ data: convertedData, apiUrl: MACHINE_RECORD_API_URL });
+        if (data['PLC:Count_En'][0][1] == 1) {
+            const result = await axios.get("http://103.77.215.18:3030/api/plugins/telemetry/DEVICE/" + deviceId + "/values/timeseries?keys=PLC:Num_Input,PLC:Num_Out", { headers: { 'Authorization': 'Bearer ' + authToken } });
+            convertedData.input = result.data['PLC:Num_Input'] ? result.data['PLC:Num_Input'][0]['value'] : 0;
+            convertedData.output = result.data['PLC:Num_Out'][0]['value'];
+            if(deviceId == 'f7f77560-45bd-11ef-b8c3-a13625245eca'){
+                console.log('Data Counter lần 1',data['PLC:Count_En'][0][1]);
             }
-            lastMachineRecordValues[deviceId] = data;
+            dataQueues[deviceId].push({ data: convertedData, apiUrl: MACHINE_RECORD_API_URL });
         }
     }
 
