@@ -259,38 +259,52 @@ class Phase2OIApiController extends Controller
         if ($tracking->lot_id) {
             return $this->failure([], "Máy này đang sản xuất");
         }
-        $roll_material = RollMaterial::where('id', $request->roll_id)->first();
-        if (!$roll_material) {
-            return $this->success('', 'Không tìm thấy cuộn nào');
-        }
+
         try {
             DB::beginTransaction();
-            $inventory = WarehouseInventory::where('roll_id', $roll_material->id)->first();
-            if(!$inventory){
-                return $this->success('', 'Không tìm thấy cuộn trong kho');
-            }
-            WarehouseHistories::create([
-                'roll_id' => $roll_material->id,
-                'material_id' => $roll_material->material_id,
-                'quantity' => $inventory->quantity,
-                'roll_quantity' => $inventory->roll_quantity,
-                'type' => WarehouseHistories::TYPE_EXPORT
-            ]);
-            $inventory->delete();
-            $material = Material::with('bom.product')->find($roll_material->material_id);
-            if (!$material) {
-                return $this->failure([], "Không tìm thấy NVL");
-            }
-            $product_ids = $material->boms()->pluck('product_id')->toArray() ?? [];
-            if (count($product_ids) === 0) {
-                return $this->failure([], "Không tìm thấy sản phẩm");
-            }
-            $lot_plan = LotPlan::where('lot_id', $request->lot_id)->where('line_id', $machine->line_id)->where('machine_code', $machine->code)->first();
-            if (!in_array($lot_plan->product_id, $product_ids)) {
-                return $this->failure([], "Không tìm thấy lot phù hợp với mã NVL được quét");
+            if($line->id == '24'){
+                $roll_material = RollMaterial::where('id', $request->roll_id)->first();
+                if (!$roll_material) {
+                    return $this->success('', 'Không tìm thấy cuộn nào');
+                }
+                $material = Material::with('bom.product')->find($roll_material->material_id);
+                if (!$material) {
+                    return $this->failure([], "Không tìm thấy NVL");
+                }
+                $inventory = WarehouseInventory::where('roll_id', $roll_material->id)->first();
+                if (!$inventory) {
+                    return $this->success('', 'Không tìm thấy cuộn trong kho');
+                }
+                $inventory->delete();
+                WarehouseHistories::create([
+                    'roll_id' => $roll_material->id,
+                    'material_id' => $roll_material->material_id,
+                    'quantity' => $inventory->quantity,
+                    'roll_quantity' => $inventory->roll_quantity,
+                    'type' => WarehouseHistories::TYPE_EXPORT
+                ]);
+                $inventory->delete();
+                $lot_plan = LotPlan::where('lot_id', $request->lot_id)->where('line_id', $machine->line_id)->where('machine_code', $machine->code)->first();
+                if ($lot_plan->product_id != $material->id) {
+                    return $this->failure([], "Mã cuộn không phù hợp");
+                }
+                
+            }else{
+                $material = Material::with('bom.product')->find($request->material_id);
+                if (!$material) {
+                    return $this->failure([], "Không tìm thấy NVL");
+                }
+                $product_ids = $material->boms()->pluck('product_id')->toArray() ?? [];
+                if (count($product_ids) === 0) {
+                    return $this->failure([], "Không tìm thấy sản phẩm");
+                }
+                $lot_plan = LotPlan::where('lot_id', $request->lot_id)->where('line_id', $machine->line_id)->where('machine_code', $machine->code)->first();
+                if (!in_array($lot_plan->product_id, $product_ids)) {
+                    return $this->failure([], "Mã NVL không phù hợp");
+                }
             }
             // }
-            if (!$lot_plan || $lot_plan->infoCongDoan) {
+            if (empty($lot_plan) || $lot_plan->infoCongDoan) {
                 return $this->failure([], "Không tìm thấy lot cần chạy");
             }
 
