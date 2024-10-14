@@ -24,12 +24,15 @@ use App\Models\Product;
 use App\Models\ProductionPlan;
 use App\Models\QCDetailHistory;
 use App\Models\QCHistory;
+use App\Models\RollMaterial;
 use App\Models\Spec;
 use App\Models\TestCriteria;
 use App\Models\TestCriteriaDetailHistory;
 use App\Models\TestCriteriaHistory;
 use App\Models\Tracking;
 use App\Models\User;
+use App\Models\WarehouseHistories;
+use App\Models\WarehouseInventory;
 use App\Models\Workers;
 use App\Models\YellowStampHistory;
 use App\Traits\API;
@@ -256,28 +259,41 @@ class Phase2OIApiController extends Controller
         if ($tracking->lot_id) {
             return $this->failure([], "Máy này đang sản xuất");
         }
-        $material = Material::with('bom.product')->find($request->material_id);
-        if (!$material) {
-            return $this->failure([], "Không tìm thấy NVL");
-        }
-        $infoCongDoan = null;
-        // if ($line->id === 24) {
-        //     $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('material_id', $material->id)->where('line_id', $machine->line_id)->where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_PLANNED)->first();
-        // } else {
-        $product_ids = $material->boms()->pluck('product_id')->toArray() ?? [];
-        if (count($product_ids) === 0) {
-            return $this->failure([], "Không tìm thấy sản phẩm");
-        }
-        $lot_plan = LotPlan::where('lot_id', $request->lot_id)->where('line_id', $machine->line_id)->where('machine_code', $machine->code)->first();
-        if (!in_array($lot_plan->product_id, $product_ids)) {
-            return $this->failure([], "Không tìm thấy lot phù hợp với mã NVL được quét");
-        }
-        // }
-        if (!$lot_plan || $lot_plan->infoCongDoan) {
-            return $this->failure([], "Không tìm thấy lot cần chạy");
+        $roll_material = RollMaterial::where('id', $request->roll_id)->first();
+        if (!$roll_material) {
+            return $this->success('', 'Không tìm thấy cuộn nào');
         }
         try {
             DB::beginTransaction();
+            $inventory = WarehouseInventory::where('roll_id', $roll_material->id)->first();
+            if(!$inventory){
+                return $this->success('', 'Không tìm thấy cuộn trong kho');
+            }
+            WarehouseHistories::create([
+                'roll_id' => $roll_material->id,
+                'material_id' => $roll_material->material_id,
+                'quantity' => $inventory->quantity,
+                'roll_quantity' => $inventory->roll_quantity,
+                'type' => WarehouseHistories::TYPE_EXPORT
+            ]);
+            $inventory->delete();
+            $material = Material::with('bom.product')->find($roll_material->material_id);
+            if (!$material) {
+                return $this->failure([], "Không tìm thấy NVL");
+            }
+            $product_ids = $material->boms()->pluck('product_id')->toArray() ?? [];
+            if (count($product_ids) === 0) {
+                return $this->failure([], "Không tìm thấy sản phẩm");
+            }
+            $lot_plan = LotPlan::where('lot_id', $request->lot_id)->where('line_id', $machine->line_id)->where('machine_code', $machine->code)->first();
+            if (!in_array($lot_plan->product_id, $product_ids)) {
+                return $this->failure([], "Không tìm thấy lot phù hợp với mã NVL được quét");
+            }
+            // }
+            if (!$lot_plan || $lot_plan->infoCongDoan) {
+                return $this->failure([], "Không tìm thấy lot cần chạy");
+            }
+
             MachineStatus::reset($machine->code);
             $infoCongDoan = InfoCongDoan::firstOrCreate(
                 ['lot_plan_id' => $lot_plan->id, 'line_id' => $machine->line_id, 'machine_code' => $machine->code],
@@ -298,7 +314,7 @@ class Phase2OIApiController extends Controller
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
-            return $this->failure($th, "Lỗi quét NVL");
+            return $this->failure($th->getMessage(), "Lỗi quét tem");
         }
         return $this->success([], "Bắt đầu sản xuất");
     }
