@@ -82,27 +82,22 @@ class TemplateImport implements ToCollection, WithHeadingRow, WithStartRow
                 'quantity' => $quantity, // 👈 Số lượng NVL của 1 cuộn
                 'roll_quantity' => 1,
             ]);
-        }
 
-        // Lưu tồn và lịch sử nhập NVL
-        $inventory = WarehouseInventory::where('material_id', $material->id)->first();
-        if (empty($inventory)) {
+            // Lưu tồn và lịch sử nhập NVL
             WarehouseInventory::create([
+                'roll_id' => $roll_id,
                 'material_id' => $material->id,
-                'quantity' => $quantity * $roll_quantity, // Tổng số lượng NVL
-                'roll_quantity' => $roll_quantity,
+                'quantity' => $quantity, // Tổng số lượng NVL
+                'roll_quantity' => 1,
             ]);
-        } else {
-            $inventory->quantity += ($quantity * $roll_quantity); // Tổng số lượng NVL
-            $inventory->roll_quantity += $roll_quantity;
-            $inventory->save();
+            WarehouseHistories::create([
+                'type' => WarehouseHistories::TYPE_IMPORT,
+                'roll_id' => $roll_id,
+                'material_id' => $material->id,
+                'quantity' => $quantity, // Tổng số lượng NVL
+                'roll_quantity' => 1,
+            ]);
         }
-        WarehouseHistories::create([
-            'type' => WarehouseHistories::TYPE_IMPORT,
-            'material_id' => $material->id,
-            'quantity' => $quantity * $roll_quantity, // Tổng số lượng NVL
-            'roll_quantity' => $roll_quantity,
-        ]);
 
         $this->imported++;
     }

@@ -12,6 +12,7 @@ class WarehouseHistories extends Model
     protected $table = "warehouse_histories";
     protected $fillable = [
         'type',
+        'roll_id',
         'material_id',
         'quantity',
         'roll_quantity',
