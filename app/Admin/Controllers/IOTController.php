@@ -46,11 +46,19 @@ class IOTController extends AdminController
                 if (is_null($tracking->input) || $tracking->input == 0  || is_null($tracking->output) || $tracking->output == 0) {
                     $tracking->update(['input' => $request->input, 'output' => $request->output]);
                 }
-                $info_cong_doan->sl_dau_vao_chay_thu = $request->input - $tracking->input;
-                $info_cong_doan->sl_dau_ra_chay_thu = $request->output - $tracking->output;
+                if ($request->input > $tracking->input) {
+                    $info_cong_doan->sl_dau_vao_chay_thu = $request->input - $tracking->input;
+                }
+                if ($request->output > $tracking->output) {
+                    $info_cong_doan->sl_dau_ra_chay_thu = $request->output - $tracking->output;
+                }
             } else if ($status == 1 || $status == 2) { // chạy hàng loạt
-                $info_cong_doan->sl_dau_vao_hang_loat = $request->input - $tracking->input;
-                $info_cong_doan->sl_dau_ra_hang_loat = $request->output - $tracking->output;
+                if ($request->input > $tracking->input) {
+                    $info_cong_doan->sl_dau_vao_hang_loat = $request->input - $tracking->input;
+                }
+                if ($request->output > $tracking->output) {
+                    $info_cong_doan->sl_dau_ra_hang_loat = $request->output - $tracking->output;
+                }
             }
             $productionData = [
                 'machine_code' => $machine->code,
