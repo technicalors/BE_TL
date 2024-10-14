@@ -236,7 +236,7 @@ class Phase2DBApiController extends Controller
         $machines = $query->get();
         $data = [];
         foreach ($machines as $machine) {
-            $info = InfoCongDoan::where("line_id", $machine->line_id)->where('machine_code', $machine->code)->with(["lot.plans", "lot.plan.product"])->orderBy('thoi_gian_bat_dau', 'DESC')->first();
+            $info = InfoCongDoan::where("line_id", $machine->line_id)->where('machine_code', $machine->code)->with(["lotPlan", "lot.plan.product"])->orderBy('thoi_gian_bat_dau', 'DESC')->first();
             if (!$info) {
                 $tm = [
                     "cong_doan" => mb_strtoupper($machine->line->name, 'UTF-8'),
@@ -254,8 +254,10 @@ class Phase2DBApiController extends Controller
                 ];
                 $data[] = $tm;
             } else {
-
-
+                $lotPlan = $info->lotPlan;
+                if (!$lotPlan) {
+                    continue;
+                }
                 // $plan = $info->lot->getPlanByLine($info->line_id);
                 $product = $info->product ?? null;
                 // if (!isset($plan)) $plan = $info->lot->plan;
@@ -269,7 +271,7 @@ class Phase2DBApiController extends Controller
                 if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && !is_null($info->thoi_gian_ket_thuc)) {
                     $status = 3;
                 }
-                $upm = $info->sl_kh / (2 * 60);
+                $upm = $lotPlan->quantity / (2 * 60);
                 $diff_time = strtotime('now') - strtotime($info->thoi_gian_bat_dau ?? 'now');
                 $target = (int)($upm * ($diff_time / 60));
                 $tm = [
