@@ -2,6 +2,7 @@
 
 namespace App\Admin\Controllers;
 
+use App\Exports\Production\ProductOrderExport;
 use App\Http\Controllers\Controller;
 use App\Imports\ProductOrderImport;
 use App\Models\Line;
@@ -17,7 +18,9 @@ use Encore\Admin\Grid;
 use Encore\Admin\Show;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ProductOrderController extends Controller
@@ -190,11 +193,6 @@ class ProductOrderController extends Controller
         return $this->success('', 'Upload thành công');
     }
 
-    public function export(Request $request)
-    {
-        return $this->success('', 'Export thành công');
-    }
-
     public function updateNumberMachine(Request $request)
     {
         try {
@@ -240,4 +238,30 @@ class ProductOrderController extends Controller
     //     $orderedSteps = $this->getOrderedProductionSteps($productID);
     //     foreach
     // }
+
+    public function export()
+    {
+        # Set file path
+        $timestamp = date('YmdHi');
+        $file = "DonHang_$timestamp.xlsx";
+        $filePath = "export/$file";
+        $result = Excel::store(new ProductOrderExport(), $filePath, 'excel');
+
+        if (empty($result)) return $this->failure([], 'THAO TÁC THẤT BẠI', 500);
+        # Generate file base64
+        $fileContent = Storage::disk('excel')->get($filePath);
+        $fileType = File::mimeType(storage_path("app/excel/$filePath"));
+        $base64 = base64_encode($fileContent);
+        $fileBase64Uri = "data:$fileType;base64,$base64";
+
+        # Delete if needed
+        Storage::disk('excel')->delete($filePath);
+        
+        # Return
+        return $this->success([
+            'file' => $file,
+            'type' => $fileType,
+            'data' => $fileBase64Uri,
+        ]);
+    }
 }
