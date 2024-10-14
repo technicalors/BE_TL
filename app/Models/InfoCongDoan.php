@@ -106,4 +106,7 @@ class InfoCongDoan extends Model
     public function machine(){
         return $this->belongsTo(Machine::class, 'machine_code', 'code');
     }
+    public function lotPlan(){
+        return $this->belongsTo(LotPlan::class);
+    }
 }
