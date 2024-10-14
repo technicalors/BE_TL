@@ -280,7 +280,7 @@ class Phase2DBApiController extends Controller
                     'machine_code' => $machine->code,
                     'machine_name' => mb_strtoupper($machine->name, 'UTF-8'),
                     "product" => $product ? $product->name : '',
-                    "sl_dau_ra_kh" => $info->sl_kh ?? 0,
+                    "sl_dau_ra_kh" => $lotPlan->quantity ?? 0,
                     "sl_thuc_te" => $info->sl_dau_ra_hang_loat - $info->sl_ng,
                     "sl_muc_tieu" => $target < $lotPlan->quantity ? $target : $lotPlan->quantity,
                     "ti_le_ng" => (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ?  number_format(($info->sl_ng /  $info->sl_dau_ra_hang_loat), 2) : 0)),
