@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Validator;
 
 class Template extends Model
@@ -16,6 +17,7 @@ class Template extends Model
         'manufacture_date',
         'machine_number',
         'worker_name',
+        'status',
     ];
     protected $casts = [
         'material_id' => 'string',
@@ -35,5 +37,10 @@ class Template extends Model
             ]
         );
         return $validated;
+    }
+
+    public function roll(): HasOne
+    {
+        return $this->hasOne(RollMaterial::class, 'template_id', 'id');
     }
 }

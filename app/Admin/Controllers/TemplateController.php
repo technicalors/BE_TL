@@ -20,7 +20,7 @@ class TemplateController extends Controller
     use API;
     public function list(Request $request)
     {
-        $query = Template::orderBy('created_at', 'DESC');
+        $query = Template::orderBy('created_at', 'DESC')->with('roll');
         if (isset($request->id)) {
             $query->where('id', 'like', "%$request->id%");
         }

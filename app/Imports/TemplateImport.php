@@ -6,6 +6,7 @@ use App\Helpers\QueryHelper;
 use App\Models\Customer;
 use App\Models\Material;
 use App\Models\Product;
+use App\Models\RollMaterial;
 use App\Models\Template;
 use App\Models\Unit;
 use App\Models\WarehouseHistories;
@@ -36,6 +37,7 @@ class TemplateImport implements ToCollection, WithHeadingRow, WithStartRow
     public function collection(Collection $collection)
     {
         // Template::query()->delete();
+        Template::query()->update(['status' => 1]);
         foreach ($collection as $row) {
             $this->importRow($row->toArray());
         }
@@ -60,13 +62,14 @@ class TemplateImport implements ToCollection, WithHeadingRow, WithStartRow
         $material = Material::find($material_id);
         if (empty($material)) throw new Exception("Không tìm thấy NVL: $material_id");
         // $template = Template::query()->where('material_id', $material->id)->first();
-        Template::create([
+        $template = Template::create([
             'material_id' => $material->id,
             'quantity' => $quantity,
             'roll_quantity' => $roll_quantity,
             'manufacture_date' => $manufacture_date,
             'machine_number' => $machine_number,
             'worker_name' => $worker_name,
+            'status' => 0,
         ]);
         // if (empty($template)) {
         // } else {
@@ -77,6 +80,17 @@ class TemplateImport implements ToCollection, WithHeadingRow, WithStartRow
         //     $template->worker_name = $worker_name;
         //     $template->save();
         // }
+
+        // Lưu roll
+        $prefix = 'C' . date('dmy');
+        $roll_id = QueryHelper::generateNewId(new RollMaterial(), $prefix, 3);
+        RollMaterial::create([
+            'id' => $roll_id,
+            'template_id' => $template->id,
+            'material_id' => $material->id,
+            'quantity' => $quantity,
+            'roll_quantity' => $roll_quantity,
+        ]);
 
         // Lưu tồn và lịch sử nhập NVL
         $inventory = WarehouseInventory::where('material_id', $material->id)->first();
