@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Assignment;
 use App\Models\Bom;
 use App\Models\Cell;
+use App\Models\CheckSheetLog;
 use App\Models\CustomUser;
 use App\Models\Error;
 use App\Models\ErrorHistory;
@@ -253,6 +254,10 @@ class Phase2OIApiController extends Controller
         if (!$machine) {
             return $this->failure([], "Không tìm thấy máy");
         }
+        $checksheet_logs = CheckSheetLog::where('info->machine_id', $machine->code)->whereDate('created_at', Carbon::today())->get();
+        if (count($checksheet_logs) <= 0) {
+            return $this->failure([], "Chưa nhập kiểm tra checksheet");
+        }
         $tracking = Tracking::where('machine_id', $machine->code)->first();
         if (!$tracking) {
             return $this->failure([], "Máy này chưa được sử dụng");
@@ -283,9 +288,9 @@ class Phase2OIApiController extends Controller
                     'roll_quantity' => $inventory->roll_quantity,
                     'type' => WarehouseHistories::TYPE_EXPORT
                 ]);
-                if($inventory->quantity === 0 && $inventory->roll_quantity === 0){
+                if ($inventory->quantity === 0 && $inventory->roll_quantity === 0) {
                     $inventory->delete();
-                }else{
+                } else {
                     $inventory->update([
                         'quantity' => 0,
                         'roll_quantity' => 0,
@@ -295,7 +300,7 @@ class Phase2OIApiController extends Controller
                 if ($lot_plan->product_id != $material->id) {
                     return $this->failure([], "Mã cuộn không phù hợp");
                 }
-            }else{
+            } else {
                 $material = Material::with('bom.product')->find($request->material_id);
                 if (!$material) {
                     return $this->failure([], "Không tìm thấy NVL");
@@ -347,6 +352,10 @@ class Phase2OIApiController extends Controller
         if (!$machine) {
             return $this->failure([], "Không tìm thấy máy");
         }
+        $checksheet_logs = CheckSheetLog::where('info->machine_id', $machine->code)->whereDate('created_at', Carbon::today())->get();
+        if (count($checksheet_logs) <= 0) {
+            return $this->failure([], "Chưa nhập kiểm tra checksheet");
+        }
         $tracking = Tracking::where('machine_id', $machine->code)->first();
         if (!$tracking) {
             return $this->failure([], "Máy này chưa được sử dụng");
@@ -363,13 +372,13 @@ class Phase2OIApiController extends Controller
             if (!$lot_plan) {
                 return $this->failure([], 'Không tìm thấy lot');
             }
-            if($machine->line_id == '25'){
+            if ($machine->line_id == '25') {
                 //Nếu là công đoạn In thì so sánh mã nvl tức là product_id của lot được quét với material_id của bom của product của lot chuẩn bị chạy 
                 $material_ids = Bom::where('product_id', $lot_plan->product_id)->pluck('material_id')->toArray();
                 if (!in_array($check->product_id, $material_ids)) {
                     return $this->failure([], "Lot này không trùng mã NVL với lot chuẩn bị chạy");
                 }
-            }else{
+            } else {
                 //Các công đoạn còn lại so sánh product_id
                 if ($lot_plan->product_id !== $check->product_id) {
                     return $this->failure([], "Lot này không trùng mã sản phẩm với lot chuẩn bị chạy");
