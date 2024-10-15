@@ -590,6 +590,7 @@ Route::group([
     $router->get('get-tem', [App\Admin\Controllers\StampController::class,'createTem']);
     $router->get('/fix-data-machine-maintain', [ApiUIController::class, 'fixDataMachineMaintain']);
     $router->get('update-product-to-material-in-line-gap-dan', [ApiUIController::class, 'updateProductToMaterialInLineGapDan']);
+    $router->get('create-infocongdoan-for-plan', [ApiUIController::class, 'createInfoCongDoanForPlan']);
 });
 //Dashboard
 Route::group([
