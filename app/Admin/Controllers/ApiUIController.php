@@ -6239,6 +6239,6 @@ class ApiUIController extends AdminController
             DB::rollBack();
             throw $th;
         }
-        return 'ok';
+        return $this->success($plans);
     }
 }
