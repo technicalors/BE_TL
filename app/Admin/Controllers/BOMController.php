@@ -18,13 +18,17 @@ class BomController extends Controller
             $query->where('product_id', 'like', "%$request->product_id%");
         }
         if (isset($request->product_name)) {
-            $query->where('product_name', 'like', "%$request->product_name%");
+            $query->whereHas('product', function ($q) use ($request) {
+                $q->where('product_name', 'like', "%$request->product_name%");
+            });
         }
         if (isset($request->material_id)) {
             $query->where('material_id', 'like', "%$request->material_id%");
         }
         if (isset($request->material_name)) {
-            $query->where('material_name', 'like', "%$request->material_name%");
+            $query->whereHas('material', function ($q) use ($request) {
+                $q->where('material_name', 'like', "%$request->material_name%");
+            });
         }
         $total = $query->count();
         if (isset($request->page) && isset($request->pageSize)) {

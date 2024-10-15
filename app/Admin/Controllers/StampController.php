@@ -4,6 +4,8 @@ namespace App\Admin\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Imports\StampsImport;
+use App\Models\InfoCongDoan;
+use App\Models\LotPlan;
 use App\Models\Material;
 use App\Models\Stamp;
 use App\Traits\API;
@@ -109,7 +111,19 @@ class StampController extends Controller
     }
 
     public function createTem(){
-        $material = Material::whereIn('id', ['C01', 'C16'])->get();
-        return $this->failure($material, '');
+        // $material = Material::whereIn('id', ['C01', 'C16'])->get();
+        $tem = LotPlan::with('product')->whereIn('lot_id', ['2410007.L.0001', '2410004.L.0022', '2410052.L.0001'])->where('line_id', 24)->get();
+        foreach ($tem as $key => $value) {
+            $value->soluongtp = $value->so_luong ?? 10000;
+            $value->lsx = $value->lo_sx;
+            $value->ver = $value->product->ver ?? "";
+            $value->his = $value->product->his ?? "";
+            $value->cd_thuc_hien = "Gấp dán liên hoàn";
+            $value->cd_tiep_theo = "In flexo";
+            $value->ten_sp = $value->product->name ?? "";
+            $value->ngay_sx = date('d/m/Y');
+            $value->tg_sx = date('d/m/Y H:i:s');
+        }
+        return $this->failure($tem, '');
     }
 }
