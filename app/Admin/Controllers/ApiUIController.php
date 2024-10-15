@@ -41,6 +41,7 @@ use App\Models\MaintenanceSchedule;
 use App\Models\Material;
 use App\Models\QCDetailHistory;
 use App\Models\QCHistory;
+use App\Models\Stamp;
 use App\Models\TestCriteriaDetailHistory;
 use App\Models\TestCriteriaHistory;
 use App\Models\YellowStampHistory;
@@ -6218,6 +6219,20 @@ class ApiUIController extends AdminController
                         'lot_plan_id' => $plan->id,
                     ]
                 );
+                $line = Line::find($plan->line_id);
+                Stamp::create([
+                    'lot_id' => $plan->lot_id,
+                    'ten_sp' => $plan->product->name ?? null,
+                    'soluongtp' => $plan->quantity,
+                    'machine_code' => $plan->machine_code,
+                    'ver' => "",
+                    'his' => "",
+                    'lsx' => $plan->lo_sx,
+                    'cd_thuc_hien' => $line->name,
+                    'cd_tiep_theo' => Line::where('ordering', '>', $line->ordering)->first()->name ?? 'Chọn',
+                    'nguoi_sx' => "",
+                    'ghi_chu' => "",
+                ]);
             }
             DB::commit();
         } catch (\Throwable $th) {

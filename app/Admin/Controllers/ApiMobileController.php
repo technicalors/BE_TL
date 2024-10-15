@@ -2998,19 +2998,6 @@ class ApiMobileController extends AdminController
                     'lot_size' => $number,
                 ]
             );
-            $line = Line::find($input['line_id']);
-            Stamp::create([
-                'lot_id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
-                'ten_sp' => $input['product_name'] ?? null,
-                'soluongtp' => $number,
-                'ver' => "",
-                'his' => "",
-                'lsx' => $input['lo_sx'],
-                'cd_thuc_hien' => $line->name,
-                'cd_tiep_theo' => Line::where('ordering', '>', $line->ordering)->first()->name ?? 'Chọn',
-                'nguoi_sx' => "",
-                'ghi_chu' => "",
-            ]);
         }
     }
 
