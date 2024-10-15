@@ -307,23 +307,45 @@ async function enqueueData(deviceId, data) {
   if (data["PLC:Count_En"]) {
     let convertedData = convertMachineRecordData(data, deviceId);
     if (data["PLC:Count_En"][0][1] == 1) {
-      const result = await axios.get(
-        "http://103.77.215.18:3030/api/plugins/telemetry/DEVICE/" +
-          deviceId +
-          "/values/timeseries?keys=PLC:Num_Input,PLC:Num_Out",
-        { headers: { Authorization: "Bearer " + authToken } }
-      );
-      convertedData.input = result.data["PLC:Num_Input"]
-        ? result.data["PLC:Num_Input"][0]["value"]
-        : 0;
-      convertedData.output = result.data["PLC:Num_Out"][0]["value"];
-      if (deviceId == "f7f77560-45bd-11ef-b8c3-a13625245eca") {
-        console.log("Data Counter lần 1", data["PLC:Count_En"][0][1]);
+      try {
+        // Gọi API để lấy dữ liệu đầu vào và đầu ra
+        const result = await axios.get(
+          "http://103.77.215.18:3030/api/plugins/telemetry/DEVICE/" +
+            deviceId +
+            "/values/timeseries?keys=PLC:Num_Input,PLC:Num_Out",
+          { headers: { Authorization: "Bearer " + authToken } }
+        );
+
+        // Kiểm tra và gán giá trị input, output
+        convertedData.input = result.data["PLC:Num_Input"]
+          ? result.data["PLC:Num_Input"][0]["value"]
+          : 0;
+        convertedData.output = result.data["PLC:Num_Out"][0]["value"];
+
+        // Log dữ liệu cho thiết bị cụ thể để kiểm tra
+        if (deviceId == "f7f77560-45bd-11ef-b8c3-a13625245eca") {
+          console.log("Data Counter lần 1", data["PLC:Count_En"][0][1]);
+        }
+
+        // Đẩy dữ liệu vào hàng đợi
+        dataQueues[deviceId].push({
+          data: convertedData,
+          apiUrl: MACHINE_RECORD_API_URL,
+        });
+      } catch (error) {
+        console.error(
+          `Error fetching data for device ${deviceId}:`,
+          error.message
+        );
+
+        // Kiểm tra lỗi xác thực và xử lý lấy lại token nếu cần
+        if (error.response && error.response.status === 401) {
+          console.log("Token expired, fetching new token...");
+          await getAuthToken(); // Lấy token mới
+          // Thử lại quá trình gọi API với token mới
+          await enqueueData(deviceId, data); // Thử lại xử lý hàng đợi với dữ liệu hiện tại
+        }
       }
-      dataQueues[deviceId].push({
-        data: convertedData,
-        apiUrl: MACHINE_RECORD_API_URL,
-      });
     }
   }
 
