@@ -5,6 +5,7 @@ namespace App\Admin\Controllers;
 use App\Events\ProductionUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Assignment;
+use App\Models\Bom;
 use App\Models\Cell;
 use App\Models\CustomUser;
 use App\Models\Error;
@@ -294,7 +295,6 @@ class Phase2OIApiController extends Controller
                 if ($lot_plan->product_id != $material->id) {
                     return $this->failure([], "Mã cuộn không phù hợp");
                 }
-                
             }else{
                 $material = Material::with('bom.product')->find($request->material_id);
                 if (!$material) {
@@ -362,33 +362,41 @@ class Phase2OIApiController extends Controller
             if (!$lot_plan) {
                 return $this->failure([], 'Không tìm thấy lot');
             }
-            if ($lot_plan->product_id === $check->product_id) {
-                try {
-                    DB::beginTransaction();
-                    MachineStatus::reset($machine->code);
-                    $infoCongDoan = InfoCongDoan::firstOrCreate(
-                        ['lot_plan_id' => $lot_plan->id, 'line_id' => $machine->line_id, 'machine_code' => $machine->code],
-                        [
-                            'lot_id' => $lot_plan->lot_id,
-                            'lo_sx' => $lot_plan->lo_sx,
-                            'product_id' => $lot_plan->product_id,
-                            'thoi_gian_bat_dau' => Carbon::now(),
-                            'status' => InfoCongDoan::STATUS_INPROGRESS,
-                            'user_id' => $request->user()->id,
-                        ]
-                    );
-                    $tracking->update([
-                        'lot_id' => $request->lot_id,
-                        'input' => 0,
-                        'output' => 0
-                    ]);
-                    DB::commit();
-                } catch (\Throwable $th) {
-                    DB::rollBack();
-                    return $this->failure($th, "Lỗi quét lot");
+            if($machine->line_id == '25'){
+                //Nếu là công đoạn In thì so sánh mã nvl tức là product_id của lot được quét với material_id của bom của product của lot chuẩn bị chạy 
+                $material_ids = Bom::where('product_id', $lot_plan->product_id)->pluck('material_id')->toArray();
+                if (!in_array($check->product_id, $material_ids)) {
+                    return $this->failure([], "Lot này không trùng mã NVL với lot chuẩn bị chạy");
                 }
-            } else {
-                return $this->failure([], "Lot này không trùng mã sản phẩm với lot chuẩn bị chạy");
+            }else{
+                //Các công đoạn còn lại so sánh product_id
+                if ($lot_plan->product_id !== $check->product_id) {
+                    return $this->failure([], "Lot này không trùng mã sản phẩm với lot chuẩn bị chạy");
+                }
+            }
+            try {
+                DB::beginTransaction();
+                MachineStatus::reset($machine->code);
+                $infoCongDoan = InfoCongDoan::firstOrCreate(
+                    ['lot_plan_id' => $lot_plan->id, 'line_id' => $machine->line_id, 'machine_code' => $machine->code],
+                    [
+                        'lot_id' => $lot_plan->lot_id,
+                        'lo_sx' => $lot_plan->lo_sx,
+                        'product_id' => $lot_plan->product_id,
+                        'thoi_gian_bat_dau' => Carbon::now(),
+                        'status' => InfoCongDoan::STATUS_INPROGRESS,
+                        'user_id' => $request->user()->id,
+                    ]
+                );
+                $tracking->update([
+                    'lot_id' => $request->lot_id,
+                    'input' => 0,
+                    'output' => 0
+                ]);
+                DB::commit();
+            } catch (\Throwable $th) {
+                DB::rollBack();
+                return $this->failure($th, "Lỗi quét lot");
             }
         } else {
             return $this->failure([], "Không tìm thấy lot phù hợp");
