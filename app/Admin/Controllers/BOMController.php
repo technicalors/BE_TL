@@ -19,7 +19,7 @@ class BomController extends Controller
         }
         if (isset($request->product_name)) {
             $query->whereHas('product', function ($q) use ($request) {
-                $q->where('product_name', 'like', "%$request->product_name%");
+                $q->where('name', 'like', "%$request->product_name%");
             });
         }
         if (isset($request->material_id)) {
@@ -27,7 +27,7 @@ class BomController extends Controller
         }
         if (isset($request->material_name)) {
             $query->whereHas('material', function ($q) use ($request) {
-                $q->where('material_name', 'like', "%$request->material_name%");
+                $q->where('name', 'like', "%$request->material_name%");
             });
         }
         $total = $query->count();
