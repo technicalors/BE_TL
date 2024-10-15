@@ -25,6 +25,7 @@ use App\Models\LogInTem;
 use App\Models\LogWarningParameter;
 use App\Models\Losx;
 use App\Models\Lot;
+use App\Models\LotPlan;
 use App\Models\LSXLog;
 use App\Models\Machine;
 use App\Models\MachineParameter;
@@ -2979,17 +2980,24 @@ class ApiMobileController extends AdminController
                 'machine_code' => $input['machine_id'],
                 'sl_kh' => $number, // 
             ];
-            InfoCongDoan::create($info_cong_doan);
-            // Lot::firstOrCreate(
-            //     ['id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT)],
-            //     [
-            //         'id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
-            //         'lo_sx' => $input['lo_sx'],
-            //         'so_luong' => $number,
-            //         'type' => Lot::TYPE_TEM_TRANG,
-            //         'product_id' => $input['product_id'],
-            //     ]
-            // );
+            LotPlan::firstOrCreate(
+                [
+                    'lot_id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
+                    'line_id' => $input['line_id'],
+                    'machine_code' => $input['machine_id'],
+                    'product_id' => $input['product_id'],
+                    'lo_sx' => $input['lo_sx'],
+                ],
+                [
+                    'start_time' => $input['thoi_gian_bat_dau'],
+                    'end_time' => $input['thoi_gian_ket_thuc'],
+                    'quantity' => $number,
+                    'product_order_id' => $input['product_order_id'],
+                    'customer_id' => $customer->id,
+                    'production_plan_id'=>$record->id,
+                    'lot_size' => $number,
+                ]
+            );
             $line = Line::find($input['line_id']);
             Stamp::create([
                 'lot_id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
