@@ -263,7 +263,7 @@ class Phase2OIApiController extends Controller
 
         try {
             DB::beginTransaction();
-            if($line->id == '24'){
+            if ($line->id == '24') {
                 $roll_material = RollMaterial::where('id', $request->roll_id)->first();
                 if (!$roll_material) {
                     return $this->failure('', 'Không tìm thấy cuộn nào');
@@ -324,6 +324,7 @@ class Phase2OIApiController extends Controller
                     'thoi_gian_bat_dau' => Carbon::now(),
                     'status' => InfoCongDoan::STATUS_INPROGRESS,
                     'user_id' => $request->user()->id,
+                    'sl_kh' => $lot_plan->quantity,
                 ]
             );
             $tracking->update([
