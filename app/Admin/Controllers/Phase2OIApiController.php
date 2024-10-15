@@ -262,7 +262,7 @@ class Phase2OIApiController extends Controller
 
         try {
             DB::beginTransaction();
-            if($line->id == '24'){
+            if ($line->id == '24') {
                 $roll_material = RollMaterial::where('id', $request->roll_id)->first();
                 if (!$roll_material) {
                     return $this->success('', 'Không tìm thấy cuộn nào');
@@ -288,8 +288,7 @@ class Phase2OIApiController extends Controller
                 if ($lot_plan->product_id != $material->id) {
                     return $this->failure([], "Mã cuộn không phù hợp");
                 }
-                
-            }else{
+            } else {
                 $material = Material::with('bom.product')->find($request->material_id);
                 if (!$material) {
                     return $this->failure([], "Không tìm thấy NVL");
@@ -318,6 +317,7 @@ class Phase2OIApiController extends Controller
                     'thoi_gian_bat_dau' => Carbon::now(),
                     'status' => InfoCongDoan::STATUS_INPROGRESS,
                     'user_id' => $request->user()->id,
+                    'sl_kh' => $lot_plan->quantity,
                 ]
             );
             $tracking->update([
@@ -369,6 +369,7 @@ class Phase2OIApiController extends Controller
                             'thoi_gian_bat_dau' => Carbon::now(),
                             'status' => InfoCongDoan::STATUS_INPROGRESS,
                             'user_id' => $request->user()->id,
+                            'sl_kh' => $lot_plan->quantity,
                         ]
                     );
                     $tracking->update([
