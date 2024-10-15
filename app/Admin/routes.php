@@ -589,6 +589,7 @@ Route::group([
     $router->get('convertQCLog', [App\Admin\Controllers\ApiUIController::class,'convertQCLog']);
     $router->get('get-tem', [App\Admin\Controllers\StampController::class,'createTem']);
     $router->get('/fix-data-machine-maintain', [ApiUIController::class, 'fixDataMachineMaintain']);
+    $router->get('update-product-to-material-in-line-gap-dan', [ApiUIController::class, 'updateProductToMaterialInLineGapDan']);
 });
 //Dashboard
 Route::group([

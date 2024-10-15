@@ -157,14 +157,14 @@ class Phase2DBApiController extends Controller
         $machines = Machine::with('line')->where('line_id', 25)->orderBy('name')->get();
         $data = [];
         foreach ($machines as $machine) {
-            $info = InfoCongDoan::where("line_id", $machine->line_id)->where('machine_code', $machine->code)->with(["lot.plans", "lot.plan.product"])->orderBy('thoi_gian_bat_dau', 'DESC')->first();
+            $info = InfoCongDoan::where("line_id", $machine->line_id)->where('machine_code', $machine->code)->with(["lotPlan", "lot.plan.product"])->orderBy('thoi_gian_bat_dau', 'DESC')->first();
             if (!$info) {
                 $tm = [
                     "cong_doan" => mb_strtoupper($machine->line->name, 'UTF-8'),
                     'machine_code' => mb_strtoupper($machine->code, 'UTF-8'),
                     'machine_name' => mb_strtoupper($machine->name, 'UTF-8'),
                     "product" => '',
-                    "sl_dau_ra_kh" => $info->sl_kh ?? 0,
+                    "sl_dau_ra_kh" => $info->lotPlan->quantity ?? 0,
                     "sl_thuc_te" => 0,
                     "sl_muc_tieu" => 0,
                     "ti_le_ng" => 0,
@@ -175,8 +175,10 @@ class Phase2DBApiController extends Controller
                 ];
                 $data[] = $tm;
             } else {
-
-
+                $lotPlan = $info->lotPlan;
+                if (!$lotPlan) {
+                    continue;
+                }
                 // $plan = $info->lot->getPlanByLine($info->line_id);
                 $product = $info->product ?? null;
                 // if (!isset($plan)) $plan = $info->lot->plan;
@@ -190,7 +192,7 @@ class Phase2DBApiController extends Controller
                 if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && !is_null($info->thoi_gian_ket_thuc)) {
                     $status = 3;
                 }
-                $upm = $info->sl_kh / (2 * 60);
+                $upm = $lotPlan->quantity / (2 * 60);
                 $diff_time = strtotime('now') - strtotime($info->thoi_gian_bat_dau ?? 'now');
                 $target = (int)($upm * ($diff_time / 60));
                 $tm = [
@@ -198,9 +200,9 @@ class Phase2DBApiController extends Controller
                     'machine_code' => $machine->code,
                     'machine_name' => mb_strtoupper($machine->name, 'UTF-8'),
                     "product" => $product ? $product->name : '',
-                    "sl_dau_ra_kh" => $info->sl_kh ?? 0,
+                    "sl_dau_ra_kh" => $lotPlan->quantity ?? 0,
                     "sl_thuc_te" => $info->sl_dau_ra_hang_loat - $info->sl_ng,
-                    "sl_muc_tieu" => $target < $info->sl_kh ? $target : $info->sl_kh,
+                    "sl_muc_tieu" => $target < $lotPlan->quantity ? $target : $lotPlan->quantity,
                     "ti_le_ng" => (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ?  number_format(($info->sl_ng /  $info->sl_dau_ra_hang_loat), 2) : 0)),
                     "ti_le_ht" => (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ? number_format((($info->sl_dau_ra_hang_loat - $info->sl_ng) / $info->sl_dau_ra_hang_loat), 2) : 0)),
                     "status" => $status,
@@ -216,7 +218,7 @@ class Phase2DBApiController extends Controller
     public function getProductionSituationByMachine(Request $request)
     {
         $order = [];
-        if(!empty($request->ordering_machine)){
+        if (!empty($request->ordering_machine)) {
             $order = explode(',', $request->ordering_machine);
         }
         //reorder
@@ -226,22 +228,22 @@ class Phase2DBApiController extends Controller
 
         $lines = Line::where('factory_id', 2)->where('id', '<>', 25)->get();
         $query = Machine::with('line')->whereIn('line_id', $lines->pluck('id')->toArray());
-        if(!empty($request->ordering_machine)){
+        if (!empty($request->ordering_machine)) {
             $query->orderByRaw(DB::raw("FIELD(code, $orderByString)"));
-        }else{
+        } else {
             $query->orderBy('name');
         }
         $machines = $query->get();
         $data = [];
         foreach ($machines as $machine) {
-            $info = InfoCongDoan::where("line_id", $machine->line_id)->where('machine_code', $machine->code)->with(["lot.plans", "lot.plan.product"])->orderBy('thoi_gian_bat_dau', 'DESC')->first();
+            $info = InfoCongDoan::where("line_id", $machine->line_id)->where('machine_code', $machine->code)->with(["lotPlan", "lot.plan.product"])->orderBy('thoi_gian_bat_dau', 'DESC')->first();
             if (!$info) {
                 $tm = [
                     "cong_doan" => mb_strtoupper($machine->line->name, 'UTF-8'),
                     'machine_code' => $machine->code,
                     'machine_name' => mb_strtoupper($machine->name, 'UTF-8'),
                     "product" => '',
-                    "sl_dau_ra_kh" => $info->sl_kh ?? 0,
+                    "sl_dau_ra_kh" => $info->lotPlan->quantity ?? 0,
                     "sl_thuc_te" => 0,
                     "sl_muc_tieu" => 0,
                     "ti_le_ng" => 0,
@@ -252,8 +254,10 @@ class Phase2DBApiController extends Controller
                 ];
                 $data[] = $tm;
             } else {
-
-
+                $lotPlan = $info->lotPlan;
+                if (!$lotPlan) {
+                    continue;
+                }
                 // $plan = $info->lot->getPlanByLine($info->line_id);
                 $product = $info->product ?? null;
                 // if (!isset($plan)) $plan = $info->lot->plan;
@@ -267,17 +271,18 @@ class Phase2DBApiController extends Controller
                 if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && !is_null($info->thoi_gian_ket_thuc)) {
                     $status = 3;
                 }
-                $upm = $info->sl_kh / (2 * 60);
+                $upm = $lotPlan->quantity / (2 * 60);
                 $diff_time = strtotime('now') - strtotime($info->thoi_gian_bat_dau ?? 'now');
                 $target = (int)($upm * ($diff_time / 60));
                 $tm = [
+                    'target' => $target,
                     "cong_doan" => mb_strtoupper($info->line->name, 'UTF-8'),
                     'machine_code' => $machine->code,
                     'machine_name' => mb_strtoupper($machine->name, 'UTF-8'),
                     "product" => $product ? $product->name : '',
-                    "sl_dau_ra_kh" => $info->sl_kh ?? 0,
+                    "sl_dau_ra_kh" => $lotPlan->quantity ?? 0,
                     "sl_thuc_te" => $info->sl_dau_ra_hang_loat - $info->sl_ng,
-                    "sl_muc_tieu" => $target < $info->sl_kh ? $target : $info->sl_kh,
+                    "sl_muc_tieu" => $target < $lotPlan->quantity ? $target : $lotPlan->quantity,
                     "ti_le_ng" => (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ?  number_format(($info->sl_ng /  $info->sl_dau_ra_hang_loat), 2) : 0)),
                     "ti_le_ht" => (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ? number_format((($info->sl_dau_ra_hang_loat - $info->sl_ng) / $info->sl_dau_ra_hang_loat), 2) : 0)),
                     "status" => $status,
