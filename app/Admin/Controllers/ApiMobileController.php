@@ -2894,6 +2894,7 @@ class ApiMobileController extends AdminController
             ['machine_id', $input['machine_id']],
             ['lo_sx', $input['lo_sx']],
             ['material_id', $input['material_id']],
+            
         ])->first();
         if (isset($record)) throw new Exception("Kế hoạch cho LoSX:{$record->lo_sx} - {$record->product_id} đã được tạo");
         $input['product_id'] = null;

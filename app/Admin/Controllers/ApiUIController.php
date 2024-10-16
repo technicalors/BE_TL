@@ -6192,6 +6192,9 @@ class ApiUIController extends AdminController
         if (!empty($request->machine_code)) {
             $query->where('machine_code', $request->machine_code);
         }
+        if (!empty($request->product_id)) {
+            $query->where('product_id', $request->product_id);
+        }
         if (!empty($request->line_id)) {
             $query->where('line_id', $request->line_id);
         }
