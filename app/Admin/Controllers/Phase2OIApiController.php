@@ -254,9 +254,11 @@ class Phase2OIApiController extends Controller
         if (!$machine) {
             return $this->failure([], "Không tìm thấy máy");
         }
-        $checksheet_logs = CheckSheetLog::where('info->machine_id', $machine->code)->whereDate('created_at', Carbon::today())->get();
-        if (count($checksheet_logs) <= 0) {
-            return $this->failure([], "Chưa nhập kiểm tra checksheet");
+        if ($machine->is_iot) {
+            $checksheet_logs = CheckSheetLog::where('info->machine_id', $machine->code)->whereDate('created_at', Carbon::today())->get();
+            if (count($checksheet_logs) <= 0) {
+                return $this->failure([], "Chưa nhập kiểm tra checksheet");
+            }
         }
         $tracking = Tracking::where('machine_id', $machine->code)->first();
         if (!$tracking) {
@@ -352,9 +354,11 @@ class Phase2OIApiController extends Controller
         if (!$machine) {
             return $this->failure([], "Không tìm thấy máy");
         }
-        $checksheet_logs = CheckSheetLog::where('info->machine_id', $machine->code)->whereDate('created_at', Carbon::today())->get();
-        if (count($checksheet_logs) <= 0) {
-            return $this->failure([], "Chưa nhập kiểm tra checksheet");
+        if ($machine->is_iot) {
+            $checksheet_logs = CheckSheetLog::where('info->machine_id', $machine->code)->whereDate('created_at', Carbon::today())->get();
+            if (count($checksheet_logs) <= 0) {
+                return $this->failure([], "Chưa nhập kiểm tra checksheet");
+            }
         }
         $tracking = Tracking::where('machine_id', $machine->code)->first();
         if (!$tracking) {
