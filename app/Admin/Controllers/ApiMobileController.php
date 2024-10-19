@@ -2894,6 +2894,7 @@ class ApiMobileController extends AdminController
             ['machine_id', $input['machine_id']],
             ['lo_sx', $input['lo_sx']],
             ['material_id', $input['material_id']],
+            
         ])->first();
         if (isset($record)) throw new Exception("Kế hoạch cho LoSX:{$record->lo_sx} - {$record->product_id} đã được tạo");
         $input['product_id'] = null;
@@ -2998,19 +2999,6 @@ class ApiMobileController extends AdminController
                     'lot_size' => $number,
                 ]
             );
-            $line = Line::find($input['line_id']);
-            Stamp::create([
-                'lot_id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
-                'ten_sp' => $input['product_name'] ?? null,
-                'soluongtp' => $number,
-                'ver' => "",
-                'his' => "",
-                'lsx' => $input['lo_sx'],
-                'cd_thuc_hien' => $line->name,
-                'cd_tiep_theo' => Line::where('ordering', '>', $line->ordering)->first()->name ?? 'Chọn',
-                'nguoi_sx' => "",
-                'ghi_chu' => "",
-            ]);
         }
     }
 

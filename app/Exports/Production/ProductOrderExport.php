@@ -3,6 +3,7 @@
 namespace App\Exports\Production;
 
 use App\Models\ProductOrder;
+use Carbon\Carbon;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -43,9 +44,9 @@ class ProductOrderExport implements  FromCollection, WithHeadings, WithMapping, 
             $record->order_number,
             $record->customer_id,
             $record->product_id,
-            $record->order_date,
+            $record->order_date ? Carbon::parse($record->order_date)->format('d/m/Y') : '',
             $record->quantity,
-            $record->delivery_date,
+            $record->delivery_date ? Carbon::parse($record->delivery_date)->format('d/m/Y') : '',
             $record->note,
         ];
     }
@@ -79,5 +80,15 @@ class ProductOrderExport implements  FromCollection, WithHeadings, WithMapping, 
                 ],
             ],
         ]);
+
+        // Set column widths
+        $sheet->getColumnDimension('A')->setWidth(5);
+        $sheet->getColumnDimension('B')->setWidth(15);
+        $sheet->getColumnDimension('C')->setWidth(15);
+        $sheet->getColumnDimension('D')->setWidth(15);
+        $sheet->getColumnDimension('E')->setWidth(20);
+        $sheet->getColumnDimension('F')->setWidth(10);
+        $sheet->getColumnDimension('G')->setWidth(20);
+        $sheet->getColumnDimension('H')->setWidth(50);
     }
 }

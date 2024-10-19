@@ -41,6 +41,7 @@ use App\Models\MaintenanceSchedule;
 use App\Models\Material;
 use App\Models\QCDetailHistory;
 use App\Models\QCHistory;
+use App\Models\Stamp;
 use App\Models\TestCriteriaDetailHistory;
 use App\Models\TestCriteriaHistory;
 use App\Models\YellowStampHistory;
@@ -6158,29 +6159,89 @@ class ApiUIController extends AdminController
         return 'ok';
     }
 
-    public function updateProductToMaterialInLineGapDan(){
+    public function updateProductToMaterialInLineGapDan()
+    {
         $plans = ProductionPlan::where('line_id', '24')->whereDate('created_at', date('Y-m-d'))->get();
         foreach ($plans as $key => $plan) {
             $bom = Bom::where('product_id', $plan->product_id)->orderBy('priority')->orderBy('created_at')->first();
-            if(!$bom || !$bom->material_id){
+            if (!$bom || !$bom->material_id) {
                 continue;
             }
             $plan->update([
-                'product_id'=>$bom->material_id
+                'product_id' => $bom->material_id
             ]);
             $lot_plans = LotPlan::where('production_plan_id', $plan->id)->get();
             foreach ($lot_plans as $key => $lot_plan) {
                 $lot_plan->update([
-                    'product_id'=>$bom->material_id
+                    'product_id' => $bom->material_id
                 ]);
                 $lot_plan->infoCongDoan()->update([
-                    'product_id'=>$bom->material_id
+                    'product_id' => $bom->material_id
                 ]);
                 $lot_plan->lot()->update([
-                    'product_id'=>$bom->material_id
+                    'product_id' => $bom->material_id
                 ]);
             }
         }
         return 'ok';
+    }
+
+    public function createInfoCongDoanForPlan(Request $request)
+    {
+        $query = LotPlan::where('line_id', '<>', '24');
+        if (!empty($request->machine_code)) {
+            $query->where('machine_code', $request->machine_code);
+        }
+        if (!empty($request->product_id)) {
+            $query->where('product_id', $request->product_id);
+        }
+        if (!empty($request->line_id)) {
+            $query->where('line_id', $request->line_id);
+        }
+        if (!empty($request->lot_id)) {
+            $query->where('lot_id', $request->lot_id);
+        }
+        $plans = $query->get();
+        try {
+            DB::beginTransaction();
+            foreach ($plans as $key => $plan) {
+                $info = InfoCongDoan::firstOrCreate(
+                    [
+                        'lot_id' => $plan->lot_id,
+                        'lo_sx' => $plan->lo_sx,
+                        'machine_code' => $plan->machine_code,
+                        'line_id' => $plan->line_id,
+                        'product_id' => $plan->product_id,
+                    ],
+                    [
+                        'thoi_gian_bat_dau' => $plan->start_time,
+                        'thoi_gian_ket_thuc' => $plan->end_time,
+                        'status' => InfoCongDoan::STATUS_COMPLETED,
+                        'sl_dau_ra_hang_loat' => $plan->quantity,
+                        'sl_kh' => $plan->quantity,
+                        'lot_plan_id' => $plan->id,
+                    ]
+                );
+                $line = Line::find($plan->line_id);
+                Stamp::create([
+                    'lot_id' => $plan->lot_id,
+                    'ten_sp' => $plan->product->name ?? null,
+                    'soluongtp' => $plan->quantity,
+                    'machine_code' => $plan->machine_code,
+                    'ver' => "",
+                    'his' => "",
+                    'lsx' => $plan->lo_sx,
+                    'cd_thuc_hien' => $line->name,
+                    'cd_tiep_theo' => Line::where('ordering', '>', $line->ordering)->first()->name ?? 'Chọn',
+                    'nguoi_sx' => "",
+                    'ghi_chu' => "",
+                ]);
+            }
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            throw $th;
+        }
+        return $this->success($plans);
     }
 }

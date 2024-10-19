@@ -20,5 +20,6 @@ class Stamp extends Model
         'cd_tiep_theo',
         'nguoi_sx',
         'ghi_chu',
+        'machine_code'
     ];
 }

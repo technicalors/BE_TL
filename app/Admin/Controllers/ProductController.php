@@ -336,19 +336,19 @@ class ProductController extends Controller
         $material = null;
         $titleRow1 = $allDataInSheet[3];
         $titleRow2 = $allDataInSheet[4];
+        Product::truncate();
+        Material::truncate();
+        Bom::truncate();
+        ProductionJourney::truncate();
+        MaterialWastage::truncate();
+        TimeWastage::truncate();
+        LineProductivity::truncate();
+        Spec::truncate();
+        MachinePriorityOrder::truncate();
+        MachinePriorityOrderAttribute::truncate();
+        MachinePriorityOrderAttributeValue::truncate();
         try {
             DB::beginTransaction();
-            Product::query()->delete();
-            Material::query()->delete();
-            Bom::query()->delete();
-            ProductionJourney::query()->delete();
-            MaterialWastage::query()->delete();
-            TimeWastage::query()->delete();
-            LineProductivity::query()->delete();
-            Spec::query()->delete();
-            MachinePriorityOrder::query()->delete();
-            MachinePriorityOrderAttribute::query()->delete();
-            MachinePriorityOrderAttributeValue::query()->delete();
             foreach ($allDataInSheet as $index => $row) {
                 if ($index < 5) {
                     continue;
@@ -364,14 +364,14 @@ class ProductController extends Controller
                     $this->importMaterialWastages($material_wastages_data, $product->id);
                     $this->importTimeWastages($time_wastages_data, $product->id);
                 }
-                if($product){
+                if ($product) {
                     $this->importMachinePriorityOrder($row, $titleRow2, $product->id, $index);
                 }
                 $material_data[] = array_intersect_key($row, array_flip($this->material_columns));
                 if (trim($row['I'])) {
                     $material = $this->importMaterial(array_intersect_key($row, array_flip($this->material_columns)));
                     if ($material && $product) {
-                        Bom::firstOrCreate(['product_id' => $product->id, 'material_id' => $material->id], array_intersect_key($row, array_flip($this->bom_columns)));
+                        Bom::create(['product_id' => $product->id, 'material_id' => $row['I'], 'ratio' => $row['K'], 'priority' => $row['H']]);
                     }
                 }
                 if (trim($row['F'])) {
@@ -1518,9 +1518,9 @@ class ProductController extends Controller
         $slugArray = $allDataInSheet[1];
         $this->insertHeader($sheet, array_splice($allDataInSheet, 2, 3), $parent, $start, $this->excelColumnRange($first_key, $last_key), $mergedCells, 3, $slugArray);
         $excel_headers = ExcelHeader::query()
-        ->get()
-        ->pluck('header_name', 'field_name')
-        ->toArray();
+            ->get()
+            ->pluck('header_name', 'field_name')
+            ->toArray();
         // return $excel_headers;
         try {
             Excel::import(new ProductImport($excel_headers), $request->file('file'));
