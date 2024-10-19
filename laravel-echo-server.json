@@ -1,18 +1,10 @@
 {
-	"authHost": "http://localhost",
+	"authHost": "https://backtl.ors.vn",
 	"authEndpoint": "/broadcasting/auth",
-	"clients": [
-		{
-			"appId": "cfa106a79cd17e57",
-			"key": "c58241c7577a68059136422c2f69cf56"
-		}
-	],
+	"clients": [],
 	"database": "redis",
 	"databaseConfig": {
-		"redis": {
-			"host": "127.0.0.1",
-			"port": "6379"
-		},
+		"redis": {},
 		"sqlite": {
 			"databasePath": "/database/laravel-echo-server.sqlite"
 		}
@@ -20,11 +12,11 @@
 	"devMode": true,
 	"host": null,
 	"port": "6001",
-	"protocol": "http",
+	"protocol": "https",
 	"socketio": {},
 	"secureOptions": 67108864,
-	"sslCertPath": "",
-	"sslKeyPath": "",
+	"sslCertPath": "/etc/letsencrypt/live/backtl.ors.vn/cert.pem",
+	"sslKeyPath": "/etc/letsencrypt/live/backtl.ors.vn/privkey.pem",
 	"sslCertChainPath": "",
 	"sslPassphrase": "",
 	"subscribers": {
@@ -32,9 +24,9 @@
 		"redis": true
 	},
 	"apiOriginAllow": {
-        "allowCors": true,
-        "allowOrigin": "*",
-        "allowMethods": "GET, POST",
-        "allowHeaders": "Origin, Content-Type, X-Auth-Token, X-Requested-With, Accept, Authorization"
-    }
+		"allowCors": true,
+		"allowOrigin": "*",
+		"allowMethods": "GET, POST",
+		"allowHeaders": "Origin, Content-Type, X-Auth-Token, X-Requested-With, Accept, Authorization, X-CSRF-TOKEN, X-Socket-Id"
+	}
 }
