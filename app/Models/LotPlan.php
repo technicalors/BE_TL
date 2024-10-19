@@ -13,7 +13,7 @@ class LotPlan extends Model
     use HasFactory;
     use \Awobaz\Compoships\Compoships;
 
-    protected $fillable = ['lot_id', 'lo_sx', 'line_id', 'product_id', 'start_time', 'end_time', 'quantity', 'machine_code', 'product_order_id', 'customer_id', 'production_plan_id', 'lot_size', 'info_cong_doan_id'];
+    protected $fillable = ['lot_id', 'lo_sx', 'line_id', 'product_id', 'start_time', 'end_time', 'quantity', 'machine_code', 'product_order_id', 'customer_id', 'production_plan_id', 'lot_size', 'status'];
     public function setStartTimeAttribute($value)
     {
         $this->attributes['start_time'] = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh');
@@ -43,10 +43,12 @@ class LotPlan extends Model
     {
         return $this->belongsTo(Product::class);
     }
-    public function machine(){
+    public function machine()
+    {
         return $this->belongsTo(Machine::class, 'machine_code', 'code');
     }
-    public function infoCongDoan(){
+    public function infoCongDoan()
+    {
         return $this->hasOne(InfoCongDoan::class);
     }
 }

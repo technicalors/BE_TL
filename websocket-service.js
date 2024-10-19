@@ -61,7 +61,7 @@ const deviceFieldConfig = {
     PLC_AP01: "PLC:AP01",
     PLC_AP02: "PLC:AP02",
     PLC_AP03: "PLC:AP03",
-    PM01_TEnergy: "PM01_TEnergy",
+    PM01_TEnergy: "PM01:Active_Energy",
     Env01_Temper: "ENV01:TEMPER",
     Env01_Humi: "ENV01:HUMI",
   },
@@ -71,7 +71,7 @@ const deviceFieldConfig = {
     PLC_STATUS: "PLC:STATUS",
     PLC_Time_UV1: "PLC:Time_UV1",
     PLC_Time_UV2: "PLC:Time_UV2",
-    PM01_TEnergy: "PM01_TEnergy",
+    PM01_TEnergy: "PM01:Active_Energy",
   },
   "7cda31d0-45bb-11ef-b8c3-a13625245eca": {
     PLC_UV1: "PLC:UV1",
@@ -90,7 +90,7 @@ const deviceFieldConfig = {
     PLC_Time_UV6: "PLC:Time_UV6",
     PLC_Time_UV7: "PLC:Time_UV7",
     PLC_Time_UV8: "PLC:Time_UV8",
-    PM01_TEnergy: "PM01_TEnergy",
+    PM01_TEnergy: "PM01:Active_Energy",
     Env01_Temper: "ENV01:TEMPER",
     Env01_Humi: "ENV01:HUMI",
   },
@@ -114,7 +114,7 @@ const deviceFieldConfig = {
     PLC_AP01: "PLC:AP01",
     PLC_AP02: "PLC:AP02",
     PLC_AP03: "PLC:AP03",
-    PM01_TEnergy: "PM01_TEnergy",
+    PM01_TEnergy: "PM01:Active_Energy",
   },
   "9032a0e0-45bc-11ef-b8c3-a13625245eca": {
     PLC_UV1: "PLC:UV1",
@@ -125,20 +125,20 @@ const deviceFieldConfig = {
     PLC_Time_UV2: "PLC:Time_UV2",
     PLC_Time_UV3: "PLC:Time_UV3",
     PLC_Time_UV4: "PLC:Time_UV4",
-    PM01_TEnergy: "PM01_TEnergy",
+    PM01_TEnergy: "PM01:Active_Energy",
   },
   "a43d8520-45bf-11ef-b8c3-a13625245eca": {
     PLC_F_Thu: "PLC:F_THU",
     PLC_F_xa: "PLC:F_Xa",
-    PM01_TEnergy: "PM01_TEnergy",
+    PM01_TEnergy: "PM01:Active_Energy",
   },
   "af35a2e0-45c0-11ef-b8c3-a13625245eca": {
     PLC_F_Thu: "PLC:F_THU",
     PLC_F_xa: "PLC:F_Xa",
-    PM01_TEnergy: "PM01_TEnergy",
+    PM01_TEnergy: "PM01:Active_Energy",
   },
   "da03f550-45be-11ef-b8c3-a13625245eca": {
-    PM01_TEnergy: "PM01_TEnergy",
+    PM01_TEnergy: "PM01:Active_Energy",
   },
   "f7f77560-45bd-11ef-b8c3-a13625245eca": {
     PLC_CB01: "PLC:CB01",
@@ -160,7 +160,7 @@ const deviceFieldConfig = {
     PLC_AP01: "PLC:AP01",
     PLC_AP02: "PLC:AP02",
     PLC_AP03: "PLC:AP03",
-    PM01_TEnergy: "PM01_TEnergy",
+    PM01_TEnergy: "PM01:Active_Energy",
   },
 };
 

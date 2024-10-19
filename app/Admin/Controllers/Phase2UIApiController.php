@@ -1074,15 +1074,15 @@ class Phase2UIApiController extends Controller
                 $lots[$lineId] = [];
             }
             if ($lineId == '24') {
-                $bom = Bom::where('product_id', $productId)->orderBy('priority')->orderBy('created_at')->first();
+                $bom = Bom::where('product_id', $productId)->where('priority', 1)->first();
                 Log::debug($bom);
                 if (!$bom) {
                     throw new Exception("Không tìm thấy bom của " . $productId . " tại công đoạn Gấp dán", 1);
-                }elseif(!$bom->material_id){
+                } elseif (!$bom->material_id) {
                     throw new Exception("Không tìm thấy mã NVL của mã sản phẩm" . $productId . " tại công đoạn Gấp dán", 1);
                 }
                 $productId = $bom->material_id;
-            }else{
+            } else {
                 $productId = $order->product_id;
             }
             $product = Product::find($productId);
@@ -1217,7 +1217,6 @@ class Phase2UIApiController extends Controller
                 }
                 //Tạo kế hoạch
                 $plans[] = $plan_input;
-
                 $lotIndexOffset += $numLots;
                 $machine_input[] = ['machine_code' => $machine->code, 'available_at' => $stepEndTimes[$lineId]];
                 if (!isset($machine_available_list[$machine->code]) || $stepEndTimes[$lineId]->greaterThan($machine_available_list[$machine->code])) {

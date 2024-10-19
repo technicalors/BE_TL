@@ -631,6 +631,7 @@ Route::group([
     //Chất lượng
     $router->get('qc-overall', [Phase2OIApiController::class, 'getQCOverall']);
     $router->get('lot-qc-list', [Phase2OIApiController::class, 'getLotQCList']);
+    $router->get('lot-qc-current', [Phase2OIApiController::class, 'getLotQCCurrent']);
     $router->post('scan-qc', [Phase2OIApiController::class, 'scanQC']);
     $router->get('criteria-list-of-lot', [Phase2OIApiController::class, 'getCriteriaListOfLot']);
     $router->post('save-pqc-result', [Phase2OIApiController::class, 'savePQCResult']);

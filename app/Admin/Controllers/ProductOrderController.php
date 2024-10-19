@@ -51,13 +51,16 @@ class ProductOrderController extends Controller
         }
         $result = $query->with('product', 'customer', 'material', 'numberProductOrder')->get();
         foreach ($result as $value) {
-            $spec = Spec::with('line')->where('product_id', $value->product_id)
-                ->where('slug', 'hanh-trinh-san-xuat')
-                ->orderBy('value', 'asc')
-                ->groupBy('line_id')
-                ->get()->filter(function ($value) {
-                    return is_numeric($value->value);
-                })->values();
+            $spec = Spec::with('line')
+            ->whereIn('id', function($query) use ($value) {
+                $query->selectRaw('MIN(id)')
+                    ->from('spec')
+                    ->where('product_id', $value->product_id)
+                    ->where('slug', 'hanh-trinh-san-xuat')
+                    ->groupBy('line_id');
+            })
+            ->orderBy('value', 'asc')
+            ->get();
             $sl_may = [];
             $numberProductOrder = $value->numberProductOrder;
             foreach ($spec as $key => $data) {
