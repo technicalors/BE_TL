@@ -88,13 +88,16 @@ class ProductOrderImport implements ToCollection, WithHeadingRow, WithStartRow
             'sl_giao_sx' => $quantity,
             'user_id' => $this->user_id,
         ]);
-        $spec = Spec::with('line')->where('product_id', $productId)
-            ->where('slug', 'hanh-trinh-san-xuat')
+        $spec = Spec::with('line')
+            ->whereIn('id', function ($query) use ($productId) {
+                $query->selectRaw('MIN(id)')
+                    ->from('spec')
+                    ->where('product_id', $productId)
+                    ->where('slug', 'hanh-trinh-san-xuat')
+                    ->groupBy('line_id');
+            })
             ->orderBy('value', 'asc')
-            ->groupBy('line_id')
-            ->get()->filter(function ($value) {
-                return is_numeric($value->value);
-            })->values();
+            ->get();
         foreach ($spec as $key => $value) {
             NumberMachineOrder::updateOrCreate([
                 'product_order_id' => $productOrder->id,

@@ -24,3 +24,6 @@ Homestead.json
 
 /public/exported_files
 /public/admin.php
+
+laravel-echo-server.json
+laravel-echo-server.lock
