@@ -623,6 +623,7 @@ Route::group([
     $router->post('end-of-production', [Phase2OIApiController::class, 'endOfProduction']);
     $router->post('scan-for-selection-line', [Phase2OIApiController::class, 'scanForSelectionLine']);
     $router->get('assignment', [Phase2OIApiController::class, 'getAssignment']);
+    $router->get('get-info-print-selection', [Phase2OIApiController::class, 'getInfoPrintSelection']);
     $router->post('assignment', [Phase2OIApiController::class, 'createAssignment']);
     $router->delete('assignment/{id}', [Phase2OIApiController::class, 'deleteAssignment']);
     $router->patch('assignment/{id}', [Phase2OIApiController::class, 'updateAssignment']);
