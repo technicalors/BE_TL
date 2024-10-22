@@ -36,7 +36,7 @@ class IOTController extends AdminController
         $info_cong_doan = InfoCongDoan::where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
         $sl_bat = $info_cong_doan->product->so_bat ?? 1;
         $tracking = Tracking::getData($machine->code);
-        $d_input = ($request->input - $tracking->input) * $sl_bat;
+        $d_input = ($request->input - $tracking->input);
         $d_output = ($request->output - $tracking->output) * $sl_bat;
         if ($d_input < 0) $d_input = 0;
         if ($d_output < 0) $d_output = 0;
@@ -47,14 +47,14 @@ class IOTController extends AdminController
                     $tracking->update(['input' => $request->input, 'output' => $request->output]);
                 }
                 if ($request->input > $tracking->input) {
-                    $info_cong_doan->sl_dau_vao_chay_thu = ($request->input - $tracking->input) * $sl_bat;
+                    $info_cong_doan->sl_dau_vao_chay_thu = ($request->input - $tracking->input);
                 }
                 if ($request->output > $tracking->output) {
                     $info_cong_doan->sl_dau_ra_chay_thu = ($request->output - $tracking->output) * $sl_bat;
                 }
             } else if ($status == 1 || $status == 2) { // chạy hàng loạt
                 if ($request->input > $tracking->input) {
-                    $info_cong_doan->sl_dau_vao_hang_loat = ($request->input - $tracking->input) * $sl_bat;
+                    $info_cong_doan->sl_dau_vao_hang_loat = ($request->input - $tracking->input);
                 }
                 if ($request->output > $tracking->output) {
                     $info_cong_doan->sl_dau_ra_hang_loat = ($request->output - $tracking->output) * $sl_bat;
