@@ -6223,7 +6223,7 @@ class ApiUIController extends AdminController
                 //     ]
                 // );
                 $line = Line::find($plan->line_id);
-                Stamp::create([
+                Stamp::updateOrCreate([
                     'lot_id' => $plan->lot_id,
                     'ten_sp' => $plan->product->name ?? null,
                     'soluongtp' => $plan->quantity,
