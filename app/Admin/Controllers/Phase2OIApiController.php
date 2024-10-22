@@ -282,37 +282,41 @@ class Phase2OIApiController extends Controller
         try {
             DB::beginTransaction();
             if ($line->id == '24') {
-                $roll_material = RollMaterial::where('id', $request->roll_id)->first();
-                if (!$roll_material) {
-                    return $this->failure('', 'Không tìm thấy cuộn nào');
-                }
-                $material = Material::with('bom.product')->find($roll_material->material_id);
-                if (!$material) {
-                    return $this->failure([], "Không tìm thấy NVL");
-                }
-                $inventory = WarehouseInventory::where('roll_id', $roll_material->id)->first();
-                if (!$inventory) {
-                    return $this->failure('', 'Không tìm thấy cuộn trong kho');
-                }
-                WarehouseHistories::create([
-                    'roll_id' => $roll_material->id,
-                    'material_id' => $roll_material->material_id,
-                    'quantity' => $inventory->quantity,
-                    'roll_quantity' => $inventory->roll_quantity,
-                    'type' => WarehouseHistories::TYPE_EXPORT
-                ]);
-                if ($inventory->quantity === 0 && $inventory->roll_quantity === 0) {
-                    $inventory->delete();
-                } else {
-                    $inventory->update([
-                        'quantity' => 0,
-                        'roll_quantity' => 0,
-                    ]);
-                }
+                // $product = Product::find($request->roll_id);
+                // if(!$product){
+
+                // }
+                // $roll_material = RollMaterial::where('id', $request->roll_id)->first();
+                // if (!$roll_material) {
+                //     return $this->failure('', 'Không tìm thấy cuộn nào');
+                // }
+                // $material = Material::with('bom.product')->find($roll_material->material_id);
+                // if (!$material) {
+                //     return $this->failure([], "Không tìm thấy NVL");
+                // }
+                // $inventory = WarehouseInventory::where('roll_id', $roll_material->id)->first();
+                // if (!$inventory) {
+                //     return $this->failure('', 'Không tìm thấy cuộn trong kho');
+                // }
+                // WarehouseHistories::create([
+                //     'roll_id' => $roll_material->id,
+                //     'material_id' => $roll_material->material_id,
+                //     'quantity' => $inventory->quantity,
+                //     'roll_quantity' => $inventory->roll_quantity,
+                //     'type' => WarehouseHistories::TYPE_EXPORT
+                // ]);
+                // if ($inventory->quantity === 0 && $inventory->roll_quantity === 0) {
+                //     $inventory->delete();
+                // } else {
+                //     $inventory->update([
+                //         'quantity' => 0,
+                //         'roll_quantity' => 0,
+                //     ]);
+                // }
                 $lot_plan = LotPlan::where('lot_id', $request->lot_id)->where('line_id', $machine->line_id)->where('machine_code', $machine->code)->first();
-                if ($lot_plan->product_id != $material->id) {
-                    return $this->failure([], "Mã cuộn không phù hợp");
-                }
+                // if ($lot_plan->product_id != $material->id) {
+                //     return $this->failure([], "Mã cuộn không phù hợp");
+                // }
             } else {
                 $material = Material::with('bom.product')->find($request->material_id);
                 if (!$material) {
@@ -370,35 +374,35 @@ class Phase2OIApiController extends Controller
             if (count($checksheet_logs) <= 0) {
                 return $this->failure([], "Chưa nhập kiểm tra checksheet");
             }
+            $tracking = Tracking::where('machine_id', $machine->code)->first();
+            if (!$tracking) {
+                return $this->failure([], "Máy này chưa được sử dụng");
+            }
+            if ($tracking->lot_id && $tracking->lot_id !== $request->lot_id) {
+                return $this->failure([], "Máy này đang sản xuất lot khác");
+            }
         }
-        $tracking = Tracking::where('machine_id', $machine->code)->first();
-        if (!$tracking) {
-            return $this->failure([], "Máy này chưa được sử dụng");
-        }
-        if ($tracking->lot_id && $tracking->lot_id !== $request->lot_id) {
-            return $this->failure([], "Máy này đang sản xuất lot khác");
-        }
-        $check = InfoCongDoan::where('lot_id', $request->scanned_lot)
-            ->orderBy('created_at', 'DESC')
-            // ->where('status', '<>', InfoCongDoan::STATUS_COMPLETED)
-            ->first();
-        if ($check) {
+        // $check = InfoCongDoan::where('lot_id', $request->scanned_lot)
+        //     ->orderBy('created_at', 'DESC')
+        //     // ->where('status', '<>', InfoCongDoan::STATUS_COMPLETED)
+        //     ->first();
+        // if ($check) {
             $lot_plan = LotPlan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $machine->line->id)->first();
             if (!$lot_plan) {
                 return $this->failure([], 'Không tìm thấy lot');
             }
-            if ($machine->line_id == '25') {
-                //Nếu là công đoạn In thì so sánh mã nvl tức là product_id của lot được quét với material_id của bom của product của lot chuẩn bị chạy 
-                $material_ids = Bom::where('product_id', $lot_plan->product_id)->pluck('material_id')->toArray();
-                if (!in_array($check->product_id, $material_ids)) {
-                    return $this->failure([], "Lot này không trùng mã NVL với lot chuẩn bị chạy");
-                }
-            } else {
-                //Các công đoạn còn lại so sánh product_id
-                if ($lot_plan->product_id !== $check->product_id) {
-                    return $this->failure([], "Lot này không trùng mã sản phẩm với lot chuẩn bị chạy");
-                }
-            }
+            // if ($machine->line_id == '25') {
+            //     //Nếu là công đoạn In thì so sánh mã nvl tức là product_id của lot được quét với material_id của bom của product của lot chuẩn bị chạy 
+            //     $material_ids = Bom::where('product_id', $lot_plan->product_id)->pluck('material_id')->toArray();
+            //     if (!in_array($check->product_id, $material_ids)) {
+            //         return $this->failure([], "Lot này không trùng mã NVL với lot chuẩn bị chạy");
+            //     }
+            // } else {
+            //     //Các công đoạn còn lại so sánh product_id
+            //     if ($lot_plan->product_id !== $check->product_id) {
+            //         return $this->failure([], "Lot này không trùng mã sản phẩm với lot chuẩn bị chạy");
+            //     }
+            // }
             try {
                 DB::beginTransaction();
                 MachineStatus::reset($machine->code);
@@ -423,9 +427,9 @@ class Phase2OIApiController extends Controller
                 DB::rollBack();
                 return $this->failure($th, "Lỗi quét lot");
             }
-        } else {
-            return $this->failure([], "Không tìm thấy lot phù hợp");
-        }
+        // } else {
+        //     return $this->failure([], "Không tìm thấy lot phù hợp");
+        // }
         return $this->success([], "Quét lot thành công");
     }
 

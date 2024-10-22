@@ -592,6 +592,7 @@ Route::group([
     $router->get('/fix-data-machine-maintain', [ApiUIController::class, 'fixDataMachineMaintain']);
     $router->get('update-product-to-material-in-line-gap-dan', [ApiUIController::class, 'updateProductToMaterialInLineGapDan']);
     $router->get('create-infocongdoan-for-plan', [ApiUIController::class, 'createInfoCongDoanForPlan']);
+    $router->post('filter-file-to-plan', [ApiUIController::class, 'filterFileToPlan']);
 });
 //Dashboard
 Route::group([

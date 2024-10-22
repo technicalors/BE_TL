@@ -6188,7 +6188,7 @@ class ApiUIController extends AdminController
 
     public function createInfoCongDoanForPlan(Request $request)
     {
-        $query = LotPlan::where('line_id', '<>', '24');
+        $query = LotPlan::query();
         if (!empty($request->machine_code)) {
             $query->where('machine_code', $request->machine_code);
         }
@@ -6205,25 +6205,25 @@ class ApiUIController extends AdminController
         try {
             DB::beginTransaction();
             foreach ($plans as $key => $plan) {
-                $info = InfoCongDoan::firstOrCreate(
-                    [
-                        'lot_id' => $plan->lot_id,
-                        'lo_sx' => $plan->lo_sx,
-                        'machine_code' => $plan->machine_code,
-                        'line_id' => $plan->line_id,
-                        'product_id' => $plan->product_id,
-                    ],
-                    [
-                        'thoi_gian_bat_dau' => $plan->start_time,
-                        'thoi_gian_ket_thuc' => $plan->end_time,
-                        'status' => InfoCongDoan::STATUS_COMPLETED,
-                        'sl_dau_ra_hang_loat' => $plan->quantity,
-                        'sl_kh' => $plan->quantity,
-                        'lot_plan_id' => $plan->id,
-                    ]
-                );
+                // $info = InfoCongDoan::firstOrCreate(
+                //     [
+                //         'lot_id' => $plan->lot_id,
+                //         'lo_sx' => $plan->lo_sx,
+                //         'machine_code' => $plan->machine_code,
+                //         'line_id' => $plan->line_id,
+                //         'product_id' => $plan->product_id,
+                //     ],
+                //     [
+                //         'thoi_gian_bat_dau' => $plan->start_time,
+                //         'thoi_gian_ket_thuc' => $plan->end_time,
+                //         'status' => InfoCongDoan::STATUS_COMPLETED,
+                //         'sl_dau_ra_hang_loat' => $plan->quantity,
+                //         'sl_kh' => $plan->quantity,
+                //         'lot_plan_id' => $plan->id,
+                //     ]
+                // );
                 $line = Line::find($plan->line_id);
-                Stamp::create([
+                Stamp::updateOrCreate([
                     'lot_id' => $plan->lot_id,
                     'ten_sp' => $plan->product->name ?? null,
                     'soluongtp' => $plan->quantity,
@@ -6236,6 +6236,9 @@ class ApiUIController extends AdminController
                     'nguoi_sx' => "",
                     'ghi_chu' => "",
                 ]);
+                // if (!empty($request->machine_code)) {
+                //     Tracking::where('machine_id', $request->machine_code)->update(['lot_id'=>null]);
+                // }
             }
             DB::commit();
         } catch (\Throwable $th) {
@@ -6243,5 +6246,81 @@ class ApiUIController extends AdminController
             throw $th;
         }
         return $this->success($plans);
+    }
+
+    public function filterFileToPlan(Request $request)
+    {
+        $extension = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
+        if ($extension == 'csv') {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
+        } elseif ($extension == 'xlsx') {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+        } else {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
+        }
+        // file path
+        $spreadsheet = $reader->load($_FILES['file']['tmp_name']);
+        $sheet = $spreadsheet->getActiveSheet();
+        $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
+        $data = [];
+        // return $allDataInSheet;
+        foreach ($allDataInSheet as $key => $row) {
+            if ($key > 1 && $row['C'] == '10' && str_contains(strtolower($row['J']), strtolower('Gấp dán'))) {
+                $input = [];
+                $input['A'] = '';
+                $input['B'] = '1';
+                $input['C'] = $row['T'];
+                $input['D'] = $row['U'];
+                $input['E'] = $row['D'];
+                $input['F'] = $row['H'];
+                $input['G'] = 'Gấp dán liên hoàn';
+                switch ($row['K']) {
+                    case 'GD 01':
+                        $input['H'] = 'LH1-A2';
+                        break;
+                    case 'GD 02':
+                        $input['H'] = 'LH2-A2';
+                        break;
+                    case 'GD 03':
+                        $input['H'] = 'LH3-A2';
+                        break;
+                    default:
+                        # code...
+                        break;
+                }
+
+                $input['I'] = '';
+                $input['J'] = $row['G'];
+                $input['K'] = $row['F'];
+                $input['L'] = $row['I'];
+                $input['M'] = '';
+                $input['N'] = '';
+                $input['O'] = '';
+                $input['P'] = '';
+                $input['Q'] = $row['N'];
+                $input['R'] = '';
+                $input['S'] = $row['N'];
+                $input['T'] = '';
+                $input['U'] = '';
+                $input['V'] = '';
+                $input['W'] = '';
+                $input['X'] = $row['AC'];
+                $input['Y'] = $row['AA'];
+                $input['Z'] = '';
+                $input['AA'] = '';
+                $input['AB'] = '';
+                $input['AC'] = '';
+                $input['AD'] = '';
+                $input['AE'] = '';
+                $data[] = $input;
+            }
+        }
+        // return $data;
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->fromArray($data, NULL, 'A4');
+        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('exported_files/KHSX.xlsx');
+        return 'done.';
     }
 }
