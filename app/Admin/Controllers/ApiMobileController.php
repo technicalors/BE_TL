@@ -52,6 +52,7 @@ use App\Models\MaterialLog;
 use App\Models\Monitor;
 use App\Models\OddBin;
 use App\Models\ProductOrder;
+use App\Models\QCHistory;
 use App\Models\Scenario;
 use App\Models\Spec;
 use App\Models\Stamp;
@@ -67,6 +68,7 @@ use Illuminate\Support\Facades\Log;
 use PDO;
 use SebastianBergmann\CodeUnit\FunctionUnit;
 use stdClass;
+use Symfony\Polyfill\Intl\Idn\Info;
 
 class ApiMobileController extends AdminController
 {
@@ -2776,7 +2778,6 @@ class ApiMobileController extends AdminController
         $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
 
-
         $data = [];
         foreach ($allDataInSheet as $key => $row) {
             //Lấy dứ liệu từ dòng thứ 5
@@ -2871,6 +2872,191 @@ class ApiMobileController extends AdminController
         }
     }
 
+    public function uploadInfoHistory()
+    {
+        $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
+        if ($extension == 'csv') {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
+        } elseif ($extension == 'xlsx') {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+        } else {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
+        }
+        // file path
+        $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
+        $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
+
+        $data = [];
+        foreach ($allDataInSheet as $key => $row) {
+            //Lấy dứ liệu từ dòng thứ 5
+            if ($key > 2 && !is_null($row['A'])) {
+                if (is_null($row['A'])) {
+                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu thứ tự ưu tiên');
+                }
+                if (is_null($row['B'])) {
+                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu thời gian bắt đầu');
+                }
+                if (is_null($row['C'])) {
+                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu thời gian kết thúc');
+                }
+                if (is_null($row['D'])) {
+                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu thời gian ngày sản xuất');
+                }
+                if (is_null($row['E'])) {
+                    return $this->failure([], 'Dòng số ' . $key . ': Thiếu công đoạn sản xuất');
+                }
+
+                $machine = Machine::query()->where('code', $row['D'])->first();
+                if (empty($machine)) throw new Exception('Không tìm thấy máy');
+
+                if (!is_null($row['B'])) {
+                    $input['lo_sx'] = $row['B'];
+                    $input['ngay_dat_hang'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['A'])));
+                    $input['cong_doan_sx'] = Str::slug($machine->line->name); //
+                    $input['line_id'] = $machine->line_id; //
+                    $input['ca_sx'] = 1; //
+                    $input['ngay_sx'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['A'])));
+                    $input['ngay_giao_hang'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['A'])));
+                    $input['machine_id'] = $machine->code; //
+                    $input['product_id'] = $row['C']; //
+                    $input['product_name'] = $row['C'];
+                    $input['khach_hang'] = 'Sam Sung'; //
+                    $input['so_bat'] = 2; //
+                    $input['sl_nvl'] = 0; //
+                    $input['sl_tong_don_hang'] = $row['E']; //
+                    $input['sl_giao_sx'] = $row['E']; //
+                    $input['sl_thanh_pham'] = $row['E'] ?? 0; //
+                    $input['thu_tu_uu_tien'] = 1; //
+                    $input['note'] = "";
+                    $input['UPH'] = 0; //
+                    $input['nhan_luc'] = 1;
+                    $input['tong_tg_thuc_hien'] = 10; //
+                    $input['kho_giay'] =  "";
+                    $input['toc_do'] =  "";
+                    $input['thoi_gian_chinh_may'] = 10;
+                    $input['thoi_gian_thuc_hien'] = 10;
+                    $input['thoi_gian_bat_dau'] = date('Y-m-d 07:00:00', strtotime($input['ngay_sx']));
+                    $input['thoi_gian_ket_thuc'] = date('Y-m-d 19:00:00', strtotime($input['ngay_sx']));
+                    $input['status'] = InfoCongDoan::STATUS_COMPLETED;
+                    $data[] = $input;
+                    unset($input);
+                }
+            }
+        }
+        DB::beginTransaction();
+        try {
+            foreach ($data as $key => $input) {
+                $this->createInfoHistory($input);
+            }
+            DB::commit();
+            return $this->success([], 'Upload thành công');
+        } catch (\Exception $ex) {
+            Log::error($ex);
+            DB::rollBack();
+            return $this->failure([], $ex->getMessage(), 500);
+        }
+    }
+
+    public function createInfoHistory($input)
+    {
+        $customer = Customer::firstOrCreate(
+            ['name' => $input['khach_hang']],
+            ['name' => $input['khach_hang'], 'id' => Str::slug($input['khach_hang'])]
+        );
+        // Product order
+        // $productOrder = ProductOrder::find($input['product_order_id']);
+        // if (empty($productOrder)) {
+        //     $productOrder = ProductOrder::create([
+        //         'id' => $input['product_order_id'],
+        //         'order_number' => $input['product_order_id'],
+        //         'customer_id' => $customer->id,
+        //         'product_id' => $input['product_id'],
+        //         'order_date' => $input['ngay_dat_hang'],
+        //         'quantity' => $input['sl_thanh_pham'],
+        //         'delivery_date' => $input['ngay_giao_hang'],
+        //     ]);
+        // }
+        $record = ProductionPlan::query()->where([
+            ['machine_id', $input['machine_id']],
+            ['lo_sx', $input['lo_sx']],
+            ['product_id', $input['product_id']],
+        ])->first();
+        if (isset($record)) throw new Exception("Kế hoạch cho LoSX:{$record->lo_sx} - {$record->product_id} đã được tạo");
+        $input['material_id'] = null;
+        $record = ProductionPlan::create($input);
+
+        $spec = Spec::query()->where('product_id', $input['product_id'])->where('line_id', '24')->where('slug', 'so-luong')->first();
+        $lotsize = 1;
+        if ($spec) {
+            if (!isset($spec->value)) throw new Exception('Không tìm thấy giá trị của Spec');
+            $lotsize = $spec->value;
+        } else {
+            throw new Exception("Không tìm thấy định mức cuộn");
+        }
+        $numbers = $this->getQuantityArray(intval(str_replace(",", "", $input['sl_giao_sx'])), $lotsize);
+        $countLot = InfoCongDoan::query()->where([
+            ['lo_sx', $input['lo_sx']],
+            ['line_id', $input['line_id']]
+        ])->count();
+        foreach ($numbers as $number) {
+            $countLot++;
+            $info_cong_doan = [
+                'lot_id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
+                // 'lotsize' => $number, // 👈 Định mức cuộn
+                'lo_sx' => $input['lo_sx'],
+                'line_id' => $input['line_id'],
+                'product_id' => $input['product_id'],
+                'status' => InfoCongDoan::STATUS_COMPLETED,
+                'machine_code' => $input['machine_id'],
+                'sl_kh' => $number, // 
+                'thoi_gian_bat_dau' => $input['thoi_gian_bat_dau'],
+                'thoi_gian_ket_thuc' => $input['thoi_gian_ket_thuc'],
+                'thoi_gian_bam_may' => $input['thoi_gian_bat_dau'],
+                'sl_dau_vao_hang_loat' => $number,
+                'sl_dau_ra_hang_loat' => $number,
+            ];
+            $lotPlan = LotPlan::firstOrCreate(
+                [
+                    'lot_id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
+                    'line_id' => $input['line_id'],
+                    'machine_code' => $input['machine_id'],
+                    'product_id' => $input['product_id'],
+                    'lo_sx' => $input['lo_sx'],
+                ],
+                [
+                    'start_time' => $input['thoi_gian_bat_dau'],
+                    'end_time' => $input['thoi_gian_ket_thuc'],
+                    'quantity' => $number,
+                    'product_order_id' => $input['lo_sx'],
+                    'customer_id' => $customer->id,
+                    'production_plan_id' => $record->id,
+                    'lot_size' => $number,
+                ]
+            );
+            $info_cong_doan['lot_plan_id'] = $lotPlan->id;
+            $record = InfoCongDoan::create($info_cong_doan);
+            QCHistory::create([
+                'user_id' => 1,
+                'info_cong_doan_id' => $record->id,
+                'scanned_time' => $input['thoi_gian_ket_thuc'],
+                'eligible_to_end' => 1,
+            ]);
+            Lot::create([
+                'id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
+                'lo_sx' => $input['lo_sx'],
+                'type' => 0,
+                'material_export_log_id' => null,
+                'product_id' => $input['product_id'],
+                'line_id' => $input['line_id'],
+                'status' => 1,
+                'so_luong' => $number,
+                'plan_id' => $record->id,             
+            ]);
+        }
+    }
+
+
+
     public function createPlanForLineLienHoan($input)
     {
         $customer = Customer::firstOrCreate(
@@ -2894,7 +3080,7 @@ class ApiMobileController extends AdminController
             ['machine_id', $input['machine_id']],
             ['lo_sx', $input['lo_sx']],
             ['material_id', $input['material_id']],
-            
+
         ])->first();
         if (isset($record)) throw new Exception("Kế hoạch cho LoSX:{$record->lo_sx} - {$record->product_id} đã được tạo");
         $input['product_id'] = null;
@@ -2995,7 +3181,7 @@ class ApiMobileController extends AdminController
                     'quantity' => $number,
                     'product_order_id' => $input['product_order_id'],
                     'customer_id' => $customer->id,
-                    'production_plan_id'=>$record->id,
+                    'production_plan_id' => $record->id,
                     'lot_size' => $number,
                 ]
             );

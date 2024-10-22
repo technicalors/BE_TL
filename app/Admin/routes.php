@@ -388,6 +388,7 @@ Route::group([
     $router->get('/product/barcode', [ApiMobileController::class, 'productBarcode']);
     $router->post('/upload-ke-hoach-xuat-kho-tong', [ApiMobileController::class, 'uploadKHXKT']);
     $router->post('/upload-ke-hoach-san-xuat', [ApiMobileController::class, 'uploadKHSX']);
+    $router->post('/upload-lich-su-san-xuat', [ApiMobileController::class, 'uploadInfoHistory']);
     $router->post('/lot/store', [ApiMobileController::class, 'storeLot']);
     $router->get('lot/list-table', [ApiMobileController::class, 'listLot']);
     $router->post('/upload-ke-hoach-xuat-kho', [ApiMobileController::class, 'uploadKHXK']);
@@ -623,6 +624,7 @@ Route::group([
     $router->post('end-of-production', [Phase2OIApiController::class, 'endOfProduction']);
     $router->post('scan-for-selection-line', [Phase2OIApiController::class, 'scanForSelectionLine']);
     $router->get('assignment', [Phase2OIApiController::class, 'getAssignment']);
+    $router->get('get-info-print-selection', [Phase2OIApiController::class, 'getInfoPrintSelection']);
     $router->post('assignment', [Phase2OIApiController::class, 'createAssignment']);
     $router->delete('assignment/{id}', [Phase2OIApiController::class, 'deleteAssignment']);
     $router->patch('assignment/{id}', [Phase2OIApiController::class, 'updateAssignment']);

@@ -18,8 +18,34 @@ class InfoCongDoan extends Model
     const STATUS_INPROGRESS = 1;
     const STATUS_COMPLETED = 2;
 
-    protected $fillable = ['id', 'lot_id', 'lotsize', 'lo_sx', 'line_id', 'product_id', 'thoi_gian_bat_dau', 'thoi_gian_bam_may', 'thoi_gian_ket_thuc', 'sl_dau_vao_chay_thu', 'sl_dau_ra_chay_thu', 
-    'sl_dau_vao_hang_loat', 'sl_dau_ra_hang_loat', 'sl_tem_vang', 'sl_ng', 'start_powerM', 'end_powerM', 'powerM', 'updated_at', 'status', 'machine_code', 'sl_kh', 'user_id', 'material_id', 'lot_plan_id'];
+    protected $fillable = [
+        'id',
+        'lot_id',
+        'lotsize',
+        'lo_sx',
+        'line_id',
+        'product_id',
+        'thoi_gian_bat_dau',
+        'thoi_gian_bam_may',
+        'thoi_gian_ket_thuc',
+        'sl_dau_vao_chay_thu',
+        'sl_dau_ra_chay_thu',
+        'sl_dau_vao_hang_loat',
+        'sl_dau_ra_hang_loat',
+        'sl_tem_vang',
+        'sl_ng',
+        'start_powerM',
+        'end_powerM',
+        'powerM',
+        'updated_at',
+        'status',
+        'machine_code',
+        'sl_kh',
+        'user_id',
+        'material_id',
+        'lot_plan_id',
+        'input_lot_id'
+    ];
 
     static function validateStore($input)
     {
@@ -97,16 +123,24 @@ class InfoCongDoan extends Model
     {
         return $this->belongsTo(Material::class);
     }
-    public function qcHistory(){
+    public function qcHistory()
+    {
         return $this->hasOne(QCHistory::class);
     }
-    public function user(){
+    public function user()
+    {
         return $this->belongsTo(CustomUser::class);
     }
-    public function machine(){
+    public function machine()
+    {
         return $this->belongsTo(Machine::class, 'machine_code', 'code');
     }
-    public function lotPlan(){
+    public function lotPlan()
+    {
         return $this->belongsTo(LotPlan::class);
+    }
+    public function assignments()
+    {
+        return $this->hasMany(Assignment::class, 'lot_id', 'lot_id');
     }
 }
