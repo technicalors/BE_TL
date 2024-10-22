@@ -139,7 +139,7 @@ class MaintenancePlanController extends Controller
             $data[] = [
                 'id' => $schedule->id,
                 'machine_code' => $schedule->machine_code,
-                'machine_name' => $schedule->machine->name,
+                'machine_name' => $schedule->machine_code,
                 'line_name' => $schedule->machine->line->name ?? "",
                 'line_id' => $schedule->machine->line->id ?? "",
                 'item_name' => $schedule->maintenanceItem->name ?? "",
