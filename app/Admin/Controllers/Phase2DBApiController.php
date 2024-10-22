@@ -154,7 +154,7 @@ class Phase2DBApiController extends Controller
 
     public function getProductionSituationLineIn(Request $request)
     {
-        $machines = Machine::with('line')->where('line_id', 25)->orderBy('name')->get();
+        $machines = Machine::with('line')->where('line_id', 25)->where('is_iot', 1)->orderBy('name')->get();
         $data = [];
         foreach ($machines as $machine) {
             $info = InfoCongDoan::where("line_id", $machine->line_id)->where('machine_code', $machine->code)->with(["lotPlan", "lot.plan.product"])->orderBy('thoi_gian_bat_dau', 'DESC')->first();
@@ -195,6 +195,7 @@ class Phase2DBApiController extends Controller
                 $upm = $lotPlan->quantity / (2 * 60);
                 $diff_time = strtotime('now') - strtotime($info->thoi_gian_bat_dau ?? 'now');
                 $target = (int)($upm * ($diff_time / 60));
+                $tl_ht = (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ? number_format((($info->sl_dau_ra_hang_loat - $info->sl_ng) / $info->sl_dau_ra_hang_loat), 2) : 0));
                 $tm = [
                     "cong_doan" => mb_strtoupper($info->line->name, 'UTF-8'),
                     'machine_code' => $machine->code,
@@ -202,13 +203,16 @@ class Phase2DBApiController extends Controller
                     "product" => $product ? $product->name : '',
                     "sl_dau_ra_kh" => $lotPlan->quantity ?? 0,
                     "sl_thuc_te" => $info->sl_dau_ra_hang_loat - $info->sl_ng,
-                    "sl_muc_tieu" => $target < $lotPlan->quantity ? $target : $lotPlan->quantity,
+                    "sl_muc_tieu" =>  $lotPlan->quantity ?? 0,
                     "ti_le_ng" => (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ?  number_format(($info->sl_ng /  $info->sl_dau_ra_hang_loat), 2) : 0)),
-                    "ti_le_ht" => (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ? number_format((($info->sl_dau_ra_hang_loat - $info->sl_ng) / $info->sl_dau_ra_hang_loat), 2) : 0)),
+                    "ti_le_ht" => $tl_ht > 100 ? 100 : $tl_ht,
                     "status" => $status,
                     "time" => $info->updated_at,
                 ];
                 $tm['ti_le_ht'] = (int) (100 * (($tm['sl_dau_ra_kh']) > 0 ? number_format(($tm['sl_thuc_te'] / ($tm['sl_dau_ra_kh'])), 2) : 0));
+                if ($tm['ti_le_ht'] > 100) {
+                    $tm['ti_le_ht'] = 100;
+                }
                 $data[] = $tm;
             }
         }
@@ -274,6 +278,7 @@ class Phase2DBApiController extends Controller
                 $upm = $lotPlan->quantity / (2 * 60);
                 $diff_time = strtotime('now') - strtotime($info->thoi_gian_bat_dau ?? 'now');
                 $target = (int)($upm * ($diff_time / 60));
+                $tl_ht = (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ? number_format((($info->sl_dau_ra_hang_loat - $info->sl_ng) / $info->sl_dau_ra_hang_loat), 2) : 0));
                 $tm = [
                     'target' => $target,
                     "cong_doan" => mb_strtoupper($info->line->name, 'UTF-8'),
@@ -282,13 +287,16 @@ class Phase2DBApiController extends Controller
                     "product" => $product ? $product->name : '',
                     "sl_dau_ra_kh" => $lotPlan->quantity ?? 0,
                     "sl_thuc_te" => $info->sl_dau_ra_hang_loat - $info->sl_ng,
-                    "sl_muc_tieu" => $target < $lotPlan->quantity ? $target : $lotPlan->quantity,
+                    "sl_muc_tieu" => $lotPlan->quantity ?? 0,
                     "ti_le_ng" => (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ?  number_format(($info->sl_ng /  $info->sl_dau_ra_hang_loat), 2) : 0)),
-                    "ti_le_ht" => (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ? number_format((($info->sl_dau_ra_hang_loat - $info->sl_ng) / $info->sl_dau_ra_hang_loat), 2) : 0)),
+                    "ti_le_ht" => $tl_ht > 100 ? 100 : $tl_ht,
                     "status" => $status,
                     "time" => $info->updated_at,
                 ];
                 $tm['ti_le_ht'] = (int) (100 * (($tm['sl_dau_ra_kh']) > 0 ? number_format(($tm['sl_thuc_te'] / ($tm['sl_dau_ra_kh'])), 2) : 0));
+                if ($tm['ti_le_ht'] > 100) {
+                    $tm['ti_le_ht'] = 100;
+                }
                 $data[] = $tm;
             }
         }
