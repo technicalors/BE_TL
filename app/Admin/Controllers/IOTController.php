@@ -57,7 +57,11 @@ class IOTController extends AdminController
                     $info_cong_doan->sl_dau_vao_hang_loat = ($request->input - $tracking->input);
                 }
                 if ($request->output > $tracking->output) {
-                    $info_cong_doan->sl_dau_ra_hang_loat = ($request->output - $tracking->output) * $sl_bat;
+                    if ($machine->code == 'IN_2_MAU_01') {
+                        $info_cong_doan->sl_dau_ra_hang_loat = $request->output - $tracking->output;
+                    } else {
+                        $info_cong_doan->sl_dau_ra_hang_loat = ($request->output - $tracking->output) * $sl_bat;
+                    }
                 }
             }
             $info_cong_doan->save();
