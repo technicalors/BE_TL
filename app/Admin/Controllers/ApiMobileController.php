@@ -299,6 +299,11 @@ class ApiMobileController extends AdminController
         $log_data = [];
         foreach ($logs as $log) {
             $info = $log['info'];
+            $start = Carbon::parse($log['info']['start_time'] ?? 'now');
+            $end = Carbon::parse($log['info']['end_time'] ?? 'now');
+            if($end->diffInMinutes($start) <= 3){
+                continue;
+            }
             $info['start_time'] = $log['info']['start_time'] ? date('d/m/Y H:i:s', $log['info']['start_time']) : '';
             $info['end_time'] =  isset($log['info']['end_time']) ? date('d/m/Y H:i:s', $log['info']['end_time']) : '';
             $log['info'] =  $info;
@@ -2885,7 +2890,7 @@ class ApiMobileController extends AdminController
         // file path
         $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
-
+        // return $allDataInSheet;
         $data = [];
         foreach ($allDataInSheet as $key => $row) {
             //Lấy dứ liệu từ dòng thứ 5
@@ -2907,8 +2912,9 @@ class ApiMobileController extends AdminController
                 }
 
                 $machine = Machine::query()->where('code', $row['D'])->first();
-                if (empty($machine)) throw new Exception('Không tìm thấy máy');
-
+                if (empty($machine)) continue;
+                $product = Product::where('id', 'like', $row['C'])->first();
+                if (empty($product)) continue;
                 if (!is_null($row['B'])) {
                     $input['lo_sx'] = $row['B'];
                     $input['ngay_dat_hang'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['A'])));
@@ -2918,7 +2924,7 @@ class ApiMobileController extends AdminController
                     $input['ngay_sx'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['A'])));
                     $input['ngay_giao_hang'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['A'])));
                     $input['machine_id'] = $machine->code; //
-                    $input['product_id'] = $row['C']; //
+                    $input['product_id'] = strtoupper($row['C']); //
                     $input['product_name'] = $row['C'];
                     $input['khach_hang'] = 'Sam Sung'; //
                     $input['so_bat'] = 2; //
@@ -2981,7 +2987,7 @@ class ApiMobileController extends AdminController
             ['lo_sx', $input['lo_sx']],
             ['product_id', $input['product_id']],
         ])->first();
-        if (isset($record)) throw new Exception("Kế hoạch cho LoSX:{$record->lo_sx} - {$record->product_id} đã được tạo");
+        if (isset($record)) return null;
         $input['material_id'] = null;
         $record = ProductionPlan::create($input);
 
@@ -3014,6 +3020,8 @@ class ApiMobileController extends AdminController
                 'thoi_gian_bam_may' => $input['thoi_gian_bat_dau'],
                 'sl_dau_vao_hang_loat' => $number,
                 'sl_dau_ra_hang_loat' => $number,
+                'created_at' => $input['thoi_gian_bat_dau'],
+                'updated_at' => $input['thoi_gian_ket_thuc'],
             ];
             $lotPlan = LotPlan::firstOrCreate(
                 [

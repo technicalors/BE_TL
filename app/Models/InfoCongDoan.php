@@ -44,7 +44,9 @@ class InfoCongDoan extends Model
         'user_id',
         'material_id',
         'lot_plan_id',
-        'input_lot_id'
+        'input_lot_id',
+        'created_at',
+        'updated_at'
     ];
 
     static function validateStore($input)
