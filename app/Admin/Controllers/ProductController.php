@@ -230,7 +230,7 @@ class ProductController extends Controller
         return back();
     }
 
-    private function importSpec($currRow, $titleRow1, $titleRow2, $product_id)
+    private function importSpec($currRow, $titleRow1, $titleRow2, $product)
     {
         $title = [];
         foreach ($titleRow2 as $i => $item) {
@@ -287,10 +287,13 @@ class ProductController extends Controller
                         $input['name'] = $title[$key];
                     }
                     $input['value'] = $item;
-                    $input['product_id'] = $product_id;
+                    $input['product_id'] = $product->id;
                     $input['slug'] = Str::slug($input['name']);
                     $input['line_id'] = $id;
                     $spec_data[] = $input;
+                    if ($input['slug'] === 'so-bat' && $input['value']) {
+                        $product->update(['so_bat' => $input['value']]);
+                    }
                 }
             }
         }
@@ -336,19 +339,19 @@ class ProductController extends Controller
         $material = null;
         $titleRow1 = $allDataInSheet[3];
         $titleRow2 = $allDataInSheet[4];
-        Product::truncate();
-        Material::truncate();
-        Bom::truncate();
-        ProductionJourney::truncate();
-        MaterialWastage::truncate();
-        TimeWastage::truncate();
-        LineProductivity::truncate();
-        Spec::truncate();
-        MachinePriorityOrder::truncate();
-        MachinePriorityOrderAttribute::truncate();
-        MachinePriorityOrderAttributeValue::truncate();
         try {
             DB::beginTransaction();
+            Product::query()->delete();
+            Material::query()->delete();
+            Bom::query()->delete();
+            ProductionJourney::query()->delete();
+            MaterialWastage::query()->delete();
+            TimeWastage::query()->delete();
+            LineProductivity::query()->delete();
+            Spec::query()->delete();
+            MachinePriorityOrder::query()->delete();
+            MachinePriorityOrderAttribute::query()->delete();
+            MachinePriorityOrderAttributeValue::query()->delete();
             foreach ($allDataInSheet as $index => $row) {
                 if ($index < 5) {
                     continue;
@@ -358,7 +361,7 @@ class ProductController extends Controller
                 if (trim($row['B'])) {
                     $product = $this->importProduct(array_intersect_key($row, array_flip($this->product_columns)));
                     // $production_journey = ProductionJourney::create(['product_id' => $product->id], array_intersect_key($row, array_flip($this->production_journey_column)));
-                    $this->importSpec($row, $titleRow1, $titleRow2, $product->id);
+                    $this->importSpec($row, $titleRow1, $titleRow2, $product);
                     $material_wastages_data = array_intersect_key($row, array_flip($this->material_wastage_columns));
                     $time_wastages_data = array_intersect_key($row, array_flip($this->time_wastage_columns));
                     $this->importMaterialWastages($material_wastages_data, $product->id);
