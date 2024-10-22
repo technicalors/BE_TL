@@ -2796,11 +2796,16 @@ class ApiUIController extends AdminController
                         $obj->nhan_luc = $plan ? $plan->nhan_luc : 0;
                     }
                 }
-                $obj->ty_le_ng = $obj->sl_dau_ra ? number_format($obj->sl_ng / $obj->sl_dau_ra, 2) * 100 . '%' : 0;
-                $obj->ty_le_hao_phi_thoi_gian = $obj->tong_thoi_gian_san_xuat ? number_format($obj->thoi_gian_khong_san_luong / $obj->tong_thoi_gian_san_xuat, 2) * 100 . '%' : 0;
-                $obj->hieu_suat_a = $tg_san_xuat_kh > 0 ? number_format($obj->thoi_gian_tinh_san_luong / $tg_san_xuat_kh, 2) * 100 . '%' : 0;
-                $obj->hieu_suat_q = $obj->sl_dau_ra ? number_format($obj->sl_ok / $obj->sl_dau_ra, 2) * 100 . '%' : 0;
-
+                try {
+                    $obj->ty_le_ng = $obj->sl_dau_ra ? number_format($obj->sl_ng / $obj->sl_dau_ra, 2) * 100 . '%' : 0;
+                    $obj->ty_le_hao_phi_thoi_gian = ($obj->tong_thoi_gian_san_xuat ? round(($obj->thoi_gian_khong_san_luong ?? 0) / $obj->tong_thoi_gian_san_xuat, 2) * 100 : 0) . '%';
+                    $obj->hieu_suat_a = $tg_san_xuat_kh > 0 ? round($obj->thoi_gian_tinh_san_luong / $tg_san_xuat_kh, 2) * 100 . '%' : 0;
+                    $obj->hieu_suat_q = $obj->sl_dau_ra ? round($obj->sl_ok / $obj->sl_dau_ra, 2) * 100 . '%' : 0;
+                    //code...
+                } catch (\Throwable $th) {
+                    throw $th;
+                    // return number_format($obj->thoi_gian_khong_san_luong / $obj->tong_thoi_gian_san_xuat);
+                }
                 $obj->hieu_suat_p = ($obj->thoi_gian_tinh_san_luong && $sl_thuc_te > 0) ? number_format(($obj->sl_dau_ra) / $sl_thuc_te * 100, 2) . '%' : 0;
                 $obj->oee = (((int)$obj->hieu_suat_a * (int)$obj->hieu_suat_p * (int)$obj->hieu_suat_q) / 10000) . '%';
 
@@ -6324,7 +6329,8 @@ class ApiUIController extends AdminController
         return 'done.';
     }
 
-    public function randomInfo(){
+    public function randomInfo()
+    {
         try {
             DB::beginTransaction();
             $infos = InfoCongDoan::where('thoi_gian_bat_dau', '1970-01-01 07:00:00')->get();
@@ -6363,14 +6369,15 @@ class ApiUIController extends AdminController
         }
     }
 
-    function randomDateTime($startDate, $endDate) {
+    function randomDateTime($startDate, $endDate)
+    {
         // Convert the start and end dates to timestamps
         $startTimestamp = Carbon::parse($startDate)->timestamp;
         $endTimestamp = Carbon::parse($endDate)->timestamp;
-    
+
         // Generate a random timestamp between start and end
         $randomTimestamp = rand($startTimestamp, $endTimestamp);
-    
+
         // Return the random timestamp as a Carbon instance
         return Carbon::createFromTimestamp($randomTimestamp);
     }
