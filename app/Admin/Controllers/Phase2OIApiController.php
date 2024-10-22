@@ -282,37 +282,41 @@ class Phase2OIApiController extends Controller
         try {
             DB::beginTransaction();
             if ($line->id == '24') {
-                $roll_material = RollMaterial::where('id', $request->roll_id)->first();
-                if (!$roll_material) {
-                    return $this->failure('', 'Không tìm thấy cuộn nào');
-                }
-                $material = Material::with('bom.product')->find($roll_material->material_id);
-                if (!$material) {
-                    return $this->failure([], "Không tìm thấy NVL");
-                }
-                $inventory = WarehouseInventory::where('roll_id', $roll_material->id)->first();
-                if (!$inventory) {
-                    return $this->failure('', 'Không tìm thấy cuộn trong kho');
-                }
-                WarehouseHistories::create([
-                    'roll_id' => $roll_material->id,
-                    'material_id' => $roll_material->material_id,
-                    'quantity' => $inventory->quantity,
-                    'roll_quantity' => $inventory->roll_quantity,
-                    'type' => WarehouseHistories::TYPE_EXPORT
-                ]);
-                if ($inventory->quantity === 0 && $inventory->roll_quantity === 0) {
-                    $inventory->delete();
-                } else {
-                    $inventory->update([
-                        'quantity' => 0,
-                        'roll_quantity' => 0,
-                    ]);
-                }
+                // $product = Product::find($request->roll_id);
+                // if(!$product){
+                    
+                // }
+                // $roll_material = RollMaterial::where('id', $request->roll_id)->first();
+                // if (!$roll_material) {
+                //     return $this->failure('', 'Không tìm thấy cuộn nào');
+                // }
+                // $material = Material::with('bom.product')->find($roll_material->material_id);
+                // if (!$material) {
+                //     return $this->failure([], "Không tìm thấy NVL");
+                // }
+                // $inventory = WarehouseInventory::where('roll_id', $roll_material->id)->first();
+                // if (!$inventory) {
+                //     return $this->failure('', 'Không tìm thấy cuộn trong kho');
+                // }
+                // WarehouseHistories::create([
+                //     'roll_id' => $roll_material->id,
+                //     'material_id' => $roll_material->material_id,
+                //     'quantity' => $inventory->quantity,
+                //     'roll_quantity' => $inventory->roll_quantity,
+                //     'type' => WarehouseHistories::TYPE_EXPORT
+                // ]);
+                // if ($inventory->quantity === 0 && $inventory->roll_quantity === 0) {
+                //     $inventory->delete();
+                // } else {
+                //     $inventory->update([
+                //         'quantity' => 0,
+                //         'roll_quantity' => 0,
+                //     ]);
+                // }
                 $lot_plan = LotPlan::where('lot_id', $request->lot_id)->where('line_id', $machine->line_id)->where('machine_code', $machine->code)->first();
-                if ($lot_plan->product_id != $material->id) {
-                    return $this->failure([], "Mã cuộn không phù hợp");
-                }
+                // if ($lot_plan->product_id != $material->id) {
+                //     return $this->failure([], "Mã cuộn không phù hợp");
+                // }
             } else {
                 $material = Material::with('bom.product')->find($request->material_id);
                 if (!$material) {
