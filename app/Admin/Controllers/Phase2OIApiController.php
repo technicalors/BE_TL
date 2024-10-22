@@ -1567,7 +1567,7 @@ class Phase2OIApiController extends Controller
     public function scanImport(Request $request)
     {
         $input = $request->all();
-        $lot = Lot::where('id', $input['lot_id'])->where('type', Lot::TYPE_THUNG)->first();
+        $lot = Lot::where('id', $input['lot_id'])->first();
         if (!$lot) {
             return $this->failure([], "Mã thùng không tồn tại");
         }
@@ -1575,27 +1575,27 @@ class Phase2OIApiController extends Controller
         if ($check_lot) {
             return $this->failure([], "Mã thùng đã có trong kho");
         }
-        $qc_history = QCHistory::where('lot_id', $lot->id)->where('line_id', 30)->first();
-        if (!$qc_history) {
-            return $this->failure([], "Thùng này chưa qua OQC");
-        } else {
-            $list = TestCriteria::where('line_id', 30)->where('is_show', 1)->select('chi_tieu')->distinct()->get();
-            $qc_history = QCHistory::where('lot_id', $lot->id)->where('line_id', 30)->first();
-            $log = [];
-            if ($qc_history) {
-                $log = $qc_history->log ?? [];
-            }
-            $result = [];
-            foreach ($list as $item) {
-                if (isset($log[Str::slug($item->chi_tieu)])) {
-                    $qc_data = $log[Str::slug($item->chi_tieu)];
-                    $result[] = $qc_data['result'] ?? "";
-                }
-            }
-            if (in_array(0, $result) || count($result) !== count($list)) {
-                return $this->failure([], "Thùng này chưa qua OQC");
-            }
-        }
+        // $qc_history = QCHistory::where('lot_id', $lot->id)->where('line_id', 30)->first();
+        // if (!$qc_history) {
+        //     return $this->failure([], "Thùng này chưa qua OQC");
+        // } else {
+        //     $list = TestCriteria::where('line_id', 30)->where('is_show', 1)->select('chi_tieu')->distinct()->get();
+        //     $qc_history = QCHistory::where('lot_id', $lot->id)->where('line_id', 30)->first();
+        //     $log = [];
+        //     if ($qc_history) {
+        //         $log = $qc_history->log ?? [];
+        //     }
+        //     $result = [];
+        //     foreach ($list as $item) {
+        //         if (isset($log[Str::slug($item->chi_tieu)])) {
+        //             $qc_data = $log[Str::slug($item->chi_tieu)];
+        //             $result[] = $qc_data['result'] ?? "";
+        //         }
+        //     }
+        //     if (in_array(0, $result) || count($result) !== count($list)) {
+        //         return $this->failure([], "Thùng này chưa qua OQC");
+        //     }
+        // }
         $data = new \stdClass();
         $product = Product::find($lot->product_id);
         $data->so_luong = $lot->so_luong;
