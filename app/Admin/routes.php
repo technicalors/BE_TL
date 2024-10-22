@@ -388,6 +388,7 @@ Route::group([
     $router->get('/product/barcode', [ApiMobileController::class, 'productBarcode']);
     $router->post('/upload-ke-hoach-xuat-kho-tong', [ApiMobileController::class, 'uploadKHXKT']);
     $router->post('/upload-ke-hoach-san-xuat', [ApiMobileController::class, 'uploadKHSX']);
+    $router->post('/upload-lich-su-san-xuat', [ApiMobileController::class, 'uploadInfoHistory']);
     $router->post('/lot/store', [ApiMobileController::class, 'storeLot']);
     $router->get('lot/list-table', [ApiMobileController::class, 'listLot']);
     $router->post('/upload-ke-hoach-xuat-kho', [ApiMobileController::class, 'uploadKHXK']);
