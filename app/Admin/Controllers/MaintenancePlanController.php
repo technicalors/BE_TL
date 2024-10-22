@@ -101,7 +101,7 @@ class MaintenancePlanController extends Controller
             });
             $data[] = [
                 'machine_code' => $machine_code,
-                'machine_name' => $schedule[0]->machine->name ?? "",
+                'machine_name' => $machine_code,
                 'line_name' => $schedule[0]->machine->line->name ?? "",
                 'item_number' => $schedule->count(),
                 'planning_date' => date('d/m/Y', strtotime($schedule[0]->due_date)),
