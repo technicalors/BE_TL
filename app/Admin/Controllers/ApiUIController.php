@@ -3067,7 +3067,7 @@ class ApiUIController extends AdminController
                 DB::raw("DATE(thoi_gian_bat_dau) as ngay_sx"),
             ])
             ->whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_bam_may')->whereNotNull('thoi_gian_ket_thuc')
-            ->groupBy('lo_sx', 'line_id', 'ngay_sx')
+            ->groupBy('lo_sx', 'line_id', 'ngay_sx', 'id')
             ->orderBy('ngay_sx')->orderBy('lo_sx')
             ->get();
 
