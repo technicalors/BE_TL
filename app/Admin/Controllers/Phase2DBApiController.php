@@ -240,7 +240,7 @@ class Phase2DBApiController extends Controller
         $machines = $query->get();
         $data = [];
         foreach ($machines as $machine) {
-            $info = InfoCongDoan::where("line_id", $machine->line_id)->where('machine_code', $machine->code)->with(["lotPlan", "lot.plan.product"])->orderBy('thoi_gian_bat_dau', 'DESC')->first();
+            $info = InfoCongDoan::where("line_id", $machine->line_id)->where('machine_code', $machine->code)->with(["lotPlan", "lot.plan.product"])->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->orderBy('thoi_gian_bat_dau', 'DESC')->first();
             if (!$info) {
                 $tm = [
                     "cong_doan" => mb_strtoupper($machine->line->name, 'UTF-8'),

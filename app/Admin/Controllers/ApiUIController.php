@@ -6323,4 +6323,47 @@ class ApiUIController extends AdminController
         $writer->save('exported_files/KHSX.xlsx');
         return 'done.';
     }
+
+    public function randomInfo(){
+        $infos = InfoCongDoan::where('thoi_gian_bat_dau', '1970-01-01 07:00:00')->get();
+        foreach ($infos as $key => $info) {
+            $start = $this->randomDateTime('2024-08-01 00:00:00', '2024-09-30 00:00:00');
+            $end = $start->copy()->addHours(rand(3, 15));
+            return [$start->format('Y-m-d H:i:s'), $end->format('Y-m-d H:i:s')];
+            $info->update([
+                'thoi_gian_bat_dau' => $start->format('Y-m-d H:i:s'),
+                'thoi_gian_ket_thuc' => $end->format('Y-m-d H:i:s'),
+                'created_at' => $start->format('Y-m-d H:i:s'),
+                'updated_at' => $end->format('Y-m-d H:i:s'),
+            ]);
+            $info->lotPlan()->update([
+                'start_time' => $start->format('Y-m-d H:i:s'),
+                'end_time' => $end->format('Y-m-d H:i:s'),
+            ]);
+        }
+        $plans = ProductionPlan::where('thoi_gian_bat_dau', '1970-01-01 07:00:00')->get();
+        foreach ($plans as $key => $plan) {
+            $start = $this->randomDateTime('2024-08-01 00:00:00', '2024-09-30 00:00:00');
+            $end = $start->copy()->addHours(rand(3, 15));
+            $plan->update([
+                'ngay_sx' => $start->format('Y-m-d'),
+                'ngay_giao_hang' => $start->format('Y-m-d'),
+                'ngay_dat_hang' => $start->format('Y-m-d'),
+                'thoi_gian_bat_dau' => $start->format('Y-m-d H:i:00'),
+                'thoi_gian_ket_thuc' => $end->format('Y-m-d H:i:00'),
+            ]);
+        }
+    }
+
+    function randomDateTime($startDate, $endDate) {
+        // Convert the start and end dates to timestamps
+        $startTimestamp = Carbon::parse($startDate)->timestamp;
+        $endTimestamp = Carbon::parse($endDate)->timestamp;
+    
+        // Generate a random timestamp between start and end
+        $randomTimestamp = rand($startTimestamp, $endTimestamp);
+    
+        // Return the random timestamp as a Carbon instance
+        return Carbon::createFromTimestamp($randomTimestamp);
+    }
 }

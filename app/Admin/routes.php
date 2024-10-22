@@ -593,6 +593,7 @@ Route::group([
     $router->get('update-product-to-material-in-line-gap-dan', [ApiUIController::class, 'updateProductToMaterialInLineGapDan']);
     $router->get('create-infocongdoan-for-plan', [ApiUIController::class, 'createInfoCongDoanForPlan']);
     $router->post('filter-file-to-plan', [ApiUIController::class, 'filterFileToPlan']);
+    $router->post('random-info', [ApiUIController::class, 'randomInfo']);
 });
 //Dashboard
 Route::group([
