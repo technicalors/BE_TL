@@ -6205,23 +6205,23 @@ class ApiUIController extends AdminController
         try {
             DB::beginTransaction();
             foreach ($plans as $key => $plan) {
-                $info = InfoCongDoan::firstOrCreate(
-                    [
-                        'lot_id' => $plan->lot_id,
-                        'lo_sx' => $plan->lo_sx,
-                        'machine_code' => $plan->machine_code,
-                        'line_id' => $plan->line_id,
-                        'product_id' => $plan->product_id,
-                    ],
-                    [
-                        'thoi_gian_bat_dau' => $plan->start_time,
-                        'thoi_gian_ket_thuc' => $plan->end_time,
-                        'status' => InfoCongDoan::STATUS_COMPLETED,
-                        'sl_dau_ra_hang_loat' => $plan->quantity,
-                        'sl_kh' => $plan->quantity,
-                        'lot_plan_id' => $plan->id,
-                    ]
-                );
+                // $info = InfoCongDoan::firstOrCreate(
+                //     [
+                //         'lot_id' => $plan->lot_id,
+                //         'lo_sx' => $plan->lo_sx,
+                //         'machine_code' => $plan->machine_code,
+                //         'line_id' => $plan->line_id,
+                //         'product_id' => $plan->product_id,
+                //     ],
+                //     [
+                //         'thoi_gian_bat_dau' => $plan->start_time,
+                //         'thoi_gian_ket_thuc' => $plan->end_time,
+                //         'status' => InfoCongDoan::STATUS_COMPLETED,
+                //         'sl_dau_ra_hang_loat' => $plan->quantity,
+                //         'sl_kh' => $plan->quantity,
+                //         'lot_plan_id' => $plan->id,
+                //     ]
+                // );
                 $line = Line::find($plan->line_id);
                 Stamp::create([
                     'lot_id' => $plan->lot_id,
@@ -6236,9 +6236,9 @@ class ApiUIController extends AdminController
                     'nguoi_sx' => "",
                     'ghi_chu' => "",
                 ]);
-                if (!empty($request->machine_code)) {
-                    Tracking::where('machine_id', $request->machine_code)->update(['lot_id'=>null]);
-                }
+                // if (!empty($request->machine_code)) {
+                //     Tracking::where('machine_id', $request->machine_code)->update(['lot_id'=>null]);
+                // }
             }
             DB::commit();
         } catch (\Throwable $th) {
