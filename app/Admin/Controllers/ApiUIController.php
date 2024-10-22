@@ -2716,12 +2716,14 @@ class ApiUIController extends AdminController
                 ),
             ),
         ];
+        $lines = Line::where('factory_id', 2)->pluck('id')->toArray();
         $log_in_day = [];
         if ($request->date && count($request->date) > 1) {
             $datediff = strtotime($request->date[1]) - strtotime($request->date[0]);
             $count_day = round($datediff / (60 * 60 * 24));
             for ($i = 0; $i <= $count_day; $i++) {
                 $log_todays = InfoCongDoan::with('lot.product', 'plan')->whereNotIn('line_id', [14, 22])
+                    ->whereIn('line_id', $lines)
                     ->whereDate('thoi_gian_bat_dau', date('Y-m-d', strtotime($request->date[0] . ' +' . $i . ' day')))
                     ->whereNotNull('thoi_gian_bat_dau')
                     ->whereNotNull('thoi_gian_bam_may')
@@ -2789,23 +2791,17 @@ class ApiUIController extends AdminController
                         $obj->dien_nang += $log->powerM;
                         $obj->sl_ng += $log->sl_ng;
                         $obj->sl_ok += ($log->sl_dau_ra_hang_loat) - ($log->sl_tem_vang) - ($log->sl_ng);
-                        $obj->tong_thoi_gian_san_xuat += strtotime($log->thoi_gian_ket_thuc) - strtotime($log->thoi_gian_bat_dau);
-                        $obj->thoi_gian_khong_san_luong += strtotime($log->thoi_gian_bam_may) - strtotime($log->thoi_gian_bat_dau);
-                        $obj->thoi_gian_tinh_san_luong += strtotime($log->thoi_gian_ket_thuc) - strtotime($log->thoi_gian_bam_may);
+                        $obj->tong_thoi_gian_san_xuat += (strtotime($log->thoi_gian_ket_thuc) - strtotime($log->thoi_gian_bat_dau)) || 0;
+                        $obj->thoi_gian_khong_san_luong += (strtotime($log->thoi_gian_bam_may) - strtotime($log->thoi_gian_bat_dau)) || 0;
+                        $obj->thoi_gian_tinh_san_luong += (strtotime($log->thoi_gian_ket_thuc) - strtotime($log->thoi_gian_bam_may)) || 0;
                         $sl_thuc_te += $plan ? ((strtotime($log->thoi_gian_ket_thuc) - strtotime($log->thoi_gian_bam_may)) / 3600) * ((int)$plan->UPH * $log->lot->so_bat) : 0;
                         $obj->nhan_luc = $plan ? $plan->nhan_luc : 0;
                     }
                 }
-                try {
-                    $obj->ty_le_ng = $obj->sl_dau_ra ? number_format($obj->sl_ng / $obj->sl_dau_ra, 2) * 100 . '%' : 0;
-                    $obj->ty_le_hao_phi_thoi_gian = ($obj->tong_thoi_gian_san_xuat ? round(($obj->thoi_gian_khong_san_luong ?? 0) / $obj->tong_thoi_gian_san_xuat, 2) * 100 : 0) . '%';
-                    $obj->hieu_suat_a = $tg_san_xuat_kh > 0 ? round($obj->thoi_gian_tinh_san_luong / $tg_san_xuat_kh, 2) * 100 . '%' : 0;
-                    $obj->hieu_suat_q = $obj->sl_dau_ra ? round($obj->sl_ok / $obj->sl_dau_ra, 2) * 100 . '%' : 0;
-                    //code...
-                } catch (\Throwable $th) {
-                    throw $th;
-                    // return number_format($obj->thoi_gian_khong_san_luong / $obj->tong_thoi_gian_san_xuat);
-                }
+                $obj->ty_le_ng = $obj->sl_dau_ra ? number_format($obj->sl_ng / $obj->sl_dau_ra, 2) * 100 . '%' : 0;
+                $obj->ty_le_hao_phi_thoi_gian = $obj->tong_thoi_gian_san_xuat ? number_format($obj->thoi_gian_khong_san_luong / $obj->tong_thoi_gian_san_xuat, 2) * 100 . '%' : 0;
+                $obj->hieu_suat_a = $tg_san_xuat_kh > 0 ? number_format($obj->thoi_gian_tinh_san_luong / $tg_san_xuat_kh, 2) * 100 . '%' : 0;
+                $obj->hieu_suat_q = $obj->sl_dau_ra ? number_format($obj->sl_ok / $obj->sl_dau_ra, 2) * 100 . '%' : 0;
                 $obj->hieu_suat_p = ($obj->thoi_gian_tinh_san_luong && $sl_thuc_te > 0) ? number_format(($obj->sl_dau_ra) / $sl_thuc_te * 100, 2) . '%' : 0;
                 $obj->oee = (((int)$obj->hieu_suat_a * (int)$obj->hieu_suat_p * (int)$obj->hieu_suat_q) / 10000) . '%';
 
