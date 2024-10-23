@@ -12,6 +12,12 @@ class ProductionPlan extends Model
     use HasFactory;
     use \Awobaz\Compoships\Compoships;
 
+    const STATUS_PENDING = 0;
+    const STATUS_IN_PROGRESS = 1;
+    const STATUS_COMPLETED = 2;
+    const STATUS_PAUSED = 3;
+    const STATUS_CANCELLED = 4;
+
     protected $table = 'production_plans';
     protected $fillable = [
         'id',
@@ -45,7 +51,8 @@ class ProductionPlan extends Model
         'thoi_gian_thuc_hien',
         'sl_giao_sx',
         'sl_tong_don_hang',
-        'material_id'
+        'material_id',
+        'status_plan',
     ];
     public function setThoiGianBatDauAttribute($value)
     {

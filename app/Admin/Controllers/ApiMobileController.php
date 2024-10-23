@@ -301,7 +301,7 @@ class ApiMobileController extends AdminController
             $info = $log['info'];
             $start = Carbon::parse($log['info']['start_time'] ?? 'now');
             $end = Carbon::parse($log['info']['end_time'] ?? 'now');
-            if($end->diffInMinutes($start) <= 3){
+            if ($end->diffInMinutes($start) <= 3) {
                 continue;
             }
             $info['start_time'] = $log['info']['start_time'] ? date('d/m/Y H:i:s', $log['info']['start_time']) : '';
@@ -2913,10 +2913,14 @@ class ApiMobileController extends AdminController
 
                 $machine = Machine::query()->where('code', $row['D'])->first();
                 if (empty($machine)) continue;
-                $product = Product::where('id', 'like', $row['C'])->first();
+                $product = Product::where('name', 'like', $row['C'])->first();
                 if (empty($product)) continue;
+
                 if (!is_null($row['B'])) {
                     $input['lo_sx'] = $row['B'];
+                    if (str_contains($row['B'], '/')) {
+                        $input['lo_sx'] = '24' . str_pad(explode('/', $row['B'])[1], 2, '0', STR_PAD_LEFT) . str_pad(explode('/', $row['B'])[0], 2, '0', STR_PAD_LEFT);
+                    }
                     $input['ngay_dat_hang'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['A'])));
                     $input['cong_doan_sx'] = Str::slug($machine->line->name); //
                     $input['line_id'] = $machine->line_id; //
@@ -2924,8 +2928,8 @@ class ApiMobileController extends AdminController
                     $input['ngay_sx'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['A'])));
                     $input['ngay_giao_hang'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['A'])));
                     $input['machine_id'] = $machine->code; //
-                    $input['product_id'] = strtoupper($row['C']); //
-                    $input['product_name'] = $row['C'];
+                    $input['product_id'] = $product->id; //
+                    $input['product_name'] = $product->name;
                     $input['khach_hang'] = 'Sam Sung'; //
                     $input['so_bat'] = 2; //
                     $input['sl_nvl'] = 0; //
@@ -2949,6 +2953,7 @@ class ApiMobileController extends AdminController
                 }
             }
         }
+        // return $data;
         DB::beginTransaction();
         try {
             foreach ($data as $key => $input) {
@@ -2997,7 +3002,8 @@ class ApiMobileController extends AdminController
             if (!isset($spec->value)) throw new Exception('Không tìm thấy giá trị của Spec');
             $lotsize = $spec->value;
         } else {
-            throw new Exception("Không tìm thấy định mức cuộn");
+            // throw new Exception("Không tìm thấy định mức cuộn ".$input['product_id']);
+            $lotsize = 11000;
         }
         $numbers = $this->getQuantityArray(intval(str_replace(",", "", $input['sl_giao_sx'])), $lotsize);
         $countLot = InfoCongDoan::query()->where([
@@ -3049,17 +3055,21 @@ class ApiMobileController extends AdminController
                 'scanned_time' => $input['thoi_gian_ket_thuc'],
                 'eligible_to_end' => 1,
             ]);
-            Lot::create([
-                'id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT),
-                'lo_sx' => $input['lo_sx'],
-                'type' => 0,
-                'material_export_log_id' => null,
-                'product_id' => $input['product_id'],
-                'line_id' => $input['line_id'],
-                'status' => 1,
-                'so_luong' => $number,
-                'plan_id' => $record->id,             
-            ]);
+            Lot::updateOrCreate(
+                [
+                    'id' => $input['lo_sx'] . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT)
+                ],
+                [
+                    'lo_sx' => $input['lo_sx'],
+                    'type' => 0,
+                    'material_export_log_id' => null,
+                    'product_id' => $input['product_id'],
+                    'line_id' => $input['line_id'],
+                    'status' => 1,
+                    'so_luong' => $number,
+                    'plan_id' => $record->id,
+                ]
+            );
         }
     }
 
@@ -3143,6 +3153,7 @@ class ApiMobileController extends AdminController
         ])->first();
         if (isset($record)) throw new Exception("Kế hoạch cho LoSX:{$record->lo_sx} - {$record->product_id} đã được tạo");
         $input['material_id'] = null;
+        $input['status_plan'] = ProductionPlan::STATUS_PENDING;
         $record = ProductionPlan::create($input);
         // TODO: add field lotsize to info_cong_doan table (lot)
         // ID Lot: Mã lô+.L.0001

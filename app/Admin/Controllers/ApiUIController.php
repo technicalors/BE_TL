@@ -2716,12 +2716,14 @@ class ApiUIController extends AdminController
                 ),
             ),
         ];
+        $lines = Line::where('factory_id', 2)->pluck('id')->toArray();
         $log_in_day = [];
         if ($request->date && count($request->date) > 1) {
             $datediff = strtotime($request->date[1]) - strtotime($request->date[0]);
             $count_day = round($datediff / (60 * 60 * 24));
             for ($i = 0; $i <= $count_day; $i++) {
                 $log_todays = InfoCongDoan::with('lot.product', 'plan')->whereNotIn('line_id', [14, 22])
+                    ->whereIn('line_id', $lines)
                     ->whereDate('thoi_gian_bat_dau', date('Y-m-d', strtotime($request->date[0] . ' +' . $i . ' day')))
                     ->whereNotNull('thoi_gian_bat_dau')
                     ->whereNotNull('thoi_gian_bam_may')
@@ -2789,9 +2791,9 @@ class ApiUIController extends AdminController
                         $obj->dien_nang += $log->powerM;
                         $obj->sl_ng += $log->sl_ng;
                         $obj->sl_ok += ($log->sl_dau_ra_hang_loat) - ($log->sl_tem_vang) - ($log->sl_ng);
-                        $obj->tong_thoi_gian_san_xuat += strtotime($log->thoi_gian_ket_thuc) - strtotime($log->thoi_gian_bat_dau);
-                        $obj->thoi_gian_khong_san_luong += strtotime($log->thoi_gian_bam_may) - strtotime($log->thoi_gian_bat_dau);
-                        $obj->thoi_gian_tinh_san_luong += strtotime($log->thoi_gian_ket_thuc) - strtotime($log->thoi_gian_bam_may);
+                        $obj->tong_thoi_gian_san_xuat += (strtotime($log->thoi_gian_ket_thuc) - strtotime($log->thoi_gian_bat_dau)) || 0;
+                        $obj->thoi_gian_khong_san_luong += (strtotime($log->thoi_gian_bam_may) - strtotime($log->thoi_gian_bat_dau)) || 0;
+                        $obj->thoi_gian_tinh_san_luong += (strtotime($log->thoi_gian_ket_thuc) - strtotime($log->thoi_gian_bam_may)) || 0;
                         $sl_thuc_te += $plan ? ((strtotime($log->thoi_gian_ket_thuc) - strtotime($log->thoi_gian_bam_may)) / 3600) * ((int)$plan->UPH * $log->lot->so_bat) : 0;
                         $obj->nhan_luc = $plan ? $plan->nhan_luc : 0;
                     }
@@ -2800,7 +2802,6 @@ class ApiUIController extends AdminController
                 $obj->ty_le_hao_phi_thoi_gian = $obj->tong_thoi_gian_san_xuat ? number_format($obj->thoi_gian_khong_san_luong / $obj->tong_thoi_gian_san_xuat, 2) * 100 . '%' : 0;
                 $obj->hieu_suat_a = $tg_san_xuat_kh > 0 ? number_format($obj->thoi_gian_tinh_san_luong / $tg_san_xuat_kh, 2) * 100 . '%' : 0;
                 $obj->hieu_suat_q = $obj->sl_dau_ra ? number_format($obj->sl_ok / $obj->sl_dau_ra, 2) * 100 . '%' : 0;
-
                 $obj->hieu_suat_p = ($obj->thoi_gian_tinh_san_luong && $sl_thuc_te > 0) ? number_format(($obj->sl_dau_ra) / $sl_thuc_te * 100, 2) . '%' : 0;
                 $obj->oee = (((int)$obj->hieu_suat_a * (int)$obj->hieu_suat_p * (int)$obj->hieu_suat_q) / 10000) . '%';
 
@@ -4537,7 +4538,7 @@ class ApiUIController extends AdminController
     public function productionPlanQuery(Request $request)
     {
         $input = $request->all();
-        $query = ProductionPlan::with('product', 'material', 'line')->orderBy('thoi_gian_bat_dau', 'ASC');
+        $query = ProductionPlan::with('product', 'material', 'line')->orderBy('status_plan')->orderBy('thoi_gian_bat_dau', 'ASC');
         if (isset($input['date']) && count($input['date'])) {
             $query->whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($input['date'][0])))
                 ->whereDate('ngay_sx', '<=', date('Y-m-d', strtotime($input['date'][1])));
@@ -4564,6 +4565,9 @@ class ApiUIController extends AdminController
                 $query->where('khach_hang', $khach_hang->name);
             }
         }
+        if (isset($input['status_plan'])) {
+            $query->where('status_plan', $input['status_plan']);
+        }
         // $query->join('products', 'products.id', '=', 'production_plans.product_id')->select('production_plans.*', 'products.name as ten_sp');
         return $query;
     }
@@ -4580,7 +4584,7 @@ class ApiUIController extends AdminController
             //     $plan->product_id = $plan->material->id ?? "";
             // }
             $plan->ngay_giao_hang = date('d/m/Y', strtotime($plan->ngay_giao_hang));
-            $plan->cong_doan_sx = $plan->line->name;
+            $plan->cong_doan_sx = $plan->line->name ?? '';
             $plan->status = strtotime(date('Y-m-d')) >= strtotime($plan->ngay_sx) ? 'FIX' : 'PRE';
             $plan->kqsx = InfoCongDoan::where('line_id', $plan->line_id)->where('lo_sx', $plan->lo_sx)->whereNotNull('thoi_gian_bat_dau')->sum('sl_dau_ra_hang_loat') -  InfoCongDoan::where('line_id', $plan->line_id)->whereNotNull('thoi_gian_bat_dau')->where('lo_sx', $plan->lo_sx)->sum('sl_ng');
             // $plan->thoi_gian_ket_thuc = date('d/m/Y H:i:s', strtotime($plan->thoi_gian_ket_thuc));
@@ -6322,5 +6326,58 @@ class ApiUIController extends AdminController
         $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save('exported_files/KHSX.xlsx');
         return 'done.';
+    }
+
+    public function randomInfo()
+    {
+        try {
+            DB::beginTransaction();
+            $infos = InfoCongDoan::where('thoi_gian_bat_dau', '1970-01-01 07:00:00')->get();
+            foreach ($infos as $key => $info) {
+                $start = $this->randomDateTime('2024-08-01 00:00:00', '2024-09-30 00:00:00');
+                $end = $start->copy()->addHours(rand(3, 15));
+                // return [$start->format('Y-m-d H:i:s'), $end->format('Y-m-d H:i:s')];
+                $info->update([
+                    'thoi_gian_bat_dau' => $start->format('Y-m-d H:i:s'),
+                    'thoi_gian_ket_thuc' => $end->format('Y-m-d H:i:s'),
+                    'created_at' => $start->format('Y-m-d H:i:s'),
+                    'updated_at' => $end->format('Y-m-d H:i:s'),
+                ]);
+                // return $info;
+                $info->lotPlan()->update([
+                    'start_time' => $start->format('Y-m-d H:i:s'),
+                    'end_time' => $end->format('Y-m-d H:i:s'),
+                ]);
+            }
+            $plans = ProductionPlan::where('thoi_gian_bat_dau', '1970-01-01 07:00:00')->get();
+            foreach ($plans as $key => $plan) {
+                $start = $this->randomDateTime('2024-08-01 00:00:00', '2024-09-30 00:00:00');
+                $end = $start->copy()->addHours(rand(3, 15));
+                $plan->update([
+                    'ngay_sx' => $start->format('Y-m-d'),
+                    'ngay_giao_hang' => $start->format('Y-m-d'),
+                    'ngay_dat_hang' => $start->format('Y-m-d'),
+                    'thoi_gian_bat_dau' => $start->format('Y-m-d H:i:00'),
+                    'thoi_gian_ket_thuc' => $end->format('Y-m-d H:i:00'),
+                ]);
+            }
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            throw $th;
+        }
+    }
+
+    function randomDateTime($startDate, $endDate)
+    {
+        // Convert the start and end dates to timestamps
+        $startTimestamp = Carbon::parse($startDate)->timestamp;
+        $endTimestamp = Carbon::parse($endDate)->timestamp;
+
+        // Generate a random timestamp between start and end
+        $randomTimestamp = rand($startTimestamp, $endTimestamp);
+
+        // Return the random timestamp as a Carbon instance
+        return Carbon::createFromTimestamp($randomTimestamp);
     }
 }
