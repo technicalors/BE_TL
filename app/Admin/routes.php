@@ -680,6 +680,7 @@ Route::group([
     $router->post('plan/generate', [Phase2UIApiController::class, 'generateProductionPlan']);
     $router->get('plan/store/{order_id}', [Phase2UIApiController::class, 'processProductionPlan']);
     $router->post('plan/create', [Phase2UIApiController::class, 'createProductionPlan']);
+    $router->post('plan/upload', [Phase2UIApiController::class, 'uploadProductionPlan']);
 
     Route::apiResource('lot-plans', LotPlanController::class);
 

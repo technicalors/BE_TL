@@ -2913,7 +2913,7 @@ class ApiMobileController extends AdminController
 
                 $machine = Machine::query()->where('code', $row['D'])->first();
                 if (empty($machine)) continue;
-                $product = Product::where('name', 'like', $row['C'])->first();
+                $product = Product::where('id', 'like', $row['C'])->first();
                 if (empty($product)) continue;
 
                 if (!is_null($row['B'])) {
