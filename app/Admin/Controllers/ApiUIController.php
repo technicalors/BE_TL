@@ -4538,7 +4538,7 @@ class ApiUIController extends AdminController
     public function productionPlanQuery(Request $request)
     {
         $input = $request->all();
-        $query = ProductionPlan::with('product', 'material', 'line')->orderBy('thoi_gian_bat_dau', 'ASC');
+        $query = ProductionPlan::with('product', 'material', 'line')->orderBy('status_plan')->orderBy('thoi_gian_bat_dau', 'ASC');
         if (isset($input['date']) && count($input['date'])) {
             $query->whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($input['date'][0])))
                 ->whereDate('ngay_sx', '<=', date('Y-m-d', strtotime($input['date'][1])));
@@ -4565,6 +4565,9 @@ class ApiUIController extends AdminController
                 $query->where('khach_hang', $khach_hang->name);
             }
         }
+        if (isset($input['status_plan'])) {
+            $query->where('status_plan', $input['status_plan']);
+        }
         // $query->join('products', 'products.id', '=', 'production_plans.product_id')->select('production_plans.*', 'products.name as ten_sp');
         return $query;
     }
@@ -4581,7 +4584,7 @@ class ApiUIController extends AdminController
             //     $plan->product_id = $plan->material->id ?? "";
             // }
             $plan->ngay_giao_hang = date('d/m/Y', strtotime($plan->ngay_giao_hang));
-            $plan->cong_doan_sx = $plan->line->name;
+            $plan->cong_doan_sx = $plan->line->name ?? '';
             $plan->status = strtotime(date('Y-m-d')) >= strtotime($plan->ngay_sx) ? 'FIX' : 'PRE';
             $plan->kqsx = InfoCongDoan::where('line_id', $plan->line_id)->where('lo_sx', $plan->lo_sx)->whereNotNull('thoi_gian_bat_dau')->sum('sl_dau_ra_hang_loat') -  InfoCongDoan::where('line_id', $plan->line_id)->whereNotNull('thoi_gian_bat_dau')->where('lo_sx', $plan->lo_sx)->sum('sl_ng');
             // $plan->thoi_gian_ket_thuc = date('d/m/Y H:i:s', strtotime($plan->thoi_gian_ket_thuc));
