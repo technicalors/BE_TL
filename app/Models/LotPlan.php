@@ -33,7 +33,7 @@ class LotPlan extends Model
     }
     public function plan()
     {
-        return $this->belongsTo(ProductionPlan::class);
+        return $this->belongsTo(ProductionPlan::class, 'production_plan_id');
     }
     public function spec()
     {

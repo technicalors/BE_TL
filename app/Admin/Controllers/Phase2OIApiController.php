@@ -194,7 +194,11 @@ class Phase2OIApiController extends Controller
                     $query->where('status', 1);
                 })
                 ->orWhereDoesntHave('infoCongDoan');
-        })->with('infoCongDoan.qcHistory', 'spec', 'plan', 'infoCongDoan.assignments');
+        })
+        ->whereHas('plan', function($q){
+            $q->whereIn('status_plan', [0, 1]);
+        })
+        ->with('infoCongDoan.qcHistory', 'spec', 'plan', 'infoCongDoan.assignments');
         if (!empty($request->line_id)) {
             $query->where('line_id', $line_id);
         }

@@ -1306,7 +1306,7 @@ class Phase2UIApiController extends Controller
         $lotIndexOffset = 0;
         try {
             DB::beginTransaction();
-            ProductionPlan::query()->update(['status' => 1]);
+            ProductionPlan::query()->update(['status_plan' => 2]);
             foreach ($allDataInSheet as $key => $row) {
                 //Lấy dứ liệu từ dòng thứ 5
                 if ($key > 3) {
@@ -1430,6 +1430,7 @@ class Phase2UIApiController extends Controller
                         'thoi_gian_bat_dau' => $startTime,
                         'thoi_gian_ket_thuc' => $endTime,
                         'sl_giao_sx' => $input['sl_giao_sx'],
+                        'status_plan' => 0
                     ];
                     $plan = ProductionPlan::create($plan_input);
                     $lot_in_plan = [];
