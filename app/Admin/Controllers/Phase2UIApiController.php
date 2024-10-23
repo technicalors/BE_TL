@@ -1290,6 +1290,8 @@ class Phase2UIApiController extends Controller
 
     public function uploadProductionPlan(Request $request)
     {
+        set_time_limit(600);
+        ini_set('memory_limit', '2048M');
         $extension = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
         if ($extension == 'csv') {
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
