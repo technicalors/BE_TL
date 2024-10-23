@@ -3153,6 +3153,7 @@ class ApiMobileController extends AdminController
         ])->first();
         if (isset($record)) throw new Exception("Kế hoạch cho LoSX:{$record->lo_sx} - {$record->product_id} đã được tạo");
         $input['material_id'] = null;
+        $input['status_plan'] = ProductionPlan::STATUS_PENDING;
         $record = ProductionPlan::create($input);
         // TODO: add field lotsize to info_cong_doan table (lot)
         // ID Lot: Mã lô+.L.0001

@@ -387,46 +387,46 @@ class Phase2OIApiController extends Controller
         //     // ->where('status', '<>', InfoCongDoan::STATUS_COMPLETED)
         //     ->first();
         // if ($check) {
-            $lot_plan = LotPlan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $machine->line->id)->first();
-            if (!$lot_plan) {
-                return $this->failure([], 'Không tìm thấy lot');
-            }
-            // if ($machine->line_id == '25') {
-            //     //Nếu là công đoạn In thì so sánh mã nvl tức là product_id của lot được quét với material_id của bom của product của lot chuẩn bị chạy 
-            //     $material_ids = Bom::where('product_id', $lot_plan->product_id)->pluck('material_id')->toArray();
-            //     if (!in_array($check->product_id, $material_ids)) {
-            //         return $this->failure([], "Lot này không trùng mã NVL với lot chuẩn bị chạy");
-            //     }
-            // } else {
-            //     //Các công đoạn còn lại so sánh product_id
-            //     if ($lot_plan->product_id !== $check->product_id) {
-            //         return $this->failure([], "Lot này không trùng mã sản phẩm với lot chuẩn bị chạy");
-            //     }
-            // }
-            try {
-                DB::beginTransaction();
-                MachineStatus::reset($machine->code);
-                InfoCongDoan::firstOrCreate(
-                    ['input_lot_id' => $request->scanned_lot, 'lot_plan_id' => $lot_plan->id, 'line_id' => $machine->line_id, 'machine_code' => $machine->code],
-                    [
-                        'lot_id' => $lot_plan->lot_id,
-                        'lo_sx' => $lot_plan->lo_sx,
-                        'product_id' => $lot_plan->product_id,
-                        'thoi_gian_bat_dau' => Carbon::now(),
-                        'status' => InfoCongDoan::STATUS_INPROGRESS,
-                        'user_id' => $request->user()->id,
-                    ]
-                );
-                $tracking->update([
-                    'lot_id' => $request->lot_id,
-                    'input' => 0,
-                    'output' => 0
-                ]);
-                DB::commit();
-            } catch (\Throwable $th) {
-                DB::rollBack();
-                return $this->failure($th, "Lỗi quét lot");
-            }
+        $lot_plan = LotPlan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $machine->line->id)->first();
+        if (!$lot_plan) {
+            return $this->failure([], 'Không tìm thấy lot');
+        }
+        // if ($machine->line_id == '25') {
+        //     //Nếu là công đoạn In thì so sánh mã nvl tức là product_id của lot được quét với material_id của bom của product của lot chuẩn bị chạy 
+        //     $material_ids = Bom::where('product_id', $lot_plan->product_id)->pluck('material_id')->toArray();
+        //     if (!in_array($check->product_id, $material_ids)) {
+        //         return $this->failure([], "Lot này không trùng mã NVL với lot chuẩn bị chạy");
+        //     }
+        // } else {
+        //     //Các công đoạn còn lại so sánh product_id
+        //     if ($lot_plan->product_id !== $check->product_id) {
+        //         return $this->failure([], "Lot này không trùng mã sản phẩm với lot chuẩn bị chạy");
+        //     }
+        // }
+        try {
+            DB::beginTransaction();
+            MachineStatus::reset($machine->code);
+            InfoCongDoan::firstOrCreate(
+                ['input_lot_id' => $request->scanned_lot, 'lot_plan_id' => $lot_plan->id, 'line_id' => $machine->line_id, 'machine_code' => $machine->code],
+                [
+                    'lot_id' => $lot_plan->lot_id,
+                    'lo_sx' => $lot_plan->lo_sx,
+                    'product_id' => $lot_plan->product_id,
+                    'thoi_gian_bat_dau' => Carbon::now(),
+                    'status' => InfoCongDoan::STATUS_INPROGRESS,
+                    'user_id' => $request->user()->id,
+                ]
+            );
+            $tracking->update([
+                'lot_id' => $request->lot_id,
+                'input' => 0,
+                'output' => 0
+            ]);
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return $this->failure($th, "Lỗi quét lot");
+        }
         // } else {
         //     return $this->failure([], "Không tìm thấy lot phù hợp");
         // }

@@ -55,13 +55,8 @@ class IOTController extends AdminController
             } else if ($status == 1 || $status == 2) { // chạy hàng loạt
                 if ($request->input > $tracking->input) {
                     $info_cong_doan->sl_dau_vao_hang_loat = ($request->input - $tracking->input);
-                }
-                if ($request->output > $tracking->output) {
-                    if ($machine->code == 'IN_2_MAU_01') {
-                        $info_cong_doan->sl_dau_ra_hang_loat = round(($request->output - $tracking->output) / 10);
-                    } else {
-                        $info_cong_doan->sl_dau_ra_hang_loat = ($request->output - $tracking->output) * $sl_bat;
-                    }
+                } else {
+                    $info_cong_doan->sl_dau_ra_hang_loat = ($request->output - $tracking->output) * $sl_bat;
                 }
             }
             $info_cong_doan->save();
