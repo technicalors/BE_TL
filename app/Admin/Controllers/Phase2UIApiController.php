@@ -1378,10 +1378,10 @@ class Phase2UIApiController extends Controller
                         $startTime = $stepEndTimes[$lineId] ?? Carbon::parse($input['thoi_gian_bat_dau']);
                         $lotIndexOffset = 0;
                     }
-                    $machineReadyTime = Carbon::parse($machine->available_at, 'Asia/Bangkok');
-                    if (!$startTime->greaterThan($machineReadyTime)) {
-                        $startTime = $machineReadyTime;
-                    }
+                    // $machineReadyTime = Carbon::parse($machine->available_at, 'Asia/Bangkok');
+                    // if (!$startTime->greaterThan($machineReadyTime)) {
+                    //     $startTime = $machineReadyTime;
+                    // }
                     $numLots = ceil($quantity / $lotSize);
                     // Thời gian kết thúc là thời gian bắt đầu cộng thêm thời gian sản xuất
                     $endTime = $startTime->copy()->addMinutes(((($taskTime * $lotSize) + $rollChangeTime) * $numLots) + $setupTime);
