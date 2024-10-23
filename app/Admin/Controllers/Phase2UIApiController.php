@@ -1306,7 +1306,8 @@ class Phase2UIApiController extends Controller
         $lotIndexOffset = 0;
         try {
             DB::beginTransaction();
-            ProductionPlan::query()->update(['status_plan' => 2]);
+            // ProductionPlan::query()->update(['status_plan' => 2]);
+            $index = 0;
             foreach ($allDataInSheet as $key => $row) {
                 //Lấy dứ liệu từ dòng thứ 5
                 if ($key > 3) {
@@ -1369,15 +1370,14 @@ class Phase2UIApiController extends Controller
                     $shiftPreparationTime = $this->getShiftPreparationTime($productId, $lineId);
                     // $transportTime = $this->getTransportTimeBetweenSteps($productId, $lineId);
                     //Tính thời gian bắt đầu của lô
-                    if ($key == 0) {
+                    if ($index == 0) {
                         // Công đoạn đầu tiên
-                        $startTime = Carbon::now('Asia/Bangkok');
+                        $startTime = Carbon::parse($input['thoi_gian_bat_dau']);
                     } else if ($lineId != $oldLineId) {
                         //Nếu số lượng cuộn vận chuyển lớn hơn số lượng lot của công đoạn trước đó thì số lượng cuộn vc = số lượng lot của công đoạn trước đó 
-                        $startTime = $stepEndTimes[$lineId] ?? Carbon::now('Asia/Bangkok');
+                        $startTime = $stepEndTimes[$lineId] ?? Carbon::parse($input['thoi_gian_bat_dau']);
                         $lotIndexOffset = 0;
                     }
-
                     $machineReadyTime = Carbon::parse($machine->available_at, 'Asia/Bangkok');
                     if (!$startTime->greaterThan($machineReadyTime)) {
                         $startTime = $machineReadyTime;
@@ -1449,10 +1449,6 @@ class Phase2UIApiController extends Controller
                             $quantityPerLot = $lotSize;
                         }
                         list($lotStartTime, $lotEndTime) = $this->adjustTimeWithinShift($lotStartTime, ($taskTime * $quantityPerLot) + $rollChangeTime, $machine->code, $shiftPreparationTime);
-                        //Trường hợp thời gian sx vượt quá thời gian giao hàng, đánh dấu KH được tạo
-                        if ($order->delivery_date && $lotStartTime->greaterThan(Carbon::parse($order->delivery_date))) {
-                            $isExceedDeliveryTime = true;
-                        }
                         // Lưu thông tin lot vào object
                         $lot_plan_input = [
                             'lot_id' => $lotId,
@@ -1474,13 +1470,12 @@ class Phase2UIApiController extends Controller
                             'khach_hang' => $order->customer_id,
                             'thoi_gian_bat_dau' => $lotStartTime,
                             'thoi_gian_ket_thuc' => $lotEndTime,
-                            'is_exceed_time' => $isExceedDeliveryTime,
                             'production_plan_id' => $plan->id
                         ];
                         $lot_plan = LotPlan::create($lot_plan_input);
                         $lot_plans[] = $lot_plan_input;
                         $lot_in_plan[] = $lot_plan_input;
-                        $lots[$lineId][$key][] = [
+                        $lots[$lineId][$index][] = [
                             'lot_id' => $lotId,
                             'quantity' => $quantityPerLot,
                             'startTime' => $lotStartTime,
@@ -1488,10 +1483,9 @@ class Phase2UIApiController extends Controller
                         ];
                     }
                     $plan_input['lots'] = $lot_in_plan;
-                    $plan_input['is_exceed_time'] = $isExceedDeliveryTime;
                     // Thời gian kết thúc của công đoạn là thời gian kết thúc của lot cuối cùng
-                    if (!empty($lots[$lineId][$key])) {
-                        $stepEndTimes[$lineId] = end($lots[$lineId][$key])['endTime'];
+                    if (!empty($lots[$lineId][$index])) {
+                        $stepEndTimes[$lineId] = end($lots[$lineId][$index])['endTime'];
                         $plan_input['thoi_gian_ket_thuc'] = $stepEndTimes[$lineId];
                         $machine->update(['available_at' => $stepEndTimes[$lineId]]);
                     }
@@ -1504,6 +1498,7 @@ class Phase2UIApiController extends Controller
                     unset($input);
                     $oldLineId = $line->id;
                 }
+                $index++;
             }
             DB::commit();
         } catch (\Exception $ex) {
