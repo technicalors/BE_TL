@@ -56,6 +56,8 @@ class IOTController extends AdminController
                 if ($request->input > $tracking->input) {
                     $info_cong_doan->sl_dau_vao_hang_loat = ($request->input - $tracking->input);
                 }
+                    $info_cong_doan->sl_dau_ra_hang_loat = ($request->output - $tracking->output) * $sl_bat;
+                }
             }
             $info_cong_doan->save();
             $productionData = [
