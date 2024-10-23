@@ -199,7 +199,7 @@ class Phase2DBApiController extends Controller
                 $tm = [
                     "cong_doan" => mb_strtoupper($info->line->name, 'UTF-8'),
                     'machine_code' => $machine->code,
-                    'machine_name' => mb_strtoupper($machine->name, 'UTF-8'),
+                    'machine_name' => $machine->code,
                     "product" => $product ? $product->name : '',
                     "sl_dau_ra_kh" => $lotPlan->quantity ?? 0,
                     "sl_thuc_te" => $info->sl_dau_ra_hang_loat - $info->sl_ng,
@@ -283,7 +283,7 @@ class Phase2DBApiController extends Controller
                     'target' => $target,
                     "cong_doan" => mb_strtoupper($info->line->name, 'UTF-8'),
                     'machine_code' => $machine->code,
-                    'machine_name' => mb_strtoupper($machine->name, 'UTF-8'),
+                    'machine_name' =>$machine->code,
                     "product" => $product ? $product->name : '',
                     "sl_dau_ra_kh" => $lotPlan->quantity ?? 0,
                     "sl_thuc_te" => $info->sl_dau_ra_hang_loat - $info->sl_ng,
