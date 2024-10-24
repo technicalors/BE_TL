@@ -3286,7 +3286,7 @@ class ApiMobileController extends AdminController
     }
     public function getListWareHouseExportPlan(Request $request)
     {
-        $list_query = WareHouseExportPlan::select('*');
+        $list_query = WareHouseExportPlan::with('product')->select('*');
         if ($request->date && count($request->date) > 1) {
             $list_query->whereDate('ngay_xuat_hang', '>=', date('Y-m-d', strtotime($request->date[0])))->whereDate('ngay_xuat_hang', '<=', date('Y-m-d', strtotime($request->date[1])));
         }
@@ -3297,6 +3297,10 @@ class ApiMobileController extends AdminController
             $list_query->where('product_id', $request->ten_sp);
         }
         $data = $list_query->get();
+        foreach ($data as $key => $value) {
+            $value->customer_id = $value->product->customer_id;
+            $value->khach_hang = $value->product->customer->name;
+        }
         return $this->success($data);
     }
 
@@ -3440,20 +3444,21 @@ class ApiMobileController extends AdminController
     }
     public function listCustomerExport()
     {
-        $customers = WareHouseExportPlan::whereDate('ngay_xuat_hang', date('Y-m-d'))->distinct()->pluck('khach_hang')->toArray();
-        $data = [];
-        foreach ($customers as $key => $customer) {
-            $object = new stdClass();
-            $object->label = $customer;
-            $object->value = $customer;
-            $data[] = $object;
-        }
-        return $this->success($data);
+        $product_ids = WareHouseExportPlan::whereDate('ngay_xuat_hang', date('Y-m-d'))->get()->unique('product_id')->pluck('product_id')->toArray();
+
+        $customers = Customer::select('id as value', 'name as label')->whereIn('id', Product::whereIn('id', $product_ids)->pluck('customer_id')->toArray())->get();
+        return $this->success($customers);
     }
     public function getProposeExport(Request $request)
     {
         $khach_hang = $request->khach_hang;
-        $records = WareHouseExportPlan::where('khach_hang', $khach_hang)->whereDate('ngay_xuat_hang', date('Y-m-d'))->whereColumn('sl_yeu_cau_giao', '>', 'sl_thuc_xuat')->get();
+        $product_ids = Product::where('customer_id', $khach_hang)->pluck('id')->toArray();
+        $records = WareHouseExportPlan::whereIn('product_id', $product_ids)
+            ->whereDate('ngay_xuat_hang', date('Y-m-d'))
+            ->where(function ($query) {
+                $query->whereColumn('sl_yeu_cau_giao', '>', 'sl_thuc_xuat')
+                    ->orWhereNull('sl_thuc_xuat');
+            })->get();
         $data = [];
         $lot_arr = [];
         foreach ($records as $key => $record) {
@@ -3537,7 +3542,7 @@ class ApiMobileController extends AdminController
         $record = WareHouseExportPlan::where('khach_hang', $input['khach_hang'])->where('product_id', $lot->product_id)->whereDate('ngay_xuat_hang', date('Y-m-d'))->first();
         if ($record) {
             $sl = $lot->so_luong + $record->sl_thuc_xuat;
-            WareHouseExportPlan::where('khach_hang', $input['khach_hang'])->where('product_id', $lot->product_id)->whereDate('ngay_xuat_hang', date('Y-m-d'))->update(['sl_thuc_xuat' => $sl]);
+            $record->update(['sl_thuc_xuat' => $sl]);
         }
         $input['type'] = 2;
         $input['created_by'] = $request->user()->id;

@@ -35,8 +35,10 @@ use App\Models\TestCriteriaDetailHistory;
 use App\Models\TestCriteriaHistory;
 use App\Models\Tracking;
 use App\Models\User;
+use App\Models\WareHouseExportPlan;
 use App\Models\WarehouseHistories;
 use App\Models\WarehouseInventory;
+use App\Models\WareHouseLog;
 use App\Models\Workers;
 use App\Models\YellowStampHistory;
 use App\Traits\API;
@@ -711,15 +713,19 @@ class Phase2OIApiController extends Controller
         if (!$line) {
             return $this->failure([], "Không tìm thấy công đoạn");
         }
+        $machine = Machine::where('code', $request->machine_code);
+        if (!$machine) {
+            return $this->failure([], "Không tìm thấy máy");
+        }
         // $lot = Lot::find($request->scanned_lot);
         // if (!$lot) {
         //     return $this->failure([], "Lot này chưa được sản xuất");
         // }
-        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->first();
+        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $line->id)->first();
         if ($infoCongDoan) {
             return $this->failure([], "Đã quét lot này");
         }
-        $lot_plan = LotPlan::where('lot_id', $request->lot_id)->whereDate('start_time', date('Y-m-d'))->where('line_id', $line->id)->where('machine_code', $request->machine_code)->first();
+        $lot_plan = LotPlan::where('lot_id', $request->lot_id)->whereDate('start_time', date('Y-m-d'))->where('line_id', $line->id)->where('machine_code', $machine->code)->first();
         try {
             DB::beginTransaction();
             InfoCongDoan::create([
@@ -733,7 +739,7 @@ class Phase2OIApiController extends Controller
                 'thoi_gian_bat_dau' => Carbon::now(),
                 'user_id' => $request->user()->id,
                 'status' => InfoCongDoan::STATUS_INPROGRESS,
-                'machine_code' => $request->machine_code,
+                'machine_code' => $machine->code,
                 'lot_plan_id' => $lot_plan->id
             ]);
             DB::commit();
@@ -1626,6 +1632,25 @@ class Phase2OIApiController extends Controller
             }
         }
         return $this->success([$data]);
+    }
+
+    public function overallImport(Request $request){
+        $records = WareHouseLog::whereDate('created_at', date('Y-m-d'))->where('type', 1)->get();
+        $lot_ids = WareHouseLog::whereDate('created_at', date('Y-m-d'))->where('type', 1)->pluck('lot_id')->toArray();
+        $lo_sx = Lot::whereIn('id', $lot_ids)->pluck('lo_sx')->toArray();
+        $tong_ma_hang = ProductionPlan::whereIn('lo_sx', $lo_sx)->distinct()->count('product_id');
+        $so_luong = WareHouseLog::whereDate('created_at', date('Y-m-d'))->where('type', 1)->sum('so_luong');
+        $data = ['sum_bin'=>count($records), 'sum_bin_imported'=>$tong_ma_hang, 'quantity'=>$so_luong];
+        return $this->success($data);
+    }
+
+    public function overallExport()
+    {
+        $sum_so_luong_kh = WareHouseExportPlan::whereDate('ngay_xuat_hang', date('Y-m-d'))->sum('sl_yeu_cau_giao');
+        $sum_so_luong_tt = WareHouseExportPlan::whereDate('ngay_xuat_hang', date('Y-m-d'))->sum('sl_thuc_xuat');
+        $ti_le = $sum_so_luong_kh != 0 ? number_format(($sum_so_luong_tt * 100) / $sum_so_luong_kh) . ' %' : 0;
+        $data = ['number_of_plan'=>$sum_so_luong_kh, 'quantity'=>$sum_so_luong_tt, 'ratio'=>$ti_le];
+        return $this->success($data);
     }
 
     //==============================================Hàm tạo lot demo
