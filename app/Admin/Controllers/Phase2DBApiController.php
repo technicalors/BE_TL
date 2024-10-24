@@ -7,6 +7,7 @@ use App\Models\Factory;
 use App\Models\InfoCongDoan;
 use App\Models\Line;
 use App\Models\Lot;
+use App\Models\LotPlan;
 use App\Models\Machine;
 use App\Models\MachineParameterLogs;
 use App\Models\Shift;
@@ -14,6 +15,7 @@ use App\Models\Tracking;
 use App\Traits\API;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class Phase2DBApiController extends Controller
@@ -179,6 +181,27 @@ class Phase2DBApiController extends Controller
                 if (!$lotPlan) {
                     continue;
                 }
+
+                // Fix DB
+                $sumLotPlan = LotPlan::query()->where('line_id', $machine->line_id)
+                    ->where('machine_code', $machine->code)
+                    ->where('product_id', $info->product_id)
+                    ->whereDate('start_time', date('Y-m-d'))->sum('quantity');
+
+                $sumInfoActure = InfoCongDoan::query()->where('line_id', $machine->line_id)
+                    ->where('machine_code', $machine->code)
+                    ->where('product_id', $info->product_id)
+                    ->where('status', InfoCongDoan::STATUS_INPROGRESS)
+                    ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->sum('sl_dau_ra_hang_loat');
+                if (empty($sumInfoActure)) {
+                    $sumInfoActure = InfoCongDoan::query()->where('line_id', $machine->line_id)
+                        ->where('machine_code', $machine->code)
+                        ->where('product_id', $info->product_id)
+                        ->where('status', InfoCongDoan::STATUS_COMPLETED)
+                        ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
+                        ->orderByDesc('updated_at')->first()->sl_dau_ra_hang_loat;
+                }
+                    
                 // $plan = $info->lot->getPlanByLine($info->line_id);
                 $product = $info->product ?? null;
                 // if (!isset($plan)) $plan = $info->lot->plan;
@@ -201,9 +224,12 @@ class Phase2DBApiController extends Controller
                     'machine_code' => $machine->code,
                     'machine_name' => $machine->code,
                     "product" => $product ? $product->name : '',
-                    "sl_dau_ra_kh" => $lotPlan->quantity ?? 0,
-                    "sl_thuc_te" => $info->sl_dau_ra_hang_loat - $info->sl_ng,
-                    "sl_muc_tieu" =>  $lotPlan->quantity ?? 0,
+                    // "sl_dau_ra_kh" => $lotPlan->quantity ?? 0,
+                    "sl_dau_ra_kh" => $sumLotPlan ?? 0,
+                    // "sl_thuc_te" => $info->sl_dau_ra_hang_loat - $info->sl_ng,
+                    "sl_thuc_te" => $sumInfoActure ?? 0,
+                    // "sl_muc_tieu" =>  $lotPlan->quantity ?? 0,
+                    "sl_muc_tieu" =>  $sumLotPlan ?? 0,
                     "ti_le_ng" => (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ?  number_format(($info->sl_ng /  $info->sl_dau_ra_hang_loat), 2) : 0)),
                     "ti_le_ht" => $tl_ht > 100 ? 100 : $tl_ht,
                     "status" => $status,
@@ -262,6 +288,27 @@ class Phase2DBApiController extends Controller
                 if (!$lotPlan) {
                     continue;
                 }
+
+                // Fix DB
+                $sumLotPlan = LotPlan::query()->where('line_id', $machine->line_id)
+                    ->where('machine_code', $machine->code)
+                    ->where('product_id', $info->product_id)
+                    ->whereDate('start_time', date('Y-m-d'))->sum('quantity');
+
+                $sumInfoActure = InfoCongDoan::query()->where('line_id', $machine->line_id)
+                    ->where('machine_code', $machine->code)
+                    ->where('product_id', $info->product_id)
+                    ->where('status', InfoCongDoan::STATUS_INPROGRESS)
+                    ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->sum('sl_dau_ra_hang_loat');
+                if (empty($sumInfoActure)) {
+                    $sumInfoActure = InfoCongDoan::query()->where('line_id', $machine->line_id)
+                        ->where('machine_code', $machine->code)
+                        ->where('product_id', $info->product_id)
+                        ->where('status', InfoCongDoan::STATUS_COMPLETED)
+                        ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
+                        ->orderByDesc('updated_at')->first()->sl_dau_ra_hang_loat;
+                }
+
                 // $plan = $info->lot->getPlanByLine($info->line_id);
                 $product = $info->product ?? null;
                 // if (!isset($plan)) $plan = $info->lot->plan;
@@ -285,9 +332,12 @@ class Phase2DBApiController extends Controller
                     'machine_code' => $machine->code,
                     'machine_name' =>$machine->code,
                     "product" => $product ? $product->name : '',
-                    "sl_dau_ra_kh" => $lotPlan->quantity ?? 0,
-                    "sl_thuc_te" => $info->sl_dau_ra_hang_loat - $info->sl_ng,
-                    "sl_muc_tieu" => $lotPlan->quantity ?? 0,
+                    // "sl_dau_ra_kh" => $lotPlan->quantity ?? 0,
+                    // "sl_thuc_te" => $info->sl_dau_ra_hang_loat - $info->sl_ng,
+                    // "sl_muc_tieu" => $lotPlan->quantity ?? 0,
+                    "sl_dau_ra_kh" => $sumLotPlan ?? 0,
+                    "sl_thuc_te" => $sumInfoActure ?? 0,
+                    "sl_muc_tieu" =>  $sumLotPlan ?? 0,
                     "ti_le_ng" => (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ?  number_format(($info->sl_ng /  $info->sl_dau_ra_hang_loat), 2) : 0)),
                     "ti_le_ht" => $tl_ht > 100 ? 100 : $tl_ht,
                     "status" => $status,
