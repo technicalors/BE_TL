@@ -317,7 +317,7 @@ class Phase2OIApiController extends Controller
                 //         'roll_quantity' => 0,
                 //     ]);
                 // }
-                $lot_plan = LotPlan::where('lot_id', $request->lot_id)->where('line_id', $machine->line_id)->where('machine_code', $machine->code)->first();
+                $lot_plan = LotPlan::where('lot_id', $request->lot_id)->whereDate('start_time', date('Y-m-d'))->where('line_id', $machine->line_id)->where('machine_code', $machine->code)->first();
                 // if ($lot_plan->product_id != $material->id) {
                 //     return $this->failure([], "Mã cuộn không phù hợp");
                 // }
