@@ -923,11 +923,11 @@ class ApiUIController extends AdminController
             }
             $tm = [
                 "ngay_sx" => date("d/m/Y", $log->info['start_time']),
-                "cong_doan" => $log->machine->line->name,
+                "cong_doan" => $log->machine->line->name ?? '-',
                 "ca_sx" => $ca_sx,
                 "xuong_sx" => 'Giấy',
-                "machine_id" => $log->machine->code,
-                "machine_name" => $log->machine->name,
+                "machine_id" => $log->machine->code ?? '-',
+                "machine_name" => $log->machine->name ?? '-',
                 "thoi_gian_bat_dau_dung" => date("d/m/Y H:i:s", $log->info['start_time']),
                 "thoi_gian_ket_thuc_dung" => isset($log->info['end_time']) ? date("d/m/Y H:i:s", $log->info['end_time']) : "",
                 "lo_sx" => $lo_sx,
@@ -1408,7 +1408,7 @@ class ApiUIController extends AdminController
         $centerStyle = [
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
             ],
             'borders' => array(
                 'outline' => array(
@@ -1739,7 +1739,7 @@ class ApiUIController extends AdminController
         $centerStyle = [
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
             ],
             'borders' => array(
                 'outline' => array(
@@ -1937,7 +1937,7 @@ class ApiUIController extends AdminController
         $centerStyle = [
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
             ],
             'borders' => array(
                 'outline' => array(
@@ -2107,7 +2107,7 @@ class ApiUIController extends AdminController
         $centerStyle = [
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
             ],
             'borders' => array(
                 'outline' => array(
@@ -2263,7 +2263,7 @@ class ApiUIController extends AdminController
         $centerStyle = [
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
             ],
             'borders' => array(
                 'outline' => array(
@@ -2402,7 +2402,7 @@ class ApiUIController extends AdminController
         $centerStyle = [
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
             ],
             'borders' => array(
                 'outline' => array(
@@ -2537,7 +2537,7 @@ class ApiUIController extends AdminController
         $centerStyle = [
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
             ],
             'borders' => array(
                 'outline' => array(
@@ -2676,7 +2676,7 @@ class ApiUIController extends AdminController
         $centerStyle = [
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
                 'wrapText' => true,
             ],
             'borders' => array(
@@ -2704,7 +2704,7 @@ class ApiUIController extends AdminController
             'font' => ['size' => 26, 'bold' => true, 'color' => array('argb' => '4519FF')],
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                // 'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                // 'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
                 'wrapText' => false,
             ],
         ];
@@ -3446,7 +3446,7 @@ class ApiUIController extends AdminController
         $centerStyle = [
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
             ],
             'borders' => array(
                 'outline' => array(
@@ -3569,7 +3569,7 @@ class ApiUIController extends AdminController
         $centerStyle = [
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
             ],
             'borders' => array(
                 'outline' => array(
@@ -3726,7 +3726,7 @@ class ApiUIController extends AdminController
         $centerStyle = [
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
             ],
             'borders' => array(
                 'outline' => array(
@@ -3828,7 +3828,7 @@ class ApiUIController extends AdminController
         $centerStyle = [
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
                 'wrapText' => true
             ],
             'borders' => array(
@@ -4043,7 +4043,7 @@ class ApiUIController extends AdminController
             $table[$key]['khach_hang'] = $lot->plan->khach_hang ?? "";
             $table[$key]['ten_san_pham'] = $lot->product->name ?? "";
             $table[$key]['phan_dinh'] = $table[$key]['thoi_gian_kiem_tra'] ? (in_array(0, $result) ? 'NG' : 'OK') : "";
-            $table[$key]['user_name'] = $info_qc['user_name'];
+            $table[$key]['user_name'] = $info_qc['user_name'] ?? '-';
             foreach ($check_sheet as $cs) {
                 foreach ($cs as $val) {
                     if (isset($val['id'])) {
@@ -4064,7 +4064,7 @@ class ApiUIController extends AdminController
         $centerStyle = [
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
                 'wrapText' => true
             ],
             'borders' => array(
@@ -4261,7 +4261,7 @@ class ApiUIController extends AdminController
         $centerStyle = [
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
             ],
             'borders' => array(
                 'outline' => array(
@@ -4408,7 +4408,7 @@ class ApiUIController extends AdminController
         $centerStyle = [
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
                 'wrapText' => true
             ],
             'borders' => array(
@@ -4583,7 +4583,7 @@ class ApiUIController extends AdminController
             //     $plan->ten_san_pham = $plan->material->name ?? "";
             //     $plan->product_id = $plan->material->id ?? "";
             // }
-            $plan->ngay_giao_hang = date('d/m/Y', strtotime($plan->ngay_giao_hang));
+            // $plan->ngay_giao_hang = date('d/m/Y', strtotime($plan->ngay_giao_hang));
             $plan->cong_doan_sx = $plan->line->name ?? '';
             $plan->status = strtotime(date('Y-m-d')) >= strtotime($plan->ngay_sx) ? 'FIX' : 'PRE';
             $plan->kqsx = InfoCongDoan::where('line_id', $plan->line_id)->where('lo_sx', $plan->lo_sx)->whereNotNull('thoi_gian_bat_dau')->sum('sl_dau_ra_hang_loat') -  InfoCongDoan::where('line_id', $plan->line_id)->whereNotNull('thoi_gian_bat_dau')->where('lo_sx', $plan->lo_sx)->sum('sl_ng');
@@ -4603,7 +4603,7 @@ class ApiUIController extends AdminController
             $plan->sl_giao_sx = $plan->sl_giao_sx ? $plan->sl_giao_sx : ($plan->sl_thanh_pham * $plan->product->so_bat);
             $plan->ten_san_pham = $plan->product->name ?? '';
             $plan->ngay_giao_hang = date('d/m/Y', strtotime($plan->ngay_giao_hang));
-            $plan->cong_doan_sx = $this->find_line_by_slug($plan->cong_doan_sx, $lines);
+            $plan->cong_doan_sx = $plan->line->name ?? $this->find_line_by_slug($plan->cong_doan_sx, $lines);
             $plan->status = strtotime(date('Y-m-d')) >= strtotime($plan->ngay_sx) ? 'FIX' : 'PRE';
             $plan->kqsx = InfoCongDoan::where('line_id', $plan->line_id)->where('lo_sx', $plan->lo_sx)->whereNotNull('thoi_gian_bat_dau')->sum('sl_dau_ra_hang_loat') -  InfoCongDoan::where('line_id', $plan->line_id)->whereNotNull('thoi_gian_bat_dau')->where('lo_sx', $plan->lo_sx)->sum('sl_ng');
             $plan->tg_ket_thuc = date('d/m/Y H:i:s', strtotime($plan->thoi_gian_ket_thuc));
@@ -4617,7 +4617,7 @@ class ApiUIController extends AdminController
         $centerStyle = [
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
             ],
             'borders' => array(
                 'outline' => array(
@@ -4771,7 +4771,7 @@ class ApiUIController extends AdminController
         $centerStyle = [
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
             ],
             'borders' => array(
                 'outline' => array(
@@ -5385,7 +5385,7 @@ class ApiUIController extends AdminController
         $centerStyle = [
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
                 'wrapText' => true
             ],
             'borders' => array(
@@ -5907,7 +5907,7 @@ class ApiUIController extends AdminController
         $centerStyle = [
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
             ],
             'borders' => array(
                 'outline' => array(
@@ -6034,7 +6034,7 @@ class ApiUIController extends AdminController
         $centerStyle = [
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
             ],
             'borders' => array(
                 'outline' => array(
