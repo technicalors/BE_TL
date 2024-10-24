@@ -1581,7 +1581,7 @@ class Phase2OIApiController extends Controller
         if ($check_lot) {
             return $this->failure([], "Mã thùng đã có trong kho");
         }
-        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->whereDate('created_at', date('Y-m-d'))->where('line_id', 30)->first();
+        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->whereDate('created_at', date('Y-m-d'))->where('line_id', '30')->first();
         if(!$infoCongDoan){
             return $this->failure('', 'Chưa qua OQC');
         }
