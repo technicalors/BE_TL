@@ -1313,15 +1313,19 @@ class Phase2UIApiController extends Controller
             foreach ($allDataInSheet as $key => $row) {
                 //Lấy dứ liệu từ dòng thứ 5
                 if ($key > 3) {
-
-                    $line = Line::query()->where('factory_id', 2)->where('name', 'like', trim($row['G']))->first();
-                    if (empty($line)) throw new Exception('Không tìm thấy công đoạn');
-                    $lineId = $line->id;
-
+                    $machine = Machine::where('code', $row['H'])->first();
+                    if (!$machine) {
+                        throw new Exception("Không tìm thấy máy " . $row['H'], 1);
+                    }
+                    $lineId = $machine->line_id;
+                    $line = Line::find($lineId);
+                    if (!$line) {
+                        throw new Exception("Không tìm thấy công đoạn");
+                    }
                     $input['product_order_id'] = $row['L'];
                     $input['ngay_dat_hang'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['AD'])));
                     $input['cong_doan_sx'] = Str::slug($row['G']); //
-                    $input['line_id'] = $line->id; //
+                    $input['line_id'] = $lineId; //
                     $input['ca_sx'] = $row['F']; //
                     $input['ngay_sx'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['E'])));
                     $input['ngay_giao_hang'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['M'])));
@@ -1352,12 +1356,8 @@ class Phase2UIApiController extends Controller
                     if (!$product) {
                         throw new Exception("Không tìm thấy mã sản phẩm " . $productId, 1);
                     }
-                    $machine = Machine::where('code', $row['H'])->first();
-                    if (!$machine) {
-                        throw new Exception("Không tìm thấy máy " . $row['H'], 1);
-                    }
                     $quantity = $input['sl_giao_sx'];
-                    $lotSize = $this->getLotSize($productId, $line->id);
+                    $lotSize = $this->getLotSize($productId, $lineId);
                     // Lấy thời gian lên xuống cuộn tại công đoạn với slug 'thoi-gian-len-xuong-cuon'
                     $rollChangeTime = $this->getRollChangeTime($productId, $lineId);
 
