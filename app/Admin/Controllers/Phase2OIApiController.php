@@ -187,11 +187,11 @@ class Phase2OIApiController extends Controller
         $line_id = $request->line_id;
         $line = Line::find($line_id);
         $machine_code = $request->machine_code;
-        $date  = date('Y-m-d', strtotime('-3 day'));
-        $query = LotPlan::where(function ($query) use ($date) {
-            $query->whereDate('start_time', '>', $date)
-                ->orWhereHas('infoCongDoan', function ($query) {
-                    $query->where('status', 1);
+        $date  = date('Y-m-d');
+        $query = LotPlan::whereDate('start_time', $date)
+        ->where(function ($plan_query) {
+            $plan_query->orWhereHas('infoCongDoan', function ($q) {
+                    $q->where('status', 1);
                 })
                 ->orWhereDoesntHave('infoCongDoan');
         })
