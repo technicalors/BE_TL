@@ -189,10 +189,10 @@ class Phase2OIApiController extends Controller
         $machine_code = $request->machine_code;
         $date  = date('Y-m-d');
         $query = LotPlan::whereDate('start_time', $date)
-        ->whereHas('plan', function($q){
-            $q->whereIn('status_plan', [0, 1]);
-        })
-        ->with('infoCongDoan.qcHistory', 'spec', 'plan', 'infoCongDoan.assignments');
+            ->whereHas('plan', function ($q) {
+                $q->whereIn('status_plan', [0, 1]);
+            })
+            ->with('infoCongDoan.qcHistory', 'spec', 'plan', 'infoCongDoan.assignments');
         if (!empty($request->line_id)) {
             $query->where('line_id', $line_id);
         }
@@ -385,7 +385,7 @@ class Phase2OIApiController extends Controller
         //     // ->where('status', '<>', InfoCongDoan::STATUS_COMPLETED)
         //     ->first();
         // if ($check) {
-        $lot_plan = LotPlan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $machine->line->id)->first();
+        $lot_plan = LotPlan::where('lot_id', $request->lot_id)->whereDate('start_time', date('Y-m-d'))->where('machine_code', $machine->code)->where('line_id', $machine->line->id)->first();
         if (!$lot_plan) {
             return $this->failure([], 'Không tìm thấy lot');
         }
@@ -711,25 +711,25 @@ class Phase2OIApiController extends Controller
         if (!$line) {
             return $this->failure([], "Không tìm thấy công đoạn");
         }
-        $lot = Lot::find($request->scanned_lot);
-        if (!$lot) {
-            return $this->failure([], "Lot này chưa được sản xuất");
-        }
+        // $lot = Lot::find($request->scanned_lot);
+        // if (!$lot) {
+        //     return $this->failure([], "Lot này chưa được sản xuất");
+        // }
         $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->first();
         if ($infoCongDoan) {
             return $this->failure([], "Đã quét lot này");
         }
-        $lot_plan = LotPlan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->where('machine_code', $request->machine_code)->first();
+        $lot_plan = LotPlan::where('lot_id', $request->lot_id)->whereDate('start_time', date('Y-m-d'))->where('line_id', $line->id)->where('machine_code', $request->machine_code)->first();
         try {
             DB::beginTransaction();
             InfoCongDoan::create([
                 'input_lot_id' => $request->scanned_lot,
-                'lot_id' => $request->lot_id,
-                'lo_sx' => $lot->lo_sx,
+                'lot_id' => $lot_plan->lot_id,
+                'lo_sx' => $lot_plan->lo_sx,
                 'line_id' => $line->id,
-                'product_id' => $lot->product_id,
-                'sl_kh' => $lot->so_luong,
-                'sl_dau_vao_hang_loat' => $lot->so_luong,
+                'product_id' => $lot_plan->product_id,
+                'sl_kh' => $lot_plan->quantity,
+                'sl_dau_vao_hang_loat' => $lot_plan->quantity,
                 'thoi_gian_bat_dau' => Carbon::now(),
                 'user_id' => $request->user()->id,
                 'status' => InfoCongDoan::STATUS_INPROGRESS,
@@ -748,13 +748,13 @@ class Phase2OIApiController extends Controller
     public function getAssignment(Request $request)
     {
         $info = InfoCongDoan::where('lot_id', $request->lot_id)->first();
-        $lot = Lot::find($info->input_lot_id);
-        if (!$lot) {
-            return $this->failure([], "Không tìm thấy lot");
-        }
+        // $lot = Lot::find($info->input_lot_id);
+        // if (!$lot) {
+        //     return $this->failure([], "Không tìm thấy lot");
+        // }
         $assignment = Assignment::with(['worker:id,name', 'lot'])->where('lot_id', $request->lot_id)->get();
         foreach ($assignment as $item) {
-            $item['so_luong'] = $item->lot->so_luong ?? 0;
+            $item['so_luong'] = $info->sl_dau_vao_hang_loat ?? 0;
         }
         return $this->success($assignment);
     }
@@ -776,6 +776,9 @@ class Phase2OIApiController extends Controller
         $info = InfoCongDoan::where('lot_id', $request->lot_id)->first();
         if (!$info) {
             return $this->failure([], "Không tìm thấy lot");
+        }
+        if (empty($request->worker_id)) {
+            return $this->failure([], "Không có người phụ trách");
         }
         try {
             DB::beginTransaction();
@@ -831,21 +834,25 @@ class Phase2OIApiController extends Controller
                 'actual_quantity' => $request->actual_quantity ?? 0,
                 'ok_quantity' => $request->ok_quantity ?? 0,
             ]);
-            $infoCongDoan = InfoCongDoan::where('lot_id', $assignment->lot_id)->where('line_id', $request->line_id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
+            $infoCongDoan = InfoCongDoan::where('lot_id', $assignment->lot_id)->where('line_id', 29)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
             if ($infoCongDoan) {
                 $infoCongDoan->update([
                     'sl_dau_vao_hang_loat' => $request->actual_quantity ?? 0,
                     'sl_dau_ra_hang_loat' => $request->ok_quantity ?? 0,
                 ]);
-                $lot = Lot::where('id', $assignment->lot_id)->update([
-                    'so_luong' => $request->ok_quantity ?? 0,
-                ]);
+                $lot = Lot::updateOrCreate(
+                    ['id' => $infoCongDoan->lot_id, 'product_id' => $infoCongDoan->product_id, 'lo_sx'=>$infoCongDoan->lo_sx],
+                    [
+                        'so_luong' => $request->ok_quantity ?? 0,
+                        'final_line_id' => 29
+                    ]
+                );
             }
             DB::commit();
         } catch (\Throwable $th) {
-            //throw $th;
+            throw $th;
             DB::rollBack();
-            return $this->failure($th, "Lỗi xoá giao việc");
+            return $this->failure($th, "Lỗi cập nhật giao việc");
         }
 
         return $this->success($assignment);
@@ -1103,6 +1110,8 @@ class Phase2OIApiController extends Controller
         $qcHistory = QCHistory::firstOrCreate(
             [
                 'info_cong_doan_id' => $infoCongDoan->id,
+                'line_id' => $line->id,
+                'machine_id' => $machine->code ?? null
             ],
             [
                 'scanned_time' => date('Y-m-d H:i:s'),

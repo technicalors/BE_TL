@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 class QCHistory extends Model
 {
     use HasFactory, Compoships;
-    protected $fillable = ['info_cong_doan_id', 'user_id', 'eligible_to_end', 'scanned_time'];
+    protected $fillable = ['info_cong_doan_id', 'user_id', 'eligible_to_end', 'scanned_time', 'line_id', 'machine_id'];
 
     public function infoCongDoan(){
         return $this->belongsTo(InfoCongDoan::class);
