@@ -191,16 +191,8 @@ class Phase2DBApiController extends Controller
                 $sumInfoActure = InfoCongDoan::query()->where('line_id', $machine->line_id)
                     ->where('machine_code', $machine->code)
                     ->where('product_id', $info->product_id)
-                    ->where('status', InfoCongDoan::STATUS_INPROGRESS)
+                    ->whereIn('status', [InfoCongDoan::STATUS_INPROGRESS, InfoCongDoan::STATUS_COMPLETED])
                     ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->sum('sl_dau_ra_hang_loat');
-                if (empty($sumInfoActure)) {
-                    $sumInfoActure = InfoCongDoan::query()->where('line_id', $machine->line_id)
-                        ->where('machine_code', $machine->code)
-                        ->where('product_id', $info->product_id)
-                        ->where('status', InfoCongDoan::STATUS_COMPLETED)
-                        ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
-                        ->orderByDesc('updated_at')->first()->sl_dau_ra_hang_loat;
-                }
                     
                 // $plan = $info->lot->getPlanByLine($info->line_id);
                 $product = $info->product ?? null;
@@ -298,16 +290,8 @@ class Phase2DBApiController extends Controller
                 $sumInfoActure = InfoCongDoan::query()->where('line_id', $machine->line_id)
                     ->where('machine_code', $machine->code)
                     ->where('product_id', $info->product_id)
-                    ->where('status', InfoCongDoan::STATUS_INPROGRESS)
+                    ->whereIn('status', [InfoCongDoan::STATUS_INPROGRESS, InfoCongDoan::STATUS_COMPLETED])
                     ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->sum('sl_dau_ra_hang_loat');
-                if (empty($sumInfoActure)) {
-                    $sumInfoActure = InfoCongDoan::query()->where('line_id', $machine->line_id)
-                        ->where('machine_code', $machine->code)
-                        ->where('product_id', $info->product_id)
-                        ->where('status', InfoCongDoan::STATUS_COMPLETED)
-                        ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
-                        ->orderByDesc('updated_at')->first()->sl_dau_ra_hang_loat;
-                }
 
                 // $plan = $info->lot->getPlanByLine($info->line_id);
                 $product = $info->product ?? null;
