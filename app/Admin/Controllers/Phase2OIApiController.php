@@ -1467,7 +1467,7 @@ class Phase2OIApiController extends Controller
     public function checkEligibleForPrinting($infoCongDoan)
     {
         $qcHistory = $infoCongDoan->qcHistory;
-        if ($qcHistory->eligible_to_end) {
+        if ($qcHistory && $qcHistory->eligible_to_end === 1) {
             return true;
         } else {
             return false;
