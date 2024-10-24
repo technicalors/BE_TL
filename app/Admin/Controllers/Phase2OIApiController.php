@@ -1586,7 +1586,7 @@ class Phase2OIApiController extends Controller
             return $this->failure('', 'Chưa qua OQC');
         }
         $qc_history = QCHistory::where('info_cong_doan_id', $infoCongDoan->id)->first();
-        if (!$this->checkEligibleForPrinting($infoCongDoan)) {
+        if (!$qc_history || !$qc_history->eligible_to_end) {
             return $this->failure([], "Thùng này chưa qua OQC");
         } else {
             $list = TestCriteria::where('line_id', 30)->where('is_show', 1)->select('chi_tieu')->distinct()->get();
