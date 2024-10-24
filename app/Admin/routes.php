@@ -434,7 +434,7 @@ Route::group([
     $router->get('info-cong-doan/export', [InfoCongDoanController::class, 'exportInfoCongDoan']);
     $router->post('info-cong-doan/import', [InfoCongDoanController::class, 'importInfoCongDoan']);
 
-    $router->get('machine/list', [App\Admin\Controllers\MachineController::class, 'getMachine']);
+    // $router->get('machine/list', [App\Admin\Controllers\MachineController::class, 'getMachine']);
     $router->patch('machine/update', [App\Admin\Controllers\MachineController::class, 'updateMachine']);
     $router->post('machine/create', [App\Admin\Controllers\MachineController::class, 'createMachine']);
     $router->post('machine/delete', [App\Admin\Controllers\MachineController::class, 'deleteMachine']);
