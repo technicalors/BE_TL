@@ -146,7 +146,7 @@ class Phase2OIApiController extends Controller
             $line_id = Line::where('factory_id', 2)->pluck('id')->toArray();
             $query->whereIn('line_id', $line_id);
         }
-        $machine = $query->orderBy('line_id')->orderBy('code')->get();
+        $machine = $query->orderBy('line_id')->orderBy('code')->get()->sortBy('code', SORT_NATURAL)->values();
         return $this->success($machine);
     }
 
@@ -841,7 +841,7 @@ class Phase2OIApiController extends Controller
                     'sl_dau_ra_hang_loat' => $request->ok_quantity ?? 0,
                 ]);
                 $lot = Lot::updateOrCreate(
-                    ['id' => $infoCongDoan->lot_id, 'product_id' => $infoCongDoan->product_id, 'lo_sx'=>$infoCongDoan->lo_sx],
+                    ['id' => $infoCongDoan->lot_id, 'product_id' => $infoCongDoan->product_id, 'lo_sx' => $infoCongDoan->lo_sx],
                     [
                         'so_luong' => $request->ok_quantity ?? 0,
                         'final_line_id' => 29
@@ -1033,25 +1033,20 @@ class Phase2OIApiController extends Controller
     //Trả về danh sách lot QC
     public function getLotQCList(Request $request)
     {
-        $line = Line::find($request->line_id);
-        if (!$line) {
-            return $this->failure([], "Không tìm thấy công đoạn");
+        $query = InfoCongDoan::whereDate('created_at', date('Y-m-d'))->where('status', '>=', 1);
+        if (!empty($request->line_id)) {
+            $query->where('line_id', $request->line_id);
         }
-        $listHistory = QCHistory::whereDate('scanned_time', Carbon::today())
-            ->whereHas('infoCongDoan', function ($query) use ($request) {
-                $query->where('machine_code', $request->machine_code);
-            })->with('infoCongDoan.lot', 'infoCongDoan.product', 'infoCongDoan.material')
-            ->orderBy('scanned_time', 'DESC')->get();
-        $list = [];
-        foreach ($listHistory as $history) {
-            $item = $history->infoCongDoan;
+        if (!empty($request->machine_code)) {
+            $query->where('machine_code', $request->machine_code);
+        }
+        $list = $query->get();
+        foreach ($list as $item) {
             $item->ten_sp = $item->product->name ?? "";
             $item->product_id = $item->product_id ?? "";
             $item->ngay_sx = $item->created_at->format('d/m/Y');
-            $item->sl_kh = $item->sl_kh ?? 0;
             $item->sl_ok = $item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang;
             $item->ty_le_ht = $item->sl_dau_ra_hang_loat > 0 ? round($item->sl_ok / $item->sl_dau_ra_hang_loat * 100) : 0;
-            $list[] = $item;
         }
         return $this->success($list);
     }
@@ -1093,7 +1088,7 @@ class Phase2OIApiController extends Controller
             return $this->failure([], "Không tìm thấy công đoạn");
         }
         if ($line->id == 29) {
-            $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->first();
+            $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $request->machine_code)->whereDate('created_at', date('Y-m-d'))->where('line_id', $line->id)->first();
         } else {
             $machine = Machine::where('code', $request->machine_code)->first();
             if (!$machine) {
@@ -1101,7 +1096,7 @@ class Phase2OIApiController extends Controller
             }
             $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)
                 ->where('line_id', $line->id)->where('machine_code', $machine->code)
-                ->where('status', InfoCongDoan::STATUS_INPROGRESS)
+                ->whereDate('created_at', date('Y-m-d'))
                 ->first();
         }
         if (!$infoCongDoan) {
@@ -1110,8 +1105,6 @@ class Phase2OIApiController extends Controller
         $qcHistory = QCHistory::firstOrCreate(
             [
                 'info_cong_doan_id' => $infoCongDoan->id,
-                'line_id' => $line->id,
-                'machine_id' => $machine->code ?? null
             ],
             [
                 'scanned_time' => date('Y-m-d H:i:s'),
@@ -1153,19 +1146,15 @@ class Phase2OIApiController extends Controller
                     'status' => InfoCongDoan::STATUS_INPROGRESS
                 ]
             );
-            $qc_history = QCHistory::where('lot_id', $lot->id)->where('line_id', $request->line_id)->first();
-            if ($qc_history) {
-                $data = $qc_history->log ?? null;
-            } else {
-                $qc_history = QCHistory::create([
-                    'lot_id' => $infoCongDoan->lot_id,
-                    'lo_sx' => $infoCongDoan->lo_sx,
-                    'line_id' => $infoCongDoan->line_id,
+            $qcHistory = QCHistory::firstOrCreate(
+                [
+                    'info_cong_doan_id' => $infoCongDoan->id,
+                ],
+                [
+                    'scanned_time' => date('Y-m-d H:i:s'),
                     'user_id' => $request->user()->id,
-                    'scanned_time' => Carbon::now(),
-                ]);
-                $data = $qc_history->log ?? null;
-            }
+                ]
+            );
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -1180,11 +1169,16 @@ class Phase2OIApiController extends Controller
         if (!$line) {
             return $this->failure([], "Không tìm thấy công đoạn");
         }
-        $machine = Machine::where('code', $request->machine_code)->first();
-        if (!$machine) {
-            return $this->failure([], "Không tìm thấy máy");
+        if ($line->id != '30') {
+            $machine = Machine::where('code', $request->machine_code)->first();
+            if (!$machine) {
+                return $this->failure([], "Không tìm thấy máy");
+            }
+            $infoCongDoan = InfoCongDoan::with('qcHistory.testCriteriaHistories.testCriteriaDetailHistories')->where('lot_id', $request->lot_id)->where('machine_code', $request->machine_code)->where('line_id', $line->id)->first();
+        }else{
+            $infoCongDoan = InfoCongDoan::with('qcHistory.testCriteriaHistories.testCriteriaDetailHistories')->where('lot_id', $request->lot_id)->where('line_id', $line->id)->first();
         }
-        $infoCongDoan = InfoCongDoan::with('qcHistory.testCriteriaHistories.testCriteriaDetailHistories')->where('lot_id', $request->lot_id)->where('machine_code', $request->machine_code)->where('line_id', $line->id)->first();
+        
         $product = $infoCongDoan->product;
         $list = TestCriteria::where('line_id', $line->id)->whereRaw("NOT hang_muc <= ''")->where('is_show', 1)->get()->groupBy('chi_tieu');
         $reference = array_merge($list->pluck('reference')->toArray(), [$line->id]);
@@ -1260,10 +1254,15 @@ class Phase2OIApiController extends Controller
         if (!$infoCongDoan) {
             return $this->failure([], "Không tìm lot");
         }
-        $qc_history = QCHistory::where("info_cong_doan_id", $infoCongDoan->id)->first();
-        if (!$qc_history) {
-            return $this->failure([], "Chưa quét vào QC");
-        }
+        $qc_history = QCHistory::firstOrCreate(
+            [
+                "info_cong_doan_id" => $infoCongDoan->id,
+            ],
+            [
+                'scanned_time' => date('Y-m-d H:i:s'),
+                'user_id' => $request->user()->id
+            ]
+        );
         try {
             DB::beginTransaction();
             $test_criteria_history = TestCriteriaHistory::where(
