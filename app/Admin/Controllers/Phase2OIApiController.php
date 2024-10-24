@@ -1581,30 +1581,13 @@ class Phase2OIApiController extends Controller
         if ($check_lot) {
             return $this->failure([], "Mã thùng đã có trong kho");
         }
-        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->whereDate('created_at', date('Y-m-d'))->where('line_id', '30')->first();
+        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->whereDate('created_at', date('Y-m-d'))->where('line_id', 30)->first();
         if(!$infoCongDoan){
             return $this->failure('', 'Chưa qua OQC');
         }
         $qc_history = QCHistory::where('info_cong_doan_id', $infoCongDoan->id)->first();
         if (!$qc_history || !$qc_history->eligible_to_end) {
             return $this->failure([], "Thùng này chưa qua OQC");
-        } else {
-            $list = TestCriteria::where('line_id', 30)->where('is_show', 1)->select('chi_tieu')->distinct()->get();
-            $qc_history = QCHistory::where('info_cong_doan_id', $infoCongDoan->id)->first();
-            $log = [];
-            if ($qc_history) {
-                $log = $qc_history->log ?? [];
-            }
-            $result = [];
-            foreach ($list as $item) {
-                if (isset($log[Str::slug($item->chi_tieu)])) {
-                    $qc_data = $log[Str::slug($item->chi_tieu)];
-                    $result[] = $qc_data['result'] ?? "";
-                }
-            }
-            if (in_array(0, $result) || count($result) !== count($list)) {
-                return $this->failure([], "Thùng này chưa qua OQC");
-            }
         }
         $data = new \stdClass();
         $product = Product::find($lot->product_id);
