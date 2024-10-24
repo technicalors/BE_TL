@@ -1590,7 +1590,7 @@ class Phase2OIApiController extends Controller
             return $this->failure([], "Thùng này chưa qua OQC");
         } else {
             $list = TestCriteria::where('line_id', 30)->where('is_show', 1)->select('chi_tieu')->distinct()->get();
-            $qc_history = QCHistory::where('info_cong_doan_id', $infoCongDoan->id)->where('line_id', 30)->first();
+            $qc_history = QCHistory::where('info_cong_doan_id', $infoCongDoan->id)->first();
             $log = [];
             if ($qc_history) {
                 $log = $qc_history->log ?? [];
