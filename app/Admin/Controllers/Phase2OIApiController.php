@@ -1582,6 +1582,9 @@ class Phase2OIApiController extends Controller
             return $this->failure([], "Mã thùng đã có trong kho");
         }
         $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->whereDate('created_at', date('Y-m-d'))->where('line_id', 30)->first();
+        if(!$infoCongDoan){
+            return $this->failure('', 'Chưa qua OQC');
+        }
         $qc_history = QCHistory::where('info_cong_doan_id', $infoCongDoan->id)->first();
         if (!$qc_history) {
             return $this->failure([], "Thùng này chưa qua OQC");
