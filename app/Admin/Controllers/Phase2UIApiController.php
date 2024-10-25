@@ -1293,224 +1293,52 @@ class Phase2UIApiController extends Controller
         set_time_limit(600);
         ini_set('memory_limit', '2048M');
         $extension = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
-        if ($extension == 'csv') {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
-        } elseif ($extension == 'xlsx') {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
-        } else {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
-        }
-        // file path
+        $reader = match ($extension) {
+            'csv' => new \PhpOffice\PhpSpreadsheet\Reader\Csv(),
+            'xlsx' => new \PhpOffice\PhpSpreadsheet\Reader\Xlsx(),
+            default => new \PhpOffice\PhpSpreadsheet\Reader\Xls()
+        };
+
         $spreadsheet = $reader->load($_FILES['file']['tmp_name']);
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
-        $oldLineId = null;
-        $stepEndTimes = [];
-        $lotIndexOffset = 0;
+        $productIds = array_unique(array_map(fn($row) => trim($row['I']), array_slice($allDataInSheet, 4)));
+        $existingProductIds = Product::whereIn('id', $productIds)->pluck('id')->toArray();
+        $missingProductIds = array_diff($productIds, $existingProductIds);
+
+        if (!empty($missingProductIds)) {
+            throw new Exception("Các mã sản phẩm sau chưa được khai báo " . implode(', ', $missingProductIds), 1);
+        }
+
+        DB::beginTransaction();
         try {
-            DB::beginTransaction();
-            // ProductionPlan::query()->update(['status_plan' => 2]);
-            $index = 0;
-            $productIds = [];
+            $stepEndTimes = [];
+            $oldMachineCode = null;
 
-            // Lấy product_id từ từng dòng trong file
             foreach ($allDataInSheet as $key => $row) {
-                // Chỉ lấy dữ liệu từ dòng thứ 5 trở đi (tùy thuộc vào file của bạn)
-                if ($key > 3) {
-                    $productIds[] = trim($row['I']); // Cột I là nơi chứa product_id
-                }
-            }
-            $productIds = array_unique($productIds);
+                if ($key <= 3) continue;
 
-            // Tìm các product_id tồn tại trong database
-            $existingProductIds = Product::whereIn('id', $productIds)->pluck('id')->toArray();
+                $machine = Machine::where('code', preg_replace('/\s+/', '', $row['H']))->first();
+                if (!$machine) throw new Exception("Không tìm thấy máy " . $row['H']);
 
-            // Tìm các product_id không tồn tại
-            $missingProductIds = array_diff($productIds, $existingProductIds);
+                $line = Line::find($machine->line_id);
+                if (!$line) throw new Exception("Không tìm thấy công đoạn");
 
-            // Nếu có product_id nào không tồn tại, trả về lỗi
-            if (!empty($missingProductIds)) {
-                throw new Exception("Các mã sản phẩm sau chưa được khai báo " . implode(', ', $missingProductIds), 1);
-            }
-            foreach ($allDataInSheet as $key => $row) {
-                //Lấy dứ liệu từ dòng thứ 5
-                if ($key > 3) {
-                    $machine = Machine::where('code', $row['H'])->first();
-                    if (!$machine) {
-                        throw new Exception("Không tìm thấy máy " . $row['H'], 1);
-                    }
-                    $lineId = $machine->line_id;
-                    $line = Line::find($lineId);
-                    if (!$line) {
-                        throw new Exception("Không tìm thấy công đoạn");
-                    }
-                    $input['product_order_id'] = $row['L'];
-                    $input['ngay_dat_hang'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['AD'])));
-                    $input['cong_doan_sx'] = Str::slug($row['G']); //
-                    $input['line_id'] = $lineId; //
-                    $input['ca_sx'] = $row['F']; //
-                    $input['ngay_sx'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['E'])));
-                    $input['ngay_giao_hang'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['M'])));
-                    $input['machine_id'] = $row['H']; //
-                    $input['product_id'] = trim($row['I']); //
-                    $input['product_name'] = $row['K'];
-                    $input['khach_hang'] = $row['J']; //
-                    $input['so_bat'] = $row['T'] ?? 0; //
-                    $input['sl_nvl'] = $row['O']; //
-                    $input['sl_tong_don_hang'] = $row['N']; //
-                    $input['sl_giao_sx'] = $row['Q']; //
-                    $input['sl_thanh_pham'] = $row['P'] ?? 0; //
-                    $input['thu_tu_uu_tien'] = $row['B']; //
-                    $input['note'] = $row['AE'] ?? "";
-                    $input['UPH'] = str_replace(',', '', $row['W']); //
-                    $input['nhan_luc'] = $row['AB'];
-                    $input['tong_tg_thuc_hien'] = filter_var($row['AA'], FILTER_SANITIZE_NUMBER_INT); //
-                    $input['kho_giay'] =  $row['U'] ?? "";
-                    $input['toc_do'] =  $row['V'] ? (int)$row['V'] : "";
-                    $input['thoi_gian_chinh_may'] =  $row['X'] ? (float)$row['X'] : "";
-                    $input['thoi_gian_thuc_hien'] =  $row['Y'] ? (float)$row['Y'] : "";
-                    $input['thoi_gian_bat_dau'] = date('Y-m-d H:i:s', strtotime($input['ngay_sx'] . ' ' . $row['C']));
-                    $input['thoi_gian_ket_thuc'] = date('Y-m-d H:i:s', strtotime($input['ngay_sx'] . ' ' . $row['D'] . (strtotime($row['C']) > strtotime($row['D']) ? " +1 day" : "")));
-                    $input['status'] = InfoCongDoan::STATUS_PLANNED;
+                $input = $this->mapInputData($row, $machine->line_id);
+                $product = Product::find($input['product_id']);
+                if (!$product) throw new Exception("Không tìm thấy mã sản phẩm " . $input['product_id']);
 
-                    $productId = $input['product_id'];
-                    $product = Product::find($productId);
-                    if (!$product) {
-                        throw new Exception("Không tìm thấy mã sản phẩm " . $productId, 1);
-                    }
-                    $quantity = $input['sl_giao_sx'];
-                    $lotSize = $this->getLotSize($productId, $lineId);
-                    // Lấy thời gian lên xuống cuộn tại công đoạn với slug 'thoi-gian-len-xuong-cuon'
-                    $rollChangeTime = $this->getRollChangeTime($productId, $lineId);
-                    $efficiency = $this->getEfficiency($productId, $lineId);
-                    $taskTime = $efficiency > 0 ? 60 / $efficiency : 0; // Tính taskTime, nếu năng suất > 0
-                    $setupTime = $this->getSetupTime($productId, $lineId);
-                    $shiftPreparationTime = $this->getShiftPreparationTime($productId, $lineId);
-                    // $transportTime = $this->getTransportTimeBetweenSteps($productId, $lineId);
-                    //Tính thời gian bắt đầu của lô
-                    if ($index == 0) {
-                        // Công đoạn đầu tiên
-                        $startTime = Carbon::parse($input['thoi_gian_bat_dau']);
-                    } else if ($lineId != $oldLineId) {
-                        //Nếu số lượng cuộn vận chuyển lớn hơn số lượng lot của công đoạn trước đó thì số lượng cuộn vc = số lượng lot của công đoạn trước đó 
-                        $startTime = $stepEndTimes[$lineId] ?? Carbon::parse($input['thoi_gian_bat_dau']);
-                        $lotIndexOffset = 0;
-                    }
+                $startTime = $this->getStartTime($input, $stepEndTimes, $machine->code, $oldMachineCode);
 
-                    $numLots = ceil($quantity / $lotSize);
-                    $endTime = $startTime->copy()->addMinutes(((($taskTime * $lotSize) + $rollChangeTime) * $numLots) + $setupTime);
-                    $stepEndTimes[$lineId] = $endTime;
+                [$endTime, $stepEndTimes[$machine->code]] = $this->calculateEndTime($input, $startTime, $product, $machine->line_id);
 
-                    $customer = Customer::firstOrCreate(
-                        ['name' => $input['khach_hang']],
-                        ['name' => $input['khach_hang'], 'id' => Str::slug($input['khach_hang'])]
-                    );
+                $order = $this->getOrder($input, $product);
+                $lo_sx = Losx::firstOrCreate(['product_order_id' => $order->id]);
+                $losx_id = $lo_sx->id;
+                $plan = $this->storeProductionPlan($input, $losx_id, $startTime, $endTime, $order, $line, $machine, $stepEndTimes);
 
-                    //Mã mã lô, nếu đon hàng đã tồn tại lo_sx thì lấy lô cũ, nếu không tạo lô mới
-                    $id = QueryHelper::generateNewId(new ProductOrder(), date('Ym'), 2);
-                    $order = ProductOrder::firstOrCreate(
-                        ['id' => $input['product_order_id']],
-                        [
-                            'id' => $id,
-                            'order_number' => $id,
-                            'customer_id' => $customer->id,
-                            'product_id' => $input['product_id'],
-                            'order_date' => $input['ngay_dat_hang'],
-                            'quantity' => $input['sl_thanh_pham'],
-                            'delivery_date' => $input['ngay_giao_hang'],
-                        ]
-                    );
-                    $lo_sx = Losx::firstOrCreate(['product_order_id' => $order->id]);
-                    $losx_id = $lo_sx->id;
-                    Log::debug($order);
-                    $plan_input = [
-                        'product_order_id' => $order->id,
-                        'ngay_dat_hang' => $order->order_date,
-                        'ngay_sx' => $startTime,
-                        'ngay_giao_hang' => $order->delivery_date,
-                        'line_id' => $lineId,
-                        'cong_doan_sx' => $line->name,
-                        'ca_sx' => 1,
-                        'delivery_date' => $order->delivery_date ? date('Y-m-d', strtotime($order->delivery_date)) : null,
-                        'machine_id' => $machine->code,
-                        'product_id' => $productId,
-                        'ten_san_pham' => $product->name ?? "",
-                        'khach_hang' => $order->customer->name ?? "",
-                        'lo_sx' => $losx_id,
-                        'thu_tu_uu_tien' => 1,
-                        'nhan_luc' => 1,
-                        'tong_tg_thuc_hien' => ($quantity * $taskTime) + ($rollChangeTime * $numLots) + $setupTime,
-                        'thoi_gian_bat_dau' => $startTime,
-                        'thoi_gian_ket_thuc' => $endTime,
-                        'sl_giao_sx' => $input['sl_giao_sx'],
-                        'status_plan' => 0
-                    ];
-                    $plan = ProductionPlan::create($plan_input);
-                    $lot_in_plan = [];
-                    $countLot = InfoCongDoan::query()->where([
-                        'lo_sx' => $losx_id,
-                        'line_id' => $lineId
-                    ])->count() + $lotIndexOffset;
-                    $lotEndTime = $startTime;
-                    for ($lotIndex = 1; $lotIndex <= $numLots; $lotIndex++) {
-                        $countLot += 1;
-                        $lotId = $losx_id . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT); // Tạo lot_id với stt lot
-                        $lotStartTime = ($lotIndex == 1) ? $startTime : $lotEndTime;
-                        if ($lotIndex == 1 && $lotIndexOffset == 0) {
-                            $quantityPerLot = $quantity % $lotSize;
-                        } else {
-                            $quantityPerLot = $lotSize;
-                        }
-                        list($lotStartTime, $lotEndTime) = $this->adjustTimeWithinShift($lotStartTime, ($taskTime * $quantityPerLot) + $rollChangeTime, $machine->code, $shiftPreparationTime);
-                        // Lưu thông tin lot vào object
-                        $lot_plan_input = [
-                            'lot_id' => $lotId,
-                            'lo_sx' => $losx_id,
-                            'line_id' => $lineId,
-                            'product_id' => $productId,
-                            'machine_code' => $machine->code,
-                            'start_time' => $lotStartTime,
-                            'end_time' => $lotEndTime,
-                            'quantity' => $quantityPerLot,
-                            'lot_size' => $quantityPerLot,
-                            'product_order_id' => $order->id,
-                            'customer_id' => $order->customer_id,
-                            'sl_giao_sx' => $quantityPerLot,
-                            'ca_sx' => 1,
-                            'cong_doan_sx' => $line->name,
-                            'machine_id' => $machine->code,
-                            'ten_san_pham' => $product->name ?? "",
-                            'khach_hang' => $order->customer_id,
-                            'thoi_gian_bat_dau' => $lotStartTime,
-                            'thoi_gian_ket_thuc' => $lotEndTime,
-                            'production_plan_id' => $plan->id
-                        ];
-                        $lot_plan = LotPlan::create($lot_plan_input);
-                        $lot_plans[] = $lot_plan_input;
-                        $lot_in_plan[] = $lot_plan_input;
-                        $lots[$lineId][$index][] = [
-                            'lot_id' => $lotId,
-                            'quantity' => $quantityPerLot,
-                            'startTime' => $lotStartTime,
-                            'endTime' => $lotEndTime,
-                        ];
-                    }
-                    $plan_input['lots'] = $lot_in_plan;
-                    // Thời gian kết thúc của công đoạn là thời gian kết thúc của lot cuối cùng
-                    if (!empty($lots[$lineId][$index])) {
-                        $stepEndTimes[$lineId] = end($lots[$lineId][$index])['endTime'];
-                        $plan_input['thoi_gian_ket_thuc'] = $stepEndTimes[$lineId];
-                        $machine->update(['available_at' => $stepEndTimes[$lineId]]);
-                    }
-                    //Tạo kế hoạch
-                    $plan->update(['thoi_gian_ket_thuc' => $stepEndTimes[$lineId]]);
-                    $lotIndexOffset += $numLots;
-                    if (!isset($machine_available_list[$machine->code]) || $stepEndTimes[$lineId]->greaterThan($machine_available_list[$machine->code])) {
-                        $machine_available_list[$machine->code] = $stepEndTimes[$lineId];
-                    }
-                    unset($input);
-                    $oldLineId = $line->id;
-                }
-                $index++;
+                $this->generateLots($input, $losx_id, $plan, $startTime, $machine, $stepEndTimes);
+
+                $oldMachineCode = $machine->code;
             }
             DB::commit();
         } catch (\Exception $ex) {
@@ -1518,5 +1346,160 @@ class Phase2UIApiController extends Controller
             return $this->failure([], $ex->getMessage(), 500);
         }
         return $this->success('', 'Đã tạo thành công');
+    }
+
+    private function storeProductionPlan($input, $losx_id, $startTime, $endTime, $order, $line, $machine, &$stepEndTimes)
+    {
+        $planInput = [
+            'product_order_id' => $order->id,
+            'ngay_dat_hang' => $order->order_date,
+            'ngay_sx' => $startTime,
+            'ngay_giao_hang' => $order->delivery_date,
+            'line_id' => $line->id,
+            'cong_doan_sx' => $line->name,
+            'ca_sx' => 1,
+            'delivery_date' => $order->delivery_date ? date('Y-m-d', strtotime($order->delivery_date)) : null,
+            'machine_id' => $machine->code,
+            'product_id' => $input['product_id'],
+            'ten_san_pham' => $order->product->name,
+            'khach_hang' => $order->customer->name,
+            'lo_sx' => $losx_id,
+            'thu_tu_uu_tien' => $input['thu_tu_uu_tien'],
+            'nhan_luc' => $input['nhan_luc'],
+            'tong_tg_thuc_hien' => $input['tong_tg_thuc_hien'],
+            'thoi_gian_bat_dau' => $startTime,
+            'thoi_gian_ket_thuc' => $endTime,
+            'sl_giao_sx' => $input['sl_giao_sx'],
+            'status_plan' => 0
+        ];
+
+        return ProductionPlan::create($planInput);
+    }
+
+    private function mapInputData($row, $lineId)
+    {
+        return [
+            'product_order_id' => $row['L'],
+            'ngay_dat_hang' => Carbon::parse(str_replace('/', '-', $row['AD']))->format('Y-m-d'),
+            'cong_doan_sx' => Str::slug($row['G']),
+            'line_id' => $lineId,
+            'ca_sx' => $row['F'],
+            'ngay_sx' => Carbon::parse(str_replace('/', '-', $row['E']))->format('Y-m-d'),
+            'ngay_giao_hang' => Carbon::parse(str_replace('/', '-', $row['M']))->format('Y-m-d'),
+            'machine_id' => preg_replace('/\s+/', '', $row['H']),
+            'product_id' => trim($row['I']),
+            'product_name' => $row['K'],
+            'khach_hang' => $row['J'],
+            'so_bat' => $row['T'] ?? 0,
+            'sl_nvl' => $row['O'],
+            'sl_tong_don_hang' => $row['N'],
+            'sl_giao_sx' => filter_var($row['Q'], FILTER_SANITIZE_NUMBER_INT),
+            'sl_thanh_pham' => $row['P'] ?? 0,
+            'thu_tu_uu_tien' => $row['B'],
+            'note' => $row['AE'] ?? "",
+            'UPH' => str_replace(',', '', $row['W']),
+            'nhan_luc' => $row['AB'],
+            'tong_tg_thuc_hien' => filter_var($row['AA'], FILTER_SANITIZE_NUMBER_INT),
+            'kho_giay' => $row['U'] ?? "",
+            'toc_do' => $row['V'] ? (int)$row['V'] : "",
+            'thoi_gian_chinh_may' => $row['X'] ? (float)$row['X'] : "",
+            'thoi_gian_thuc_hien' => $row['Y'] ? (float)$row['Y'] : "",
+            'thoi_gian_bat_dau' => Carbon::parse($row['E'] . ' ' . $row['C']),
+            'thoi_gian_ket_thuc' => Carbon::parse($row['E'] . ' ' . $row['D'] . (strtotime($row['C']) > strtotime($row['D']) ? " +1 day" : "")),
+            'status' => InfoCongDoan::STATUS_PLANNED
+        ];
+    }
+
+    private function getStartTime($input, $stepEndTimes, $machineCode, $oldMachineCode)
+    {
+        if ($oldMachineCode !== $machineCode) {
+            return $stepEndTimes[$machineCode] ?? Carbon::parse($input['thoi_gian_bat_dau']);
+        }
+        return Carbon::parse($input['thoi_gian_bat_dau']);
+    }
+
+    private function calculateEndTime($input, $startTime, $product, $lineId)
+    {
+        $quantity = $input['sl_giao_sx'];
+        $lotSize = $this->getLotSize($product->id, $lineId);
+        $taskTime = $this->getTaskTime($product->id, $lineId, $input['UPH']);
+        $numLots = ceil($quantity / $lotSize);
+        $rollChangeTime = $this->getRollChangeTime($product->id, $lineId);
+        $setupTime = $this->getSetupTime($product->id, $lineId);
+
+        $endTime = $startTime->copy()->addMinutes(((($taskTime * $lotSize) + $rollChangeTime) * $numLots) + $setupTime);
+        return [$endTime, $endTime];
+    }
+    private function getTaskTime($productId, $lineId, $uph)
+    {
+        // Tính toán task time (thời gian thực hiện mỗi lô) dựa vào UPH hoặc các yếu tố khác
+        $efficiency = $this->getEfficiency($productId, $lineId); // Giả sử bạn đã có hàm getEfficiency
+        return $efficiency > 0 ? (60 / $efficiency) : ($uph > 0 ? (60 / $uph) : 0);
+    }
+
+    private function getOrder($input, $product)
+    {
+        $customer = Customer::firstOrCreate(
+            ['name' => $input['khach_hang']],
+            ['name' => $input['khach_hang'], 'id' => Str::slug($input['khach_hang'])]
+        );
+        $id = QueryHelper::generateNewId(new ProductOrder(), date('Ym'), 2);
+        return ProductOrder::firstOrCreate(
+            ['id' => $input['product_order_id']],
+            [
+                'id' => $id,
+                'order_number' => $id,
+                'customer_id' => $customer->id,
+                'product_id' => $product->id,
+                'order_date' => $input['ngay_dat_hang'],
+                'quantity' => $input['sl_thanh_pham'],
+                'delivery_date' => $input['ngay_giao_hang']
+            ]
+        );
+    }
+
+
+    private function generateLots($input, $losx_id, $plan, $startTime, $machine, &$stepEndTimes)
+    {
+        $quantity = $input['sl_giao_sx'];
+        $lotSize = $this->getLotSize($input['product_id'], $input['line_id']);
+        $taskTime = $this->getTaskTime($input['product_id'], $input['line_id'], $input['UPH']);
+        $numLots = ceil($quantity / $lotSize);
+        $lotEndTime = $startTime;
+        $shiftPreparationTime = $this->getShiftPreparationTime($input['product_id'],  $input['line_id']);
+        for ($lotIndex = 1; $lotIndex <= $numLots; $lotIndex++) {
+            $lotId =  $losx_id . '.L.' . str_pad($lotIndex, 4, '0', STR_PAD_LEFT);
+            $lotStartTime = ($lotIndex == 1) ? $startTime : $lotEndTime;
+            $quantityPerLot = ($lotIndex == 1 && ($quantity % $lotSize != 0)) ? ($quantity % $lotSize) : $lotSize;
+
+            list($lotStartTime, $lotEndTime) = $this->adjustTimeWithinShift(
+                $lotStartTime,
+                ($taskTime * $quantityPerLot),
+                $machine->code,
+                $shiftPreparationTime
+            );
+            LotPlan::create([
+                'lot_id' => $lotId,
+                'lo_sx' => $losx_id,
+                'line_id' => $input['line_id'],
+                'product_id' => $input['product_id'],
+                'machine_code' => $machine->code,
+                'start_time' => $lotStartTime,
+                'end_time' => $lotEndTime,
+                'quantity' => $quantityPerLot,
+                'lot_size' => $quantityPerLot,
+                'product_order_id' => $plan->product_order_id,
+                'customer_id' => $plan->product_order_id,
+                'sl_giao_sx' => $quantityPerLot,
+                'ca_sx' => 1,
+                'cong_doan_sx' => $plan->cong_doan_sx,
+                'machine_id' => $machine->code,
+                'ten_san_pham' => $plan->ten_san_pham,
+                'khach_hang' => $plan->khach_hang,
+                'thoi_gian_bat_dau' => $lotStartTime,
+                'thoi_gian_ket_thuc' => $lotEndTime,
+                'production_plan_id' => $plan->id
+            ]);
+        }
     }
 }

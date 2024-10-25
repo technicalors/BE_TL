@@ -201,7 +201,7 @@ class Phase2OIApiController extends Controller
         if (!empty($request->machine_code)) {
             $query->where('machine_code', $machine_code);
         }
-        $list = $query->orderBy('start_time', 'ASC')->get();
+        $list = $query->orderBy('lo_sx','ASC')->orderBy('start_time', 'ASC')->get();
         $records = [];
         foreach ($list as $item) {
             $hao_phi_sx = $item->spec->first(function ($record) {
