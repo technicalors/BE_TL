@@ -199,13 +199,13 @@ class Phase2DBApiController extends Controller
                 // if (!isset($plan)) $plan = $info->lot->plan;
                 $status = 0;
                 if (!is_null($info->thoi_gian_bat_dau) && is_null($info->thoi_gian_bam_may) && is_null($info->thoi_gian_ket_thuc)) {
-                    $status = 1;
+                    $status = 1; // orange
                 }
                 if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && is_null($info->thoi_gian_ket_thuc)) {
-                    $status = 2;
+                    $status = 3; // green
                 }
                 if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && !is_null($info->thoi_gian_ket_thuc)) {
-                    $status = 3;
+                    $status = 2; // blue
                 }
                 $upm = $lotPlan->quantity / (2 * 60);
                 $diff_time = strtotime('now') - strtotime($info->thoi_gian_bat_dau ?? 'now');
@@ -301,10 +301,10 @@ class Phase2DBApiController extends Controller
                     $status = 1;
                 }
                 if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && is_null($info->thoi_gian_ket_thuc)) {
-                    $status = 2;
+                    $status = 3;
                 }
                 if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && !is_null($info->thoi_gian_ket_thuc)) {
-                    $status = 3;
+                    $status = 2;
                 }
                 $upm = $lotPlan->quantity / (2 * 60);
                 $diff_time = strtotime('now') - strtotime($info->thoi_gian_bat_dau ?? 'now');
