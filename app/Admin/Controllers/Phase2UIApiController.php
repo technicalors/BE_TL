@@ -1316,7 +1316,7 @@ class Phase2UIApiController extends Controller
             foreach ($allDataInSheet as $key => $row) {
                 // Chỉ lấy dữ liệu từ dòng thứ 5 trở đi (tùy thuộc vào file của bạn)
                 if ($key > 3) {
-                    $productIds[] = $row['I']; // Cột I là nơi chứa product_id
+                    $productIds[] = trim($row['I']); // Cột I là nơi chứa product_id
                 }
             }
             $productIds = array_unique($productIds);
@@ -1351,7 +1351,7 @@ class Phase2UIApiController extends Controller
                     $input['ngay_sx'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['E'])));
                     $input['ngay_giao_hang'] = date('Y-m-d', strtotime(str_replace('/', '-', $row['M'])));
                     $input['machine_id'] = $row['H']; //
-                    $input['product_id'] = $row['I']; //
+                    $input['product_id'] = trim($row['I']); //
                     $input['product_name'] = $row['K'];
                     $input['khach_hang'] = $row['J']; //
                     $input['so_bat'] = $row['T'] ?? 0; //
