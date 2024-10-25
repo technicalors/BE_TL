@@ -116,7 +116,9 @@ class ApiMobileController extends AdminController
         if (Admin::guard()->attempt($credentials)) {
             $user = Admin::user();
             $user = $this->user->find($user->id);
-            $user->tokens()->delete();
+            if($user->username !== 'admin'){
+                $user->tokens()->delete();
+            }
             return $this->success($this->parseDataUser($user), 'Đăng nhập thành công');
         }
         return $this->failure([], 'Sai tên đăng nhập hoặc mật khẩu!');
