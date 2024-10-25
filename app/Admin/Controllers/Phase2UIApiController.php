@@ -1310,6 +1310,27 @@ class Phase2UIApiController extends Controller
             DB::beginTransaction();
             // ProductionPlan::query()->update(['status_plan' => 2]);
             $index = 0;
+            $productIds = [];
+
+            // Lấy product_id từ từng dòng trong file
+            foreach ($allDataInSheet as $key => $row) {
+                // Chỉ lấy dữ liệu từ dòng thứ 5 trở đi (tùy thuộc vào file của bạn)
+                if ($key > 3) {
+                    $productIds[] = $row['I']; // Cột I là nơi chứa product_id
+                }
+            }
+            $productIds = array_unique($productIds);
+
+            // Tìm các product_id tồn tại trong database
+            $existingProductIds = Product::whereIn('id', $productIds)->pluck('id')->toArray();
+
+            // Tìm các product_id không tồn tại
+            $missingProductIds = array_diff($productIds, $existingProductIds);
+
+            // Nếu có product_id nào không tồn tại, trả về lỗi
+            if (!empty($missingProductIds)) {
+                throw new Exception("Các mã sản phẩm sau chưa được khai báo " . implode(', ', $missingProductIds), 1);
+            }
             foreach ($allDataInSheet as $key => $row) {
                 //Lấy dứ liệu từ dòng thứ 5
                 if ($key > 3) {
@@ -1360,14 +1381,8 @@ class Phase2UIApiController extends Controller
                     $lotSize = $this->getLotSize($productId, $lineId);
                     // Lấy thời gian lên xuống cuộn tại công đoạn với slug 'thoi-gian-len-xuong-cuon'
                     $rollChangeTime = $this->getRollChangeTime($productId, $lineId);
-
-                    // Lấy năng suất tại công đoạn và tính toán taskTime
                     $efficiency = $this->getEfficiency($productId, $lineId);
                     $taskTime = $efficiency > 0 ? 60 / $efficiency : 0; // Tính taskTime, nếu năng suất > 0
-
-                    // // Lấy số lượng cuộn một lần vận chuyển và tính toán thời gian sản xuất cho 1 xe hàng
-                    // $rollsPerTransport = $this->getRollsPerTransport($productId, $lineId);
-                    // Lấy thời gian vào hàng tại công đoạn với slug 'vao-hang-setup-may'
                     $setupTime = $this->getSetupTime($productId, $lineId);
                     $shiftPreparationTime = $this->getShiftPreparationTime($productId, $lineId);
                     // $transportTime = $this->getTransportTimeBetweenSteps($productId, $lineId);
@@ -1380,14 +1395,9 @@ class Phase2UIApiController extends Controller
                         $startTime = $stepEndTimes[$lineId] ?? Carbon::parse($input['thoi_gian_bat_dau']);
                         $lotIndexOffset = 0;
                     }
-                    // $machineReadyTime = Carbon::parse($machine->available_at, 'Asia/Bangkok');
-                    // if (!$startTime->greaterThan($machineReadyTime)) {
-                    //     $startTime = $machineReadyTime;
-                    // }
+
                     $numLots = ceil($quantity / $lotSize);
-                    // Thời gian kết thúc là thời gian bắt đầu cộng thêm thời gian sản xuất
                     $endTime = $startTime->copy()->addMinutes(((($taskTime * $lotSize) + $rollChangeTime) * $numLots) + $setupTime);
-                    // Lưu trữ thời gian bắt đầu và kết thúc vào mảng
                     $stepEndTimes[$lineId] = $endTime;
 
                     $customer = Customer::firstOrCreate(
