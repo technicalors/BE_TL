@@ -93,7 +93,7 @@ class Phase2UIApiController extends Controller
             $overall["sl_tem_vang"] += $item->sl_tem_vang;
             $overall["sl_ng"] += $item->sl_ng;
             if ($item->plan) {
-                $overall['sl_dau_ra_kh'] += ($item->plan->sl_thanh_pham && $item->plan->sl_thanh_pham) ? ($item->lot->product->so_bat * $item->plan->sl_thanh_pham) : $item->plan->sl_giao_sx;
+                $overall['sl_dau_ra_kh'] += ($item->plan->sl_thanh_pham && $item->plan->sl_thanh_pham) ? (($item->lot->product->so_bat ?? 1) * $item->plan->sl_thanh_pham) : $item->plan->sl_giao_sx;
             }
         }
         $overall["sl_chenh_lech"] = ($overall["sl_dau_ra_thuc_te_ok"] + $overall["sl_tem_vang"] + $overall["sl_ng"]) - $overall['sl_dau_ra_kh'];
