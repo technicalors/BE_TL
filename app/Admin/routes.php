@@ -393,6 +393,7 @@ Route::group([
     $router->get('lot/list-table', [ApiMobileController::class, 'listLot']);
     $router->post('/upload-ke-hoach-xuat-kho', [ApiMobileController::class, 'uploadKHXK']);
     $router->get('/production-plan/list', [ApiUIController::class, 'getListProductionPlan']);
+    $router->put('/production-plan/status-plan/{id}', [ApiUIController::class, 'updateStatusPlan']);
     $router->get('/warehouse/list-export-plan', [ApiMobileController::class, 'getListWareHouseExportPlan']);
     $router->post('/upload-info-cong-doan', [Phase2UIApiController::class, 'uploadInfoCongDoan']);
     $router->post('/upload-warehouse-location', [Phase2UIApiController::class, 'uploadWarehouseLocation']);

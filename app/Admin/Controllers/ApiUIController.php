@@ -47,6 +47,7 @@ use App\Models\TestCriteriaHistory;
 use App\Models\YellowStampHistory;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use stdClass;
 use Throwable;
 
@@ -6379,5 +6380,23 @@ class ApiUIController extends AdminController
 
         // Return the random timestamp as a Carbon instance
         return Carbon::createFromTimestamp($randomTimestamp);
+    }
+
+    function updateStatusPlan(Request $request, $id)
+    {
+        $request->validate([
+            'status_plan' => ['required', Rule::in([1, 3])],
+        ]);
+
+        DB::beginTransaction();
+        try {
+            ProductionPlan::find($id)->update(['status_plan' => $request->status_plan]);
+            DB::commit();
+            return $this->success([], 'Thao tác thành công');
+        } catch (\Exception $e) {
+            Log::error($e->getMessage());
+            DB::rollBack();
+            return $this->failure(['msg' => $e->getMessage()], 'Thao tác thất bại');
+        }
     }
 }
