@@ -201,7 +201,7 @@ class Phase2OIApiController extends Controller
         if (!empty($request->machine_code)) {
             $query->where('machine_code', $machine_code);
         }
-        $list = $query->orderBy('lo_sx','ASC')->orderBy('start_time', 'ASC')->get();
+        $list = $query->orderBy('lo_sx', 'ASC')->orderBy('start_time', 'ASC')->get();
         $records = [];
         foreach ($list as $item) {
             $hao_phi_sx = $item->spec->first(function ($record) {
@@ -391,6 +391,9 @@ class Phase2OIApiController extends Controller
         if (!$lot_plan) {
             return $this->failure([], 'Không tìm thấy lot');
         }
+        if ($lot_plan->plan && $lot_plan->plan->status_plan == ProductionPlan::STATUS_PENDING) {
+            ProductionPlan::where('id', $lot_plan->plan->id)->update(['status_plan' => ProductionPlan::STATUS_IN_PROGRESS]);
+        }
         // if ($machine->line_id == '25') {
         //     //Nếu là công đoạn In thì so sánh mã nvl tức là product_id của lot được quét với material_id của bom của product của lot chuẩn bị chạy 
         //     $material_ids = Bom::where('product_id', $lot_plan->product_id)->pluck('material_id')->toArray();
@@ -424,7 +427,7 @@ class Phase2OIApiController extends Controller
                     'user_id' => $request->user()->id,
                 ]
             );
-            if(isset($tracking)){
+            if (isset($tracking)) {
                 $tracking->update([
                     'lot_id' => $request->lot_id,
                     'input' => 0,
@@ -671,6 +674,14 @@ class Phase2OIApiController extends Controller
                             'output' => 0
                         ]);
                     }
+                }
+
+                $check = LotPlan::where('lo_sx', $infoCongDoan->lo_sx)->whereNotIn('lot_id', function ($query) {
+                    $query->select(DB::raw("lot_id COLLATE utf8mb4_unicode_ci"))
+                        ->from('info_cong_doan');
+                })->count();
+                if ($check === 0) {
+                    ProductionPlan::where('lo_sx', $infoCongDoan->lo_sx)->update(['status_plan' => ProductionPlan::STATUS_COMPLETED]);
                 }
                 DB::commit();
                 return $this->success($this->formatTemTrang($infoCongDoan, $request), "Kết thúc sản xuất thành công");
