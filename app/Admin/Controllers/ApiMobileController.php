@@ -164,9 +164,15 @@ class ApiMobileController extends AdminController
 
     public function listMachine(Request $request)
     {
-        $all = Machine::all();
+        $query = Machine::query();
 
-        return $this->success($all);
+        if (isset($request->is_iot)) {
+            $query->where('is_iot', $request->is_iot);
+        }
+
+        $result = $query->get();
+
+        return $this->success($result);
     }
 
     public function detailMachine(Request $request)
