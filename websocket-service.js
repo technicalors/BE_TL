@@ -1,13 +1,14 @@
 const WebSocket = require("ws");
 const axios = require("axios");
 // Cấu hình API và WebSocket
-const base_url = "https://backtl.ors.vn/api/iot";
+const base_url = "http://127.0.0.1:8000/api/iot";
 const LOGIN_API_URL = "http://103.77.215.18:3030/api/auth/login";
 const WEBSOCKET_URL = "ws://103.77.215.18:3030/api/ws/plugins/telemetry";
 const PRODUCTION_API_URL = base_url + "/update-quantity";
 const MACHINE_INFO_API_URL = base_url + "/update-params";
 const MACHINE_STATUS_API_URL = base_url + "/update-status";
 const MACHINE_RECORD_API_URL = base_url + "/record-product-output";
+const POWER_CONSUME_API_URL = base_url + "/power-consume";
 const DEVICE_IDS = [
   "f7f77560-45bd-11ef-b8c3-a13625245eca",
   "7cda31d0-45bb-11ef-b8c3-a13625245eca",
@@ -347,6 +348,17 @@ async function enqueueData(deviceId, data) {
         }
       }
     }
+  }
+
+  // Tracking power consumed
+  if (data["PM01:Active_Energy"]) {
+    dataQueues[deviceId].push({
+      data: {
+        device_id: deviceId,
+        value: data["PM01:Active_Energy"][0][1] ?? null
+      },
+      apiUrl: POWER_CONSUME_API_URL,
+    });
   }
 
   processQueue(deviceId);

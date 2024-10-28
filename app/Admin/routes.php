@@ -584,6 +584,7 @@ Route::group([
     $router->post('/iot/update-params', [IOTController::class, 'updateParamsFromIot']);
     $router->post('/iot/update-status', [IOTController::class, 'updateStatusFromIot']);
     $router->post('/iot/record-product-output', [IOTController::class, 'recordProductOutput']);
+    $router->post('/iot/power-consume', [IOTController::class, 'trackingPowerConsume']);
 
     Route::post('/import-parameters', [ParameterController::class, 'import']);
     $router->post('/import-spec', [App\Admin\Controllers\ProductController::class, 'importNewVersion']);

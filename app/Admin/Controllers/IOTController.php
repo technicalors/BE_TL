@@ -13,6 +13,7 @@ use App\Models\MachineLog;
 use App\Models\MachineParameterLogs;
 use App\Models\MachineParameters;
 use App\Models\MachineStatus;
+use App\Models\PowerConsume;
 use App\Models\ThongSoMay;
 use App\Models\Tracking;
 use Encore\Admin\Controllers\AdminController;
@@ -167,5 +168,36 @@ class IOTController extends AdminController
         }
         MachineStatus::active($machine->code);
         return $info_cong_doan;
+    }
+
+    public function trackingPowerConsume(Request $request)
+    {
+        try {
+            if (isset($request->device_id) && isset($request->value)) {
+                $machine = Machine::where('device_id', $request->device_id)->first();
+                $machine_code = $machine->code ?? null;
+                $power = PowerConsume::query()->where('device_id', $request->device_id)->whereDate('date', '=', date('Y-m-d'))->first();
+                if (empty($power)) {
+                    $power = PowerConsume::create([
+                        'device_id' => $request->device_id,
+                        'machine_code' => $machine_code,
+                        'start_value' => $request->value,
+                        'end_value' => $request->value,
+                        'date' => date('Y-m-d H:i:s'),
+                    ]);
+                } else {
+                    // Lưu bản ghi mới nhất mỗi phút
+                    if (Carbon::parse($power->updated_at)->diffInMinutes(Carbon::now()) >= 1) {
+                        $power->end_value = $request->value;
+                        $power->save();
+                    }
+                }
+                return response()->json(['result' => $power, 'message' => 'Successfully'], 200);
+            }
+            return response()->json(['message' => 'Request invalid'], 422);
+        } catch (\Exception $e) {
+            Log::error("🛑 " . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 }
