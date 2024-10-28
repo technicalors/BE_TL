@@ -495,6 +495,7 @@ Route::group([
     $router->post('permissions/import', [App\Admin\Controllers\PermissionController::class, 'importPermissions']);
 
     $router->get('product/list', [App\Admin\Controllers\ProductController::class, 'list']);
+    $router->get('product/{id}', [App\Admin\Controllers\ProductController::class, 'show']);
     $router->patch('product/update/{id}', [App\Admin\Controllers\ProductController::class, 'update']);
     $router->post('product/create', [App\Admin\Controllers\ProductController::class, 'create']);
     $router->delete('product/delete/{id}', [App\Admin\Controllers\ProductController::class, 'delete']);

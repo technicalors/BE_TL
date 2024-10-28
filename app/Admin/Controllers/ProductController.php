@@ -57,6 +57,12 @@ class ProductController extends Controller
         return $this->success(['data' => $result, 'total' => $total]);
     }
 
+    public function show($id)
+    {
+        $result = Product::find($id);
+        return $this->success($result);
+    }
+
     public function create(Request $request)
     {
         $input = $request->all();
