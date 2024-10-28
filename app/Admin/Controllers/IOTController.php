@@ -53,7 +53,7 @@ class IOTController extends AdminController
                 if ($request->output > $tracking->output) {
                     $info_cong_doan->sl_dau_ra_chay_thu = ($request->output - $tracking->output) * $sl_bat;
                 }
-            } else if (($status == 1 || $status == 2) && !is_null($info_cong_doan->thoi_gian_bam_may)) { // chạy hàng loạt
+            } else if (($status == 1 || $status == 2)) { // chạy hàng loạt
                 if (is_null($tracking->input) || $tracking->input == 0  || is_null($tracking->output) || $tracking->output == 0) {
                     $tracking->update(['input' => $request->input, 'output' => $request->output]);
                 }
