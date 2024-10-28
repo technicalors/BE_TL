@@ -734,7 +734,7 @@ class Phase2OIApiController extends Controller
         if (!$line) {
             return $this->failure([], "Không tìm thấy công đoạn");
         }
-        $machine = Machine::where('code', $request->machine_code);
+        $machine = Machine::where('code', $request->machine_code)->first();
         if (!$machine) {
             return $this->failure([], "Không tìm thấy máy");
         }
@@ -742,7 +742,7 @@ class Phase2OIApiController extends Controller
         // if (!$lot) {
         //     return $this->failure([], "Lot này chưa được sản xuất");
         // }
-        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $line->id)->first();
+        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $line->id)->where('status', 1)->first();
         if ($infoCongDoan) {
             return $this->failure([], "Đã quét lot này");
         }
