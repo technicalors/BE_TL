@@ -161,21 +161,21 @@ class Phase2DBApiController extends Controller
         foreach ($machines as $machine) {
             $info = InfoCongDoan::where("line_id", $machine->line_id)->where('machine_code', $machine->code)->with(["lotPlan", "lot.plan.product"])->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->orderBy('thoi_gian_bat_dau', 'DESC')->first();
             if (!$info) {
-                $tm = [
-                    "cong_doan" => mb_strtoupper($machine->line->name, 'UTF-8'),
-                    'machine_code' => mb_strtoupper($machine->code, 'UTF-8'),
-                    'machine_name' => mb_strtoupper($machine->code, 'UTF-8'),
-                    "product" => '',
-                    "sl_dau_ra_kh" => $info->lotPlan->quantity ?? 0,
-                    "sl_thuc_te" => 0,
-                    "sl_muc_tieu" => 0,
-                    "ti_le_ng" => 0,
-                    "ti_le_ht" => 0,
-                    "status" => 0,
-                    "time" => "",
-                    'ti_le_ht' => 0
-                ];
-                $data[] = $tm;
+                // $tm = [
+                //     "cong_doan" => mb_strtoupper($machine->line->name, 'UTF-8'),
+                //     'machine_code' => mb_strtoupper($machine->code, 'UTF-8'),
+                //     'machine_name' => mb_strtoupper($machine->code, 'UTF-8'),
+                //     "product" => '',
+                //     "sl_dau_ra_kh" => $info->lotPlan->quantity ?? 0,
+                //     "sl_thuc_te" => 0,
+                //     "sl_muc_tieu" => 0,
+                //     "ti_le_ng" => 0,
+                //     "ti_le_ht" => 0,
+                //     "status" => 0,
+                //     "time" => "",
+                //     'ti_le_ht' => 0
+                // ];
+                // $data[] = $tm;
             } else {
                 $lotPlan = $info->lotPlan;
                 if (!$lotPlan) {
@@ -207,6 +207,10 @@ class Phase2DBApiController extends Controller
                 if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && !is_null($info->thoi_gian_ket_thuc)) {
                     $status = 2; // blue
                 }
+                
+                // Ignore status 0
+                if ($status == 0) continue;
+
                 $upm = $lotPlan->quantity / (2 * 60);
                 $diff_time = strtotime('now') - strtotime($info->thoi_gian_bat_dau ?? 'now');
                 $target = (int)($upm * ($diff_time / 60));
@@ -260,21 +264,21 @@ class Phase2DBApiController extends Controller
         foreach ($machines as $machine) {
             $info = InfoCongDoan::where("line_id", $machine->line_id)->where('machine_code', $machine->code)->with(["lotPlan", "lot.plan.product"])->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->orderBy('thoi_gian_bat_dau', 'DESC')->first();
             if (!$info) {
-                $tm = [
-                    "cong_doan" => mb_strtoupper($machine->line->name, 'UTF-8'),
-                    'machine_code' => $machine->code,
-                    'machine_name' => $machine->code,
-                    "product" => '',
-                    "sl_dau_ra_kh" => $info->lotPlan->quantity ?? 0,
-                    "sl_thuc_te" => 0,
-                    "sl_muc_tieu" => 0,
-                    "ti_le_ng" => 0,
-                    "ti_le_ht" => 0,
-                    "status" => 0,
-                    "time" => "",
-                    'ti_le_ht' => 0
-                ];
-                $data[] = $tm;
+                // $tm = [
+                //     "cong_doan" => mb_strtoupper($machine->line->name, 'UTF-8'),
+                //     'machine_code' => $machine->code,
+                //     'machine_name' => $machine->code,
+                //     "product" => '',
+                //     "sl_dau_ra_kh" => $info->lotPlan->quantity ?? 0,
+                //     "sl_thuc_te" => 0,
+                //     "sl_muc_tieu" => 0,
+                //     "ti_le_ng" => 0,
+                //     "ti_le_ht" => 0,
+                //     "status" => 0,
+                //     "time" => "",
+                //     'ti_le_ht' => 0
+                // ];
+                // $data[] = $tm;
             } else {
                 $lotPlan = $info->lotPlan;
                 if (!$lotPlan) {
@@ -306,6 +310,10 @@ class Phase2DBApiController extends Controller
                 if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && !is_null($info->thoi_gian_ket_thuc)) {
                     $status = 2;
                 }
+
+                // Ignore status 0
+                if ($status == 0) continue;
+
                 $upm = $lotPlan->quantity / (2 * 60);
                 $diff_time = strtotime('now') - strtotime($info->thoi_gian_bat_dau ?? 'now');
                 $target = (int)($upm * ($diff_time / 60));

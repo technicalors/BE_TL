@@ -29,6 +29,7 @@ use App\Http\Controllers\ShiftBreakController;
 use App\Admin\Controllers\StampController;
 use App\Http\Controllers\FcPlantController;
 use App\Http\Controllers\MachineShiftController;
+use App\Http\Controllers\PowerConsumeController;
 use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\WarehouseExportPlanController;
 use App\Models\MaintenancePlan;
@@ -692,6 +693,8 @@ Route::group([
 
     Route::get('fc-plants', [FcPlantController::class, 'index']);
     Route::post('fc-plants-import', [FcPlantController::class, 'import']);
+
+    Route::get('monthly-consumption', [PowerConsumeController::class, 'monthlyConsumption']);
 
     Route::get('warehouse-export-plans', [WarehouseExportPlanController::class, 'index']);
     Route::post('warehouse-export-plans-import', [WarehouseExportPlanController::class, 'import']);
