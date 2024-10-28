@@ -3763,8 +3763,12 @@ class ApiMobileController extends AdminController
     public function updateProductPlan(Request $request)
     {
         $input = $request->all();
-        $input['cong_doan_sx'] = Str::slug($input['cong_doan_sx']); //
-        ProductionPlan::find($input['id'])->update($input);
+        $model = ProductionPlan::find($input['id']);
+        $model->fill($request->all());
+        if($model->isDirty()){
+          return $model->getDirty();
+        }
+        // ProductionPlan::find($input['id'])->update($input);
         return $this->success([], 'Cập nhật thành công');
     }
 

@@ -304,24 +304,6 @@ async function enqueueData(deviceId, data) {
     if (data["PLC:Count_En"][0][1] == 1) {
       try {
         // Gọi API để lấy dữ liệu đầu vào và đầu ra
-        const result = await axios.get(
-          "http://103.77.215.18:3030/api/plugins/telemetry/DEVICE/" +
-            deviceId +
-            "/values/timeseries?keys=PLC:Num_Input,PLC:Num_Out",
-          { headers: { Authorization: "Bearer " + authToken } }
-        );
-
-        // Kiểm tra và gán giá trị input, output
-        convertedData.input = result.data["PLC:Num_Input"]
-          ? result.data["PLC:Num_Input"][0]["value"]
-          : 0;
-        convertedData.output = result.data["PLC:Num_Out"][0]["value"];
-
-        // Log dữ liệu cho thiết bị cụ thể để kiểm tra
-        if (deviceId == "f7f77560-45bd-11ef-b8c3-a13625245eca") {
-          console.log("Data Counter lần 1", data["PLC:Count_En"][0][1]);
-        }
-
         // Đẩy dữ liệu vào hàng đợi
         dataQueues[deviceId].push({
           data: convertedData,
@@ -349,7 +331,7 @@ async function enqueueData(deviceId, data) {
     dataQueues[deviceId].push({
       data: {
         device_id: deviceId,
-        value: data["PM01:Active_Energy"][0][1] ?? null
+        value: data["PM01:Active_Energy"][0][1] ?? null,
       },
       apiUrl: POWER_CONSUME_API_URL,
     });
