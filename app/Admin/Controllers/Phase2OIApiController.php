@@ -757,6 +757,7 @@ class Phase2OIApiController extends Controller
                 'product_id' => $lot_plan->product_id,
                 'sl_kh' => $lot_plan->quantity,
                 'sl_dau_vao_hang_loat' => $lot_plan->quantity,
+                'sl_dau_ra_hang_loat' => $lot_plan->quantity,
                 'thoi_gian_bat_dau' => Carbon::now(),
                 'user_id' => $request->user()->id,
                 'status' => InfoCongDoan::STATUS_INPROGRESS,
@@ -815,6 +816,7 @@ class Phase2OIApiController extends Controller
                     'lot_id' => $request->lot_id,
                     'assigned_quantity' => $request->assigned_quantity,
                     'actual_quantity' => $request->actual_quantity,
+                    'ok_quantity' => $request->actual_quantity,
                     'worker_id' => $request->worker_id
                 ]
             );
@@ -1426,6 +1428,7 @@ class Phase2OIApiController extends Controller
                     ]
                 );
             } else {
+                Assignment::where('lot_id', $infoCongDoan->lot_id)->update(['ok_quantity' => $sl_con_lai]);
                 $infoCongDoan->update([
                     'sl_ng' => $sl_ng
                 ]);
