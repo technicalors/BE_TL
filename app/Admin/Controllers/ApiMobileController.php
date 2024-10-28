@@ -1708,9 +1708,7 @@ class ApiMobileController extends AdminController
             $order_line = [10, 22, 11, 12, 14, 13, 15, 20]; //In, In lưới, Phủ Bế, Bóc, Gấp dán, Chọn, OQC
             $previous_lines = array_slice($order_line, 0, array_search($line->id, $order_line) + 1);
             // return $previous_lines;
-            $erro = Error::where('id', $request->error_id)->whereHas('line', function ($q) use ($previous_lines) {
-                return $q->whereIn('line_id', $previous_lines);
-            })->first();
+            $erro = Error::where('id', $request->error_id)->first();
             if ($erro) return $this->success($erro);
             return $this->failure([], "Không tìm thấy mã lỗi ở công đoạn này");
         }
