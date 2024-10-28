@@ -1361,8 +1361,8 @@ class Phase2UIApiController extends Controller
             'delivery_date' => $order->delivery_date ? date('Y-m-d', strtotime($order->delivery_date)) : null,
             'machine_id' => $machine->code,
             'product_id' => $input['product_id'],
-            'ten_san_pham' => $order->product->name,
-            'khach_hang' => $order->customer->name,
+            'ten_san_pham' => $order->product->name ?? '',
+            'khach_hang' => $order->customer->name ?? "",
             'lo_sx' => $losx_id,
             'thu_tu_uu_tien' => $input['thu_tu_uu_tien'],
             'nhan_luc' => $input['nhan_luc'],
@@ -1412,9 +1412,9 @@ class Phase2UIApiController extends Controller
 
     private function getStartTime($input, $stepEndTimes, $machineCode, $oldMachineCode)
     {
-        if ($oldMachineCode !== $machineCode) {
-            return $stepEndTimes[$machineCode] ?? Carbon::parse($input['thoi_gian_bat_dau']);
-        }
+        // if ($oldMachineCode !== $machineCode) {
+        //     return $stepEndTimes[$machineCode] ?? Carbon::parse($input['thoi_gian_bat_dau']);
+        // }
         return Carbon::parse($input['thoi_gian_bat_dau']);
     }
 

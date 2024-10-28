@@ -6390,6 +6390,11 @@ class ApiUIController extends AdminController
 
         DB::beginTransaction();
         try {
+            $productionPlan = ProductionPlan::find($id);
+            $tracking = Tracking::where('machine_id', $productionPlan->machine_id)->first();
+            if (!is_null($tracking->lot_id) && $request->status_plan == 3) {
+                return $this->failure([], 'Máy đang chạy không thể dừng');
+            }
             ProductionPlan::find($id)->update(['status_plan' => $request->status_plan]);
             DB::commit();
             return $this->success([], 'Thao tác thành công');
