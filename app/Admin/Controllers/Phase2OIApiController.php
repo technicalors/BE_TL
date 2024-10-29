@@ -925,7 +925,7 @@ class Phase2OIApiController extends Controller
             $quantity = 0;
             $counterT = Lot::where('id', 'like', $infoCongDoan->lot_id . '-T%')->count() + 1;
             if ($request->type == 1) {
-                $counter = round($sl_tong / $request->sl_in_tem);
+                $counter = ceil($sl_tong / $request->sl_in_tem);
                 for ($i = 0; $i < $counter; $i++) {
                     $id = $infoCongDoan->lo_sx . '-T';
                     if ($i == $counter - 1) {
