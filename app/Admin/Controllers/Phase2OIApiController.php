@@ -194,8 +194,8 @@ class Phase2OIApiController extends Controller
             ->whereHas('plan', function ($q) {
                 $q->whereIn('status_plan', [0, 1]);
             })
-            ->orWhereHas('infoCongDoan', function ($q) {
-                $q->where('status', 1);
+            ->orWhereHas('infoCongDoan', function ($q) use ($machine_code) {
+                $q->where('status', 1)->where('machine_code', $machine_code);
             })
             ->with('infoCongDoan.qcHistory', 'spec', 'plan', 'infoCongDoan.assignments');
         if (!empty($request->line_id)) {
