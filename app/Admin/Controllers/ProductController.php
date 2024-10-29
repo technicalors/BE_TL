@@ -49,6 +49,9 @@ class ProductController extends Controller
                 $q->where('customer_name', 'like', "%$request->customer_name%");
             });
         }
+        if (isset($request->withs)) {
+            $query->with($request->withs);
+        }
         $total = $query->count();
         if (isset($request->page) && isset($request->pageSize)) {
             $query->offset((($request->page - 1) ?? 0) * $request->pageSize)->limit($request->pageSize);
