@@ -923,7 +923,7 @@ class Phase2OIApiController extends Controller
                 'status' => InfoCongDoan::STATUS_COMPLETED
             ]);
             $quantity = 0;
-            $counterT = Lot::where('id', 'like', $infoCongDoan->lot_id . '-T%')->count() + 1;
+            $counterT = Lot::where('id', 'like', $infoCongDoan->lo_sx . '-T%')->count() + 1;
             if ($request->type == 1) {
                 $counter = ceil($sl_tong / $request->sl_in_tem);
                 for ($i = 0; $i < $counter; $i++) {
