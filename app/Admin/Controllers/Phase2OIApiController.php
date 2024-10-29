@@ -1334,7 +1334,7 @@ class Phase2OIApiController extends Controller
                 $criteria_key[] = Str::slug($key);
             }
             $testCriteriaHistories = TestCriteriaHistory::where('q_c_history_id', $qc_history->id)->whereIn('type', $criteria_key)->where('result', 'OK')->get();
-            if (count($testCriteriaHistories) === count($criteria_key)) {
+            if (count($testCriteriaHistories) >= count($criteria_key)) {
                 $qc_history->update(['eligible_to_end' => QCHistory::READY_TO_END]);
                 $qualityData = [
                     'machine_code' => $request->machine_code,
