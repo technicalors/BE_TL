@@ -31,6 +31,7 @@ use App\Http\Controllers\FcPlantController;
 use App\Http\Controllers\MachineShiftController;
 use App\Http\Controllers\PowerConsumeController;
 use App\Http\Controllers\ShiftController;
+use App\Http\Controllers\SpecController;
 use App\Http\Controllers\WarehouseExportPlanController;
 use App\Models\MaintenancePlan;
 use Encore\Admin\Facades\Admin;
@@ -449,6 +450,10 @@ Route::group([
     $router->post('spec-product/delete', [App\Admin\Controllers\ProductController::class, 'deleteSpecProduct']);
     $router->get('spec-product/export', [App\Admin\Controllers\ProductController::class, 'exportSpecProduct']);
     $router->post('spec-product/import', [App\Admin\Controllers\ProductController::class, 'importNewVersion']);
+
+    $router->post('spec-production-journey/create', [SpecController::class, 'createProductionJourney']);
+    $router->put('spec-production-journey/update', [SpecController::class, 'updateProductionJourney']);
+    $router->delete('spec-production-journey/delete/{product_id}', [SpecController::class, 'deleteProductionJourney']);
 
     $router->get('errors/list', [App\Admin\Controllers\ErrorController::class, 'getErrors']);
     $router->patch('errors/update', [App\Admin\Controllers\ErrorController::class, 'updateErrors']);

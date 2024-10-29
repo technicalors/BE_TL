@@ -47,6 +47,11 @@ class Product extends Model
         return $this->hasMany(Spec::class);
     }
 
+    public function productionJourney()
+    {
+        return $this->hasMany(Spec::class)->where('slug', 'hanh-trinh-san-xuat');
+    }
+
     public function warehouseLog()
     {
         return $this->hasManyThrough(WareHouseLog::class, Lot::class, 'product_id', 'lot_id', 'id', 'id');
