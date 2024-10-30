@@ -245,7 +245,7 @@ class Phase2OIApiController extends Controller
                 'sl_tem_ng' => $infoCongDoan->sl_ng ?? 0,
                 'is_qc' => ($infoCongDoan && !is_null($infoCongDoan->qcHistory)) ? $infoCongDoan->qcHistory->eligible_to_end : 0,
                 'is_assign' => $infoCongDoan && count($infoCongDoan->assignments) > 0 ? 1 : 0,
-
+                'info_id' => $infoCongDoan->id,
             ];
             $data['ti_le_ht'] = $item->quantity > 0 ? round($data['sl_dau_ra_ok'] / $item->quantity * 100) . '%' : "0%";
             $data['sl_dau_ra_ok'] = $data['sl_dau_ra'] - $data['sl_tem_vang'] - $data['sl_tem_ng'];
@@ -697,6 +697,25 @@ class Phase2OIApiController extends Controller
         } else {
             return $this->failure([], "Không tìm thấy lot");
         }
+    }
+
+    /**
+     * In lại tem với status = 2
+     * @param Request $request
+     */
+    public function reprintTem(Request $request)
+    {
+        $request->validate([
+            'info_ids' => 'required|array',
+            'lot_id' => 'required',
+        ]);
+
+        $infos = InfoCongDoan::whereIn('id', $request->info_ids)->get();
+        $result = [];
+        foreach ($infos as $info) {
+            $result[] = $this->formatTemTrang($info, $request);
+        }
+        return $this->success($result);
     }
 
     public function formatTemTrang($infoCongDoan, $request)
