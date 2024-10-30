@@ -713,6 +713,7 @@ class Phase2OIApiController extends Controller
         
         $result = [];
         foreach ($request->list as $record) {
+            $record = (object) $record;
             $info = InfoCongDoan::find($record->info_id);
             if (!empty($info)) {
                 $param = (object) ['lot_id' => $record->lot_id];
