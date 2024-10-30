@@ -633,6 +633,7 @@ Route::group([
     $router->post('find-error', [Phase2OIApiController::class, 'findError']);
     $router->post('update-lot-error-log', [Phase2OIApiController::class, 'updateLotErrorLog']);
     $router->post('end-of-production', [Phase2OIApiController::class, 'endOfProduction']);
+    $router->post('reprint-tem', [Phase2OIApiController::class, 'reprintTem']);
     $router->post('scan-for-selection-line', [Phase2OIApiController::class, 'scanForSelectionLine']);
     $router->get('assignment', [Phase2OIApiController::class, 'getAssignment']);
     $router->get('get-info-print-selection', [Phase2OIApiController::class, 'getInfoPrintSelection']);
