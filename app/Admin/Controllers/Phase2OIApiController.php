@@ -706,14 +706,18 @@ class Phase2OIApiController extends Controller
     public function reprintTem(Request $request)
     {
         $request->validate([
-            'info_ids' => 'required|array',
-            'lot_id' => 'required',
+            'list' => 'required|array',
+            'list.*.info_id' => 'required',
+            'list.*.lot_id' => 'required',
         ]);
-
-        $infos = InfoCongDoan::whereIn('id', $request->info_ids)->get();
+        
         $result = [];
-        foreach ($infos as $info) {
-            $result[] = $this->formatTemTrang($info, $request);
+        foreach ($request->list as $record) {
+            $info = InfoCongDoan::find($record->info_id);
+            if (!empty($info)) {
+                $param = (object) ['lot_id' => $record->lot_id];
+                $result[] = $this->formatTemTrang($info, $param);
+            }
         }
         return $this->success($result);
     }
