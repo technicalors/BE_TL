@@ -245,7 +245,7 @@ class Phase2OIApiController extends Controller
                 'sl_tem_ng' => $infoCongDoan->sl_ng ?? 0,
                 'is_qc' => ($infoCongDoan && !is_null($infoCongDoan->qcHistory)) ? $infoCongDoan->qcHistory->eligible_to_end : 0,
                 'is_assign' => $infoCongDoan && count($infoCongDoan->assignments) > 0 ? 1 : 0,
-                'info_id' => $infoCongDoan->id,
+                'info_id' => $infoCongDoan->id ?? null,
             ];
             $data['ti_le_ht'] = $item->quantity > 0 ? round($data['sl_dau_ra_ok'] / $item->quantity * 100) . '%' : "0%";
             $data['sl_dau_ra_ok'] = $data['sl_dau_ra'] - $data['sl_tem_vang'] - $data['sl_tem_ng'];
