@@ -696,6 +696,11 @@ Route::group([
     $router->post('plan/create', [Phase2UIApiController::class, 'createProductionPlan']);
     $router->post('plan/upload', [Phase2UIApiController::class, 'uploadProductionPlan']);
 
+    $router->get('kpi/pass-rate-chart', [Phase2UIApiController::class, 'getKPIPassRateChart']);
+    $router->get('kpi/ti-le-van-hanh-tb', [Phase2UIApiController::class, 'getKPITiLeVanHanhTB']);
+    $router->get('kpi/ti-le-hoan-thanh-ke-hoach', [Phase2UIApiController::class, 'getKPITiLeHoanThanhKeHoach']);
+    $router->get('kpi/ti-le-loi-cong-doan', [Phase2UIApiController::class, 'getKPITiLeLoiCongDoan']);
+
     Route::apiResource('lot-plans', LotPlanController::class);
 
     Route::get('fc-plants', [FcPlantController::class, 'index']);

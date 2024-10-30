@@ -31,6 +31,7 @@ use App\Models\ShiftBreak;
 use App\Models\Spec;
 use App\Traits\API;
 use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -1501,5 +1502,317 @@ class Phase2UIApiController extends Controller
                 'production_plan_id' => $plan->id
             ]);
         }
+    }
+    public function getKPIPassRateChart(Request $request)
+    {
+        $dateType = $request->dateType;
+        $startDate = $request->start_date;
+        $endDate = $request->end_date;
+
+        $dateList = [];
+
+        if ($dateType == 'date') {
+            $period = CarbonPeriod::create($startDate, $endDate);
+
+            foreach ($period as $date) {
+                // Truy vấn và tính toán tỷ lệ đạt cho từng ngày
+                $dateList[] = $this->calculatePassRateForPeriod($date->startOfDay(), $date->endOfDay(), $date->format('d/m'));
+            }
+        } elseif ($dateType == 'week') {
+            $start = Carbon::parse($startDate)->startOfWeek();
+            $end = Carbon::parse($endDate)->endOfWeek();
+
+            while ($start->lte($end)) {
+                // Tính tỷ lệ đạt cho tuần
+                $weekEnd = $start->copy()->endOfWeek();
+                $dateList[] = $this->calculatePassRateForPeriod($start, $weekEnd, 'Tuần ' . $start->format('W'));
+                $start->addWeek();
+            }
+        } elseif ($dateType == 'month') {
+            $start = Carbon::parse($startDate)->startOfMonth();
+            $end = Carbon::parse($endDate)->endOfMonth();
+
+            while ($start->lte($end)) {
+                // Tính tỷ lệ đạt cho tháng
+                $monthEnd = $start->copy()->endOfMonth();
+                $dateList[] = $this->calculatePassRateForPeriod($start, $monthEnd, 'Tháng ' . $start->format('m/Y'));
+                $start->addMonth();
+            }
+        } elseif ($dateType == 'year') {
+            $start = Carbon::parse($startDate)->startOfYear();
+            $end = Carbon::parse($endDate)->endOfYear();
+
+            while ($start->lte($end)) {
+                // Tính tỷ lệ đạt cho năm
+                $yearEnd = $start->copy()->endOfYear();
+                $dateList[] = $this->calculatePassRateForPeriod($start, $yearEnd, 'Năm ' . $start->format('Y'));
+                $start->addYear();
+            }
+        } else {
+            return $this->failure('Loại dữ liệu không hợp lệ');
+        }
+
+        return $this->success($dateList);
+    }
+
+    /**
+     * Hàm hỗ trợ để tính tỷ lệ đạt cho một khoảng thời gian
+     */
+    protected function calculatePassRateForPeriod($start, $end, $label)
+    {
+        $totals = InfoCongDoan::select(
+            DB::raw("SUM(sl_dau_ra_hang_loat) as total_sl_dau_ra_hang_loat"),
+            DB::raw("SUM(sl_tem_vang) as total_sl_tem_vang"),
+            DB::raw("SUM(sl_ng) as total_sl_ng")
+        )
+            ->whereDate('thoi_gian_bat_dau', '>=', $start)
+            ->whereDate('thoi_gian_ket_thuc', '<=', $end)
+            ->first();
+
+        if ($totals->total_sl_dau_ra_hang_loat > 0) {
+            $ti_le_dat_thang = ceil((($totals->total_sl_dau_ra_hang_loat - $totals->total_sl_tem_vang - $totals->total_sl_ng) / $totals->total_sl_dau_ra_hang_loat) * 100);
+        } else {
+            $ti_le_dat_thang = 0;
+        }
+
+        return [
+            'type' => $label,
+            'value' => $ti_le_dat_thang,
+        ];
+    }
+    public function getKPITiLeVanHanhTB(Request $request)
+    {
+        $dateType = $request->dateType;
+        $startDate = $request->start_date;
+        $endDate = $request->end_date;
+
+        $dateList = [];
+
+        if ($dateType == 'date') {
+            $period = CarbonPeriod::create($startDate, $endDate);
+
+            foreach ($period as $date) {
+                // Truy vấn và tính toán tỷ lệ đạt cho từng ngày
+                $dateList[] = $this->calculateTiLeVanHanhTBForPeriod($date->startOfDay(), $date->endOfDay(), $date->format('d/m'));
+            }
+        } elseif ($dateType == 'week') {
+            $start = Carbon::parse($startDate)->startOfWeek();
+            $end = Carbon::parse($endDate)->endOfWeek();
+
+            while ($start->lte($end)) {
+                // Tính tỷ lệ đạt cho tuần
+                $weekEnd = $start->copy()->endOfWeek();
+                $dateList[] = $this->calculateTiLeVanHanhTBForPeriod($start, $weekEnd, 'Tuần ' . $start->format('W'));
+                $start->addWeek();
+            }
+        } elseif ($dateType == 'month') {
+            $start = Carbon::parse($startDate)->startOfMonth();
+            $end = Carbon::parse($endDate)->endOfMonth();
+
+            while ($start->lte($end)) {
+                // Tính tỷ lệ đạt cho tháng
+                $monthEnd = $start->copy()->endOfMonth();
+                $dateList[] = $this->calculateTiLeVanHanhTBForPeriod($start, $monthEnd, 'Tháng ' . $start->format('m/Y'));
+                $start->addMonth();
+            }
+        } elseif ($dateType == 'year') {
+            $start = Carbon::parse($startDate)->startOfYear();
+            $end = Carbon::parse($endDate)->endOfYear();
+
+            while ($start->lte($end)) {
+                // Tính tỷ lệ đạt cho năm
+                $yearEnd = $start->copy()->endOfYear();
+                $dateList[] = $this->calculateTiLeVanHanhTBForPeriod($start, $yearEnd, 'Năm ' . $start->format('Y'));
+                $start->addYear();
+            }
+        } else {
+            return $this->failure('Loại dữ liệu không hợp lệ');
+        }
+
+        return $this->success($dateList);
+    }
+
+    /**
+     * Hàm hỗ trợ để tính tỷ lệ đạt cho một khoảng thời gian
+     */
+    protected function calculateTiLeVanHanhTBForPeriod($start, $end, $label)
+    {
+        $totals = InfoCongDoan::select(
+            DB::raw("SUM(TIMESTAMPDIFF(SECOND, thoi_gian_bam_may, thoi_gian_ket_thuc)) / SUM(TIMESTAMPDIFF(SECOND, thoi_gian_bat_dau, thoi_gian_ket_thuc)) as total_ratio")
+        )
+            ->whereDate('thoi_gian_bat_dau', '>=', $start)
+            ->whereDate('thoi_gian_ket_thuc', '<=', $end)
+            ->whereNotNull('thoi_gian_bam_may')
+            ->whereNotNull('thoi_gian_ket_thuc')
+            ->whereNotNull('thoi_gian_bat_dau')
+            ->first();
+
+        if ($totals->total_ratio > 0) {
+            $ti_le_van_hanh_tb = ceil($totals->total_ratio * 100);
+        } else {
+            $ti_le_van_hanh_tb = 0;
+        }
+
+        return [
+            'type' => $label,
+            'value' => $ti_le_van_hanh_tb,
+        ];
+    }
+
+    public function getKPITiLeHoanThanhKeHoach(Request $request)
+    {
+        $dateType = $request->dateType;
+        $startDate = $request->start_date;
+        $endDate = $request->end_date;
+
+        $dateList = [];
+
+        if ($dateType == 'date') {
+            $period = CarbonPeriod::create($startDate, $endDate);
+
+            foreach ($period as $date) {
+                // Truy vấn và tính toán tỷ lệ đạt cho từng ngày
+                $dateList[] = $this->calculateTiLeHoanThanhKeHoachForPeriod($date->startOfDay(), $date->endOfDay(), $date->format('d/m'));
+            }
+        } elseif ($dateType == 'week') {
+            $start = Carbon::parse($startDate)->startOfWeek();
+            $end = Carbon::parse($endDate)->endOfWeek();
+
+            while ($start->lte($end)) {
+                // Tính tỷ lệ đạt cho tuần
+                $weekEnd = $start->copy()->endOfWeek();
+                $dateList[] = $this->calculateTiLeHoanThanhKeHoachForPeriod($start, $weekEnd, 'Tuần ' . $start->format('W'));
+                $start->addWeek();
+            }
+        } elseif ($dateType == 'month') {
+            $start = Carbon::parse($startDate)->startOfMonth();
+            $end = Carbon::parse($endDate)->endOfMonth();
+
+            while ($start->lte($end)) {
+                // Tính tỷ lệ đạt cho tháng
+                $monthEnd = $start->copy()->endOfMonth();
+                $dateList[] = $this->calculateTiLeHoanThanhKeHoachForPeriod($start, $monthEnd, 'Tháng ' . $start->format('m/Y'));
+                $start->addMonth();
+            }
+        } elseif ($dateType == 'year') {
+            $start = Carbon::parse($startDate)->startOfYear();
+            $end = Carbon::parse($endDate)->endOfYear();
+
+            while ($start->lte($end)) {
+                // Tính tỷ lệ đạt cho năm
+                $yearEnd = $start->copy()->endOfYear();
+                $dateList[] = $this->calculateTiLeHoanThanhKeHoachForPeriod($start, $yearEnd, 'Năm ' . $start->format('Y'));
+                $start->addYear();
+            }
+        } else {
+            return $this->failure('Loại dữ liệu không hợp lệ');
+        }
+
+        return $this->success($dateList);
+    }
+
+    /**
+     * Hàm hỗ trợ để tính tỷ lệ đạt cho một khoảng thời gian
+     */
+    protected function calculateTiLeHoanThanhKeHoachForPeriod($start, $end, $label)
+    {
+        $totals = InfoCongDoan::select(
+            DB::raw("SUM(sl_dau_ra_hang_loat + sl_tem_vang) / SUM(sl_kh) as total_ratio")
+        )
+            ->whereDate('thoi_gian_bat_dau', '>=', $start)
+            ->whereDate('thoi_gian_ket_thuc', '<=', $end)
+            ->whereNotNull('thoi_gian_bam_may')
+            ->whereNotNull('thoi_gian_ket_thuc')
+            ->whereNotNull('thoi_gian_bat_dau')
+            ->first();
+
+        if ($totals->total_ratio > 0) {
+            $ti_le_hoan_thanh_ke_hoach = ceil($totals->total_ratio * 100);
+        } else {
+            $ti_le_hoan_thanh_ke_hoach = 0;
+        }
+
+        return [
+            'type' => $label,
+            'value' => $ti_le_hoan_thanh_ke_hoach > 100 ? 100 : $ti_le_hoan_thanh_ke_hoach,
+        ];
+    }
+    public function getKPITiLeLoiCongDoan(Request $request)
+    {
+        $dateType = $request->dateType;
+        $startDate = $request->start_date;
+        $endDate = $request->end_date;
+
+        $dateList = [];
+
+        if ($dateType == 'date') {
+            $period = CarbonPeriod::create($startDate, $endDate);
+
+            foreach ($period as $date) {
+                // Truy vấn và tính toán tỷ lệ đạt cho từng ngày
+                $dateList[] = $this->calculateTiLeLoiCongDoanForPeriod($date->startOfDay(), $date->endOfDay(), $date->format('d/m'));
+            }
+        } elseif ($dateType == 'week') {
+            $start = Carbon::parse($startDate)->startOfWeek();
+            $end = Carbon::parse($endDate)->endOfWeek();
+
+            while ($start->lte($end)) {
+                // Tính tỷ lệ đạt cho tuần
+                $weekEnd = $start->copy()->endOfWeek();
+                $dateList[] = $this->calculateTiLeLoiCongDoanForPeriod($start, $weekEnd, 'Tuần ' . $start->format('W'));
+                $start->addWeek();
+            }
+        } elseif ($dateType == 'month') {
+            $start = Carbon::parse($startDate)->startOfMonth();
+            $end = Carbon::parse($endDate)->endOfMonth();
+
+            while ($start->lte($end)) {
+                // Tính tỷ lệ đạt cho tháng
+                $monthEnd = $start->copy()->endOfMonth();
+                $dateList[] = $this->calculateTiLeLoiCongDoanForPeriod($start, $monthEnd, 'Tháng ' . $start->format('m/Y'));
+                $start->addMonth();
+            }
+        } elseif ($dateType == 'year') {
+            $start = Carbon::parse($startDate)->startOfYear();
+            $end = Carbon::parse($endDate)->endOfYear();
+
+            while ($start->lte($end)) {
+                // Tính tỷ lệ đạt cho năm
+                $yearEnd = $start->copy()->endOfYear();
+                $dateList[] = $this->calculateTiLeLoiCongDoanForPeriod($start, $yearEnd, 'Năm ' . $start->format('Y'));
+                $start->addYear();
+            }
+        } else {
+            return $this->failure('Loại dữ liệu không hợp lệ');
+        }
+
+        return $this->success($dateList);
+    }
+
+    /**
+     * Hàm hỗ trợ để tính tỷ lệ đạt cho một khoảng thời gian
+     */
+    protected function calculateTiLeLoiCongDoanForPeriod($start, $end, $label)
+    {
+        $totals = InfoCongDoan::select(
+            DB::raw("SUM(sl_ng) / SUM(sl_dau_ra_hang_loat + sl_tem_vang) as total_ratio")
+        )
+            ->whereDate('thoi_gian_bat_dau', '>=', $start)
+            ->whereDate('thoi_gian_ket_thuc', '<=', $end)
+            ->whereNotNull('thoi_gian_bam_may')
+            ->whereNotNull('thoi_gian_ket_thuc')
+            ->whereNotNull('thoi_gian_bat_dau')
+            ->first();
+
+        if ($totals->total_ratio > 0) {
+            $ti_le_loi_cong_doan = ceil($totals->total_ratio * 100);
+        } else {
+            $ti_le_loi_cong_doan = 0;
+        }
+
+        return [
+            'type' => $label,
+            'value' => $ti_le_loi_cong_doan > 100 ? 100 : $ti_le_loi_cong_doan,
+        ];
     }
 }
