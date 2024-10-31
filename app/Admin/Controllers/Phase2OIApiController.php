@@ -1030,6 +1030,7 @@ class Phase2OIApiController extends Controller
         }
         $ghi_chu = implode(', ', $errors);
         $data = [];
+        $assignment = Assignment::where('lot_id', $infoCongDoan->lot_id)->first();
         $data['lot_id'] = $lot->id;
         $data['lsx'] = $lot->lo_sx;
         $data['ten_sp'] = $product->name ?? $material->name ?? "";
@@ -1038,7 +1039,7 @@ class Phase2OIApiController extends Controller
         $data['ver'] = $product->ver ?? "";
         $data['cd_thuc_hien'] = $line->name ?? "";
         $data['cd_tiep_theo'] = $next_line->name ?? "";
-        $data['nguoi_sx'] = $user->name ?? "";
+        $data['nguoi_sx'] = $assignment->worker ? $assignment->worker->name : "";
         $data['ghi_chu'] = $ghi_chu ?? "";
         return $data;
     }
