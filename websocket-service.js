@@ -21,7 +21,7 @@ const DEVICE_IDS = [
   "886de160-45be-11ef-b8c3-a13625245eca",
   "2a9b5df0-45bf-11ef-b8c3-a13625245eca",
   "7b85a180-45bf-11ef-b8c3-a13625245eca",
-]; 
+];
 
 // Thông tin đăng nhập
 const credentials = {
@@ -254,6 +254,8 @@ function convertMachineStatusData(data, deviceId) {
 function convertMachineRecordData(data, deviceId) {
   return {
     device_id: deviceId,
+    input: data["PLC:Num_Input"] ? data["PLC:Num_Input"][0][1] : 0,
+    output: data["PLC:Num_Out"] ? data["PLC:Num_Out"][0][1] : 0,
   };
 }
 

@@ -166,8 +166,8 @@ class IOTController extends AdminController
             return response()->json(['message' => 'Tracking not found'], 404);
         }
         $info_cong_doan = InfoCongDoan::where('line_id', $machine->line_id)->where('lot_id', $tracking->lot_id)->first();
-        $input = $info_cong_doan->sl_dau_vao_chay_thu + $tracking->input;
-        $output = ($info_cong_doan->sl_dau_ra_chay_thu / ($info_cong_doan->product->so_bat ?? 1)) + $tracking->output;
+        $input = $request->input;
+        $output = $request->ouput;
         if ($info_cong_doan) {
             if (is_null($info_cong_doan['thoi_gian_bam_may'])) {
                 $info_cong_doan['thoi_gian_bam_may'] = date('Y-m-d H:i:s');
