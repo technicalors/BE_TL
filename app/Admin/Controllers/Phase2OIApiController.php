@@ -957,50 +957,59 @@ class Phase2OIApiController extends Controller
             ]);
             $quantity = 0;
             $counterT = Lot::where('id', 'like', $infoCongDoan->lo_sx . '-T%')->count() + 1;
-            if ($request->type == 1) {
-                $counter = ceil($sl_tong / $request->sl_in_tem);
-                for ($i = 0; $i < $counter; $i++) {
-                    $id = $infoCongDoan->lo_sx . '-T';
-                    if ($i == $counter - 1 && ($sl_tong % $request->sl_in_tem) > 0) {
-                        $so_luong = $sl_tong % $request->sl_in_tem;
-                    } else {
-                        $so_luong = $request->sl_in_tem;
+            switch ($request->type) {
+                case 1:
+                    $counter = ceil($sl_tong / $request->sl_in_tem);
+                    for ($i = 0; $i < $counter; $i++) {
+                        $id = $infoCongDoan->lo_sx . '-T';
+                        if ($i == $counter - 1 && ($sl_tong % $request->sl_in_tem) > 0) {
+                            $so_luong = $sl_tong % $request->sl_in_tem;
+                        } else {
+                            $so_luong = $request->sl_in_tem;
+                        }
+                        $thung = Lot::firstOrCreate([
+                            'id' => $id . ($i + $counterT),
+                            'product_id' => $infoCongDoan->product_id,
+                            'material_id' => $infoCongDoan->material_id,
+                            'final_line_id' => $line->id,
+                            'lo_sx' => $infoCongDoan->lo_sx,
+                            'so_luong' => $so_luong,
+                            'type' => Lot::TYPE_THUNG
+                        ]);
+                        $quantity += $request->sl_in_tem;
+                        $data[] = $this->formatTemChon($thung, $infoCongDoan);
                     }
-                    $thung = Lot::firstOrCreate([
-                        'id' => $id . ($i + $counterT),
-                        'product_id' => $infoCongDoan->product_id,
-                        'material_id' => $infoCongDoan->material_id,
-                        'final_line_id' => $line->id,
+                    break;
+                case 2:
+                    $counter = floor($sl_tong / $request->sl_in_tem);
+                    for ($i = 0; $i < $counter; $i++) {
+                        $id = $infoCongDoan->id . '-T';
+                        $thung = Lot::firstOrCreate([
+                            'id' => $id . ($i + $counterT),
+                            'product_id' => $infoCongDoan->product_id,
+                            'material_id' => $infoCongDoan->material_id,
+                            'final_line_id' => $line->id,
+                            'lo_sx' => $infoCongDoan->lo_sx,
+                            'so_luong' => $request->sl_in_tem,
+                            'type' => Lot::TYPE_THUNG
+                        ]);
+                        $quantity += $request->sl_in_tem;
+                        $data[] = $this->formatTemChon($thung, $infoCongDoan);
+                    }
+                    OddBin::create([
                         'lo_sx' => $infoCongDoan->lo_sx,
-                        'so_luong' => $so_luong,
-                        'type' => Lot::TYPE_THUNG
-                    ]);
-                    $quantity += $request->sl_in_tem;
-                    $data[] = $this->formatTemChon($thung, $infoCongDoan);
-                }
-            } else {
-                $counter = floor($sl_tong / $request->sl_in_tem);
-                for ($i = 0; $i < $counter; $i++) {
-                    $id = $infoCongDoan->id . '-T';
-                    $thung = Lot::firstOrCreate([
-                        'id' => $id . ($i + $counterT),
+                        'so_luong' => $sl_tong - $quantity,
                         'product_id' => $infoCongDoan->product_id,
-                        'material_id' => $infoCongDoan->material_id,
-                        'final_line_id' => $line->id,
-                        'lo_sx' => $infoCongDoan->lo_sx,
-                        'so_luong' => $request->sl_in_tem,
-                        'type' => Lot::TYPE_THUNG
                     ]);
-                    $quantity += $request->sl_in_tem;
-                    $data[] = $this->formatTemChon($thung, $infoCongDoan);
-                }
-                OddBin::create([
-                    'lo_sx' => $infoCongDoan->lo_sx,
-                    'so_luong' => $sl_tong - $quantity,
-                    'product_id' => $infoCongDoan->product_id,
-                ]);
+                    break;
+                case 3:
+                    OddBin::create([
+                        'lo_sx' => $infoCongDoan->lo_sx,
+                        'so_luong' => $sl_tong - $quantity,
+                        'product_id' => $infoCongDoan->product_id,
+                    ]);
+                    break;
             }
-
             DB::commit();
         } catch (\Throwable $th) {
             Log::info($th);
