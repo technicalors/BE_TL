@@ -3765,9 +3765,11 @@ class ApiMobileController extends AdminController
         $input = $request->all();
         $model = ProductionPlan::find($input['id']);
         $model->fill($request->all());
-        if($model->isDirty()){
-          return $model->getDirty();
-        }
+        // if($model->isDirty()){
+        //   return $model->getDirty();
+        // }
+        $model->save();
+        $model->lotPlan()->update(['machine_code'=>$model->machine_id]);
         // ProductionPlan::find($input['id'])->update($input);
         return $this->success([], 'Cập nhật thành công');
     }
