@@ -772,7 +772,7 @@ class Phase2OIApiController extends Controller
         //     return $this->failure([], "Lot này chưa được sản xuất");
         // }
         $check = InfoCongDoan::whereDate('created_at', date('Y-m-d'))->where('machine_code', $machine->code)->where('line_id', $line->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
-        if($check){
+        if ($check) {
             return $this->failure([], "Chưa hoàn thành lot trước đó");
         }
         $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $line->id)->where('status', 1)->first();
@@ -961,7 +961,7 @@ class Phase2OIApiController extends Controller
                 $counter = ceil($sl_tong / $request->sl_in_tem);
                 for ($i = 0; $i < $counter; $i++) {
                     $id = $infoCongDoan->lo_sx . '-T';
-                    if ($i == $counter - 1) {
+                    if ($i == $counter - 1 && ($sl_tong % $request->sl_in_tem) > 0) {
                         $so_luong = $sl_tong % $request->sl_in_tem;
                     } else {
                         $so_luong = $request->sl_in_tem;
