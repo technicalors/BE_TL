@@ -771,6 +771,10 @@ class Phase2OIApiController extends Controller
         // if (!$lot) {
         //     return $this->failure([], "Lot này chưa được sản xuất");
         // }
+        $check = InfoCongDoan::whereDate('created_at', date('Y-m-d'))->where('machine_code', $machine->code)->where('line_id', $line->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
+        if($check){
+            return $this->failure([], "Chưa hoàn thành lot trước đó");
+        }
         $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $line->id)->where('status', 1)->first();
         if ($infoCongDoan) {
             return $this->failure([], "Đã quét lot này");
