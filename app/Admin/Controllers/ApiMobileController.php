@@ -74,8 +74,10 @@ class ApiMobileController extends AdminController
 {
     use API;
     private $user;
-    public function __construct(CustomUser $customUser)
+    private $phase2UIApiController;
+    public function __construct(CustomUser $customUser, Phase2UIApiController $phase2UIApiController)
     {
+        $this->phase2UIApiController = $phase2UIApiController;
         $this->user = $customUser;
     }
     private function parseDataUser($user)
@@ -3762,15 +3764,40 @@ class ApiMobileController extends AdminController
     }
     public function updateProductPlan(Request $request)
     {
-        $input = $request->all();
-        $model = ProductionPlan::find($input['id']);
-        $model->fill($request->all());
-        // if($model->isDirty()){
-        //   return $model->getDirty();
-        // }
-        $model->save();
-        $model->lotPlan()->update(['machine_code'=>$model->machine_id]);
-        // ProductionPlan::find($input['id'])->update($input);
+        try {
+            DB::beginTransaction();
+            $input = $request->all();
+            $model = ProductionPlan::find($input['id']);
+            // if($model->isDirty()){
+            //   return $model->getDirty();
+            // }
+            $newStartTime = Carbon::parse($input['thoi_gian_bat_dau']);
+            
+            
+            $lotPlans = $model->lotPlan()->orderBy('start_time')->get();
+            foreach ($lotPlans as $key => $lot_plan) {
+                $diff = Carbon::parse($lot_plan->end_time)->diffInSeconds($lot_plan->start_time);
+                if($key === 0){
+                    $lotStartTime = $newStartTime;
+                }else{
+                    $lotStartTime = Carbon::parse($lotPlans[$key - 1]->end_time);
+                }
+                $lotEndTime = $lotStartTime->copy()->addSeconds($diff);
+                $newEndTime = $lotEndTime;
+                $lot_plan->update([
+                    'machine_code'=>$model->machine_id,
+                    'start_time' => $lotStartTime,
+                    'end_time' => $lotEndTime
+                ]);
+            }
+            $input['thoi_gian_ket_thuc'] = $newEndTime->format('Y-m-d H:i:s');
+            $model->fill($input);
+            $model->save();
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            throw $th;
+        }
         return $this->success([], 'Cập nhật thành công');
     }
 

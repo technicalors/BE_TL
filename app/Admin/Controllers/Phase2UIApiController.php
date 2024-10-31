@@ -848,7 +848,7 @@ class Phase2UIApiController extends Controller
         });
     }
 
-    function adjustTimeWithinShift($startTime, $duration, $machineId, $shiftPreparationTime)
+    public function adjustTimeWithinShift($startTime, $duration, $machineId, $shiftPreparationTime)
     {
         if (!$startTime instanceof Carbon) {
             $startTime = Carbon::parse($startTime, 'Asia/Bangkok');
@@ -1012,13 +1012,15 @@ class Phase2UIApiController extends Controller
         });
 
         $prioritizedOrders = $sortedMaterialGroups->flatten(1);
-        foreach ($prioritizedOrders as $index => $order) {
+        $sortedByProductId = collect($prioritizedOrders)->groupBy('product_id')->flatten(1);
+        foreach ($sortedByProductId as $index => $order) {
             try {
                 $result = $this->processProductionPlan($order, $index, $machine_available_list);
                 if ($result) {
                     $data[] = $result;
                 }
             } catch (\Throwable $th) {
+                throw $th;
                 return $this->failure('', $th->getMessage());
             }
         }
@@ -1330,7 +1332,7 @@ class Phase2UIApiController extends Controller
 
                 $startTime = $this->getStartTime($input, $stepEndTimes, $machine->code, $oldMachineCode);
 
-                [$endTime, $stepEndTimes[$machine->code]] = $this->calculateEndTime($input, $startTime, $product, $machine->line_id);
+                [$endTime, $stepEndTimes[$machine->code]] = $this->calculateEndTime($input, $startTime, $product->id, $machine->line_id);
 
                 $order = $this->getOrder($input, $product);
                 $lo_sx = Losx::firstOrCreate(['product_order_id' => $order->id]);
@@ -1419,19 +1421,19 @@ class Phase2UIApiController extends Controller
         return Carbon::parse($input['thoi_gian_bat_dau']);
     }
 
-    private function calculateEndTime($input, $startTime, $product, $lineId)
+    public function calculateEndTime($input, $startTime, $productId, $lineId)
     {
         $quantity = $input['sl_giao_sx'];
-        $lotSize = $this->getLotSize($product->id, $lineId);
-        $taskTime = $this->getTaskTime($product->id, $lineId, $input['UPH']);
+        $lotSize = $this->getLotSize($productId, $lineId);
+        $taskTime = $this->getTaskTime($productId, $lineId, $input['UPH']);
         $numLots = ceil($quantity / $lotSize);
-        $rollChangeTime = $this->getRollChangeTime($product->id, $lineId);
-        $setupTime = $this->getSetupTime($product->id, $lineId);
+        $rollChangeTime = $this->getRollChangeTime($productId, $lineId);
+        $setupTime = $this->getSetupTime($productId, $lineId);
 
         $endTime = $startTime->copy()->addMinutes(((($taskTime * $lotSize) + $rollChangeTime) * $numLots) + $setupTime);
         return [$endTime, $endTime];
     }
-    private function getTaskTime($productId, $lineId, $uph)
+    public function getTaskTime($productId, $lineId, $uph)
     {
         // Tính toán task time (thời gian thực hiện mỗi lô) dựa vào UPH hoặc các yếu tố khác
         $efficiency = $this->getEfficiency($productId, $lineId); // Giả sử bạn đã có hàm getEfficiency
