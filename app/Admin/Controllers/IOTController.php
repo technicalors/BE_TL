@@ -167,7 +167,7 @@ class IOTController extends AdminController
         }
         $info_cong_doan = InfoCongDoan::where('line_id', $machine->line_id)->where('lot_id', $tracking->lot_id)->first();
         $input = $request->input;
-        $output = $request->ouput;
+        $output = $request->output;
         if ($info_cong_doan) {
             if (is_null($info_cong_doan['thoi_gian_bam_may'])) {
                 $info_cong_doan['thoi_gian_bam_may'] = date('Y-m-d H:i:s');
