@@ -6412,7 +6412,7 @@ class ApiUIController extends AdminController
         }else{
             $query->whereDate('created_at', date('Y-m-d'));
         }
-        $records = $query->get();
+        $records = $query->with('line')->get();
         return $this->success($records);
     }
 }
