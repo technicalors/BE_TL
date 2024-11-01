@@ -772,7 +772,7 @@ class Phase2OIApiController extends Controller
         //     return $this->failure([], "Lot này chưa được sản xuất");
         // }
         $check = InfoCongDoan::whereDate('created_at', date('Y-m-d'))->where('machine_code', $machine->code)->where('line_id', $line->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
-        if($check){
+        if ($check) {
             return $this->failure([], "Chưa hoàn thành lot trước đó");
         }
         $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $line->id)->where('status', 1)->first();
@@ -957,50 +957,59 @@ class Phase2OIApiController extends Controller
             ]);
             $quantity = 0;
             $counterT = Lot::where('id', 'like', $infoCongDoan->lo_sx . '-T%')->count() + 1;
-            if ($request->type == 1) {
-                $counter = ceil($sl_tong / $request->sl_in_tem);
-                for ($i = 0; $i < $counter; $i++) {
-                    $id = $infoCongDoan->lo_sx . '-T';
-                    if ($i == $counter - 1) {
-                        $so_luong = $sl_tong % $request->sl_in_tem;
-                    } else {
-                        $so_luong = $request->sl_in_tem;
+            switch ($request->type) {
+                case 1:
+                    $counter = ceil($sl_tong / $request->sl_in_tem);
+                    for ($i = 0; $i < $counter; $i++) {
+                        $id = $infoCongDoan->lo_sx . '-T';
+                        if ($i == $counter - 1 && ($sl_tong % $request->sl_in_tem) > 0) {
+                            $so_luong = $sl_tong % $request->sl_in_tem;
+                        } else {
+                            $so_luong = $request->sl_in_tem;
+                        }
+                        $thung = Lot::firstOrCreate([
+                            'id' => $id . ($i + $counterT),
+                            'product_id' => $infoCongDoan->product_id,
+                            'material_id' => $infoCongDoan->material_id,
+                            'final_line_id' => $line->id,
+                            'lo_sx' => $infoCongDoan->lo_sx,
+                            'so_luong' => $so_luong,
+                            'type' => Lot::TYPE_THUNG
+                        ]);
+                        $quantity += $request->sl_in_tem;
+                        $data[] = $this->formatTemChon($thung, $infoCongDoan);
                     }
-                    $thung = Lot::firstOrCreate([
-                        'id' => $id . ($i + $counterT),
-                        'product_id' => $infoCongDoan->product_id,
-                        'material_id' => $infoCongDoan->material_id,
-                        'final_line_id' => $line->id,
+                    break;
+                case 2:
+                    $counter = floor($sl_tong / $request->sl_in_tem);
+                    for ($i = 0; $i < $counter; $i++) {
+                        $id = $infoCongDoan->id . '-T';
+                        $thung = Lot::firstOrCreate([
+                            'id' => $id . ($i + $counterT),
+                            'product_id' => $infoCongDoan->product_id,
+                            'material_id' => $infoCongDoan->material_id,
+                            'final_line_id' => $line->id,
+                            'lo_sx' => $infoCongDoan->lo_sx,
+                            'so_luong' => $request->sl_in_tem,
+                            'type' => Lot::TYPE_THUNG
+                        ]);
+                        $quantity += $request->sl_in_tem;
+                        $data[] = $this->formatTemChon($thung, $infoCongDoan);
+                    }
+                    OddBin::create([
                         'lo_sx' => $infoCongDoan->lo_sx,
-                        'so_luong' => $so_luong,
-                        'type' => Lot::TYPE_THUNG
-                    ]);
-                    $quantity += $request->sl_in_tem;
-                    $data[] = $this->formatTemChon($thung, $infoCongDoan);
-                }
-            } else {
-                $counter = floor($sl_tong / $request->sl_in_tem);
-                for ($i = 0; $i < $counter; $i++) {
-                    $id = $infoCongDoan->id . '-T';
-                    $thung = Lot::firstOrCreate([
-                        'id' => $id . ($i + $counterT),
+                        'so_luong' => $sl_tong - $quantity,
                         'product_id' => $infoCongDoan->product_id,
-                        'material_id' => $infoCongDoan->material_id,
-                        'final_line_id' => $line->id,
-                        'lo_sx' => $infoCongDoan->lo_sx,
-                        'so_luong' => $request->sl_in_tem,
-                        'type' => Lot::TYPE_THUNG
                     ]);
-                    $quantity += $request->sl_in_tem;
-                    $data[] = $this->formatTemChon($thung, $infoCongDoan);
-                }
-                OddBin::create([
-                    'lo_sx' => $infoCongDoan->lo_sx,
-                    'so_luong' => $sl_tong - $quantity,
-                    'product_id' => $infoCongDoan->product_id,
-                ]);
+                    break;
+                case 3:
+                    OddBin::create([
+                        'lo_sx' => $infoCongDoan->lo_sx,
+                        'so_luong' => $sl_tong - $quantity,
+                        'product_id' => $infoCongDoan->product_id,
+                    ]);
+                    break;
             }
-
             DB::commit();
         } catch (\Throwable $th) {
             Log::info($th);
@@ -1030,6 +1039,7 @@ class Phase2OIApiController extends Controller
         }
         $ghi_chu = implode(', ', $errors);
         $data = [];
+        $assignment = Assignment::where('lot_id', $infoCongDoan->lot_id)->first();
         $data['lot_id'] = $lot->id;
         $data['lsx'] = $lot->lo_sx;
         $data['ten_sp'] = $product->name ?? $material->name ?? "";
@@ -1038,7 +1048,7 @@ class Phase2OIApiController extends Controller
         $data['ver'] = $product->ver ?? "";
         $data['cd_thuc_hien'] = $line->name ?? "";
         $data['cd_tiep_theo'] = $next_line->name ?? "";
-        $data['nguoi_sx'] = $user->name ?? "";
+        $data['nguoi_sx'] = $assignment->worker ? $assignment->worker->name : "";
         $data['ghi_chu'] = $ghi_chu ?? "";
         return $data;
     }
