@@ -46,10 +46,10 @@ class IOTController extends AdminController
             if ($status == 0) { //chạy thử/vào hàng
                 if ($machine->code == 'DC_1') {
                     if ($request->input > $tracking->input) {
-                        $info_cong_doan->sl_dau_vao_chay_thu = $info_cong_doan + ($request->input - $tracking->input);
+                        $info_cong_doan->sl_dau_vao_chay_thu = $info_cong_doan->sl_dau_vao_chay_thu + ($request->input - $tracking->input);
                     }
                     if ($request->output > $tracking->output) {
-                        $info_cong_doan->sl_dau_ra_chay_thu = $info_cong_doan + ($request->output - $tracking->output) * $sl_bat;
+                        $info_cong_doan->sl_dau_ra_chay_thu = $info_cong_doan->sl_dau_ra_chay_thu + ($request->output - $tracking->output) * $sl_bat;
                     }
                     $tracking->update(['input' => $request->input, 'output' => $request->output]);
                 } else {
@@ -69,10 +69,10 @@ class IOTController extends AdminController
             } else if (($status == 1 || $status == 2) && !is_null($info_cong_doan->thoi_gian_bam_may)) { // chạy hàng loạt
                 if ($machine->code == 'DC_1') {
                     if ($request->input > $tracking->input) {
-                        $info_cong_doan->sl_dau_vao_hang_loat = $info_cong_doan + ($request->input - $tracking->input);
+                        $info_cong_doan->sl_dau_vao_hang_loat = $info_cong_doan->sl_dau_vao_hang_loat + ($request->input - $tracking->input);
                     }
                     if ($request->output > $tracking->output) {
-                        $info_cong_doan->sl_dau_ra_hang_loat = $info_cong_doan + ($request->output - $tracking->output) * $sl_bat;
+                        $info_cong_doan->sl_dau_ra_hang_loat = $info_cong_doan->sl_dau_ra_hang_loat + ($request->output - $tracking->output) * $sl_bat;
                     }
                     $tracking->update(['input' => $request->input, 'output' => $request->output]);
                 } else {
