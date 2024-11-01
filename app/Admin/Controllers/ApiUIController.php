@@ -6412,6 +6412,12 @@ class ApiUIController extends AdminController
         }else{
             $query->whereDate('created_at', date('Y-m-d'));
         }
+        if(!empty($request->lot_id)){
+            $query->where('lot_id', 'like', "%$request->lot_id%");
+        }
+        if(!empty($request->machine_code)){
+            $query->where('machine_code', 'like', "%$request->machine_code%");
+        }
         $records = $query->with('line')->orderBy('created_at', 'DESC')->get();
         return $this->success($records);
     }
