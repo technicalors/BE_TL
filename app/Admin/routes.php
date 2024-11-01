@@ -603,6 +603,7 @@ Route::group([
     $router->get('create-infocongdoan-for-plan', [ApiUIController::class, 'createInfoCongDoanForPlan']);
     $router->post('filter-file-to-plan', [ApiUIController::class, 'filterFileToPlan']);
     $router->post('random-info', [ApiUIController::class, 'randomInfo']);
+    $router->get('/get-tracking-info-cong-doan', [ApiUIController::class, 'trackingProduction']);
 });
 //Dashboard
 Route::group([
@@ -700,6 +701,8 @@ Route::group([
     $router->get('kpi/ti-le-van-hanh-tb', [Phase2UIApiController::class, 'getKPITiLeVanHanhTB']);
     $router->get('kpi/ti-le-hoan-thanh-ke-hoach', [Phase2UIApiController::class, 'getKPITiLeHoanThanhKeHoach']);
     $router->get('kpi/ti-le-loi-cong-doan', [Phase2UIApiController::class, 'getKPITiLeLoiCongDoan']);
+    $router->get('kpi/hieu-suat-thiet-bi', [Phase2UIApiController::class, 'getKPIMachineEfficiency']);
+    $router->get('kpi/so-lan-dung-may', [Phase2UIApiController::class, 'getKPISoLanDungMay']);
 
     Route::apiResource('lot-plans', LotPlanController::class);
 

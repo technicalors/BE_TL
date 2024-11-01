@@ -6404,4 +6404,15 @@ class ApiUIController extends AdminController
             return $this->failure(['msg' => $e->getMessage()], 'Thao tác thất bại');
         }
     }
+    
+    public function trackingProduction(Request $request){
+        $query = InfoCongDoan::query();
+        if(!empty($request->date)){
+            $query->whereDate('created_at', date('Y-m-d', strtotime($request->date)));
+        }else{
+            $query->whereDate('created_at', date('Y-m-d'));
+        }
+        $records = $query->with('line')->orderBy('created_at', 'DESC')->get();
+        return $this->success($records);
+    }
 }

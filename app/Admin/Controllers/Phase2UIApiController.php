@@ -31,6 +31,7 @@ use App\Models\ShiftBreak;
 use App\Models\Spec;
 use App\Traits\API;
 use Carbon\Carbon;
+use Carbon\CarbonInterval;
 use Carbon\CarbonPeriod;
 use Exception;
 use Illuminate\Http\Request;
@@ -1815,6 +1816,179 @@ class Phase2UIApiController extends Controller
         return [
             'type' => $label,
             'value' => $ti_le_loi_cong_doan > 100 ? 100 : $ti_le_loi_cong_doan,
+        ];
+    }
+
+    public function getKPIMachineEfficiency(Request $request)
+    {
+        $dateType = $request->dateType;
+        $startDate = $request->start_date;
+        $endDate = $request->end_date;
+
+        $dateList = [];
+
+        if ($dateType == 'date') {
+            $period = CarbonPeriod::create($startDate, $endDate);
+
+            foreach ($period as $date) {
+                // Truy vấn và tính toán tỷ lệ đạt cho từng ngày
+                $dateList[] = $this->calculateMachinePerformance($date->startOfDay(), $date->endOfDay(), $date->format('d/m'));
+            }
+        } elseif ($dateType == 'week') {
+            $start = Carbon::parse($startDate)->startOfWeek();
+            $end = Carbon::parse($endDate)->endOfWeek();
+
+            while ($start->lte($end)) {
+                // Tính tỷ lệ đạt cho tuần
+                $weekEnd = $start->copy()->endOfWeek();
+                $dateList[] = $this->calculateMachinePerformance($start, $weekEnd, 'Tuần ' . $start->format('W'));
+                $start->addWeek();
+            }
+        } elseif ($dateType == 'month') {
+            $start = Carbon::parse($startDate)->startOfMonth();
+            $end = Carbon::parse($endDate)->endOfMonth();
+
+            while ($start->lte($end)) {
+                // Tính tỷ lệ đạt cho tháng
+                $monthEnd = $start->copy()->endOfMonth();
+                $dateList[] = $this->calculateMachinePerformance($start, $monthEnd, 'Tháng ' . $start->format('m/Y'));
+                $start->addMonth();
+            }
+        } elseif ($dateType == 'year') {
+            $start = Carbon::parse($startDate)->startOfYear();
+            $end = Carbon::parse($endDate)->endOfYear();
+
+            while ($start->lte($end)) {
+                // Tính tỷ lệ đạt cho năm
+                $yearEnd = $start->copy()->endOfYear();
+                $dateList[] = $this->calculateMachinePerformance($start, $yearEnd, 'Năm ' . $start->format('Y'));
+                $start->addYear();
+            }
+        } else {
+            return $this->failure('Loại dữ liệu không hợp lệ');
+        }
+
+        return $this->success($dateList);
+    }
+
+    function calculateMachinePerformance($start, $end, $label)
+    {
+        $lines = Line::where('factory_id', 2)->whereNotIn('id', [30, 29])->get();
+        $data = [];
+        foreach ($lines as $key => $line) {
+            $result = InfoCongDoan::with('lotPlan.plan')->select(
+                'info_cong_doan.sl_dau_ra_hang_loat',
+                DB::raw("SUM(sl_dau_ra_hang_loat) as total_quantity"),
+                DB::raw("SUM(sl_dau_ra_hang_loat - sl_ng) as ok_quantity"),
+                DB::raw("SUM(TIMESTAMPDIFF(SECOND, thoi_gian_bam_may, thoi_gian_ket_thuc)) as production_time"),
+                DB::raw("SUM(TIMESTAMPDIFF(SECOND, thoi_gian_bat_dau, thoi_gian_ket_thuc)) as total_time")
+            )
+                ->whereDate('thoi_gian_bat_dau', '>=', $start)
+                ->whereDate('thoi_gian_ket_thuc', '<=', $end)
+                ->whereNotNull('thoi_gian_bam_may')
+                ->whereNotNull('thoi_gian_ket_thuc')
+                ->whereNotNull('thoi_gian_bat_dau')
+                ->where('line_id', $line->id)
+                ->first('line_id');
+            $plan = $result->lotPlan->plan ?? null;
+            $A = ($result->total_time > 0 ? $result->production_time / $result->total_time : 0) * 100;
+            $P = ((isset($plan) && $plan->UPH && $result->production_time > 0) ? ($result->total_quantity / (($result->production_time / 3600) * (int)$plan->UPH)) * 100 : 1) * 100;
+            $Q = ($result->total_quantity > 0 ? $result->ok_quantity / $result->total_quantity : 0) * 100;
+            $OEE = ($A * $Q * $P) / 10000;
+            $data[] = [
+                'name' => $line->name,
+                'data' => round($OEE, 1),
+            ];
+        }
+        return [
+            'type' => $label,
+            'value' => $data,
+        ];
+    }
+
+    public function getKPISoLanDungMay(Request $request)
+    {
+        $dateType = $request->dateType;
+        $startDate = $request->start_date;
+        $endDate = $request->end_date;
+
+        $dateList = [];
+
+        if ($dateType == 'date') {
+            $period = CarbonPeriod::create($startDate, $endDate);
+
+            foreach ($period as $date) {
+                // Truy vấn và tính toán tỷ lệ đạt cho từng ngày
+                $dateList[] = $this->calculateMachineDownTime($date->startOfDay(), $date->endOfDay(), $date->format('d/m'));
+            }
+        } elseif ($dateType == 'week') {
+            $start = Carbon::parse($startDate)->startOfWeek();
+            $end = Carbon::parse($endDate)->endOfWeek();
+
+            while ($start->lte($end)) {
+                // Tính tỷ lệ đạt cho tuần
+                $weekEnd = $start->copy()->endOfWeek();
+                $dateList[] = $this->calculateMachinePerformance($start, $weekEnd, 'Tuần ' . $start->format('W'));
+                $start->addWeek();
+            }
+        } elseif ($dateType == 'month') {
+            $start = Carbon::parse($startDate)->startOfMonth();
+            $end = Carbon::parse($endDate)->endOfMonth();
+
+            while ($start->lte($end)) {
+                // Tính tỷ lệ đạt cho tháng
+                $monthEnd = $start->copy()->endOfMonth();
+                $dateList[] = $this->calculateMachinePerformance($start, $monthEnd, 'Tháng ' . $start->format('m/Y'));
+                $start->addMonth();
+            }
+        } elseif ($dateType == 'year') {
+            $start = Carbon::parse($startDate)->startOfYear();
+            $end = Carbon::parse($endDate)->endOfYear();
+
+            while ($start->lte($end)) {
+                // Tính tỷ lệ đạt cho năm
+                $yearEnd = $start->copy()->endOfYear();
+                $dateList[] = $this->calculateMachinePerformance($start, $yearEnd, 'Năm ' . $start->format('Y'));
+                $start->addYear();
+            }
+        } else {
+            return $this->failure('Loại dữ liệu không hợp lệ');
+        }
+
+        return $this->success($dateList);
+    }
+
+    public function calculateMachineDownTime($start, $end, $label)
+    {
+        $lines = Line::where('factory_id', 2)->get();
+        $machines = Machine::whereIn('line_id', $lines->pluck('id')->toArray())->where('is_iot', 1)->get();
+        $query = MachineLog::whereIn('machine_id', $machines->pluck('code')->toArray())
+            ->whereDate('created_at', '>=', $start)
+            ->whereDate('created_at', '<=', $end)
+            ->whereNotNull('info->lot_id')
+            ->whereNotNull('info->start_time')
+            ->whereNotNull('info->end_time');
+        $count = $query->count();
+        $time = $query->select(DB::raw("SUM(JSON_UNQUOTE(JSON_EXTRACT(info, '$.end_time')) - JSON_UNQUOTE(JSON_EXTRACT(info, '$.start_time'))) as stop_time"))->first();
+        $stopTime = 0;
+        if (!$time->stop_time) {
+            $stopTime = 0;
+        } else {
+            $stopTime = $time->stop_time;
+        }
+        $stopTime = round($stopTime / 3600, 1);
+        return [
+            'type' => $label,
+            'value' => [
+                [
+                    'name' => 'Số lần dừng máy',
+                    'data' => $count,
+                ],
+                [
+                    'name' => 'Số giờ dừng',
+                    'data' => $stopTime,
+                ],
+            ]
         ];
     }
 }

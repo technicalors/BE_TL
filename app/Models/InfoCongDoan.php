@@ -46,7 +46,8 @@ class InfoCongDoan extends Model
         'lot_plan_id',
         'input_lot_id',
         'created_at',
-        'updated_at'
+        'updated_at',
+        'sl_khi_bam_may'
     ];
 
     static function validateStore($input)
