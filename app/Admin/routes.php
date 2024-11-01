@@ -603,6 +603,7 @@ Route::group([
     $router->get('create-infocongdoan-for-plan', [ApiUIController::class, 'createInfoCongDoanForPlan']);
     $router->post('filter-file-to-plan', [ApiUIController::class, 'filterFileToPlan']);
     $router->post('random-info', [ApiUIController::class, 'randomInfo']);
+    $router->get('/get-tracking-info-cong-doan', [ApiUIController::class, 'trackingProduction']);
 });
 //Dashboard
 Route::group([
