@@ -1117,8 +1117,9 @@ class Phase2OIApiController extends Controller
             $item->ten_sp = $item->product->name ?? "";
             $item->product_id = $item->product_id ?? "";
             $item->ngay_sx = $item->created_at->format('d/m/Y');
-            $item->sl_ok = $item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang;
-            $item->ty_le_ht = $item->sl_dau_ra_hang_loat > 0 ? round($item->sl_ok / $item->sl_dau_ra_hang_loat * 100) : 0;
+            $item->sl_ok = $item->sl_dau_vao_hang_loat - $item->sl_ng - $item->sl_tem_vang;
+            $item->ty_le_ht = $item->sl_dau_vao_hang_loat > 0 ? round($item->sl_ok / $item->sl_dau_ra_hang_loat * 100) : 0;
+            $item->qc_status = $item->qcHistory->eligible_to_end ?? 0;
         }
         return $this->success($list);
     }
@@ -1384,6 +1385,7 @@ class Phase2OIApiController extends Controller
                     'lot_id' => $request->lot_id,
                     'is_check' => false,
                 ];
+                $infoCongDoan->update(['sl_dau_ra_hang_loat'=>$infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_ng]);
                 broadcast(new QualityUpdated($qualityData));
             }
             DB::commit();

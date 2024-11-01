@@ -106,52 +106,6 @@ class TestCriteriaController extends AdminController
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
         return $allDataInSheet;
     }
-    public function import($flag = false)
-    {
-        if (!isset($_FILES['files'])) { {
-                admin_error('Định dạng file không đúng', 'error');
-                return back();
-            }
-        }
-        // file path
-        $arr = ["Kích thước", "Ngoại quan", "Đặc tính"];
-        $lines  = [16, 10, 11, 22, 12, 14, 13, 15, 20];
-        TestCriteria::truncate();
-        for ($k = 0; $k <= 8; $k++) {
-            $dataSheet = $this->readFilex($k, $_FILES['files']['tmp_name']);
-            for ($i = 5; $i <= count($dataSheet); $i++) {
-                $row = $dataSheet[$i];
-                $test1 = new TestCriteria();
-                $test1->hang_muc = $row['A'] ?? " ";
-                $test1->tieu_chuan = $row['B'] ?? " ";
-                $test1->chi_tieu = 'Kích thước';
-                $test1->line_id = $lines[$k];
-                $test1->save();
-
-
-                $test2 = new TestCriteria();
-                $test2->hang_muc = $row['E'] ?? " ";
-                $test2->tieu_chuan = $row['F'] ?? " ";
-                $test2->chi_tieu = 'Ngoại quan';
-                $test2->line_id = $lines[$k];
-                $test2->save();
-
-                $test2 = new TestCriteria();
-                $test2->hang_muc = $row['I'] ?? " ";
-                $test2->tieu_chuan = $row['J'] ?? " ";
-                $test2->chi_tieu = 'Đặc tính';
-                if ($lines[$k] == 15 || $lines[$k] == 20) {
-                    $test2->chi_tieu = 'Ngoại quan';
-                }
-
-                $test2->line_id = $lines[$k];
-                $test2->save();
-            }
-        }
-        if ($flag) return true;
-        admin_success('Tải lên thành công', 'success');
-        return back();
-    }
 
     public function getTestCriteria(Request $request)
     {
@@ -168,8 +122,9 @@ class TestCriteriaController extends AdminController
         if (isset($request->hang_muc)) {
             $query->where('hang_muc', 'like', "%$request->hang_muc%");
         }
+        $list = $query->orderBy('id')->where('is_show', 1)->get();
         $test_criterias = [];
-        foreach ($query->get() as $key => $test_criteria) {
+        foreach ($list as $key => $test_criteria) {
             if (str_replace(' ', '', $test_criteria->hang_muc) === "") {
                 continue;
             }
@@ -410,5 +365,74 @@ class TestCriteriaController extends AdminController
         // return $this->success([], 'Upload thành công');
         admin_success('Tải lên thành công', 'success');
         return back();
+    }
+
+    public function import(Request $request)
+    {
+        $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
+        if ($extension == 'csv') {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
+        } elseif ($extension == 'xlsx') {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+        } else {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
+        }
+        // file path
+        $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
+        $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
+        $data = [];
+        $line_arr = [];
+        $lines = Line::where('factory_id', 2)->get();
+        foreach ($lines as $line) {
+            $line_arr[Str::slug($line->name)] = $line->id;
+        }
+        $id_arr = [];
+        $last_criteria = TestCriteria::orderByRaw('CHAR_LENGTH(id) DESC')->orderBy('id', 'DESC')->first();
+        $index = ((int) filter_var($last_criteria->id ?? "", FILTER_SANITIZE_NUMBER_INT) ?? 0) + 1;
+        $i = 0;
+        $lines = [];
+        foreach ($allDataInSheet as $key => $row) {
+            //Lấy dứ liệu từ dòng thứ 3
+            if ($key > 2) {
+                $input = [];
+                if (!$row['A']) continue;
+                if (in_array($row['A'], $id_arr)) {
+                    return $this->failure('', 'Lỗi dòng thứ ' . ($key) . ': Mã "' . $row['A'] . '" bị trùng');
+                }
+                $id_arr[] = $row['A'];
+                $input['id'] = $row['A'];
+                if (!empty($row['B'])) {
+                    $value = explode('+', $row['B']);
+                    $lines = Line::whereIn('name', array_map('trim', $value))->pluck('id')->toArray();
+                }
+                if(count($lines) <= 0){
+                    return 'Không tìm thấy công đoạn';
+                }
+                $input['hang_muc'] = str_replace(array("\n", "\r\n", "\r"), ' ', $row['C']);
+                $input['chi_tieu'] = $row['D'];
+                $input['tieu_chuan'] = $row['F'];
+                $input['phan_dinh'] = $row['H'];
+                $input['reference'] = isset($line_arr[Str::slug($row['I'])]) ? $line_arr[Str::slug($row['I'])] : '';
+                $validated = TestCriteria::validateUpdate($input);
+                if ($validated->fails()) {
+                    return $this->failure('', 'Lỗi dòng thứ ' . ($key) . ': ' . $validated->errors()->first());
+                }
+                $input['is_show'] = 1;
+                $data[] = $input;
+                $i++;
+            }
+        }
+        try {
+            DB::beginTransaction();
+            TestCriteria::query()->update(['is_show' => 0]);
+            foreach ($data as $key => $input) {
+                $test_criteria = TestCriteria::updateOrCreate(['id' => $input['id']], $input);
+            }
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+        return $this->success('', 'Tải lên thành công');
     }
 }
