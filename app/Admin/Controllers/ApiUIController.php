@@ -6407,7 +6407,7 @@ class ApiUIController extends AdminController
     
     public function trackingProduction(Request $request){
         $lines = Line::where('factory_id', 2)->pluck('id')->toArray();
-        $machines = Machine::where('line_id', $lines)->where('is_iot', 1)->pluck('code')->toArray();
+        $machines = Machine::whereIn('line_id', $lines)->where('is_iot', 1)->pluck('code')->toArray();
         $query = InfoCongDoan::whereIn('machine_code', $machines);
         if(!empty($request->date)){
             $query->whereDate('created_at', date('Y-m-d', strtotime($request->date)));
