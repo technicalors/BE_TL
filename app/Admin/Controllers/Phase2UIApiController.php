@@ -1316,7 +1316,6 @@ class Phase2UIApiController extends Controller
         DB::beginTransaction();
         try {
             $stepEndTimes = [];
-            $oldMachineCode = null;
 
             foreach ($allDataInSheet as $key => $row) {
                 if ($key <= 3) continue;
@@ -1331,18 +1330,15 @@ class Phase2UIApiController extends Controller
                 $product = Product::find($input['product_id']);
                 if (!$product) throw new Exception("Không tìm thấy mã sản phẩm " . $input['product_id']);
 
-                $startTime = $this->getStartTime($input, $stepEndTimes, $machine->code, $oldMachineCode);
+                $startTime = $input['thoi_gian_bat_dau'];
 
-                [$endTime, $stepEndTimes[$machine->code]] = $this->calculateEndTime($input, $startTime, $product->id, $machine->line_id);
+                $endTime = $this->calculateEndTime($input, $startTime, $product->id, $machine->line_id);
 
                 $order = $this->getOrder($input, $product);
                 $lo_sx = Losx::firstOrCreate(['product_order_id' => $order->id]);
                 $losx_id = $lo_sx->id;
-                $plan = $this->storeProductionPlan($input, $losx_id, $startTime, $endTime, $order, $line, $machine, $stepEndTimes);
-
-                $this->generateLots($input, $losx_id, $plan, $startTime, $machine, $stepEndTimes);
-
-                $oldMachineCode = $machine->code;
+                $plan = $this->storeProductionPlan($input, $losx_id, $startTime, $endTime, $order, $line, $machine);
+                $this->generateLots($input, $losx_id, $plan, $startTime, $machine);
             }
             DB::commit();
         } catch (\Exception $ex) {
@@ -1352,7 +1348,7 @@ class Phase2UIApiController extends Controller
         return $this->success('', 'Đã tạo thành công');
     }
 
-    private function storeProductionPlan($input, $losx_id, $startTime, $endTime, $order, $line, $machine, &$stepEndTimes)
+    private function storeProductionPlan($input, $losx_id, $startTime, $endTime, $order, $line, $machine)
     {
         $planInput = [
             'product_order_id' => $order->id,
@@ -1432,7 +1428,7 @@ class Phase2UIApiController extends Controller
         $setupTime = $this->getSetupTime($productId, $lineId);
 
         $endTime = $startTime->copy()->addMinutes(((($taskTime * $lotSize) + $rollChangeTime) * $numLots) + $setupTime);
-        return [$endTime, $endTime];
+        return $endTime;
     }
     public function getTaskTime($productId, $lineId, $uph)
     {
@@ -1463,25 +1459,27 @@ class Phase2UIApiController extends Controller
     }
 
 
-    private function generateLots($input, $losx_id, $plan, $startTime, $machine, &$stepEndTimes)
+    private function generateLots($input, $losx_id, $plan, $startTime, $machine)
     {
         $quantity = $input['sl_giao_sx'];
         $lotSize = $this->getLotSize($input['product_id'], $input['line_id']);
-        $taskTime = $this->getTaskTime($input['product_id'], $input['line_id'], $input['UPH']);
         $numLots = ceil($quantity / $lotSize);
         $lotEndTime = $startTime;
-        $shiftPreparationTime = $this->getShiftPreparationTime($input['product_id'],  $input['line_id']);
+        $taskTime = $this->getTaskTime($input['product_id'],  $input['line_id'], $input['UPH']);
+        $rollChangeTime = $this->getRollChangeTime($input['product_id'],  $input['line_id']);
+        $setupTime = $this->getSetupTime($input['product_id'],  $input['line_id']);
         for ($lotIndex = 1; $lotIndex <= $numLots; $lotIndex++) {
             $lotId =  $losx_id . '.L.' . str_pad($lotIndex, 4, '0', STR_PAD_LEFT);
             $lotStartTime = ($lotIndex == 1) ? $startTime : $lotEndTime;
             $quantityPerLot = ($lotIndex == 1 && ($quantity % $lotSize != 0)) ? ($quantity % $lotSize) : $lotSize;
-
-            list($lotStartTime, $lotEndTime) = $this->adjustTimeWithinShift(
-                $lotStartTime,
-                ($taskTime * $quantityPerLot),
-                $machine->code,
-                $shiftPreparationTime
-            );
+            if ($lotIndex == 1) {
+                $lotEndTime = $startTime->copy()->addMinutes(($taskTime * $lotSize) + $rollChangeTime + $setupTime);
+            } else {
+                $lotEndTime = $startTime->copy()->addMinutes(($taskTime * $lotSize) + $rollChangeTime);
+            }
+            if($input['line_id'] == 29){
+                $lotEndTime = $startTime->copy()->addMinutes($taskTime * $lotSize);
+            }
             LotPlan::create([
                 'lot_id' => $lotId,
                 'lo_sx' => $losx_id,
