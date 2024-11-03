@@ -251,11 +251,17 @@ function convertMachineStatusData(data, deviceId) {
   };
 }
 
+function formatTimestampUTC7(timestamp) {
+  const offsetDate = new Date(timestamp + 7 * 60 * 60 * 1000);
+  return offsetDate.toISOString().slice(0, 19).replace('T', ' ');
+}
+
 function convertMachineRecordData(data, deviceId) {
   return {
     device_id: deviceId,
     input: data["PLC:Num_Input"] ? data["PLC:Num_Input"][0][1] : 0,
     output: data["PLC:Num_Out"] ? data["PLC:Num_Out"][0][1] : 0,
+    timestamps: data["PLC:Num_Out"] ? formatTimestampUTC7(data["PLC:Num_Out"][0][0]) : 0,
   };
 }
 
@@ -305,6 +311,7 @@ async function enqueueData(deviceId, data) {
     let convertedData = convertMachineRecordData(data, deviceId);
     if (data["PLC:Count_En"][0][1] == 1) {
       try {
+        console.log("data", convertedData);
         // Gọi API để lấy dữ liệu đầu vào và đầu ra
         // Đẩy dữ liệu vào hàng đợi
         dataQueues[deviceId].push({

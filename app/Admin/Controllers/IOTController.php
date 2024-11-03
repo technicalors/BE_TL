@@ -37,10 +37,6 @@ class IOTController extends AdminController
         $info_cong_doan = InfoCongDoan::where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
         $sl_bat = $info_cong_doan->product->so_bat ?? 1;
         $tracking = Tracking::getData($machine->code);
-        $d_input = ($request->input - $tracking->input);
-        $d_output = ($request->output - $tracking->output) * $sl_bat;
-        if ($d_input < 0) $d_input = 0;
-        if ($d_output < 0) $d_output = 0;
         if ($info_cong_doan) {
             $status = MachineStatus::getStatus($machine->code);
             if ($status == 0) { //chạy thử/vào hàng
@@ -190,7 +186,7 @@ class IOTController extends AdminController
         $output = $request->output;
         if ($info_cong_doan) {
             if (is_null($info_cong_doan['thoi_gian_bam_may'])) {
-                $info_cong_doan['thoi_gian_bam_may'] = date('Y-m-d H:i:s');
+                $info_cong_doan['thoi_gian_bam_may'] = $request->timestamps;
                 $info_cong_doan['sl_khi_bam_may'] = $request->output ?? 0;
                 $info_cong_doan->save();
                 $tracking->update(['input' => $input, 'output' => $output]);
