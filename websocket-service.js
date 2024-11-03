@@ -253,7 +253,7 @@ function convertMachineStatusData(data, deviceId) {
 
 function formatTimestampUTC7(timestamp) {
   const offsetDate = new Date(timestamp + 7 * 60 * 60 * 1000);
-  return offsetDate.toISOString().slice(0, 19).replace('T', ' ');
+  return offsetDate.toISOString().slice(0, 19).replace("T", " ");
 }
 
 function convertMachineRecordData(data, deviceId) {
@@ -261,7 +261,9 @@ function convertMachineRecordData(data, deviceId) {
     device_id: deviceId,
     input: data["PLC:Num_Input"] ? data["PLC:Num_Input"][0][1] : 0,
     output: data["PLC:Num_Out"] ? data["PLC:Num_Out"][0][1] : 0,
-    timestamps: data["PLC:Num_Out"] ? formatTimestampUTC7(data["PLC:Num_Out"][0][0]) : 0,
+    timestamps: data["PLC:Num_Out"]
+      ? formatTimestampUTC7(data["PLC:Num_Out"][0][0])
+      : 0,
   };
 }
 
@@ -308,8 +310,11 @@ async function enqueueData(deviceId, data) {
   }
 
   if (data["PLC:Count_En"]) {
-    let convertedData = convertMachineRecordData(data, deviceId);
-    if (data["PLC:Count_En"][0][1] == 1) {
+    let currentCountEn = data["PLC:Count_En"][0][1];
+    let previousCountEn = lastMachineRecordValues[deviceId] ?? 0;
+    if (previousCountEn == 0 && currentCountEn == 1) {
+      console.log("data", previousCountEn, currentCountEn);
+      let convertedData = convertMachineRecordData(data, deviceId);
       try {
         console.log("data", convertedData);
         // Gọi API để lấy dữ liệu đầu vào và đầu ra
@@ -333,6 +338,7 @@ async function enqueueData(deviceId, data) {
         }
       }
     }
+    lastMachineRecordValues[deviceId] = currentCountEn;
   }
 
   // Tracking power consumed
@@ -399,7 +405,7 @@ async function connectWebSocket(deviceId) {
   ws.on("close", () => {
     console.log(`WebSocket connection closed for device ${deviceId}`);
     clearInterval(heartbeatInterval); // Hủy timer ping
-    setTimeout(() => reconnectWebSocket(deviceId), 5000);
+    setTimeout(() => reconnectWebSocket(deviceId), 3000);
   });
 
   ws.on("error", (error) => {
@@ -418,7 +424,7 @@ function reconnectWebSocket(deviceId) {
       );
       reconnectWebSocket(deviceId); // Tiếp tục thử kết nối lại sau lỗi
     }
-  }, 5000); // Thử kết nối lại sau 5 giây
+  }, 3000); // Thử kết nối lại sau 5 giây
 }
 
 // Kết nối tới WebSocket cho từng thiết bị trong danh sách
@@ -429,13 +435,13 @@ async function connectAllDevices() {
     isProcessing[deviceId] = false;
     lastProductionValues[deviceId] = null;
     lastMachineStatusValues[deviceId] = null;
-    lastMachineRecordValues[deviceId] = null;
+    lastMachineRecordValues[deviceId] = 1;
     connectWebSocket(deviceId).catch((error) => {
       console.error(
         `Failed to connect to WebSocket for device ${deviceId}:`,
         error.message
       );
-      setTimeout(() => reconnectWebSocket(deviceId), 5000);
+      setTimeout(() => reconnectWebSocket(deviceId), 3000);
     });
   }
 }
