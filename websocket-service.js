@@ -392,7 +392,7 @@ async function connectWebSocket(deviceId) {
   ws.on("message", async (data) => {
     try {
       const parsedData = JSON.parse(data);
-
+      console.log(`Received data from device ${deviceId}:`, parsedData);  
       // Thêm mã thiết bị vào dữ liệu
       parsedData.data.device_id = deviceId;
       // const data = parsedData.data;
