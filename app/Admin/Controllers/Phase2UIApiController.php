@@ -1473,12 +1473,12 @@ class Phase2UIApiController extends Controller
             $lotStartTime = ($lotIndex == 1) ? $startTime : $lotEndTime;
             $quantityPerLot = ($lotIndex == 1 && ($quantity % $lotSize != 0)) ? ($quantity % $lotSize) : $lotSize;
             if ($lotIndex == 1) {
-                $lotEndTime = $startTime->copy()->addMinutes(($taskTime * $lotSize) + $rollChangeTime + $setupTime);
+                $lotEndTime = $lotStartTime->copy()->addMinutes(($taskTime * $lotSize) + $rollChangeTime + $setupTime);
             } else {
-                $lotEndTime = $startTime->copy()->addMinutes(($taskTime * $lotSize) + $rollChangeTime);
+                $lotEndTime = $lotStartTime->copy()->addMinutes(($taskTime * $lotSize) + $rollChangeTime);
             }
             if($input['line_id'] == 29){
-                $lotEndTime = $startTime->copy()->addMinutes($taskTime * $lotSize);
+                $lotEndTime = $lotStartTime->copy()->addMinutes($taskTime * $lotSize);
             }
             LotPlan::create([
                 'lot_id' => $lotId,

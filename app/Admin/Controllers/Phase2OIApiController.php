@@ -652,7 +652,7 @@ class Phase2OIApiController extends Controller
                     $lotCurrent = LotPlan::where('line_id', $infoCongDoan->line_id)->where('machine_code', $infoCongDoan->machine_code)->where('lot_id', $infoCongDoan->lot_id)->first();
                     $lotNext = LotPlan::where('line_id', $infoCongDoan->line_id)->where('machine_code', $infoCongDoan->machine_code)->where('id', '>', $lotCurrent->id)->orderBy('id', 'ASC')->first();
                     $tracking = Tracking::where('machine_id', $infoCongDoan->machine_code)->first();
-                    $tracking->input = $tracking->input + ($infoCongDoan->sl_dau_vao_hang_loat / ($infoCongDoan->product->so_bat ?? 1));
+                    $tracking->input = $tracking->input + $infoCongDoan->sl_dau_vao_hang_loat;
                     $tracking->output = $tracking->output + ($infoCongDoan->sl_dau_ra_hang_loat / ($infoCongDoan->product->so_bat ?? 1));
                     $tracking->lot_id = $lotNext->lot_id;
                     $tracking->save();
