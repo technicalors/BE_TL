@@ -218,6 +218,7 @@ class Phase2OIApiController extends Controller
             $infoCongDoan = $item->infoCongDoan;
             $data =  [
                 "lo_sx" => $item->lo_sx,
+                "input_lot_id" => $infoCongDoan->input_lot_id ?? '',
                 "lot_id" => $item->lot_id,
                 "ma_hang" => $item->product->id ?? '',
                 "ten_sp" => $item->product->name ?? '',
