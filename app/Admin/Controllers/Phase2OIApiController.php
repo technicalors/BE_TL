@@ -653,12 +653,12 @@ class Phase2OIApiController extends Controller
                     }
                 }
                 $counter = $this->fetchDataFromApi($machine->device_id);
-                if ($counter[0]['value'] && $counter[0]['value'] - $tracking->output > 0 && $machine->is_iot == 1) {
+                if ($machine->is_iot == 1 && $counter[0]['value'] && $counter[0]['value'] - $tracking->output > 0) {
                     $sl_dau_ra_hang_loat = $counter[0]['value'] - $tracking->output;
                 } else {
                     $sl_dau_ra_hang_loat = $infoCongDoan->sl_dau_ra_hang_loat;
                 }
-                if ($counter[0]['ts'] && $machine->is_iot == 1) {
+                if ($machine->is_iot == 1 && $counter[0]['ts'] && $machine->is_iot == 1) {
                     $thoi_gian_ket_thuc = $this->formatTimestampWithTimezone($counter[0]['ts']);
                 } else {
                     $thoi_gian_ket_thuc = Carbon::now();
