@@ -654,7 +654,7 @@ class Phase2OIApiController extends Controller
                 }
                 $counter = $this->fetchDataFromApi($machine->device_id);
                 if ($machine->is_iot == 1 && $counter['PLC:Num_Out'][0]['value'] && $counter['PLC:Num_Out'][0]['value'] - $tracking->output > 0) {
-                    $sl_dau_ra_hang_loat = $counter['PLC:Num_Out'][0]['value'] - $tracking->output;
+                    $sl_dau_ra_hang_loat = ($counter['PLC:Num_Out'][0]['value'] - $tracking->output) * ($infoCongDoan->product->so_bat ?? 1);
                 } else {
                     $sl_dau_ra_hang_loat = $infoCongDoan->sl_dau_ra_hang_loat;
                 }
