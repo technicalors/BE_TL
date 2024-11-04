@@ -717,7 +717,7 @@ class Phase2OIApiController extends Controller
                 return $this->success($this->formatTemTrang($infoCongDoan, $request), "Kết thúc sản xuất thành công");
             } catch (\Throwable $th) {
                 DB::rollBack();
-                return $this->failure($th, "Lỗi kết thúc sản xuất");
+                return $this->failure($th, "Lỗi kết thúc sản xuất" . $th->getMessage());
             }
         } else {
             return $this->failure([], "Không tìm thấy lot");
