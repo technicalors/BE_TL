@@ -187,8 +187,8 @@ class IOTController extends AdminController
         if ($info_cong_doan) {
             if (is_null($info_cong_doan['thoi_gian_bam_may'])) {
                 $info_cong_doan['thoi_gian_bam_may'] = $request->timestamps;
-                $info_cong_doan['sl_khi_bam_may'] = $request->output ?? 0;
-                $info_cong_doan['sl_dau_vao_bam_may'] = $request->input ?? 0;
+                $info_cong_doan['sl_khi_bam_may'] = $output ?? 0;
+                $info_cong_doan['sl_dau_vao_bam_may'] = $input ?? 0;
                 $info_cong_doan->save();
                 $tracking->update(['input' => $input, 'output' => $output]);
             }

@@ -653,12 +653,12 @@ class Phase2OIApiController extends Controller
                     }
                 }
                 $counter = $this->fetchDataFromApi();
-                if ($counter[0]['value'] && $counter[0]['value'] - $tracking->output > 0) {
+                if ($counter[0]['value'] && $counter[0]['value'] - $tracking->output > 0 && $machine->is_iot == 1) {
                     $sl_dau_ra_hang_loat = $counter[0]['value'] - $tracking->output;
                 } else {
                     $sl_dau_ra_hang_loat = $infoCongDoan->sl_dau_ra_hang_loat;
                 }
-                if ($counter[0]['ts']) {
+                if ($counter[0]['ts'] && $machine->is_iot == 1) {
                     $thoi_gian_ket_thuc = $this->formatTimestampWithTimezone($counter[0]['ts']);
                 } else {
                     $thoi_gian_ket_thuc = Carbon::now();
@@ -679,6 +679,7 @@ class Phase2OIApiController extends Controller
                     $tracking->output = $tracking->output + ($infoCongDoan->sl_dau_ra_hang_loat / ($infoCongDoan->product->so_bat ?? 1));
                     $tracking->lot_id = $lotNext->lot_id;
                     $tracking->save();
+
                     InfoCongDoan::create([
                         'input_lot_id' => $infoCongDoan->input_lot_id,
                         'lot_plan_id' => $lotNext->id,
