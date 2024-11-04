@@ -674,27 +674,37 @@ class Phase2OIApiController extends Controller
                 if ($spec && $line->id == 24 && $infoCongDoan->sl_dau_ra_hang_loat >= $spec->value && $count_info == 1) {
                     $lotCurrent = LotPlan::where('line_id', $infoCongDoan->line_id)->where('machine_code', $infoCongDoan->machine_code)->where('lot_id', $infoCongDoan->lot_id)->first();
                     $lotNext = LotPlan::where('line_id', $infoCongDoan->line_id)->where('machine_code', $infoCongDoan->machine_code)->where('id', '>', $lotCurrent->id)->orderBy('id', 'ASC')->first();
-                    $tracking = Tracking::where('machine_id', $infoCongDoan->machine_code)->first();
-                    $tracking->input = $tracking->input + $infoCongDoan->sl_dau_vao_hang_loat;
-                    $tracking->output = $tracking->output + ($infoCongDoan->sl_dau_ra_hang_loat / ($infoCongDoan->product->so_bat ?? 1));
-                    $tracking->lot_id = $lotNext->lot_id;
-                    $tracking->save();
-
-                    InfoCongDoan::create([
-                        'input_lot_id' => $infoCongDoan->input_lot_id,
-                        'lot_plan_id' => $lotNext->id,
-                        'lot_id' => $lotNext->lot_id,
-                        'lo_sx' => $lotNext->lo_sx,
-                        'line_id' => $lotNext->line_id,
-                        'machine_code' => $lotNext->machine_code,
-                        'product_id' => $lotNext->product_id,
-                        'sl_kh' => $lotNext->quantity,
-                        'sl_dau_vao_hang_loat' => 0,
-                        'thoi_gian_bat_dau' => Carbon::now(),
-                        'thoi_gian_bam_may' => Carbon::now(),
-                        'user_id' => $request->user()->id,
-                        'status' => InfoCongDoan::STATUS_INPROGRESS
-                    ]);
+                    if ($lotNext) {
+                        $tracking = Tracking::where('machine_id', $infoCongDoan->machine_code)->first();
+                        $tracking->input = $tracking->input + $infoCongDoan->sl_dau_vao_hang_loat;
+                        $tracking->output = $tracking->output + ($infoCongDoan->sl_dau_ra_hang_loat / ($infoCongDoan->product->so_bat ?? 1));
+                        $tracking->lot_id = $lotNext->lot_id;
+                        $tracking->save();
+                        InfoCongDoan::create([
+                            'input_lot_id' => $infoCongDoan->input_lot_id,
+                            'lot_plan_id' => $lotNext->id,
+                            'lot_id' => $lotNext->lot_id,
+                            'lo_sx' => $lotNext->lo_sx,
+                            'line_id' => $lotNext->line_id,
+                            'machine_code' => $lotNext->machine_code,
+                            'product_id' => $lotNext->product_id,
+                            'sl_kh' => $lotNext->quantity,
+                            'sl_dau_vao_hang_loat' => 0,
+                            'thoi_gian_bat_dau' => Carbon::now(),
+                            'thoi_gian_bam_may' => Carbon::now(),
+                            'user_id' => $request->user()->id,
+                            'status' => InfoCongDoan::STATUS_INPROGRESS
+                        ]);
+                    } else {
+                        if (isset($machine) && isset($tracking)) {
+                            MachineStatus::deactive($machine->code);
+                            $tracking->update([
+                                'lot_id' => null,
+                                'input' => 0,
+                                'output' => 0
+                            ]);
+                        }
+                    }
                 } else {
                     if (isset($machine) && isset($tracking)) {
                         MachineStatus::deactive($machine->code);
