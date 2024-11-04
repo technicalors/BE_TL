@@ -55,10 +55,10 @@ class IOTController extends AdminController
                     if (is_null($tracking->output) || $tracking->output == 0) {
                         $tracking->update(['output' => $request->output]);
                     }
-                    if ($request->input > $tracking->input) {
+                    if ($request->input > $tracking->input && (($request->input - $tracking->input) > $info_cong_doan->sl_dau_vao_chay_thu)) {
                         $info_cong_doan->sl_dau_vao_chay_thu = ($request->input - $tracking->input);
                     }
-                    if ($request->output > $tracking->output) {
+                    if ($request->output > $tracking->output && ((($request->output - $tracking->output) * $sl_bat) > $info_cong_doan->sl_dau_ra_chay_thu)) {
                         $info_cong_doan->sl_dau_ra_chay_thu = ($request->output - $tracking->output) * $sl_bat;
                     }
                 }
@@ -78,10 +78,10 @@ class IOTController extends AdminController
                     if (is_null($tracking->output) || $tracking->output == 0) {
                         $tracking->update(['output' => $request->output]);
                     }
-                    if ($request->input > $tracking->input) {
+                    if ($request->input > $tracking->input && (($request->input - $tracking->input) > $info_cong_doan->sl_dau_vao_hang_loat)) {
                         $info_cong_doan->sl_dau_vao_hang_loat = ($request->input - $tracking->input);
                     }
-                    if ($request->output > $tracking->output) {
+                    if ($request->output > $tracking->output && ((($request->output - $tracking->output) * $sl_bat) > $info_cong_doan->sl_dau_ra_hang_loat)) {
                         $info_cong_doan->sl_dau_ra_hang_loat = ($request->output - $tracking->output) * $sl_bat;
                     }
                 }
