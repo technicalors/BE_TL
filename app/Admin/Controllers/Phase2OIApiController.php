@@ -652,7 +652,7 @@ class Phase2OIApiController extends Controller
                         ]);
                     }
                 }
-                $counter = $this->fetchDataFromApi();
+                $counter = $this->fetchDataFromApi($machine->device_id);
                 if ($counter[0]['value'] && $counter[0]['value'] - $tracking->output > 0 && $machine->is_iot == 1) {
                     $sl_dau_ra_hang_loat = $counter[0]['value'] - $tracking->output;
                 } else {
@@ -945,11 +945,11 @@ class Phase2OIApiController extends Controller
         return $this->success($assignment);
     }
 
-    public function fetchDataFromApi()
+    public function fetchDataFromApi($deviceID)
     {
         // API endpoints
         $loginUrl = 'http://103.77.215.18:3030/api/auth/login';
-        $dataUrl = 'http://103.77.215.18:3030/api/plugins/telemetry/DEVICE/f7f77560-45bd-11ef-b8c3-a13625245eca/values/timeseries?keys=PLC:Num_Out';
+        $dataUrl = 'http://103.77.215.18:3030/api/plugins/telemetry/DEVICE/' . $deviceID . '/values/timeseries?keys=PLC:Num_Out';
 
         // API login credentials
         $credentials = [
