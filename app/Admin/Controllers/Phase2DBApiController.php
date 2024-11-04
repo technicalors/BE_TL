@@ -197,6 +197,12 @@ class Phase2DBApiController extends Controller
                 // $plan = $info->lot->getPlanByLine($info->line_id);
                 $product = $info->product ?? null;
                 // if (!isset($plan)) $plan = $info->lot->plan;
+                
+                $upm = $lotPlan->quantity / (2 * 60);
+                $diff_time = strtotime('now') - strtotime($info->thoi_gian_bat_dau ?? 'now');
+                $target = (int)($upm * ($diff_time / 60));
+                $tl_ht = (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ? number_format((($info->sl_dau_ra_hang_loat - $info->sl_ng) / $info->sl_dau_ra_hang_loat), 2) : 0));
+                
                 $status = 0;
                 if (!is_null($info->thoi_gian_bat_dau) && is_null($info->thoi_gian_bam_may) && is_null($info->thoi_gian_ket_thuc)) {
                     $status = 1; // orange
@@ -204,17 +210,16 @@ class Phase2DBApiController extends Controller
                 if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && is_null($info->thoi_gian_ket_thuc)) {
                     $status = 3; // green
                 }
-                if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && !is_null($info->thoi_gian_ket_thuc)) {
+                // if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && !is_null($info->thoi_gian_ket_thuc)) {
+                //     $status = 2; // blue
+                // }
+                if ($tl_ht > 95) {
                     $status = 2; // blue
                 }
                 
                 // Ignore status 0
                 if ($status == 0) continue;
 
-                $upm = $lotPlan->quantity / (2 * 60);
-                $diff_time = strtotime('now') - strtotime($info->thoi_gian_bat_dau ?? 'now');
-                $target = (int)($upm * ($diff_time / 60));
-                $tl_ht = (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ? number_format((($info->sl_dau_ra_hang_loat - $info->sl_ng) / $info->sl_dau_ra_hang_loat), 2) : 0));
                 $tm = [
                     "cong_doan" => mb_strtoupper($info->line->name, 'UTF-8'),
                     'machine_code' => $machine->code,
@@ -301,23 +306,28 @@ class Phase2DBApiController extends Controller
                 $product = $info->product ?? null;
                 // if (!isset($plan)) $plan = $info->lot->plan;
                 $status = 0;
+                
+                $upm = $lotPlan->quantity / (2 * 60);
+                $diff_time = strtotime('now') - strtotime($info->thoi_gian_bat_dau ?? 'now');
+                $target = (int)($upm * ($diff_time / 60));
+                $tl_ht = (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ? number_format((($info->sl_dau_ra_hang_loat - $info->sl_ng) / $info->sl_dau_ra_hang_loat), 2) : 0));
+                
                 if (!is_null($info->thoi_gian_bat_dau) && is_null($info->thoi_gian_bam_may) && is_null($info->thoi_gian_ket_thuc)) {
                     $status = 1;
                 }
                 if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && is_null($info->thoi_gian_ket_thuc)) {
                     $status = 3;
                 }
-                if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && !is_null($info->thoi_gian_ket_thuc)) {
-                    $status = 2;
+                // if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && !is_null($info->thoi_gian_ket_thuc)) {
+                //     $status = 2;
+                // }
+                if ($tl_ht > 95) {
+                    $status = 2; // blue
                 }
 
                 // Ignore status 0
                 if ($status == 0) continue;
 
-                $upm = $lotPlan->quantity / (2 * 60);
-                $diff_time = strtotime('now') - strtotime($info->thoi_gian_bat_dau ?? 'now');
-                $target = (int)($upm * ($diff_time / 60));
-                $tl_ht = (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ? number_format((($info->sl_dau_ra_hang_loat - $info->sl_ng) / $info->sl_dau_ra_hang_loat), 2) : 0));
                 $tm = [
                     'target' => $target,
                     "cong_doan" => mb_strtoupper($info->line->name, 'UTF-8'),
