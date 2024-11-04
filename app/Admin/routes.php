@@ -138,6 +138,7 @@ Route::group([
     $router->any('/tinh_san_luong', [ApiMobileController::class, 'tinhSanLuongIOT']);
     $router->get('/thu_nghiem', [ApiMobileController::class, 'thuNghiemIOT']);
     $router->get('/chatluong', [ApiMobileController::class, 'thongsoIOT']);
+    $router->get('/test-api', [Phase2OIApiController::class, 'fetchDataFromApi']);
 });
 
 // UI-API

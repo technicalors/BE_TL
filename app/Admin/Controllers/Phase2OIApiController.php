@@ -54,6 +54,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use PhpParser\Node\Expr\Assign;
+use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Http;
 
 class Phase2OIApiController extends Controller
 {
@@ -573,6 +575,13 @@ class Phase2OIApiController extends Controller
             return $this->failure([], "Không tìm thấy lot");
         }
     }
+    public function formatTimestampWithTimezone($timestamp)
+    {
+        $timestampInSeconds = $timestamp / 1000;
+        $formattedDate = Carbon::createFromTimestamp($timestampInSeconds, 'Asia/Bangkok')
+            ->format('Y-m-d H:i:s');
+        return $formattedDate;
+    }
 
 
     //Kết thúc sản xuất lot
@@ -643,8 +652,21 @@ class Phase2OIApiController extends Controller
                         ]);
                     }
                 }
+                $counter = $this->fetchDataFromApi();
+                if ($counter[0]['value'] && $counter[0]['value'] - $tracking->output > 0) {
+                    $sl_dau_ra_hang_loat = $counter[0]['value'] - $tracking->output;
+                } else {
+                    $sl_dau_ra_hang_loat = $infoCongDoan->sl_dau_ra_hang_loat;
+                }
+                if ($counter[0]['ts']) {
+                    $thoi_gian_ket_thuc = $this->formatTimestampWithTimezone($counter[0]['ts']);
+                } else {
+                    $thoi_gian_ket_thuc = Carbon::now();
+                }
                 $infoCongDoan->update([
-                    'thoi_gian_ket_thuc' => Carbon::now(),
+                    'thoi_gian_ket_thuc' => $thoi_gian_ket_thuc,
+                    'sl_dau_ra_hang_loat' => $sl_dau_ra_hang_loat,
+                    'sl_dau_ra_ket_thuc' => $counter[0]['value'] ?? 0,
                     'status' => InfoCongDoan::STATUS_COMPLETED
                 ]);
                 $spec = Spec::where('product_id', $infoCongDoan->product_id)->where('line_id', $infoCongDoan->line_id)->where('slug', 'so-luong')->first();
@@ -922,6 +944,50 @@ class Phase2OIApiController extends Controller
         return $this->success($assignment);
     }
 
+    public function fetchDataFromApi()
+    {
+        // API endpoints
+        $loginUrl = 'http://103.77.215.18:3030/api/auth/login';
+        $dataUrl = 'http://103.77.215.18:3030/api/plugins/telemetry/DEVICE/f7f77560-45bd-11ef-b8c3-a13625245eca/values/timeseries?keys=PLC:Num_Out';
+
+        // API login credentials
+        $credentials = [
+            'username' => 'messystem@gmail.com',
+            'password' => 'mesors@2023',
+        ];
+
+        try {
+            // Step 1: Get the token
+            $client = new Client();
+            $loginResponse = $client->post($loginUrl, [
+                'json' => $credentials,
+            ]);
+
+            // Kiểm tra phản hồi và lấy token
+            $loginData = json_decode($loginResponse->getBody(), true);
+
+            if (isset($loginData['token'])) {
+                $token = $loginData['token'];
+            } else {
+                throw new \Exception('Token not found in response');
+            }
+
+            // Step 2: Use the token to get data from the second API
+            $dataResponse = $client->get($dataUrl, [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $token,
+                ],
+            ]);
+
+            // Parse the data from the response
+            $data = json_decode($dataResponse->getBody(), true);
+
+            return $data['PLC:Num_Out'];
+        } catch (\Exception $e) {
+            // Handle exceptions
+            return 'Error: ' . $e->getMessage();
+        }
+    }
     //In tem tại công đoạn Chọn
     public function printTemSelectionLine(Request $request)
     {
