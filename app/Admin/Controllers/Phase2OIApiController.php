@@ -979,6 +979,7 @@ class Phase2OIApiController extends Controller
                         $quantity += $request->sl_in_tem;
                         $data[] = $this->formatTemChon($thung, $infoCongDoan);
                     }
+                    OddBin::where('lo_sx', $infoCongDoan->lo_sx)->where('product_id', $infoCongDoan->product_id)->delete();
                     break;
                 case 2:
                     $counter = floor($sl_tong / $request->sl_in_tem);
@@ -996,18 +997,26 @@ class Phase2OIApiController extends Controller
                         $quantity += $request->sl_in_tem;
                         $data[] = $this->formatTemChon($thung, $infoCongDoan);
                     }
-                    OddBin::create([
-                        'lo_sx' => $infoCongDoan->lo_sx,
-                        'so_luong' => $sl_tong - $quantity,
-                        'product_id' => $infoCongDoan->product_id,
-                    ]);
+                    OddBin::updateOrCreate(
+                        [
+                            'lo_sx' => $infoCongDoan->lo_sx,
+                            'product_id' => $infoCongDoan->product_id,
+                        ],
+                        [
+                            'so_luong' => $sl_tong - $quantity,
+                        ]
+                    );
                     break;
                 case 3:
-                    OddBin::create([
-                        'lo_sx' => $infoCongDoan->lo_sx,
-                        'so_luong' => $sl_tong - $quantity,
-                        'product_id' => $infoCongDoan->product_id,
-                    ]);
+                    OddBin::updateOrCreate(
+                        [
+                            'lo_sx' => $infoCongDoan->lo_sx,
+                            'product_id' => $infoCongDoan->product_id,
+                        ],
+                        [
+                            'so_luong' => $sl_tong,
+                        ]
+                    );
                     break;
             }
             DB::commit();
@@ -1385,7 +1394,7 @@ class Phase2OIApiController extends Controller
                     'lot_id' => $request->lot_id,
                     'is_check' => false,
                 ];
-                $infoCongDoan->update(['sl_dau_ra_hang_loat'=>$infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_ng]);
+                $infoCongDoan->update(['sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_ng]);
                 broadcast(new QualityUpdated($qualityData));
             }
             DB::commit();
