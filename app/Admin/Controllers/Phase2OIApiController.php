@@ -699,6 +699,8 @@ class Phase2OIApiController extends Controller
                             'product_id' => $lotNext->product_id,
                             'sl_kh' => $lotNext->quantity,
                             'sl_dau_vao_hang_loat' => 0,
+                            'sl_khi_bam_may' => $counter['PLC:Num_Out'][0]['value'] ?? 0,
+                            'sl_dau_vao_bam_may' => $counter['PLC:Num_Input'][0]['value'] ?? 0,
                             'thoi_gian_bat_dau' => $thoi_gian_ket_thuc,
                             'thoi_gian_bam_may' => $thoi_gian_ket_thuc,
                             'user_id' => $request->user()->id,
