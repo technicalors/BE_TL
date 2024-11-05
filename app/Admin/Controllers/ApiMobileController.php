@@ -3355,9 +3355,9 @@ class ApiMobileController extends AdminController
         $data->ma_thung = $input['lot_id'];
         $product = Product::find($lot->product_id);
         $cell_check = Cell::where('product_id', $product->id)->count();
-        $number_of_bin = 5;
+        $number_of_bin = 30;
         if ($product->chieu_rong_thung >= 340) {
-            $number_of_bin = 4;
+            $number_of_bin = 29;
         }
         if ($cell_check === 0) {
             $cell = Cell::where('number_of_bin', 0)->whereNull('product_id')->orderBy('name', 'ASC')->first();

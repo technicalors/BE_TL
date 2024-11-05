@@ -54,6 +54,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use PhpParser\Node\Expr\Assign;
+use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Http;
 
 class Phase2OIApiController extends Controller
 {
@@ -218,6 +220,7 @@ class Phase2OIApiController extends Controller
             $infoCongDoan = $item->infoCongDoan;
             $data =  [
                 "lo_sx" => $item->lo_sx,
+                "input_lot_id" => $infoCongDoan->input_lot_id ?? '',
                 "lot_id" => $item->lot_id,
                 "ma_hang" => $item->product->id ?? '',
                 "ten_sp" => $item->product->name ?? '',
@@ -572,6 +575,13 @@ class Phase2OIApiController extends Controller
             return $this->failure([], "Không tìm thấy lot");
         }
     }
+    public function formatTimestampWithTimezone($timestamp)
+    {
+        $timestampInSeconds = $timestamp / 1000;
+        $formattedDate = Carbon::createFromTimestamp($timestampInSeconds, 'Asia/Bangkok')
+            ->format('Y-m-d H:i:s');
+        return $formattedDate;
+    }
 
 
     //Kết thúc sản xuất lot
@@ -642,34 +652,68 @@ class Phase2OIApiController extends Controller
                         ]);
                     }
                 }
-                $infoCongDoan->update([
-                    'thoi_gian_ket_thuc' => Carbon::now(),
-                    'status' => InfoCongDoan::STATUS_COMPLETED
-                ]);
+                $counter = $this->fetchDataFromApi($machine->device_id);
+                if ($machine->is_iot == 1 && $counter['PLC:Num_Out'][0]['value'] && $counter['PLC:Num_Out'][0]['value'] - $tracking->output > 0) {
+                    $sl_dau_ra_hang_loat = ($counter['PLC:Num_Out'][0]['value'] - $tracking->output) * ($infoCongDoan->product->so_bat ?? 1);
+                } else {
+                    $sl_dau_ra_hang_loat = $infoCongDoan->sl_dau_ra_hang_loat;
+                }
+                if ($machine->is_iot == 1 && $counter['PLC:Num_Out'][0]['ts'] && $machine->is_iot == 1) {
+                    $thoi_gian_ket_thuc = $this->formatTimestampWithTimezone($counter['PLC:Num_Out'][0]['ts']);
+                } else {
+                    $thoi_gian_ket_thuc = Carbon::now();
+                }
+                if ($machine->is_iot == 1) {
+                    $infoCongDoan->update([
+                        'thoi_gian_ket_thuc' => $thoi_gian_ket_thuc,
+                        'sl_dau_ra_hang_loat' => $sl_dau_ra_hang_loat,
+                        'sl_dau_ra_ket_thuc' => $counter['PLC:Num_Out'][0]['value'] ?? 0,
+                        'sl_dau_vao_ket_thuc' => $counter['PLC:Num_Input'][0]['value'] ?? 0,
+                        'status' => InfoCongDoan::STATUS_COMPLETED
+                    ]);
+                } else {
+                    $infoCongDoan->update([
+                        'thoi_gian_ket_thuc' => $thoi_gian_ket_thuc,
+                        'sl_dau_ra_hang_loat' => $sl_dau_ra_hang_loat,
+                        'status' => InfoCongDoan::STATUS_COMPLETED
+                    ]);
+                }
                 $spec = Spec::where('product_id', $infoCongDoan->product_id)->where('line_id', $infoCongDoan->line_id)->where('slug', 'so-luong')->first();
-
-                if ($spec && $line->id == 24 && $infoCongDoan->sl_dau_ra_hang_loat >= $spec->value) {
+                $count_info = InfoCongDoan::where('input_lot_id', $infoCongDoan->input_lot_id)->where('machine_code', $infoCongDoan->machine_code)->count();
+                if ($spec && $line->id == 24 && $infoCongDoan->sl_dau_ra_hang_loat >= $spec->value && $count_info == 1 && $machine->is_iot == 1) {
                     $lotCurrent = LotPlan::where('line_id', $infoCongDoan->line_id)->where('machine_code', $infoCongDoan->machine_code)->where('lot_id', $infoCongDoan->lot_id)->first();
                     $lotNext = LotPlan::where('line_id', $infoCongDoan->line_id)->where('machine_code', $infoCongDoan->machine_code)->where('id', '>', $lotCurrent->id)->orderBy('id', 'ASC')->first();
-                    $tracking = Tracking::where('machine_id', $infoCongDoan->machine_code)->first();
-                    $tracking->input = $tracking->input + ($infoCongDoan->sl_dau_vao_hang_loat / ($infoCongDoan->product->so_bat ?? 1));
-                    $tracking->output = $tracking->output + ($infoCongDoan->sl_dau_ra_hang_loat / ($infoCongDoan->product->so_bat ?? 1));
-                    $tracking->lot_id = $lotNext->lot_id;
-                    $tracking->save();
-                    InfoCongDoan::create([
-                        'lot_plan_id' => $lotNext->id,
-                        'lot_id' => $lotNext->lot_id,
-                        'lo_sx' => $lotNext->lo_sx,
-                        'line_id' => $lotNext->line_id,
-                        'machine_code' => $lotNext->machine_code,
-                        'product_id' => $lotNext->product_id,
-                        'sl_kh' => $lotNext->quantity,
-                        'sl_dau_vao_hang_loat' => 0,
-                        'thoi_gian_bat_dau' => Carbon::now(),
-                        'thoi_gian_bam_may' => Carbon::now(),
-                        'user_id' => $request->user()->id,
-                        'status' => InfoCongDoan::STATUS_INPROGRESS
-                    ]);
+                    if ($lotNext) {
+                        $tracking = Tracking::where('machine_id', $infoCongDoan->machine_code)->first();
+                        $tracking->input = $counter['PLC:Num_Input'][0]['value'] ?? 0;
+                        $tracking->output = $counter['PLC:Num_Out'][0]['value'] ?? 0;
+                        $tracking->lot_id = $lotNext->lot_id;
+                        $tracking->save();
+                        InfoCongDoan::create([
+                            'input_lot_id' => $infoCongDoan->input_lot_id,
+                            'lot_plan_id' => $lotNext->id,
+                            'lot_id' => $lotNext->lot_id,
+                            'lo_sx' => $lotNext->lo_sx,
+                            'line_id' => $lotNext->line_id,
+                            'machine_code' => $lotNext->machine_code,
+                            'product_id' => $lotNext->product_id,
+                            'sl_kh' => $lotNext->quantity,
+                            'sl_dau_vao_hang_loat' => 0,
+                            'thoi_gian_bat_dau' => $thoi_gian_ket_thuc,
+                            'thoi_gian_bam_may' => $thoi_gian_ket_thuc,
+                            'user_id' => $request->user()->id,
+                            'status' => InfoCongDoan::STATUS_INPROGRESS
+                        ]);
+                    } else {
+                        if (isset($machine) && isset($tracking)) {
+                            MachineStatus::deactive($machine->code);
+                            $tracking->update([
+                                'lot_id' => null,
+                                'input' => 0,
+                                'output' => 0
+                            ]);
+                        }
+                    }
                 } else {
                     if (isset($machine) && isset($tracking)) {
                         MachineStatus::deactive($machine->code);
@@ -692,7 +736,7 @@ class Phase2OIApiController extends Controller
                 return $this->success($this->formatTemTrang($infoCongDoan, $request), "Kết thúc sản xuất thành công");
             } catch (\Throwable $th) {
                 DB::rollBack();
-                return $this->failure($th, "Lỗi kết thúc sản xuất");
+                return $this->failure($th, "Lỗi kết thúc sản xuất" . $th->getMessage());
             }
         } else {
             return $this->failure([], "Không tìm thấy lot");
@@ -920,6 +964,50 @@ class Phase2OIApiController extends Controller
         return $this->success($assignment);
     }
 
+    public function fetchDataFromApi($deviceID)
+    {
+        // API endpoints
+        $loginUrl = 'http://103.77.215.18:3030/api/auth/login';
+        $dataUrl = 'http://103.77.215.18:3030/api/plugins/telemetry/DEVICE/' . $deviceID . '/values/timeseries?keys=PLC:Num_Out,PLC:Num_Input';
+
+        // API login credentials
+        $credentials = [
+            'username' => 'messystem@gmail.com',
+            'password' => 'mesors@2023',
+        ];
+
+        try {
+            // Step 1: Get the token
+            $client = new Client();
+            $loginResponse = $client->post($loginUrl, [
+                'json' => $credentials,
+            ]);
+
+            // Kiểm tra phản hồi và lấy token
+            $loginData = json_decode($loginResponse->getBody(), true);
+
+            if (isset($loginData['token'])) {
+                $token = $loginData['token'];
+            } else {
+                throw new \Exception('Token not found in response');
+            }
+
+            // Step 2: Use the token to get data from the second API
+            $dataResponse = $client->get($dataUrl, [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $token,
+                ],
+            ]);
+
+            // Parse the data from the response
+            $data = json_decode($dataResponse->getBody(), true);
+
+            return $data;
+        } catch (\Exception $e) {
+            // Handle exceptions
+            return 'Error: ' . $e->getMessage();
+        }
+    }
     //In tem tại công đoạn Chọn
     public function printTemSelectionLine(Request $request)
     {
@@ -979,6 +1067,7 @@ class Phase2OIApiController extends Controller
                         $quantity += $request->sl_in_tem;
                         $data[] = $this->formatTemChon($thung, $infoCongDoan);
                     }
+                    OddBin::where('lo_sx', $infoCongDoan->lo_sx)->where('product_id', $infoCongDoan->product_id)->delete();
                     break;
                 case 2:
                     $counter = floor($sl_tong / $request->sl_in_tem);
@@ -996,18 +1085,26 @@ class Phase2OIApiController extends Controller
                         $quantity += $request->sl_in_tem;
                         $data[] = $this->formatTemChon($thung, $infoCongDoan);
                     }
-                    OddBin::create([
-                        'lo_sx' => $infoCongDoan->lo_sx,
-                        'so_luong' => $sl_tong - $quantity,
-                        'product_id' => $infoCongDoan->product_id,
-                    ]);
+                    OddBin::updateOrCreate(
+                        [
+                            'lo_sx' => $infoCongDoan->lo_sx,
+                            'product_id' => $infoCongDoan->product_id,
+                        ],
+                        [
+                            'so_luong' => $sl_tong - $quantity,
+                        ]
+                    );
                     break;
                 case 3:
-                    OddBin::create([
-                        'lo_sx' => $infoCongDoan->lo_sx,
-                        'so_luong' => $sl_tong - $quantity,
-                        'product_id' => $infoCongDoan->product_id,
-                    ]);
+                    OddBin::updateOrCreate(
+                        [
+                            'lo_sx' => $infoCongDoan->lo_sx,
+                            'product_id' => $infoCongDoan->product_id,
+                        ],
+                        [
+                            'so_luong' => $sl_tong,
+                        ]
+                    );
                     break;
             }
             DB::commit();
@@ -1385,7 +1482,7 @@ class Phase2OIApiController extends Controller
                     'lot_id' => $request->lot_id,
                     'is_check' => false,
                 ];
-                $infoCongDoan->update(['sl_dau_ra_hang_loat'=>$infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_ng]);
+                $infoCongDoan->update(['sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_ng]);
                 broadcast(new QualityUpdated($qualityData));
             }
             DB::commit();
@@ -1656,7 +1753,7 @@ class Phase2OIApiController extends Controller
         if ($check_lot) {
             return $this->failure([], "Mã thùng đã có trong kho");
         }
-        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->whereDate('created_at', date('Y-m-d'))->where('line_id', 30)->first();
+        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', 30)->first();
         if (!$infoCongDoan) {
             return $this->failure('', 'Chưa qua OQC');
         }
@@ -1672,9 +1769,9 @@ class Phase2OIApiController extends Controller
         $data->ma_thung = $input['lot_id'];
 
         $cell_check = Cell::where('product_id', $product->id)->count();
-        $number_of_bin = 5;
+        $number_of_bin = 30;
         if ($product->chieu_rong_thung >= 340) {
-            $number_of_bin = 4;
+            $number_of_bin = 29;
         }
         if ($cell_check === 0) {
             $cell = Cell::where('number_of_bin', 0)->whereNull('product_id')->orderBy('name', 'ASC')->first();

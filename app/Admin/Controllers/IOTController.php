@@ -37,37 +37,53 @@ class IOTController extends AdminController
         $info_cong_doan = InfoCongDoan::where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
         $sl_bat = $info_cong_doan->product->so_bat ?? 1;
         $tracking = Tracking::getData($machine->code);
-        $d_input = ($request->input - $tracking->input);
-        $d_output = ($request->output - $tracking->output) * $sl_bat;
-        if ($d_input < 0) $d_input = 0;
-        if ($d_output < 0) $d_output = 0;
         if ($info_cong_doan) {
             $status = MachineStatus::getStatus($machine->code);
             if ($status == 0) { //chạy thử/vào hàng
-                if (is_null($tracking->input) || $tracking->input == 0) {
-                    $tracking->update(['input' => $request->input]);
-                }
-                if (is_null($tracking->output) || $tracking->output == 0) {
-                    $tracking->update(['output' => $request->output]);
-                }
-                if ($request->input > $tracking->input) {
-                    $info_cong_doan->sl_dau_vao_chay_thu = ($request->input - $tracking->input);
-                }
-                if ($request->output > $tracking->output) {
-                    $info_cong_doan->sl_dau_ra_chay_thu = ($request->output - $tracking->output) * $sl_bat;
+                if ($machine->code == 'DC_1') {
+                    if ($request->input > $tracking->input) {
+                        $info_cong_doan->sl_dau_vao_chay_thu = $info_cong_doan->sl_dau_vao_chay_thu + ($request->input - $tracking->input);
+                    }
+                    if ($request->output > $tracking->output) {
+                        $info_cong_doan->sl_dau_ra_chay_thu = $info_cong_doan->sl_dau_ra_chay_thu + ($request->output - $tracking->output) * $sl_bat;
+                    }
+                    $tracking->update(['input' => $request->input, 'output' => $request->output]);
+                } else {
+                    if (is_null($tracking->input) || $tracking->input == 0) {
+                        $tracking->update(['input' => $request->input]);
+                    }
+                    if (is_null($tracking->output) || $tracking->output == 0) {
+                        $tracking->update(['output' => $request->output]);
+                    }
+                    if ($request->input > $tracking->input && (($request->input - $tracking->input) > $info_cong_doan->sl_dau_vao_chay_thu)) {
+                        $info_cong_doan->sl_dau_vao_chay_thu = ($request->input - $tracking->input);
+                    }
+                    if ($request->output > $tracking->output && ((($request->output - $tracking->output) * $sl_bat) > $info_cong_doan->sl_dau_ra_chay_thu)) {
+                        $info_cong_doan->sl_dau_ra_chay_thu = ($request->output - $tracking->output) * $sl_bat;
+                    }
                 }
             } else if (($status == 1 || $status == 2) && !is_null($info_cong_doan->thoi_gian_bam_may)) { // chạy hàng loạt
-                if (is_null($tracking->input) || $tracking->input == 0) {
-                    $tracking->update(['input' => $request->input]);
-                }
-                if (is_null($tracking->output) || $tracking->output == 0) {
-                    $tracking->update(['output' => $request->output]);
-                }
-                if ($request->input > $tracking->input) {
-                    $info_cong_doan->sl_dau_vao_hang_loat = ($request->input - $tracking->input);
-                }
-                if ($request->output > $tracking->output) {
-                    $info_cong_doan->sl_dau_ra_hang_loat = ($request->output - $tracking->output) * $sl_bat;
+                if ($machine->code == 'DC_1') {
+                    if ($request->input > $tracking->input) {
+                        $info_cong_doan->sl_dau_vao_hang_loat = $info_cong_doan->sl_dau_vao_hang_loat + ($request->input - $tracking->input);
+                    }
+                    if ($request->output > $tracking->output) {
+                        $info_cong_doan->sl_dau_ra_hang_loat = $info_cong_doan->sl_dau_ra_hang_loat + ($request->output - $tracking->output) * $sl_bat;
+                    }
+                    $tracking->update(['input' => $request->input, 'output' => $request->output]);
+                } else {
+                    if (is_null($tracking->input) || $tracking->input == 0) {
+                        $tracking->update(['input' => $request->input]);
+                    }
+                    if (is_null($tracking->output) || $tracking->output == 0) {
+                        $tracking->update(['output' => $request->output]);
+                    }
+                    if ($request->input > $tracking->input && (($request->input - $tracking->input) > $info_cong_doan->sl_dau_vao_hang_loat)) {
+                        $info_cong_doan->sl_dau_vao_hang_loat = ($request->input - $tracking->input);
+                    }
+                    if ($request->output > $tracking->output && ((($request->output - $tracking->output) * $sl_bat) > $info_cong_doan->sl_dau_ra_hang_loat)) {
+                        $info_cong_doan->sl_dau_ra_hang_loat = ($request->output - $tracking->output) * $sl_bat;
+                    }
                 }
             }
             $info_cong_doan->save();
@@ -170,9 +186,9 @@ class IOTController extends AdminController
         $output = $request->output;
         if ($info_cong_doan) {
             if (is_null($info_cong_doan['thoi_gian_bam_may'])) {
-                $info_cong_doan['thoi_gian_bam_may'] = date('Y-m-d H:i:s');
-                $sl_bat = $info_cong_doan->product->so_bat ?? 1;
-                $info_cong_doan['sl_khi_bam_may'] = $request->output ?? 0;
+                $info_cong_doan['thoi_gian_bam_may'] = $request->timestamps;
+                $info_cong_doan['sl_khi_bam_may'] = $output ?? 0;
+                $info_cong_doan['sl_dau_vao_bam_may'] = $input ?? 0;
                 $info_cong_doan->save();
                 $tracking->update(['input' => $input, 'output' => $output]);
             }
