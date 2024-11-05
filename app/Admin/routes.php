@@ -464,11 +464,11 @@ Route::group([
     $router->post('errors/import', [App\Admin\Controllers\ErrorController::class, 'importErrors']);
 
     $router->get('test_criteria/list', [App\Admin\Controllers\TestCriteriaController::class, 'getTestCriteria']);
-    $router->patch('test_criteria/update', [App\Admin\Controllers\TestCriteriaController::class, 'updateTestCriteria']);
+    $router->patch('test_criteria/update/{id}', [App\Admin\Controllers\TestCriteriaController::class, 'updateTestCriteria']);
     $router->post('test_criteria/create', [App\Admin\Controllers\TestCriteriaController::class, 'createTestCriteria']);
     $router->post('test_criteria/delete', [App\Admin\Controllers\TestCriteriaController::class, 'deleteTestCriteria']);
     $router->get('test_criteria/export', [App\Admin\Controllers\TestCriteriaController::class, 'exportTestCriteria']);
-    $router->post('test_criteria/import', [App\Admin\Controllers\TestCriteriaController::class, 'importTestCriteria']);
+    $router->post('test_criteria/import', [App\Admin\Controllers\TestCriteriaController::class, 'import']);
 
     $router->get('cong-doan/list', [App\Admin\Controllers\LineController::class, 'getLine']);
     $router->patch('cong-doan/update', [App\Admin\Controllers\LineController::class, 'updateLine']);

@@ -1272,7 +1272,7 @@ class Phase2OIApiController extends Controller
                 ->first();
         }
         if (!$infoCongDoan) {
-            return $this->failure([], "Không tìm lot");
+            return $this->failure([], "Không tìm thấy lot");
         }
         $qcHistory = QCHistory::firstOrCreate(
             [
@@ -1352,7 +1352,7 @@ class Phase2OIApiController extends Controller
         }
 
         $product = $infoCongDoan->product;
-        $list = TestCriteria::where('line_id', $line->id)->whereRaw("NOT hang_muc <= ''")->where('is_show', 1)->get()->groupBy('chi_tieu');
+        $list = $line->testCriteria()->get()->groupBy('chi_tieu');
         $reference = array_merge($list->pluck('reference')->toArray(), [$line->id]);
         $specs = Spec::whereIn("line_id", $reference)->whereNotNull('slug')->whereNotNull('name')->where("product_id", $product->id ?? "")->whereNotNull('value')->get();
         $data = [];
@@ -1424,7 +1424,7 @@ class Phase2OIApiController extends Controller
                 ->first();
         }
         if (!$infoCongDoan) {
-            return $this->failure([], "Không tìm lot");
+            return $this->failure([], "Không tìm thấy lot");
         }
         $qc_history = QCHistory::firstOrCreate(
             [
