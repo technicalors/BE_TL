@@ -1387,12 +1387,9 @@ class Phase2OIApiController extends Controller
         $hang_muc = Str::slug($test->hang_muc);
         $spec = null;
         if (count($specs) > 0) {
-            $spec = $specs->toQuery()->where("slug", 'like', "%$hang_muc%")->first();
+            $spec = $specs->toQuery()->where("slug", 'like', "%$hang_muc%")->where('value', 'like', "%$find%")->first();
         }
-        if(!$spec || trim($spec->value) === 'N/A'){
-            return null;
-        }
-        if (str_contains($spec->value, $find)) {
+        if ($spec) {
             $filtered_value = preg_replace('/-\D+/', '', $spec->value);
             $arr = explode($find, $filtered_value);
             $test["input"] = true;
@@ -1400,9 +1397,8 @@ class Phase2OIApiController extends Controller
             $test["delta"] =  filter_var($arr[1], FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
             $test['note'] = $spec->value;
             return $test;
-        }else{
-            $test['input'] = false;
         }
+        $test['input'] = false;
         return $test;
     }
 
