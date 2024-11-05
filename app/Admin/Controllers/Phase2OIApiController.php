@@ -1354,7 +1354,7 @@ class Phase2OIApiController extends Controller
 
         $product = $infoCongDoan->product;
         $list = $line->testCriteria()->get()->groupBy('chi_tieu');
-        $reference = array_merge($list->pluck('reference')->toArray(), [$line->id]);
+        $reference = array_merge([], [$line->id]);
         $specs = Spec::whereIn("line_id", $reference)->whereNotNull('slug')->whereNotNull('name')->where("product_id", $product->id ?? "")->whereNotNull('value')->get();
         $data = [];
         foreach ($list as $key => $test_criteria) {
@@ -1387,9 +1387,12 @@ class Phase2OIApiController extends Controller
         $hang_muc = Str::slug($test->hang_muc);
         $spec = null;
         if (count($specs) > 0) {
-            $spec = $specs->toQuery()->where("slug", 'like', "%$hang_muc%")->where('value', 'like', "%$find%")->first();
+            $spec = $specs->toQuery()->where("slug", 'like', "%$hang_muc%")->first();
         }
-        if ($spec) {
+        if(!$spec || trim($spec->value) === 'N/A'){
+            return null;
+        }
+        if (str_contains($spec->value, $find)) {
             $filtered_value = preg_replace('/-\D+/', '', $spec->value);
             $arr = explode($find, $filtered_value);
             $test["input"] = true;
@@ -1397,8 +1400,9 @@ class Phase2OIApiController extends Controller
             $test["delta"] =  filter_var($arr[1], FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
             $test['note'] = $spec->value;
             return $test;
+        }else{
+            $test['input'] = false;
         }
-        $test['input'] = false;
         return $test;
     }
 
@@ -1472,21 +1476,35 @@ class Phase2OIApiController extends Controller
                     ]
                 );
             }
-            $criteria_key = [];
-            $criteria = TestCriteria::where('line_id', $line->id)->whereRaw("NOT hang_muc <= ''")->where('is_show', 1)->get()->groupBy('chi_tieu');
-            foreach ($criteria as $key => $value) {
-                $criteria_key[] = Str::slug($key);
-            }
-            $testCriteriaHistories = TestCriteriaHistory::where('q_c_history_id', $qc_history->id)->whereIn('type', $criteria_key)->where('result', 'OK')->get();
-            if (count($testCriteriaHistories) >= count($criteria_key)) {
-                $qc_history->update(['eligible_to_end' => QCHistory::READY_TO_END]);
-                $qualityData = [
-                    'machine_code' => $request->machine_code,
-                    'lot_id' => $request->lot_id,
-                    'is_check' => false,
-                ];
-                $infoCongDoan->update(['sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_ng]);
-                broadcast(new QualityUpdated($qualityData));
+            if($request->result === 'OK'){
+                $specs = Spec::whereIn("line_id", [$line->id])->whereNotNull('slug')->whereNotNull('name')->where("product_id", $infoCongDoan->product_id ?? "")->whereNotNull('value')->get();
+                $criteria = $line->testCriteria()->get()->groupBy('chi_tieu');
+                // return $specs;
+                $number_of_criteria_type = [];
+                foreach ($criteria as $key => $rows) {
+                    $slug = Str::slug($key);
+                    $data = [];
+                    foreach($rows as $value){
+                        $parsedCriteria = $this->findSpec($value, $specs);
+                        if ($parsedCriteria) $data[] = $parsedCriteria;
+                    }
+                    if(count($data) > 0){
+                        $number_of_criteria_type[$slug] = 1;
+                    }else{
+                        unset($number_of_criteria_type[$slug]);
+                    }
+                }
+                $testCriteriaHistories = TestCriteriaHistory::where('q_c_history_id', $qc_history->id)->where('result', 'OK')->get();
+                if (count($testCriteriaHistories) >= count(array_values($number_of_criteria_type))) {
+                    $qc_history->update(['eligible_to_end' => QCHistory::READY_TO_END]);
+                    $qualityData = [
+                        'machine_code' => $request->machine_code,
+                        'lot_id' => $request->lot_id,
+                        'is_check' => false,
+                    ];
+                    $infoCongDoan->update(['sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_ng]);
+                    broadcast(new QualityUpdated($qualityData));
+                }
             }
             DB::commit();
         } catch (\Throwable $th) {
