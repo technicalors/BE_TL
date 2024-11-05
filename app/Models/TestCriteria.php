@@ -24,23 +24,28 @@ class TestCriteria extends Model
         return $this->hasOne(Line::class, 'id', 'reference');
     }
 
-    static function validateUpdate($input, $is_update = true)
+    static function validateUpdate($input, $id = null)
     {
         $validated = Validator::make(
             $input,
             [
-                'id' => 'required',
-                'line_id' => 'required',
+                'id' => 'required:unique:test_criterias,id'.($id ? ','.$id : ""),
+                // 'line_id' => 'required',
                 'chi_tieu'=>'required', 
                 'hang_muc'=>'required',
             ],
             [
                 'id.required'=>'Không có mã chỉ tiêu',
-                'line_id.required'=>'Không tìm thấy công đoạn',
-                'chi_tieu.required'=>'Không có chỉ tiêu',
+                'id.unique' => 'Mã chỉ tiêu đã tồn tại',
+                // 'line_id.required'=>'Không tìm thấy công đoạn',
+                // 'chi_tieu.required'=>'Không có chỉ tiêu',
                 'hang_muc.required'=>'Không có hang mục', 
             ]
         );
         return $validated;
+    }
+    public function lines()
+    {
+        return $this->belongsToMany(Line::class, 'test_criteria_line', 'test_criteria_id', 'line_id');
     }
 }

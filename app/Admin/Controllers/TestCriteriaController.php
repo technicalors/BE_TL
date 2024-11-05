@@ -117,41 +117,40 @@ class TestCriteriaController extends AdminController
 
         $query = TestCriteria::with('line', 'ref_line')->orderBy('chi_tieu');
         if (isset($request->line)) {
-            $query->where('line_id', isset($line_arr[Str::slug($request->line)]) ? $line_arr[Str::slug($request->line)] : '');
+            $line = Line::where('name', 'like', "%$request->line%")->pluck('id')->toArray();
+            $query->whereHas('lines', function ($query) use ($line) {
+                $query->whereIn('line_id', $line);
+            });
         }
         if (isset($request->hang_muc)) {
             $query->where('hang_muc', 'like', "%$request->hang_muc%");
         }
-        $list = $query->orderBy('id')->where('is_show', 1)->get();
-        $test_criterias = [];
-        foreach ($list as $key => $test_criteria) {
-            if (str_replace(' ', '', $test_criteria->hang_muc) === "") {
-                continue;
-            }
-            $test_criterias[] = $test_criteria;
+        if (isset($request->chi_tieu)) {
+            $query->where('chi_tieu', 'like', "%$request->chi_tieu%");
         }
-        return $this->success($test_criterias);
+        $total = $query->count();
+        if (isset($request->page) && isset($request->pageSize)) {
+            $page = $request->page - 1;
+            $pageSize = $request->pageSize;
+            $query->offset($page * $pageSize)->limit($pageSize);
+        }
+        $test_criterias = $query->with('lines')->get()->sortBy('id', SORT_NATURAL)->values();
+        return $this->success(['data' => $test_criterias, 'total' => $total]);
     }
-    public function updateTestCriteria(Request $request)
+    public function updateTestCriteria(Request $request, $id)
     {
-        $line_arr = [];
-        $lines = Line::all();
-        foreach ($lines as $line) {
-            $line_arr[Str::slug($line->name)] = $line->id;
-        }
-
         $input = $request->all();
-        if (isset($line_arr[Str::slug($input['line'])])) {
-            $input['line_id'] = $line_arr[Str::slug($input['line'])];
+        if (!isset($input['line'])) {
+            return $this->failure('', 'Không tìm thấy công đoạn');
         }
         if (isset($line_arr[Str::slug($input['reference'])])) {
             $input['reference'] = $line_arr[Str::slug($input['reference'])];
         }
-        $validated = TestCriteria::validateUpdate($input);
+        $validated = TestCriteria::validateUpdate($input, $id);
         if ($validated->fails()) {
             return $this->failure('', $validated->errors()->first());
         }
-        $test_criteria = TestCriteria::where('id', $input['id'])->first();
+        $test_criteria = TestCriteria::where('id', $id)->first();
         if ($test_criteria) {
             $update = $test_criteria->update($input);
             return $this->success($test_criteria);
@@ -369,7 +368,7 @@ class TestCriteriaController extends AdminController
 
     public function import(Request $request)
     {
-        $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
+        $extension = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
         if ($extension == 'csv') {
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
         } elseif ($extension == 'xlsx') {
@@ -378,7 +377,7 @@ class TestCriteriaController extends AdminController
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
         }
         // file path
-        $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
+        $spreadsheet = $reader->load($_FILES['file']['tmp_name']);
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
         $data = [];
         $line_arr = [];
@@ -387,9 +386,6 @@ class TestCriteriaController extends AdminController
             $line_arr[Str::slug($line->name)] = $line->id;
         }
         $id_arr = [];
-        $last_criteria = TestCriteria::orderByRaw('CHAR_LENGTH(id) DESC')->orderBy('id', 'DESC')->first();
-        $index = ((int) filter_var($last_criteria->id ?? "", FILTER_SANITIZE_NUMBER_INT) ?? 0) + 1;
-        $i = 0;
         $lines = [];
         foreach ($allDataInSheet as $key => $row) {
             //Lấy dứ liệu từ dòng thứ 3
@@ -405,28 +401,35 @@ class TestCriteriaController extends AdminController
                     $value = explode('+', $row['B']);
                     $lines = Line::whereIn('name', array_map('trim', $value))->pluck('id')->toArray();
                 }
-                if(count($lines) <= 0){
+                if (count($lines) <= 0) {
+                    return $value;
                     return 'Không tìm thấy công đoạn';
                 }
+                $input['line_ids'] = $lines;
                 $input['hang_muc'] = str_replace(array("\n", "\r\n", "\r"), ' ', $row['C']);
                 $input['chi_tieu'] = $row['D'];
                 $input['tieu_chuan'] = $row['F'];
                 $input['phan_dinh'] = $row['H'];
-                $input['reference'] = isset($line_arr[Str::slug($row['I'])]) ? $line_arr[Str::slug($row['I'])] : '';
-                $validated = TestCriteria::validateUpdate($input);
-                if ($validated->fails()) {
-                    return $this->failure('', 'Lỗi dòng thứ ' . ($key) . ': ' . $validated->errors()->first());
+                if (!empty($row['I'])) {
+                    $value = explode('+', $row['I']);
+                    $line = Line::whereIn('name', array_map('trim', $value))->first();
+                    $input['reference'] = $line->id ?? null;
                 }
+                // $validated = TestCriteria::validateUpdate($input);
+                // if ($validated->fails()) {
+                //     return $this->failure('', 'Lỗi dòng thứ ' . ($key) . ': ' . $validated->errors()->first());
+                // }
                 $input['is_show'] = 1;
                 $data[] = $input;
-                $i++;
             }
         }
         try {
             DB::beginTransaction();
-            TestCriteria::query()->update(['is_show' => 0]);
+            TestCriteria::query()->delete();
+            DB::table('test_criteria_line')->delete();
             foreach ($data as $key => $input) {
-                $test_criteria = TestCriteria::updateOrCreate(['id' => $input['id']], $input);
+                $test_criteria = TestCriteria::create($input);
+                $test_criteria->lines()->attach($input['line_ids'] ?? []);
             }
             DB::commit();
         } catch (\Exception $e) {

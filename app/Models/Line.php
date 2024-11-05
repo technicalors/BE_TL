@@ -48,4 +48,8 @@ class Line extends Model
     {
         return $this->belongsTo(Factory::class);
     }
+    public function testCriteria()
+    {
+        return $this->belongsToMany(TestCriteria::class, 'test_criteria_line', 'line_id', 'test_criteria_id');
+    }
 }
