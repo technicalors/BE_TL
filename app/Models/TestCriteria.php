@@ -12,7 +12,7 @@ class TestCriteria extends Model
     use HasFactory;
 
     public $incrementing = false;
-    protected $fillable = ['id', 'hang_muc', 'line_id', 'chi_tieu', 'tieu_chuan', 'phan_dinh', 'reference', 'is_show'];
+    protected $fillable = ['id', 'hang_muc', 'line_id', 'chi_tieu', 'tieu_chuan', 'phan_dinh', 'reference', 'is_show', 'frequency'];
     protected $hidden = ['created_at', 'updated_at'];
     public function line()
     {

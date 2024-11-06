@@ -2,6 +2,7 @@
 
 namespace App\Admin\Controllers;
 
+use App\Helpers\ExcelStyleHelper;
 use App\Helpers\QueryHelper;
 use App\Http\Controllers\Controller;
 use App\Imports\InfoCongDoanImport;
@@ -42,6 +43,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use stdClass;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use PhpOffice\PhpPresentation\Style\Fill;
 
 class Phase2UIApiController extends Controller
 {
@@ -495,6 +497,7 @@ class Phase2UIApiController extends Controller
     {
         $record = [];
         $shifts = Shift::all();
+        $index = 0;
         foreach ($qc_histories as $key => $qc_history) {
             if (!$qc_history->infoCongDoan) {
                 continue;
@@ -519,14 +522,14 @@ class Phase2UIApiController extends Controller
                 }
             }
             $item = [
-                'lot_id' => $qc_history->lot_id,
+                'stt' => $index + 1,
                 'thoi_gian_kiem_tra' => Carbon::parse($qc_history->created_at)->format('d/m/Y H:i:s'),
                 'ca_sx' => $ca_sx,
                 'xuong' => $qc_history->line->factory->name ?? "Giấy",
                 'cong_doan' => $qc_history->infoCongDoan->line->name ?? '',
                 'machine' => $qc_history->infoCongDoan->machine->name ?? '',
                 'machine_id' => $qc_history->infoCongDoan->machine_code ?? '',
-                'khach_hang' => $qc_history->infoCongDoan->plan->khach_hang ?? "",
+                'khach_hang' => $qc_history->infoCongDoan->product->customer->name ?? "",
                 'product_id' => $qc_history->infoCongDoan->product_id ?? '',
                 'ten_san_pham' => $qc_history->infoCongDoan->product->name ?? "",
                 'lo_sx' => $qc_history->infoCongDoan->lo_sx,
@@ -535,12 +538,13 @@ class Phase2UIApiController extends Controller
                 'sl_dau_ra_ok' => ($qc_history->infoCongDoan->sl_dau_ra_hang_loat ?? 0) - ($qc_history->infoCongDoan->sl_tem_vang ?? 0) - ($qc_history->infoCongDoan->sl_ng ?? 0),
                 'sl_tem_vang' => $qc_history->infoCongDoan->sl_tem_vang ?? 0,
                 'sl_ng_sxkt' => $sl_ng_sx,
-                'sl_ng_pqc' => $sl_ng_qc,
                 'user_sxkt' => $user_sx->name ?? "",
+                'sl_ng_pqc' => $sl_ng_qc,
                 'user_pqc' => $user_qc->name ?? "",
                 'sl_ng' => $qc_history->infoCongDoan->sl_ng ?? 0,
                 'ti_le_ng' => (isset($qc_history->infoCongDoan->sl_dau_ra_hang_loat) && $qc_history->infoCongDoan->sl_dau_ra_hang_loat > 0) ? number_format(($qc_history->infoCongDoan->sl_ng / $qc_history->infoCongDoan->sl_dau_ra_hang_loat) * 100) . "%" : "0%",
             ];
+            $index++;
             $record[] = $item;
         }
         return $record;
@@ -559,6 +563,20 @@ class Phase2UIApiController extends Controller
             "data" => $data,
             "totalPage" => $totalPage,
         ]);
+    }
+
+    public function getQualityDataChart(Request $request)
+    {
+        $query = $this->pqcHistoryQuery($request);
+        $qcHistories = $query->get();
+        $data = new stdClass;
+        $errorTrending = $this->parseErrorTrendingData($qcHistories);
+        $materialErrorRatio = $this->parseMaterialErrorRatioData($qcHistories);
+        $errorRatio = $this->parseErrorRatioData($qcHistories);
+        $data->errorTrending = array_values($errorTrending);
+        $data->materialErrorRatioData = array_values($materialErrorRatio);
+        $data->errorRatioData = array_values($errorRatio);
+        return $this->success($data);
     }
 
     public function parseErrorTrendingData($qcHistories)
@@ -629,19 +647,487 @@ class Phase2UIApiController extends Controller
         return $data;
     }
 
-    public function getQualityDataChart(Request $request)
+    public function exportQualityDataTable(Request $request)
     {
         $query = $this->pqcHistoryQuery($request);
+        $records = $query->get();
+        $data = $this->parseQCData($records);
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $start_row = 2;
+        $start_col = 1;
+        $titleStyle = array_merge(ExcelStyleHelper::alignment(), ExcelStyleHelper::bold(true, 16));
+        $headerStyle = array_merge(ExcelStyleHelper::alignment(), ExcelStyleHelper::bold(), ExcelStyleHelper::fill());
+        $border = ExcelStyleHelper::borders();
+        $header = [
+            'STT',
+            'Ngày PQC kiểm tra',
+            "Ca sản xuất",
+            "Xưởng",
+            "Công đoạn",
+            "Máy sản xuất",
+            "Mã máy",
+            "Khách hàng",
+            "Mã hàng",
+            'Tên sản phẩm',
+            'Lô sản xuất',
+            'Mã pallet/thùng',
+            "SL đầu ra sản xuất",
+            "SL đầu ra OK",
+            'SL tem vàng',
+            "SL NG (SX tự KT)",
+            'SX kiểm tra',
+            "SL NG (PQC)",
+            'QC kiểm tra',
+            "SL NG",
+            "Tỉ lệ NG"
+        ];
+        foreach ($header as $key => $cell) {
+            $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row])->getStyle([$start_col, $start_row, $start_col, $start_row])->applyFromArray($headerStyle);
+            $start_col += 1;
+        }
+        $sheet->setCellValue([1, 1], 'UI Truy vấn chất lượng PQC (Bảng chi tiết trang chính)')->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
+        $sheet->getRowDimension(1)->setRowHeight(40);
+        $table_col = 1;
+        $table_row = count($data) + 2;
+        $sheet->fromArray((array)$data, NULL, 'A3', true);
+        // $sheet->getStyle([1, 5, 30, count($data) + 4])->applyFromArray($centerStyle);
+        foreach ($sheet->getColumnIterator() as $column) {
+            $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+            $sheet->getStyle($column->getColumnIndex() . 1 . ':' . $column->getColumnIndex() . ($table_row))->applyFromArray(array_merge(ExcelStyleHelper::alignment(), $border));
+        }
+        header("Content-Description: File Transfer");
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="PQC.xlsx"');
+        header('Cache-Control: max-age=0');
+        header("Content-Transfer-Encoding: binary");
+        header('Expires: 0');
+        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('exported_files/PQC.xlsx');
+        $href = '/exported_files/PQC.xlsx';
+        return $this->success($href);
+    }
+
+    public function exportReportQC(Request $request)
+    {
+        $input = $request->all();
+        $sheet_array = [];
+        foreach ($input as $key => $value) {
+            switch ($key) {
+                case 'week':
+                    $sheet_array[$key]['datetime'] = date("W", strtotime($value));
+                    $sheet_array[$key]['title'] = 'tuần';
+                    $sheet_array[$key]['start_date'] = date("Y-m-d", strtotime($value . ' monday this week'));
+                    $sheet_array[$key]['end_date'] = date("Y-m-d", strtotime($value . ' sunday this week'));
+                    break;
+                case 'month':
+                    $sheet_array[$key]['datetime'] = date("m", strtotime($value));
+                    $sheet_array[$key]['title'] = 'tháng';
+                    $sheet_array[$key]['start_date'] = date("Y-m-01", strtotime($value));
+                    $sheet_array[$key]['end_date'] = date("Y-m-t", strtotime($value));
+                    break;
+                case 'year':
+                    $sheet_array[$key]['datetime'] = date("Y", strtotime($value));
+                    $sheet_array[$key]['title'] = 'năm';
+                    $sheet_array[$key]['start_date'] = date("Y-01-01", strtotime($value));
+                    $sheet_array[$key]['end_date'] = date("Y-12-31", strtotime($value));
+                    break;
+                default:
+                    $sheet_array[$key]['datetime'] = date("d-m-Y", strtotime($value));
+                    $sheet_array[$key]['title'] = 'ngày';
+                    $sheet_array[$key]['start_date'] = date("Y-m-d", strtotime($value));
+                    $sheet_array[$key]['end_date'] = date("Y-m-d", strtotime($value));
+                    break;
+            }
+            $query = InfoCongDoan::orderBy('created_at');
+            if (isset($sheet_array[$key]['start_date']) && isset($sheet_array[$key]['end_date'])) {
+                $query->whereDate('created_at', '>=', $sheet_array[$key]['start_date'])
+                    ->whereDate('created_at', '<=', $sheet_array[$key]['end_date']);
+            }
+            $infos = $query->with("lot.product", "lot.log", "plan", "line")->whereNotIn('line_id', [9, 21])->whereHas('lot', function ($lot_query) {
+                $lot_query->where(function ($q) {
+                    $q->where('info_cong_doan.line_id', 13)->whereIn('type', [0, 2, 3]);
+                })->orWhere(function ($q) {
+                    $q->where('info_cong_doan.line_id', '<>', 13)->whereIn('type', [0, 1, 2, 3]);
+                });
+            })->get()->groupBy('line_id');
+            $data = [];
+            foreach ($infos as $line_id => $info_cong_doan) {
+                $line = Line::find($line_id);
+                $sum_ok = 0;
+                $sum_ng = 0;
+                foreach ($info_cong_doan as $info) {
+                    $sum_ok += 1;
+                    $log = $info->lot->log ?? null;
+                    if ($log) {
+                        $qc_log = $log->info;
+                        $result = array_column(array_intersect_key($qc_log['qc'][Str::slug($line->name)] ?? [], array_flip(array('kich-thuoc', 'dac-tinh', 'ngoai-quan'))), 'result');
+                        if (in_array(0, $result)) {
+                            $sum_ng += 1;
+                            $sum_ok -= 1;
+                        }
+                    }
+                }
+
+                $data[$line_id]['cong_doan'] = $line->name;
+                $data[$line_id]['sum_lot_kt'] = count($info_cong_doan);
+                $data[$line_id]['sum_lot_ok'] = $sum_ok;
+                $data[$line_id]['sum_lot_ng'] = $sum_ng;
+                $data[$line_id]['sum_ty_le_ng'] = count($info_cong_doan) ? number_format($sum_ng / count($info_cong_doan) * 100) : 0;
+                $data[$line_id]['loi_phat_sinh'] = '';
+            }
+            $sheet_array[$key]['data'] = $data;
+        }
+        $centerStyle = [
+            'alignment' => [
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
+                'wrapText' => true
+            ],
+            'borders' => array(
+                'outline' => array(
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => array('argb' => '000000'),
+                ),
+            ),
+        ];
+        $headerStyle = array_merge($centerStyle, [
+            'font' => ['bold' => true],
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => array('argb' => 'EBF1DE')
+            ]
+        ]);
+        $titleStyle = array_merge($centerStyle, [
+            'font' => ['size' => 16, 'bold' => true],
+        ]);
+        $border = [
+            'borders' => array(
+                'allBorders' => array(
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => array('argb' => '000000'),
+                ),
+            ),
+        ];
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet_index = 0;
+
+        // return $sheet_array;
+        foreach ($sheet_array as $arr) {
+            $sheet = $spreadsheet->getSheet($sheet_index);
+            $sheet->setTitle('Báo cáo ' . $arr['title']);
+            $start_row = 2;
+            $start_col = 1;
+
+            $header = ['Công đoạn', 'Tổng số lot kiểm tra', "Số lot OK", "Số lot NG", "Tỷ lệ NG (%)", "Lỗi phát sinh"];
+            array_unshift($header, ucfirst($arr['title']));
+            $table_key = [
+                'A' => 'date',
+                'B' => 'cong_doan',
+                'C' => 'sum_lot_kt',
+                'D' => 'sum_lot_ok',
+                'E' => 'sum_lot_ng',
+                'F' => 'sum_ty_le_ng',
+                'G' => 'loi_phat_sinh',
+            ];
+            $table = $arr['data'] ?? [];
+            foreach ($header as $key => $cell) {
+                if (!is_array($cell)) {
+                    $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row + 1])->getStyle([$start_col, $start_row, $start_col, $start_row + 1])->applyFromArray($headerStyle);
+                } else {
+                    $style = array_merge($headerStyle, array('fill' => [
+                        'fillType' => Fill::FILL_SOLID,
+                        'startColor' => array('argb' => 'EBF1DE')
+                    ]));
+                    $sheet->setCellValue([$start_col, $start_row], $key)->mergeCells([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->getStyle([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->applyFromArray($style);
+                    foreach ($cell as $val) {
+
+                        $sheet->setCellValue([$start_col, $start_row + 1], $val)->getStyle([$start_col, $start_row + 1])->applyFromArray($style);
+                        $start_col += 1;
+                    }
+                    continue;
+                }
+                $start_col += 1;
+            }
+
+            $sheet->setCellValue([1, 1], 'BÁO CÁO ' . mb_strtoupper($arr['title']))->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
+            $sheet->getRowDimension(1)->setRowHeight(40);
+            $table_col = 2;
+            $table_row = $start_row + 2;
+            foreach ($table as $key => $row) {
+                $table_col = 2;
+                foreach ((array)$row as $key => $cell) {
+                    if (in_array($key, $table_key)) {
+                        $value = '';
+                        if (is_numeric($key)) {
+                            switch ($cell) {
+                                case 0:
+                                    $value = "NG";
+                                    break;
+                                case 1:
+                                    $value = "OK";
+                                    break;
+                                default:
+                                    $value = "";
+                                    break;
+                            }
+                        } else {
+                            $value = $cell;
+                        }
+                        $sheet->setCellValue(array_search($key, $table_key) . $table_row, $value)->getStyle(array_search($key, $table_key) . $table_row)->applyFromArray($centerStyle);
+                    } else {
+                        continue;
+                    }
+                    $table_col += 1;
+                }
+                $table_row += 1;
+            }
+            if (count($table)) {
+                $sheet->setCellValue([1, $start_row + 2], $arr['datetime'])->mergeCells([1, $start_row + 2, 1, $table_row - 1])->getStyle([1, $start_row + 2, 1, $table_row - 1])->applyFromArray($centerStyle);
+            }
+
+            foreach ($sheet->getColumnIterator() as $column) {
+                $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+                $sheet->getStyle($column->getColumnIndex() . ($start_row + 2) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
+            }
+            if ($sheet_index < count($sheet_array) - 1) {
+                $spreadsheet->createSheet();
+                $sheet_index += 1;
+            }
+        }
+
+        header("Content-Description: File Transfer");
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="Báo cáo.xlsx"');
+        header('Cache-Control: max-age=0');
+        header("Content-Transfer-Encoding: binary");
+        header('Expires: 0');
+        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('exported_files/Báo cáo.xlsx');
+        $href = '/exported_files/Báo cáo.xlsx';
+        return $this->success($href);
+    }
+
+    //Danh sách lot OQC
+    public function oqcHistoryQuery(Request $request)
+    {
+        $query = QCHistory::orderBy('created_at');
+        if (isset($request->start_date) && isset($request->end_date)) {
+            $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->start_date)))
+                ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->end_date)));
+        }
+        $query->whereHas('infoCongDoan', function ($query) use ($request) {
+            $query->where('line_id', 30);
+            if (isset($request->product_id)) {
+                $query->where('lot_id', 'like',  '%' . $request->product_id . '%');
+            }
+            if (isset($request->ten_sp)) {
+                $query->where('lot_id', 'like',  '%' . $request->ten_sp . '%');
+            }
+            if (isset($request->khach_hang)) {
+                $khach_hang = Customer::where('id', $request->khach_hang)->first();
+                if ($khach_hang) {
+                    $plan = ProductionPlan::where('khach_hang', $khach_hang->name)->get();
+                    $product_ids = $plan->pluck('product_id')->toArray();
+                    $query->where(function ($qr) use ($product_ids) {
+                        for ($i = 0; $i < count($product_ids); $i++) {
+                            $qr->orwhere('lot_id', 'like',  '%' . $product_ids[$i] . '%');
+                        }
+                    });
+                }
+            }
+            if (isset($request->lo_sx)) {
+                $query->where('lot_id', 'like', "%$request->lo_sx%");
+            }
+        });
+
+        $query->with('infoCongDoan.product', 'infoCongDoan.line', 'infoCongDoan.machine', 'user', 'errorHistories');
+        return $query;
+    }
+
+    public function parseOQCData($qc_histories)
+    {
+        $record = [];
+        $shifts = Shift::all();
+        $index = 0;
+        foreach ($qc_histories as $key => $qc_history) {
+            if (!$qc_history->infoCongDoan) {
+                continue;
+            }
+            $ca_sx = $shifts->first(function ($shift) use ($qc_history) {
+                $createdTime = Carbon::parse($qc_history->created_at)->format('H:i:s');
+                return ($shift->start_time < $shift->end_time && $createdTime >= $shift->start_time && $createdTime <= $shift->end_time) ||
+                    ($shift->start_time > $shift->end_time && ($createdTime >= $shift->start_time || $createdTime <= $shift->end_time));
+            })->name ?? "";
+
+            $user_sx = CustomUser::find($qc_history->infoCongDoan->user_id ?? null);
+            $user_qc = $qc_history->user;
+            $sl_ng_sx = 0;
+            $sl_ng_qc = 0;
+            if (count($qc_history->error_histories ?? [])) {
+                foreach (($qc_history->error_histories ?? []) as $error) {
+                    if ($error->type === 'sx') {
+                        $sl_ng_sx += $error->quantity;
+                    } else {
+                        $sl_ng_qc += $error->quantity;
+                    }
+                }
+            }
+            $errors = $qc_history->errorHistories->map(function ($item) {
+                return $item->error_id;
+            })->toArray();
+            $item = [
+                'stt' => $index + 1,
+                'ngay_sx' => Carbon::parse($qc_history->created_at)->format('d/m/Y H:i:s'),
+                'ca_sx' => $ca_sx,
+                'xuong' => $qc_history->line->factory->name ?? "Giấy",
+                'ten_sp' => $qc_history->infoCongDoan->product->name ?? "",
+                'khach_hang' => $qc_history->infoCongDoan->product->customer->name ?? "",
+                'product_id' => $qc_history->infoCongDoan->product_id ?? '',
+                'lo_sx' => $qc_history->infoCongDoan->lo_sx,
+                'lot_id' => $qc_history->infoCongDoan->lot_id,
+                'sl_sx' => $qc_history->infoCongDoan->sl_dau_ra_hang_loat ?? 0,
+                'sl_mau' => 0,
+                'sl_ng' => $qc_history->infoCongDoan->sl_ng ?? 0,
+                'error' => implode(', ', $errors),
+                'ket_luan' => $qc_history->eligible_to_end ? 'OK' : "",
+                'nguoi_oqc' => $user_qc->name ?? "",
+            ];
+            $index++;
+            $record[] = $item;
+        }
+        return $record;
+    }
+
+    public function getOQCDataTable(Request $request)
+    {
+        $page = $request->page - 1;
+        $pageSize = $request->pageSize;
+        $query = $this->oqcHistoryQuery($request);
+        $totalPage = $query->count();
+        $records = $query->offset($page * $pageSize)->limit($pageSize)->get();
+        $data = $this->parseOQCData($records);
+        return $this->success([
+            "data" => $data,
+            "totalPage" => $totalPage,
+        ]);
+    }
+
+    public function getOQCDataChart(Request $request)
+    {
+        $query = $this->oqcHistoryQuery($request);
+        $records = $query->get();
+        $data = $records->groupBy(function ($item) {
+            return $item->created_at->format('Y-m-d'); // Nhóm theo ngày
+        })->map(function ($itemsByDate, $date) {
+            Log::debug($itemsByDate);
+            $totalOutput = $itemsByDate->sum(function ($item) {
+                return $item->infoCongDoan->sl_dau_ra_hang_loat ?? 0; // Lấy `sl_dau_ra_hang_loat`, mặc định 0 nếu không có
+            });
+
+            $errorsByType = $itemsByDate->flatMap->errorHistories->groupBy('error_id')
+                ->map(function ($errors) use ($totalOutput) {
+                    return $totalOutput > 0 ? round(($errors->sum('quantity') / $totalOutput) * 100, 2) : 0;
+                });
+            return [
+                'date' => $date,
+                'error_rates' => $errorsByType // Tỷ lệ lỗi theo loại lỗi cho ngày
+            ];
+        })->values();
+        $dates = $data->pluck('date')->unique(); // Danh sách ngày (trục hoành)
+        // Lấy các loại lỗi duy nhất
+        $errorTypes = $data->flatMap->error_rates->keys()->unique();
+        // Cấu trúc dữ liệu cho từng loại lỗi với tỷ lệ lỗi theo ngày
+        $seriesData = $errorTypes->map(function ($errorType) use ($data) {
+            return [
+                'name' => $errorType,
+                'data' => $data->map(function ($dayData) use ($errorType) {
+                    return $dayData['error_rates']->get($errorType, 0); // Tỷ lệ lỗi, mặc định 0 nếu không có lỗi trong ngày đó
+                })->toArray()
+            ];
+        })->toArray();
+        return $this->success(['dates' => $dates, 'series' => $seriesData]);
+    }
+
+    public function getOQCDataSummary(Request $request)
+    {
+        $query = $this->oqcHistoryQuery($request);
         $qcHistories = $query->get();
+        $sl_ok = 0;
+        $sl_ng = 0;
+        foreach ($qcHistories as $qcHistory) {
+            if ($qcHistory->infoCongDoan) {
+                if ($qcHistory->infoCongDoan->sl_ng > 0) {
+                    $sl_ng += 1;
+                } else {
+                    $sl_ok += 1;
+                }
+            }
+        }
         $data = new stdClass;
-        $errorTrending = $this->parseErrorTrendingData($qcHistories);
-        $materialErrorRatio = $this->parseMaterialErrorRatioData($qcHistories);
-        $errorRatio = $this->parseErrorRatioData($qcHistories);
-        $data->errorTrending = array_values($errorTrending);
-        $data->materialErrorRatioData = array_values($materialErrorRatio);
-        $data->errorRatioData = array_values($errorRatio);
+        $data->lot_check = count($qcHistories);
+        $data->lot_ok = $sl_ok;
+        $data->lot_ng = $sl_ng;
+        $data->ng_rate = ($data->lot_check > 0 ? ceil($sl_ng / $data->lot_check) : 0) . '%';
         return $this->success($data);
     }
+
+    public function exportOQCDataTable(Request $request)
+    {
+        $query = $this->oqcHistoryQuery($request);
+        $records = $query->get();
+        $data = $this->parseOQCData($records);
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $start_row = 2;
+        $start_col = 1;
+        $titleStyle = array_merge(ExcelStyleHelper::alignment(), ExcelStyleHelper::bold(true, 16));
+        $headerStyle = array_merge(ExcelStyleHelper::alignment(), ExcelStyleHelper::bold(), ExcelStyleHelper::fill());
+        $border = ExcelStyleHelper::borders();
+        $header = [
+            'STT',
+            'Ngày',
+            "Ca sx",
+            'Xưởng',
+            'Tên sản phẩm',
+            'Khách hàng',
+            'Mã hàng',
+            'Lô sản xuất',
+            'Mã pallet/thùng',
+            'Số lượng SX',
+            'Sl lấy mẫu',
+            'Số lượng NG',
+            'Loại lỗi',
+            "Kết luận",
+            "OQC"
+        ];
+        foreach ($header as $key => $cell) {
+            $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row])->getStyle([$start_col, $start_row, $start_col, $start_row])->applyFromArray($headerStyle);
+            $start_col += 1;
+        }
+        $sheet->setCellValue([1, 1], 'UI Truy vấn chất lượng OQC (Bảng chi tiết trang chính)')->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
+        $sheet->getRowDimension(1)->setRowHeight(40);
+        $table_col = 1;
+        $table_row = count($data) + 2;
+        $sheet->fromArray((array)$data, NULL, 'A3', true);
+        // $sheet->getStyle([1, 5, 30, count($data) + 4])->applyFromArray($centerStyle);
+        foreach ($sheet->getColumnIterator() as $column) {
+            $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+            $sheet->getStyle($column->getColumnIndex() . 1 . ':' . $column->getColumnIndex() . ($table_row))->applyFromArray(array_merge(ExcelStyleHelper::alignment(), $border));
+        }
+        header("Content-Description: File Transfer");
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="Lịch_sử_sản_xuất.xlsx"');
+        header('Cache-Control: max-age=0');
+        header("Content-Transfer-Encoding: binary");
+        header('Expires: 0');
+        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('exported_files/OQC.xlsx');
+        $href = '/exported_files/OQC.xlsx';
+        return $this->success($href);
+    }
+
+    //=========================AUTO PLAN================================//
     public function getProductionSteps($productId)
     {
         // Bước 1: Truy vấn để lấy các công đoạn từ bảng spec theo product_id và slug 'hanh-trinh-san-xuat'
@@ -1477,7 +1963,7 @@ class Phase2UIApiController extends Controller
             } else {
                 $lotEndTime = $lotStartTime->copy()->addMinutes(($taskTime * $lotSize) + $rollChangeTime);
             }
-            if($input['line_id'] == 29){
+            if ($input['line_id'] == 29) {
                 $lotEndTime = $lotStartTime->copy()->addMinutes($taskTime * $lotSize);
             }
             LotPlan::create([
@@ -1926,7 +2412,7 @@ class Phase2UIApiController extends Controller
             while ($start->lte($end)) {
                 // Tính tỷ lệ đạt cho tuần
                 $weekEnd = $start->copy()->endOfWeek();
-                $dateList[] = $this->calculateMachinePerformance($start, $weekEnd, 'Tuần ' . $start->format('W'));
+                $dateList[] = $this->calculateMachineDownTime($start, $weekEnd, 'Tuần ' . $start->format('W'));
                 $start->addWeek();
             }
         } elseif ($dateType == 'month') {
@@ -1936,7 +2422,7 @@ class Phase2UIApiController extends Controller
             while ($start->lte($end)) {
                 // Tính tỷ lệ đạt cho tháng
                 $monthEnd = $start->copy()->endOfMonth();
-                $dateList[] = $this->calculateMachinePerformance($start, $monthEnd, 'Tháng ' . $start->format('m/Y'));
+                $dateList[] = $this->calculateMachineDownTime($start, $monthEnd, 'Tháng ' . $start->format('m/Y'));
                 $start->addMonth();
             }
         } elseif ($dateType == 'year') {
@@ -1946,7 +2432,7 @@ class Phase2UIApiController extends Controller
             while ($start->lte($end)) {
                 // Tính tỷ lệ đạt cho năm
                 $yearEnd = $start->copy()->endOfYear();
-                $dateList[] = $this->calculateMachinePerformance($start, $yearEnd, 'Năm ' . $start->format('Y'));
+                $dateList[] = $this->calculateMachineDownTime($start, $yearEnd, 'Năm ' . $start->format('Y'));
                 $start->addYear();
             }
         } else {
