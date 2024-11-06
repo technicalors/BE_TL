@@ -42,6 +42,8 @@ use Maatwebsite\Excel\Facades\Excel;
 use stdClass;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class Phase2UIApiController extends Controller
 {
@@ -1295,30 +1297,57 @@ class Phase2UIApiController extends Controller
     public function printProductionPlan(Request $request)
     {
         $plans = $request->plans ?? [];
-        dd($plans);
         if (count($plans) <= 0) {
             return $this->failure('', 'Không có dữ liệu kế hoạch lô');
         }
-        $lots = $request->lots ?? [];
-        if (count($lots) <= 0) {
-            return $this->failure('', 'Không có dữ liệu kế hoạch lot');
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+    
+        // Đặt tên tiêu đề bảng
+        $header = [
+            'STT', 'Ca sản xuất', 'Công đoạn sản xuất', 'Ngày đặt hàng', 'Ngày giao hàng',
+            'Ngày sản xuất', 'Khách hàng', 'Mã sản phẩm', 'Lô sản xuất', 'Số lượng giao sản xuất',
+            'Tên sản phẩm', 'Thời gian bắt đầu', 'Thời gian kết thúc', 'Thứ tự ưu tiên', 'Tổng TG thực hiện'
+        ];
+    
+        // Thiết lập các cột tiêu đề
+        foreach ($header as $col => $title) {
+            $sheet->setCellValueByColumnAndRow($col + 1, 1, $title);
         }
-        $machines = $request->machines ?? [];
-        $lo_sx = $request->lo_sx ?? [];
-        try {
-            DB::beginTransaction();
-            foreach ($plans as $plan) {
-                $production_plan = ProductionPlan::create($plan);
-            }
-            foreach ($machines as $machine) {
-                Machine::where('code', $machine['machine_code'])->update(['available_at' => $machine['available_at']]);
-            }
-            
-            DB::commit();
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            return $this->failure($th->getMessage(), 'Lỗi tạo kế hoạch');
+    
+        // Duyệt dữ liệu $plans và ghi vào file Excel
+        $rowIndex = 2;
+        foreach ($plans as $index => $plan) {
+            $sheet->setCellValue("A$rowIndex", $index + 1);
+            $sheet->setCellValue("B$rowIndex", $plan['ca_sx']);
+            $sheet->setCellValue("C$rowIndex", $plan['cong_doan_sx']);
+            $sheet->setCellValue("D$rowIndex", $plan['ngay_dat_hang']);
+            $sheet->setCellValue("E$rowIndex", $plan['ngay_giao_hang']);
+            $sheet->setCellValue("F$rowIndex", $plan['ngay_sx']);
+            $sheet->setCellValue("G$rowIndex", $plan['khach_hang']);
+            $sheet->setCellValue("H$rowIndex", $plan['product_id']);
+            $sheet->setCellValue("I$rowIndex", $plan['lo_sx']);
+            $sheet->setCellValue("J$rowIndex", $plan['sl_giao_sx']);
+            $sheet->setCellValue("K$rowIndex", $plan['ten_san_pham']);
+            $sheet->setCellValue("L$rowIndex", $plan['thoi_gian_bat_dau']);
+            $sheet->setCellValue("M$rowIndex", $plan['thoi_gian_ket_thuc']);
+            $sheet->setCellValue("N$rowIndex", $plan['thu_tu_uu_tien']);
+            $sheet->setCellValue("O$rowIndex", $plan['tong_tg_thuc_hien']);
+            $rowIndex++;
         }
+    
+        // Thiết lập tự động điều chỉnh độ rộng cột
+        foreach (range('A', 'O') as $columnID) {
+            $sheet->getColumnDimension($columnID)->setAutoSize(true);
+        }
+    
+        // Lưu file Excel
+        $filePath = "exported_files/KHSX_output.xlsx";
+        $writer = new Xlsx($spreadsheet);
+        $writer->save($filePath);
+    
+        // Trả về link tải file
+        return $this->success(url($filePath), 'Đã tạo file Excel thành công');
         return $this->success('', 'Đã tạo thành công');
     }
 
