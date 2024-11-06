@@ -545,6 +545,7 @@ class Phase2UIApiController extends Controller
                 'user_pqc' => $user_qc->name ?? "",
                 'sl_ng' => $qc_history->infoCongDoan->sl_ng ?? 0,
                 'ti_le_ng' => (isset($qc_history->infoCongDoan->sl_dau_ra_hang_loat) && $qc_history->infoCongDoan->sl_dau_ra_hang_loat > 0) ? number_format(($qc_history->infoCongDoan->sl_ng / $qc_history->infoCongDoan->sl_dau_ra_hang_loat) * 100) . "%" : "0%",
+                'errors'=>$qc_history->errorHistories ?? [],
             ];
             $index++;
             $record[] = $item;
