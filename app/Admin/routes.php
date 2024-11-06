@@ -692,7 +692,12 @@ Route::group([
     $router->get('equipment/error-frequency', [Phase2UIApiController::class, 'getErrorFrequencyData']);
     
     $router->get('quality/pqc/data-table', [Phase2UIApiController::class, 'getQualityDataTable']);
+    $router->get('quality/pqc/export-data-table', [Phase2UIApiController::class, 'exportQualityDataTable']);
     $router->get('quality/pqc/data-chart', [Phase2UIApiController::class, 'getQualityDataChart']);
+    $router->get('quality/oqc/data-table', [Phase2UIApiController::class, 'getOQCDataTable']);
+    $router->get('quality/oqc/data-chart', [Phase2UIApiController::class, 'getOQCDataChart']);
+    $router->get('quality/oqc/data-summary', [Phase2UIApiController::class, 'getOQCDataSummary']);
+    $router->get('quality/oqc/export-data-table', [Phase2UIApiController::class, 'exportOQCDataTable']);
     $router->post('plan/generate', [Phase2UIApiController::class, 'generateProductionPlan']);
     $router->get('plan/store/{order_id}', [Phase2UIApiController::class, 'processProductionPlan']);
     $router->post('plan/create', [Phase2UIApiController::class, 'createProductionPlan']);

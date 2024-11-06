@@ -1204,7 +1204,9 @@ class Phase2OIApiController extends Controller
     //Trả về danh sách lot QC
     public function getLotQCList(Request $request)
     {
-        $query = InfoCongDoan::whereDate('created_at', date('Y-m-d'))->where('status', '>=', 1);
+        $query = InfoCongDoan::where(function($q){
+            $q->whereDate('created_at', date('Y-m-d'))->orWhere('status', 1);
+        })->where('status', '>=', 1);
         if (!empty($request->line_id)) {
             $query->where('line_id', $request->line_id);
         }
@@ -1353,7 +1355,7 @@ class Phase2OIApiController extends Controller
 
         $product = $infoCongDoan->product;
         $list = $line->testCriteria()->get()->groupBy('chi_tieu');
-        $reference = array_merge([], [$line->id]);
+        $reference = array_merge($line->testCriteria()->pluck('reference')->toArray(), [$line->id]);
         $specs = Spec::whereIn("line_id", $reference)->whereNotNull('slug')->whereNotNull('name')->where("product_id", $product->id ?? "")->whereNotNull('value')->get();
         $data = [];
         foreach ($list as $key => $test_criteria) {
@@ -1476,7 +1478,8 @@ class Phase2OIApiController extends Controller
                 );
             }
             if($request->result === 'OK'){
-                $specs = Spec::whereIn("line_id", [$line->id])->whereNotNull('slug')->whereNotNull('name')->where("product_id", $infoCongDoan->product_id ?? "")->whereNotNull('value')->get();
+                $reference = array_merge($line->testCriteria()->pluck('reference')->toArray(), [$line->id], );
+                $specs = Spec::whereIn("line_id", explode(',',implode(',',$reference)))->whereNotNull('slug')->whereNotNull('name')->where("product_id", $infoCongDoan->product_id ?? "")->whereNotNull('value')->get();
                 $criteria = $line->testCriteria()->get()->groupBy('chi_tieu');
                 // return $specs;
                 $number_of_criteria_type = [];

@@ -399,10 +399,9 @@ class TestCriteriaController extends AdminController
                 $input['id'] = $row['A'];
                 if (!empty($row['B'])) {
                     $value = explode('+', $row['B']);
-                    $lines = Line::whereIn('name', array_map('trim', $value))->pluck('id')->toArray();
+                    $lines = Line::whereIn(DB::raw('LOWER(name)'), array_map('strtolower', array_map('trim', $value)))->pluck('id')->toArray();
                 }
                 if (count($lines) <= 0) {
-                    return $value;
                     return 'Không tìm thấy công đoạn';
                 }
                 $input['line_ids'] = $lines;
@@ -412,9 +411,10 @@ class TestCriteriaController extends AdminController
                 $input['phan_dinh'] = $row['H'];
                 if (!empty($row['I'])) {
                     $value = explode('+', $row['I']);
-                    $line = Line::whereIn('name', array_map('trim', $value))->first();
-                    $input['reference'] = $line->id ?? null;
+                    $lines = Line::whereIn(DB::raw('LOWER(name)'), array_map('strtolower', array_map('trim', $value)))->pluck('id')->toArray();
+                    $input['reference'] = implode(',', $lines);
                 }
+                $input['frequency'] = $row['G'];
                 // $validated = TestCriteria::validateUpdate($input);
                 // if ($validated->fails()) {
                 //     return $this->failure('', 'Lỗi dòng thứ ' . ($key) . ': ' . $validated->errors()->first());
