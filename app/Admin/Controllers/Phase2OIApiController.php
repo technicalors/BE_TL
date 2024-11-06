@@ -1238,7 +1238,6 @@ class Phase2OIApiController extends Controller
         $infoCongDoan = InfoCongDoan::with('qcHistory')
             ->where('line_id', $line->id)
             ->where('machine_code', $machine->code)
-            ->whereDate('created_at', date('Y-m-d'))
             ->where('status', InfoCongDoan::STATUS_INPROGRESS)
             ->first();
         if ($infoCongDoan) {
