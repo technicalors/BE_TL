@@ -1292,6 +1292,36 @@ class Phase2UIApiController extends Controller
         return $this->success('', 'Đã tạo thành công');
     }
 
+    public function printProductionPlan(Request $request)
+    {
+        $plans = $request->plans ?? [];
+        dd($plans);
+        if (count($plans) <= 0) {
+            return $this->failure('', 'Không có dữ liệu kế hoạch lô');
+        }
+        $lots = $request->lots ?? [];
+        if (count($lots) <= 0) {
+            return $this->failure('', 'Không có dữ liệu kế hoạch lot');
+        }
+        $machines = $request->machines ?? [];
+        $lo_sx = $request->lo_sx ?? [];
+        try {
+            DB::beginTransaction();
+            foreach ($plans as $plan) {
+                $production_plan = ProductionPlan::create($plan);
+            }
+            foreach ($machines as $machine) {
+                Machine::where('code', $machine['machine_code'])->update(['available_at' => $machine['available_at']]);
+            }
+            
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return $this->failure($th->getMessage(), 'Lỗi tạo kế hoạch');
+        }
+        return $this->success('', 'Đã tạo thành công');
+    }
+
     public function uploadProductionPlan(Request $request)
     {
         set_time_limit(600);

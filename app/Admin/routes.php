@@ -697,6 +697,8 @@ Route::group([
     $router->get('plan/store/{order_id}', [Phase2UIApiController::class, 'processProductionPlan']);
     $router->post('plan/create', [Phase2UIApiController::class, 'createProductionPlan']);
     $router->post('plan/upload', [Phase2UIApiController::class, 'uploadProductionPlan']);
+    $router->post('plan/print', [Phase2UIApiController::class, 'printProductionPlan']);
+
 
     $router->get('kpi/pass-rate-chart', [Phase2UIApiController::class, 'getKPIPassRateChart']);
     $router->get('kpi/ti-le-van-hanh-tb', [Phase2UIApiController::class, 'getKPITiLeVanHanhTB']);
