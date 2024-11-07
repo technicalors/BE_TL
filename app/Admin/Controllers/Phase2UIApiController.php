@@ -1792,39 +1792,77 @@ class Phase2UIApiController extends Controller
     
         // Đặt tên tiêu đề bảng
         $header = [
-            'STT', 'Ca sản xuất', 'Công đoạn sản xuất', 'Ngày đặt hàng', 'Ngày giao hàng',
-            'Ngày sản xuất', 'Khách hàng', 'Mã sản phẩm', 'Lô sản xuất', 'Số lượng giao sản xuất',
-            'Tên sản phẩm', 'Thời gian bắt đầu', 'Thời gian kết thúc', 'Thứ tự ưu tiên', 'Tổng TG thực hiện'
+            '',
+            'Thứ tự ưu tiên', 
+            'Thời gian bắt đầu(h)', 
+            'Thời gian kết thúc(h)', 
+            'Ngày SX', 
+            'Ca SX', 
+            'Công đoạn SX', 
+            'Máy sản xuất', 
+            'Mã sản phẩm', 
+            'Khách hàng', 
+            'Tên Sản Phẩm', 
+            'Mã đơn hàng', 
+            'Ngày giao hàng', 
+            'SL Tổng ĐH (đvt: túi/mảnh)', 
+            'SL NVL đầu vào (ĐVT: Tờ)', 
+            'SL thành phẩm (ĐVT: Tờ)', 
+            'SL giao SX (đvt: túi/mảnh)', 
+            'KQSX (đvt: túi/mảnh)', 
+            'SL còn lại (đvt: túi/mảnh)',
+            'Khổ Giấy (mm)',
+            'Tốc độ',
+            'UPH', 
         ];
     
         // Thiết lập các cột tiêu đề
         foreach ($header as $col => $title) {
-            $sheet->setCellValueByColumnAndRow($col + 1, 1, $title);
+            $sheet->setCellValueByColumnAndRow($col + 1, 3, $title);
         }
     
         // Duyệt dữ liệu $plans và ghi vào file Excel
         $rowIndex = 2;
         foreach ($plans as $index => $plan) {
-            $sheet->setCellValue("A$rowIndex", $index + 1);
-            $sheet->setCellValue("B$rowIndex", $plan['ca_sx']);
-            $sheet->setCellValue("C$rowIndex", $plan['cong_doan_sx']);
-            $sheet->setCellValue("D$rowIndex", $plan['ngay_dat_hang']);
-            $sheet->setCellValue("E$rowIndex", $plan['ngay_giao_hang']);
-            $sheet->setCellValue("F$rowIndex", $plan['ngay_sx']);
-            $sheet->setCellValue("G$rowIndex", $plan['khach_hang']);
-            $sheet->setCellValue("H$rowIndex", $plan['product_id']);
-            $sheet->setCellValue("I$rowIndex", $plan['lo_sx']);
-            $sheet->setCellValue("J$rowIndex", $plan['sl_giao_sx']);
+            $sheet->setCellValue("B$rowIndex", $plan['thu_tu_uu_tien']);
+            $sheet->setCellValue("C$rowIndex", date('Y-m-d H:i:s',strtotime($plan['thoi_gian_bat_dau'])));
+            $sheet->setCellValue("D$rowIndex", date('Y-m-d H:i:s',strtotime($plan['thoi_gian_ket_thuc'])));
+            $sheet->setCellValue("E$rowIndex", date('Y-m-d',strtotime($plan['ngay_sx'])));
+            $sheet->setCellValue("F$rowIndex", $plan['ca_sx']);
+            $sheet->setCellValue("G$rowIndex", $plan['cong_doan_sx']);
+            $sheet->setCellValue("H$rowIndex", $plan['machine_id']);
+            $sheet->setCellValue("I$rowIndex", $plan['product_id']);
+            $sheet->setCellValue("J$rowIndex", $plan['khach_hang']);
             $sheet->setCellValue("K$rowIndex", $plan['ten_san_pham']);
-            $sheet->setCellValue("L$rowIndex", $plan['thoi_gian_bat_dau']);
-            $sheet->setCellValue("M$rowIndex", $plan['thoi_gian_ket_thuc']);
-            $sheet->setCellValue("N$rowIndex", $plan['thu_tu_uu_tien']);
-            $sheet->setCellValue("O$rowIndex", $plan['tong_tg_thuc_hien']);
+            $sheet->setCellValue("L$rowIndex", $plan['product_order_id']);
+            $sheet->setCellValue("M$rowIndex", date('Y-m-d',strtotime($plan['delivery_date'])));
+            $sheet->setCellValue("N$rowIndex", $plan['sl_tong_dh']);
+            $sheet->setCellValue("O$rowIndex", $plan['sl_nvl_dau_vao']);
+            $sheet->setCellValue("P$rowIndex", $plan['sl_thanh_pham']);
+            $sheet->setCellValue("Q$rowIndex", $plan['sl_giao_sx']);
+            $sheet->setCellValue("R$rowIndex", $plan['kqsx']);
+            $sheet->setCellValue("S$rowIndex", $plan['sl_con_lai']);
+            $sheet->setCellValue("W$rowIndex", $plan['uph']);
+
+            // $sheet->setCellValue("C$rowIndex", $plan['ca_sx']);
+            // $sheet->setCellValue("D$rowIndex", $plan['cong_doan_sx']);
+            // $sheet->setCellValue("E$rowIndex", $plan['ngay_dat_hang']);
+            // $sheet->setCellValue("F$rowIndex", $plan['ngay_giao_hang']);
+            // $sheet->setCellValue("G$rowIndex", $plan['ngay_sx']);
+            // $sheet->setCellValue("H$rowIndex", $plan['khach_hang']);
+            // $sheet->setCellValue("I$rowIndex", $plan['product_id']);
+            // $sheet->setCellValue("J$rowIndex", $plan['lo_sx']);
+            // $sheet->setCellValue("K$rowIndex", $plan['sl_giao_sx']);
+            // $sheet->setCellValue("L$rowIndex", $plan['ten_san_pham']);
+            // $sheet->setCellValue("M$rowIndex", $plan['thoi_gian_bat_dau']);
+            // $sheet->setCellValue("N$rowIndex", $plan['thoi_gian_ket_thuc']);
+            // $sheet->setCellValue("O$rowIndex", $plan['thu_tu_uu_tien']);
+            // $sheet->setCellValue("Q$rowIndex", $plan['tong_tg_thuc_hien']);
             $rowIndex++;
         }
     
         // Thiết lập tự động điều chỉnh độ rộng cột
-        foreach (range('A', 'O') as $columnID) {
+        foreach (range('A', 'W') as $columnID) {
             $sheet->getColumnDimension($columnID)->setAutoSize(true);
         }
     
