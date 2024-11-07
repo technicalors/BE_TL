@@ -870,7 +870,7 @@ class Phase2UIApiController extends Controller
                 foreach ($list as $criteria) {
                     $record = $history[$criteria->id] ?? null;
                     Log::debug([$record, $qc_history->toArray()]);
-                    $item[$criteria->id] = !empty($record) ? (is_numeric($record->input) ?  $record->input : $record->result) : "";
+                    $item[$criteria->id] = !empty($record) ? (is_numeric($record['input']) ?  $record['input'] : $record['result']) : "";
                 }
                 $final_result = $qc_history->eligible_to_end ? ($qc_history->testCriteriaHistories->every(function ($testCriteriaHistory) {
                     return $testCriteriaHistory->result === 'OK';
