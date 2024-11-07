@@ -1822,7 +1822,7 @@ class Phase2UIApiController extends Controller
         }
     
         // Duyệt dữ liệu $plans và ghi vào file Excel
-        $rowIndex = 2;
+        $rowIndex = 4;
         foreach ($plans as $index => $plan) {
             $sheet->setCellValue("B$rowIndex", $plan['thu_tu_uu_tien']);
             $sheet->setCellValue("C$rowIndex", date('Y-m-d H:i:s',strtotime($plan['thoi_gian_bat_dau'])));
