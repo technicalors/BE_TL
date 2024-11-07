@@ -856,7 +856,17 @@ class Phase2UIApiController extends Controller
                     'sl_ng' => $qc_history->infoCongDoan->sl_ng ?? 0,
                     'ti_le_ng' => (isset($qc_history->infoCongDoan->sl_dau_ra_hang_loat) && $qc_history->infoCongDoan->sl_dau_ra_hang_loat > 0) ? number_format(($qc_history->infoCongDoan->sl_ng / $qc_history->infoCongDoan->sl_dau_ra_hang_loat) * 100) . "%" : "0%",
                 ];
-                $history = $qc_history->testCriteriaHistories->flatMap->testCriteriaDetailHistories->groupBy('test_criteria_id');
+                $history = $qc_history->testCriteriaHistories->flatMap->testCriteriaDetailHistories->groupBy('test_criteria_id')
+                    ->mapWithKeys(function ($items, $test_criteria_id) {
+                        // Lấy giá trị đầu tiên của 'input' và 'result' trong nhóm và tạo key-value pair
+                        return [
+                            $test_criteria_id => [
+                                'input' => $items->first()->input,  // Lấy giá trị 'input' đầu tiên
+                                'result' => $items->first()->result // Lấy giá trị 'result' đầu tiên
+                            ]
+                        ];
+                    })
+                    ->toArray();;
                 foreach ($list as $criteria) {
                     $record = $history[$criteria->id] ?? null;
                     Log::debug([$record, $qc_history->toArray()]);
