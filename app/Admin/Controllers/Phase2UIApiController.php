@@ -1663,7 +1663,7 @@ class Phase2UIApiController extends Controller
 
         // Thiết lập các cột tiêu đề
         foreach ($header as $col => $title) {
-            $sheet->setCellValueByColumnAndRow($col + 1, 3, $title);
+            $sheet->setCellValue([$col + 1, 3], $title);
         }
 
         // Duyệt dữ liệu $plans và ghi vào file Excel
