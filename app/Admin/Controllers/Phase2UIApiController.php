@@ -28,11 +28,9 @@ use App\Models\ProductionPlan;
 use App\Models\ProductOrder;
 use App\Models\QCHistory;
 use App\Models\Shift;
-use App\Models\ShiftBreak;
 use App\Models\Spec;
 use App\Traits\API;
 use Carbon\Carbon;
-use Carbon\CarbonInterval;
 use Carbon\CarbonPeriod;
 use Exception;
 use Illuminate\Http\Request;
@@ -46,6 +44,8 @@ use Illuminate\Support\Facades\Cache;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpPresentation\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Borders;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 
 class Phase2UIApiController extends Controller
 {
@@ -545,7 +545,7 @@ class Phase2UIApiController extends Controller
                 'user_pqc' => $user_qc->name ?? "",
                 'sl_ng' => $qc_history->infoCongDoan->sl_ng ?? 0,
                 'ti_le_ng' => (isset($qc_history->infoCongDoan->sl_dau_ra_hang_loat) && $qc_history->infoCongDoan->sl_dau_ra_hang_loat > 0) ? number_format(($qc_history->infoCongDoan->sl_ng / $qc_history->infoCongDoan->sl_dau_ra_hang_loat) * 100) . "%" : "0%",
-                'errors'=>$qc_history->errorHistories ?? [],
+                'errors' => $qc_history->errorHistories ?? [],
             ];
             $index++;
             $record[] = $item;
@@ -1789,45 +1789,45 @@ class Phase2UIApiController extends Controller
         }
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
-    
+
         // Đặt tên tiêu đề bảng
         $header = [
             '',
-            'Thứ tự ưu tiên', 
-            'Thời gian bắt đầu(h)', 
-            'Thời gian kết thúc(h)', 
-            'Ngày SX', 
-            'Ca SX', 
-            'Công đoạn SX', 
-            'Máy sản xuất', 
-            'Mã sản phẩm', 
-            'Khách hàng', 
-            'Tên Sản Phẩm', 
-            'Mã đơn hàng', 
-            'Ngày giao hàng', 
-            'SL Tổng ĐH (đvt: túi/mảnh)', 
-            'SL NVL đầu vào (ĐVT: Tờ)', 
-            'SL thành phẩm (ĐVT: Tờ)', 
-            'SL giao SX (đvt: túi/mảnh)', 
-            'KQSX (đvt: túi/mảnh)', 
+            'Thứ tự ưu tiên',
+            'Thời gian bắt đầu(h)',
+            'Thời gian kết thúc(h)',
+            'Ngày SX',
+            'Ca SX',
+            'Công đoạn SX',
+            'Máy sản xuất',
+            'Mã sản phẩm',
+            'Khách hàng',
+            'Tên Sản Phẩm',
+            'Mã đơn hàng',
+            'Ngày giao hàng',
+            'SL Tổng ĐH (đvt: túi/mảnh)',
+            'SL NVL đầu vào (ĐVT: Tờ)',
+            'SL thành phẩm (ĐVT: Tờ)',
+            'SL giao SX (đvt: túi/mảnh)',
+            'KQSX (đvt: túi/mảnh)',
             'SL còn lại (đvt: túi/mảnh)',
             'Khổ Giấy (mm)',
             'Tốc độ',
-            'UPH', 
+            'UPH',
         ];
-    
+
         // Thiết lập các cột tiêu đề
         foreach ($header as $col => $title) {
             $sheet->setCellValueByColumnAndRow($col + 1, 3, $title);
         }
-    
+
         // Duyệt dữ liệu $plans và ghi vào file Excel
         $rowIndex = 4;
         foreach ($plans as $index => $plan) {
             $sheet->setCellValue("B$rowIndex", $plan['thu_tu_uu_tien']);
-            $sheet->setCellValue("C$rowIndex", date('Y-m-d H:i:s',strtotime($plan['thoi_gian_bat_dau'])));
-            $sheet->setCellValue("D$rowIndex", date('Y-m-d H:i:s',strtotime($plan['thoi_gian_ket_thuc'])));
-            $sheet->setCellValue("E$rowIndex", date('Y-m-d',strtotime($plan['ngay_sx'])));
+            $sheet->setCellValue("C$rowIndex", date('Y-m-d H:i:s', strtotime($plan['thoi_gian_bat_dau'])));
+            $sheet->setCellValue("D$rowIndex", date('Y-m-d H:i:s', strtotime($plan['thoi_gian_ket_thuc'])));
+            $sheet->setCellValue("E$rowIndex", date('Y-m-d', strtotime($plan['ngay_sx'])));
             $sheet->setCellValue("F$rowIndex", $plan['ca_sx']);
             $sheet->setCellValue("G$rowIndex", $plan['cong_doan_sx']);
             $sheet->setCellValue("H$rowIndex", $plan['machine_id']);
@@ -1835,42 +1835,31 @@ class Phase2UIApiController extends Controller
             $sheet->setCellValue("J$rowIndex", $plan['khach_hang']);
             $sheet->setCellValue("K$rowIndex", $plan['ten_san_pham']);
             $sheet->setCellValue("L$rowIndex", $plan['product_order_id']);
-            $sheet->setCellValue("M$rowIndex", date('Y-m-d',strtotime($plan['delivery_date'])));
-            // $sheet->setCellValue("N$rowIndex", $plan['sl_tong_dh']);
-            // $sheet->setCellValue("O$rowIndex", $plan['sl_nvl_dau_vao']);
-            // $sheet->setCellValue("P$rowIndex", $plan['sl_thanh_pham']);
+            $sheet->setCellValue("M$rowIndex", date('Y-m-d', strtotime($plan['delivery_date'])));
             $sheet->setCellValue("Q$rowIndex", $plan['sl_giao_sx']);
-            // $sheet->setCellValue("R$rowIndex", $plan['kqsx']);
-            // $sheet->setCellValue("S$rowIndex", $plan['sl_con_lai']);
-            // $sheet->setCellValue("W$rowIndex", $plan['uph']);
-
-            // $sheet->setCellValue("C$rowIndex", $plan['ca_sx']);
-            // $sheet->setCellValue("D$rowIndex", $plan['cong_doan_sx']);
-            // $sheet->setCellValue("E$rowIndex", $plan['ngay_dat_hang']);
-            // $sheet->setCellValue("F$rowIndex", $plan['ngay_giao_hang']);
-            // $sheet->setCellValue("G$rowIndex", $plan['ngay_sx']);
-            // $sheet->setCellValue("H$rowIndex", $plan['khach_hang']);
-            // $sheet->setCellValue("I$rowIndex", $plan['product_id']);
-            // $sheet->setCellValue("J$rowIndex", $plan['lo_sx']);
-            // $sheet->setCellValue("K$rowIndex", $plan['sl_giao_sx']);
-            // $sheet->setCellValue("L$rowIndex", $plan['ten_san_pham']);
-            // $sheet->setCellValue("M$rowIndex", $plan['thoi_gian_bat_dau']);
-            // $sheet->setCellValue("N$rowIndex", $plan['thoi_gian_ket_thuc']);
-            // $sheet->setCellValue("O$rowIndex", $plan['thu_tu_uu_tien']);
-            // $sheet->setCellValue("Q$rowIndex", $plan['tong_tg_thuc_hien']);
             $rowIndex++;
         }
-    
+
         // Thiết lập tự động điều chỉnh độ rộng cột
         foreach (range('A', 'W') as $columnID) {
             $sheet->getColumnDimension($columnID)->setAutoSize(true);
         }
-    
+        $highestRow = $rowIndex - 1; // Dòng cuối cùng chứa dữ liệu
+        $highestColumn = 'W'; // Cột cuối cùng chứa dữ liệu (cập nhật theo cột bạn dùng)
+        $sheet->getStyle("B3:$highestColumn$highestRow")->applyFromArray([
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => ['argb' => '000000'],
+                ],
+            ],
+        ]);
+
         // Lưu file Excel
         $filePath = "exported_files/KHSX_output.xlsx";
         $writer = new Xlsx($spreadsheet);
         $writer->save($filePath);
-    
+
         // Trả về link tải file
         return $this->success(url($filePath), 'Đã tạo file Excel thành công');
         return $this->success('', 'Đã tạo thành công');
