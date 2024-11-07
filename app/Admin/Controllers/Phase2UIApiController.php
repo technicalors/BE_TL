@@ -1836,13 +1836,13 @@ class Phase2UIApiController extends Controller
             $sheet->setCellValue("K$rowIndex", $plan['ten_san_pham']);
             $sheet->setCellValue("L$rowIndex", $plan['product_order_id']);
             $sheet->setCellValue("M$rowIndex", date('Y-m-d',strtotime($plan['delivery_date'])));
-            $sheet->setCellValue("N$rowIndex", $plan['sl_tong_dh']);
-            $sheet->setCellValue("O$rowIndex", $plan['sl_nvl_dau_vao']);
-            $sheet->setCellValue("P$rowIndex", $plan['sl_thanh_pham']);
+            // $sheet->setCellValue("N$rowIndex", $plan['sl_tong_dh']);
+            // $sheet->setCellValue("O$rowIndex", $plan['sl_nvl_dau_vao']);
+            // $sheet->setCellValue("P$rowIndex", $plan['sl_thanh_pham']);
             $sheet->setCellValue("Q$rowIndex", $plan['sl_giao_sx']);
-            $sheet->setCellValue("R$rowIndex", $plan['kqsx']);
-            $sheet->setCellValue("S$rowIndex", $plan['sl_con_lai']);
-            $sheet->setCellValue("W$rowIndex", $plan['uph']);
+            // $sheet->setCellValue("R$rowIndex", $plan['kqsx']);
+            // $sheet->setCellValue("S$rowIndex", $plan['sl_con_lai']);
+            // $sheet->setCellValue("W$rowIndex", $plan['uph']);
 
             // $sheet->setCellValue("C$rowIndex", $plan['ca_sx']);
             // $sheet->setCellValue("D$rowIndex", $plan['cong_doan_sx']);
