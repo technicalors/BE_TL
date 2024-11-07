@@ -429,7 +429,7 @@ Route::group([
     $router->get('/export/maintanence-detail-status', [ApiUIController::class, 'exportChiTietThucHienKiemTra_TrangThai']);
     $router->get('/export/maintanence-detail', [ApiUIController::class, 'exportChiTietThucHienKiemTra']);
 
-    $router->get('ui/qc-error-list', [ApiUIController::class, 'qcErrorList']);
+    $router->get('ui/qc-error-list', [Phase2UIApiController::class, 'qcErrorList']);
     $router->get('ui/data-filter', [ApiUIController::class, 'getDataFilterUI']);
 
     $router->get('info-cong-doan/list', [InfoCongDoanController::class, 'getInfoCongDoan']);
