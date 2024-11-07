@@ -419,7 +419,7 @@ Route::group([
     $router->get('/export/pqc', [ApiUIController::class, 'exportPQC']);
     $router->get('/export/qc-history', [ApiUIController::class, 'exportQCHistory']);
     $router->get('/export/report-qc', [ApiUIController::class, 'exportReportQC']);
-    $router->get('/export/qc-error-list', [ApiUIController::class, 'exportQCErrorList']);
+    $router->get('/export/qc-error-list', [Phase2UIApiController::class, 'exportQCErrorList']);
     $router->get('/export/report-produce-history', [ApiUIController::class, 'exportReportProduceHistory']);
     $router->get('/export/warehouse/summary', [ApiUIController::class, 'exportSummaryWarehouse']);
     $router->get('/export/warehouse/bmcard', [ApiUIController::class, 'exportBMCardWarehouse']);
@@ -693,6 +693,7 @@ Route::group([
     
     $router->get('quality/pqc/data-table', [Phase2UIApiController::class, 'getQualityDataTable']);
     $router->get('quality/pqc/export-data-table', [Phase2UIApiController::class, 'exportQualityDataTable']);
+    $router->get('quality/pqc/export-test-criteria-history', [Phase2UIApiController::class, 'exportTestCriteriaHistory']);
     $router->get('quality/pqc/data-chart', [Phase2UIApiController::class, 'getQualityDataChart']);
     $router->get('quality/oqc/data-table', [Phase2UIApiController::class, 'getOQCDataTable']);
     $router->get('quality/oqc/data-chart', [Phase2UIApiController::class, 'getOQCDataChart']);
