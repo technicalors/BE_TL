@@ -869,7 +869,6 @@ class Phase2UIApiController extends Controller
                     ->toArray();;
                 foreach ($list as $criteria) {
                     $record = $history[$criteria->id] ?? null;
-                    Log::debug([$record, $qc_history->toArray()]);
                     $item[$criteria->id] = !empty($record) ? (is_numeric($record['input']) ?  $record['input'] : $record['result']) : "";
                 }
                 $final_result = $qc_history->eligible_to_end ? ($qc_history->testCriteriaHistories->every(function ($testCriteriaHistory) {
@@ -922,6 +921,200 @@ class Phase2UIApiController extends Controller
         $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save('exported_files/Chi tiết QC.xlsx');
         $href = '/exported_files/Chi tiết QC.xlsx';
+        return $this->success($href);
+    }
+
+    public function exportPQCReport(Request $request)
+    {
+        $input = $request->all();
+        $sheet_array = [];
+        foreach ($input as $key => $value) {
+            switch ($key) {
+                case 'week':
+                    $sheet_array[$key]['datetime'] = date("W", strtotime($value));
+                    $sheet_array[$key]['title'] = 'tuần';
+                    $sheet_array[$key]['start_date'] = date("Y-m-d", strtotime($value . ' monday this week'));
+                    $sheet_array[$key]['end_date'] = date("Y-m-d", strtotime($value . ' sunday this week'));
+                    break;
+                case 'month':
+                    $sheet_array[$key]['datetime'] = date("m", strtotime($value));
+                    $sheet_array[$key]['title'] = 'tháng';
+                    $sheet_array[$key]['start_date'] = date("Y-m-01", strtotime($value));
+                    $sheet_array[$key]['end_date'] = date("Y-m-t", strtotime($value));
+                    break;
+                case 'year':
+                    $sheet_array[$key]['datetime'] = date("Y", strtotime($value));
+                    $sheet_array[$key]['title'] = 'năm';
+                    $sheet_array[$key]['start_date'] = date("Y-01-01", strtotime($value));
+                    $sheet_array[$key]['end_date'] = date("Y-12-31", strtotime($value));
+                    break;
+                default:
+                    $sheet_array[$key]['datetime'] = date("d-m-Y", strtotime($value));
+                    $sheet_array[$key]['title'] = 'ngày';
+                    $sheet_array[$key]['start_date'] = date("Y-m-d", strtotime($value));
+                    $sheet_array[$key]['end_date'] = date("Y-m-d", strtotime($value));
+                    break;
+            }
+            $groupedQcHistories = QCHistory::orderBy('created_at')
+                ->whereDate('scanned_time', '>=', $sheet_array[$key]['start_date'])
+                ->whereDate('scanned_time', '<=', $sheet_array[$key]['end_date'])
+                ->get()
+                ->groupBy(function ($qc_history) {
+                    return $qc_history->infoCongDoan->line_id ?? null;
+                });
+            $data = [];
+            foreach ($groupedQcHistories as $line_id => $qcHistories) {
+                $line = Line::find($line_id);
+                if(!$line) continue;
+                $sum_ok = 0;
+                $sum_ng = 0;
+                foreach ($qcHistories as $qcHistory) {
+                    $isOK = $qcHistory->eligible_to_end ? $qcHistory->testCriteriaHistories->every(function ($testCriteriaHistory) {
+                        return $testCriteriaHistory->result === 'OK';
+                    }) : false;
+                    if($isOK){
+                        $sum_ok += 1;
+                    }else{
+                        $sum_ng += 1;
+                    }
+                }
+
+                $data[$line_id]['cong_doan'] = $line->name;
+                $data[$line_id]['sum_lot_kt'] = count($qcHistories);
+                $data[$line_id]['sum_lot_ok'] = $sum_ok;
+                $data[$line_id]['sum_lot_ng'] = $sum_ng;
+                $data[$line_id]['sum_ty_le_ng'] = count($qcHistories) ? number_format($sum_ng / count($qcHistories) * 100) : 0;
+                $data[$line_id]['loi_phat_sinh'] = '';
+            }
+            $sheet_array[$key]['data'] = $data;
+        }
+        $centerStyle = [
+            'alignment' => [
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
+                'wrapText' => true
+            ],
+            'borders' => array(
+                'outline' => array(
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => array('argb' => '000000'),
+                ),
+            ),
+        ];
+        $headerStyle = array_merge($centerStyle, [
+            'font' => ['bold' => true],
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => array('argb' => 'EBF1DE')
+            ]
+        ]);
+        $titleStyle = array_merge($centerStyle, [
+            'font' => ['size' => 16, 'bold' => true],
+        ]);
+        $border = [
+            'borders' => array(
+                'allBorders' => array(
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => array('argb' => '000000'),
+                ),
+            ),
+        ];
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet_index = 0;
+
+        // return $sheet_array;
+        foreach ($sheet_array as $arr) {
+            $sheet = $spreadsheet->getSheet($sheet_index);
+            $sheet->setTitle('Báo cáo ' . $arr['title']);
+            $start_row = 2;
+            $start_col = 1;
+
+            $header = ['Công đoạn', 'Tổng số lot kiểm tra', "Số lot OK", "Số lot NG", "Tỷ lệ NG (%)", "Lỗi phát sinh"];
+            array_unshift($header, ucfirst($arr['title']));
+            $table_key = [
+                'A' => 'date',
+                'B' => 'cong_doan',
+                'C' => 'sum_lot_kt',
+                'D' => 'sum_lot_ok',
+                'E' => 'sum_lot_ng',
+                'F' => 'sum_ty_le_ng',
+                'G' => 'loi_phat_sinh',
+            ];
+            $table = $arr['data'] ?? [];
+            foreach ($header as $key => $cell) {
+                if (!is_array($cell)) {
+                    $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row + 1])->getStyle([$start_col, $start_row, $start_col, $start_row + 1])->applyFromArray($headerStyle);
+                } else {
+                    $style = array_merge($headerStyle, array('fill' => [
+                        'fillType' => Fill::FILL_SOLID,
+                        'startColor' => array('argb' => 'EBF1DE')
+                    ]));
+                    $sheet->setCellValue([$start_col, $start_row], $key)->mergeCells([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->getStyle([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->applyFromArray($style);
+                    foreach ($cell as $val) {
+
+                        $sheet->setCellValue([$start_col, $start_row + 1], $val)->getStyle([$start_col, $start_row + 1])->applyFromArray($style);
+                        $start_col += 1;
+                    }
+                    continue;
+                }
+                $start_col += 1;
+            }
+
+            $sheet->setCellValue([1, 1], 'BÁO CÁO ' . mb_strtoupper($arr['title']))->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
+            $sheet->getRowDimension(1)->setRowHeight(40);
+            $table_col = 2;
+            $table_row = $start_row + 2;
+            foreach ($table as $key => $row) {
+                $table_col = 2;
+                foreach ((array)$row as $key => $cell) {
+                    if (in_array($key, $table_key)) {
+                        $value = '';
+                        if (is_numeric($key)) {
+                            switch ($cell) {
+                                case 0:
+                                    $value = "NG";
+                                    break;
+                                case 1:
+                                    $value = "OK";
+                                    break;
+                                default:
+                                    $value = "";
+                                    break;
+                            }
+                        } else {
+                            $value = $cell;
+                        }
+                        $sheet->setCellValue(array_search($key, $table_key) . $table_row, $value)->getStyle(array_search($key, $table_key) . $table_row)->applyFromArray($centerStyle);
+                    } else {
+                        continue;
+                    }
+                    $table_col += 1;
+                }
+                $table_row += 1;
+            }
+            if (count($table)) {
+                $sheet->setCellValue([1, $start_row + 2], $arr['datetime'])->mergeCells([1, $start_row + 2, 1, $table_row - 1])->getStyle([1, $start_row + 2, 1, $table_row - 1])->applyFromArray($centerStyle);
+            }
+
+            foreach ($sheet->getColumnIterator() as $column) {
+                $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+                $sheet->getStyle($column->getColumnIndex() . ($start_row + 2) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
+            }
+            if ($sheet_index < count($sheet_array) - 1) {
+                $spreadsheet->createSheet();
+                $sheet_index += 1;
+            }
+        }
+
+        header("Content-Description: File Transfer");
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="Báo cáo.xlsx"');
+        header('Cache-Control: max-age=0');
+        header("Content-Transfer-Encoding: binary");
+        header('Expires: 0');
+        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('exported_files/Báo cáo.xlsx');
+        $href = '/exported_files/Báo cáo.xlsx';
         return $this->success($href);
     }
 
