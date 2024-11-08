@@ -19,7 +19,6 @@ class MaterialParameterLogController extends Controller
         return response()->json([
             'success' => true,
             'data' => $result,
-            'message' => 'OK',
         ], 200);
     }
 }
