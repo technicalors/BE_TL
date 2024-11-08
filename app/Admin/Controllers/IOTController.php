@@ -103,6 +103,7 @@ class IOTController extends AdminController
         $log_iot->data = $request->all();
         $log_iot->save();
         $tracking = Tracking::where('machine_id', $machine->code)->first();
+        Log::debug($request->input());
         LogWarningParameter::checkParameter($request);
         if (!$tracking) {
             $tracking = new Tracking();
