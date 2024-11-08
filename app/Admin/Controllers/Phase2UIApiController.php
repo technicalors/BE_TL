@@ -291,6 +291,9 @@ class Phase2UIApiController extends Controller
             $lot = Lot::where('lo_sx', $request->lo_sx)->get();
             $query->whereIn('lot_id', $lot->pluck('id'));
         }
+        if (isset($request->lot_id)) {
+            $query->where('lot_id', 'like', "%$request->lot_id%");
+        }
         return $query;
     }
 
@@ -2294,7 +2297,10 @@ class Phase2UIApiController extends Controller
                 $lo_sx = Losx::firstOrCreate(['product_order_id' => $order->id]);
                 $losx_id = $lo_sx->id;
                 $plan = $this->storeProductionPlan($input, $losx_id, $startTime, $endTime, $order, $line, $machine);
-                $this->generateLots($input, $losx_id, $plan, $startTime, $machine);
+                $lastLotPLan = $this->generateLots($input, $losx_id, $plan, $startTime, $machine);
+                if($lastLotPLan){
+                    $plan->update(['thoi_gian_ket_thuc'=>$lastLotPLan->end_time]);
+                }
             }
             DB::commit();
         } catch (\Exception $ex) {
@@ -2417,6 +2423,7 @@ class Phase2UIApiController extends Controller
 
     private function generateLots($input, $losx_id, $plan, $startTime, $machine)
     {
+        $lot_plan = null;
         $quantity = $input['sl_giao_sx'];
         $lotSize = $this->getLotSize($input['product_id'], $input['line_id']);
         $numLots = ceil($quantity / $lotSize);
@@ -2434,9 +2441,9 @@ class Phase2UIApiController extends Controller
                 $lotEndTime = $lotStartTime->copy()->addMinutes(($taskTime * $lotSize) + $rollChangeTime);
             }
             if ($input['line_id'] == 29) {
-                $lotEndTime = $lotStartTime->copy()->addMinutes($taskTime * $lotSize);
+                $lotEndTime = $lotStartTime->copy()->addMinutes(30);
             }
-            LotPlan::create([
+            $lot_plan = LotPlan::create([
                 'lot_id' => $lotId,
                 'lo_sx' => $losx_id,
                 'line_id' => $input['line_id'],
@@ -2459,6 +2466,7 @@ class Phase2UIApiController extends Controller
                 'production_plan_id' => $plan->id
             ]);
         }
+        return $lot_plan;
     }
     public function getKPIPassRateChart(Request $request)
     {
