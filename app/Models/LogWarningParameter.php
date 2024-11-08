@@ -34,14 +34,14 @@ class LogWarningParameter extends Model
                         if ($check_monitor) {
                             $check_monitor->update(['content' => $tm->hang_muc . ': ' . $value]);
                         } else {
-                            $monitor = new Monitor();
-                            $monitor->type = 'cl';
-                            $monitor->content =  $tm->hang_muc;
-                            $monitor->value =  $value;
-                            $monitor->parameter_id = $key;
-                            $monitor->machine_id = $request->machine_id;
-                            $monitor->status = 0;
-                            $monitor->save();
+                            // $monitor = new Monitor();
+                            // $monitor->type = 'cl';
+                            // $monitor->content =  $tm->hang_muc;
+                            // $monitor->value =  $value;
+                            // $monitor->parameter_id = $key;
+                            // $monitor->machine_id = $request->machine_id;
+                            // $monitor->status = 0;
+                            // $monitor->save();
                         }
                     } else {
                         $log = new LogWarningParameter();
