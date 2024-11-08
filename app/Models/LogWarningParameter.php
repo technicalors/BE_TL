@@ -22,10 +22,10 @@ class LogWarningParameter extends Model
                     Log::debug('✅');
                     Log::debug($params);
                 }
-                // $machine = Machine::where('device_id', $request->device_id)->first();
-                // if (!empty($machine)) {
-                //     $machine_id = $machine->id;
-                // }
+                $machine = Machine::where('device_id', $request->device_id)->first();
+                if (!empty($machine)) {
+                    $machine_id = $machine->id;
+                }
             }
 
             if (isset($machine_id)) {
