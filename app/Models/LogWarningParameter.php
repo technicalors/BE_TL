@@ -18,14 +18,15 @@ class LogWarningParameter extends Model
             $params = (array) $request->all();
             $machine_id = $request->machine_id ?? null;
             if (isset($request->device_id)) {
-                $machine = Machine::where('device_id', $request->device_id)->first();
-                if (!empty($machine)) {
-                    $machine_id = $machine->id;
+                if ($request->device_id == '22d821e0-45bd-11ef-b8c3-a13625245eca') {
+                    Log::debug('✅');
+                    Log::debug($params);
                 }
+                // $machine = Machine::where('device_id', $request->device_id)->first();
+                // if (!empty($machine)) {
+                //     $machine_id = $machine->id;
+                // }
             }
-
-            // Log::debug('✅');
-            // Log::debug($params);
 
             if (isset($machine_id)) {
                 $scenarios = Scenario::all();
