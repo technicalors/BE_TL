@@ -18,13 +18,11 @@ class LogWarningParameter extends Model
             $params = (array) $request->all();
             $machine_id = $request->machine_id ?? null;
             if (isset($request->device_id)) {
-                // if ($request->device_id == '22d821e0-45bd-11ef-b8c3-a13625245eca') {
-                //     Log::debug('✅');
-                //     Log::debug($params);
-                // }
-                $machine = Machine::where('device_id', $request->device_id)->first();
-                if (!empty($machine)) {
-                    $machine_id = $machine->id;
+                if ($request->device_id == '22d821e0-45bd-11ef-b8c3-a13625245eca') { // May LH
+                    $machine = Machine::where('device_id', $request->device_id)->first();
+                    if (!empty($machine)) {
+                        $machine_id = $machine->id;
+                    }
                 }
             }
 
@@ -44,6 +42,8 @@ class LogWarningParameter extends Model
                         $f5 = (float)$value >= (float)$tm->tieu_chuan_kiem_soat_duoi;
                         if (($f1 || $f2) && $f3) {
                             $check_log = LogWarningParameter::where('parameter_id', $key)->first();
+                            $check_log->value = $value;
+                            $check_log->save();
                             if ($check_log) {
                                 $check_monitor = Monitor::where('parameter_id', $key)->where('machine_id', $machine_id)->where('status', 0)->first();
                                 if ($check_monitor) {
