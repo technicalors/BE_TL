@@ -20,6 +20,7 @@ use App\Admin\Controllers\MaintenanceLogController;
 use App\Admin\Controllers\MaintenancePlanController;
 use App\Admin\Controllers\MaintenanceScheduleController;
 use App\Admin\Controllers\MaintenanceLogImageController;
+use App\Admin\Controllers\MaterialParameterLogController;
 use App\Admin\Controllers\Phase2DBApiController;
 use App\Admin\Controllers\Phase2OIApiController;
 use App\Admin\Controllers\Phase2UIApiController;
@@ -605,6 +606,8 @@ Route::group([
     $router->post('filter-file-to-plan', [ApiUIController::class, 'filterFileToPlan']);
     $router->post('random-info', [ApiUIController::class, 'randomInfo']);
     $router->get('/get-tracking-info-cong-doan', [ApiUIController::class, 'trackingProduction']);
+
+    $router->get('/machine-parameter-logs', [MaterialParameterLogController::class, 'index']);
 });
 //Dashboard
 Route::group([

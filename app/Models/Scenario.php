@@ -11,7 +11,7 @@ class Scenario extends Model
 
     protected $table="scenario";
 
-    protected $fillable = ['hang_muc','tieu_chuan','tieu_chuan_max','tieu_chuan_min','tieu_chuan_kiem_soat_tren','tieu_chuan_kiem_soat_duoi'];
+    protected $fillable = ['hang_muc','parameter_id','tieu_chuan','tieu_chuan_max','tieu_chuan_min','tieu_chuan_kiem_soat_tren','tieu_chuan_kiem_soat_duoi'];
     public function category()
     {
         return $this->belongsTo(Category::class);
