@@ -24,6 +24,9 @@ class LogWarningParameter extends Model
                 }
             }
 
+            Log::debug('✅');
+            Log::debug($params);
+
             if (isset($machine_id)) {
                 $scenarios = Scenario::all();
                 $mark = [];
