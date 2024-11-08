@@ -458,8 +458,8 @@ class Phase2UIApiController extends Controller
     {
         $query = QCHistory::orderBy('created_at');
         if (isset($request->date) && count($request->date) == 2) {
-            $query->whereDate('scanned_time', '>=', date('Y-m-d', strtotime($request->date[0])))
-                ->whereDate('scanned_time', '<=', date('Y-m-d', strtotime($request->date[1])));
+            $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->date[0])))
+                ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->date[1])));
         }
         $query->whereHas('infoCongDoan', function ($query) use ($request) {
             if (isset($request->line_id)) {
@@ -526,7 +526,7 @@ class Phase2UIApiController extends Controller
             }
             $item = [
                 'stt' => $index + 1,
-                'thoi_gian_kiem_tra' => Carbon::parse($qc_history->created_at)->format('d/m/Y H:i:s'),
+                'thoi_gian_kiem_tra' => $qc_history->scanned_time ? Carbon::parse($qc_history->scanned_time)->format('d/m/Y H:i:s') : "",
                 'ca_sx' => $ca_sx,
                 'xuong' => $qc_history->line->factory->name ?? "Giấy",
                 'cong_doan' => $qc_history->infoCongDoan->line->name ?? '',
@@ -546,7 +546,6 @@ class Phase2UIApiController extends Controller
                 'user_pqc' => $user_qc->name ?? "",
                 'sl_ng' => $qc_history->infoCongDoan->sl_ng ?? 0,
                 'ti_le_ng' => (isset($qc_history->infoCongDoan->sl_dau_ra_hang_loat) && $qc_history->infoCongDoan->sl_dau_ra_hang_loat > 0) ? number_format(($qc_history->infoCongDoan->sl_ng / $qc_history->infoCongDoan->sl_dau_ra_hang_loat) * 100) . "%" : "0%",
-                // 'errors' => $qc_history->errorHistories ?? [],
             ];
             $index++;
             $record[] = $item;
@@ -956,8 +955,8 @@ class Phase2UIApiController extends Controller
                     break;
             }
             $groupedQcHistories = QCHistory::orderBy('created_at')
-                ->whereDate('scanned_time', '>=', $sheet_array[$key]['start_date'])
-                ->whereDate('scanned_time', '<=', $sheet_array[$key]['end_date'])
+                ->whereDate('created_at', '>=', $sheet_array[$key]['start_date'])
+                ->whereDate('created_at', '<=', $sheet_array[$key]['end_date'])
                 ->get()
                 ->groupBy(function ($qc_history) {
                     return $qc_history->infoCongDoan->line_id ?? null;
@@ -1365,7 +1364,7 @@ class Phase2UIApiController extends Controller
             })->toArray();
             $item = [
                 'stt' => $index + 1,
-                'ngay_sx' => Carbon::parse($qc_history->created_at)->format('d/m/Y H:i:s'),
+                'ngay_sx' => $qc_history->scanned_time ? Carbon::parse($qc_history->scanned_time)->format('d/m/Y H:i:s') : '',
                 'ca_sx' => $ca_sx,
                 'xuong' => $qc_history->line->factory->name ?? "Giấy",
                 'ten_sp' => $qc_history->infoCongDoan->product->name ?? "",
