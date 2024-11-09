@@ -287,6 +287,7 @@ async function enqueueData(deviceId, data) {
   // Chuyển đổi và đẩy dữ liệu thông số máy
   if (deviceFieldConfig[deviceId]) {
     let convertedData = convertMachineInfoData(data, deviceId);
+    console.log("Thông số máy", convertedData);
     if (Object.keys(convertedData).length > 1) {
       dataQueues[deviceId].push({
         data: convertedData,

@@ -28,7 +28,7 @@ class LogWarningParameter extends Model
                 }
             }
 
-            if (isset($machine_id)) {
+            if (isset($machine)) {
                 $scenarios = Scenario::all();
                 $mark = [];
                 foreach ($scenarios as $item) {
