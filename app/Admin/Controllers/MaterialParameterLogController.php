@@ -16,7 +16,7 @@ class MaterialParameterLogController extends Controller
     public function index(Request $request)
     {
         // $result = MachineParameterLogs::orderByDesc('created_at')->with('machineParameter.scenario')->get()->take(20);
-        $result = LogWarningParameter::orderByDesc('updated_at')->where('machine_id', 'e281ee2c-0b50-404b-9c5f-c082dc655d64')->with('machine')->first();
+        $result = LogWarningParameter::orderByDesc('updated_at')->where('machine_id', 'e281ee2c-0b50-404b-9c5f-c082dc655d64')->with(['machine', 'machineParameter.scenario'])->first();
         return response()->json([
             'success' => true,
             'data' => $result,

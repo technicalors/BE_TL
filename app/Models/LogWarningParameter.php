@@ -82,4 +82,9 @@ class LogWarningParameter extends Model
     {
         return $this->hasOne(Machine::class, 'id', 'machine_id');
     }
+
+    public function machineParameter(): HasOne
+    {
+        return $this->hasOne(MachineParameters::class, 'machine_id', 'machine_id')->whereColumn('parameter_id', '=', 'machine_parameters.parameter_id');
+    }
 }
