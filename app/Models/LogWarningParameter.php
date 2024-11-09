@@ -52,8 +52,8 @@ class LogWarningParameter extends Model
                                     $check_monitor->update(['content' => $tm->hang_muc . ': ' . $value]);
                                 } else {
                                     if ($key == 'PLC_CB01') {
-                                        $m = Monitor::where('parameter_id', $key)->where('machine_id', $machine_id)->where('status', 1)->whereNull('troubleshoot')->orderByDesc('updated_at')->first();
-                                        if (!empty($m)) {
+                                        $m = Monitor::where('parameter_id', $key)->where('machine_id', $machine_id)->where('status', 1)->orderByDesc('updated_at')->first();
+                                        if (empty($m->troubleshoot)) {
                                             // Log::debug('👉 Ignore monitor');
                                             continue;
                                         }
