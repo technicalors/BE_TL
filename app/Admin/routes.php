@@ -607,6 +607,7 @@ Route::group([
     $router->get('/get-tracking-info-cong-doan', [ApiUIController::class, 'trackingProduction']);
 
     $router->get('/machine-parameter-logs', [MaterialParameterLogController::class, 'index']);
+    $router->put('/machine-parameter-logs', [MaterialParameterLogController::class, 'update']);
     $router->get('/fake-data-consume', [Phase2UIApiController::class, 'generatePowerConsumes']);
 });
 //Dashboard
