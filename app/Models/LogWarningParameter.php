@@ -76,7 +76,7 @@ class LogWarningParameter extends Model
                                 $log->machine_id = $machine_id;
                                 $log->save();
                                 $monitor = Monitor::where('parameter_id', $key)->where('machine_id', $machine_id)->first();
-                                if (empty($monitor)) {
+                                if (!$monitor) {
                                     $monitor = new Monitor();
                                     $monitor->type = 'cl';
                                     $monitor->content =  $tm->hang_muc;

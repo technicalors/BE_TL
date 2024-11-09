@@ -11,6 +11,7 @@ use Encore\Admin\Layout\Column;
 use Encore\Admin\Layout\Content;
 use Encore\Admin\Layout\Row;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class MaterialParameterLogController extends Controller
 {
@@ -51,6 +52,7 @@ class MaterialParameterLogController extends Controller
             $monitor->troubleshoot = $request->troubleshoot;
             $monitor->save();
             Monitor::where('parameter_id', $request->parameter_id)->delete();
+            LogWarningParameter::where('parameter_id', $request->parameter_id)->delete();
         }
 
         return response()->json([
