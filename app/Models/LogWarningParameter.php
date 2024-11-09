@@ -16,10 +16,11 @@ class LogWarningParameter extends Model
     public static function checkParameter($request)
     {
         try {
+            $device_id = '22d821e0-45bd-11ef-b8c3-a13625245eca';
             $params = (array) $request->all();
             $machine_id = $request->machine_id ?? null;
             if (isset($request->device_id)) {
-                if ($request->device_id == '22d821e0-45bd-11ef-b8c3-a13625245eca') { // May LH
+                if ($request->device_id == $device_id) { // May LH
                     $machine = Machine::where('device_id', $request->device_id)->first();
                     if (!empty($machine)) {
                         $machine_id = $machine->id;
@@ -42,8 +43,8 @@ class LogWarningParameter extends Model
                         $f4 = (float)$value <= (float)$tm->tieu_chuan_kiem_soat_tren;
                         $f5 = (float)$value >= (float)$tm->tieu_chuan_kiem_soat_duoi;
                         if (($f1 || $f2) && $f3) {
-                            $check_log = LogWarningParameter::where('parameter_id', $key)->first();
-                            if ($check_log) {
+                            $check_log = LogWarningParameter::where('parameter_id', $key)->where('machine_id', $machine_id)->first();
+                            if (!empty($check_log)) {
                                 $check_log->value = $value;
                                 $check_log->save();
                                 $check_monitor = Monitor::where('parameter_id', $key)->where('machine_id', $machine_id)->where('status', 0)->first();
