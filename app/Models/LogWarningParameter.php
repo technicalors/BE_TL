@@ -58,7 +58,6 @@ class LogWarningParameter extends Model
                                 } else {
                                     $m = Monitor::where('parameter_id', $key)->where('machine_id', $machine_id)->where('status', 1)->orderByDesc('updated_at')->first();
                                     if (empty($m->troubleshoot)) {
-                                        // Log::debug('👉 Ignore monitor');
                                         continue;
                                     }
                                     $monitor = new Monitor();
@@ -76,6 +75,15 @@ class LogWarningParameter extends Model
                                 $log->value = $value;
                                 $log->machine_id = $machine_id;
                                 $log->save();
+
+                                $monitor = new Monitor();
+                                $monitor->type = 'cl';
+                                $monitor->content =  $tm->hang_muc;
+                                $monitor->value =  $value;
+                                $monitor->parameter_id = $key;
+                                $monitor->machine_id = $machine_id;
+                                $monitor->status = 0;
+                                $monitor->save();
                             }
                         } elseif ($f4 && $f5 && $f3) {
                             LogWarningParameter::where('parameter_id', $key)->where('machine_id', $machine_id)->delete();
