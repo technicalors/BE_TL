@@ -36,8 +36,8 @@ class LogWarningParameter extends Model
                 foreach ($params as $key => $value) {
                     if (isset($mark[$key])) {
                         $tm = $mark[$key];
-                        $f1 = (float)$value > (float)$tm->tieu_chuan_kiem_soat_tren;
-                        $f2 = (float)$value < (float)$tm->tieu_chuan_kiem_soat_duoi;
+                        $f1 = (float)$value > (float)$tm->tieu_chuan_max;
+                        $f2 = (float)$value < (float)$tm->tieu_chuan_min;
                         $f3 = $value != -1;
                         $f4 = (float)$value <= (float)$tm->tieu_chuan_kiem_soat_tren;
                         $f5 = (float)$value >= (float)$tm->tieu_chuan_kiem_soat_duoi;
