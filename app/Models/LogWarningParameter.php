@@ -16,7 +16,18 @@ class LogWarningParameter extends Model
     public static function checkParameter($request)
     {
         try {
-           
+            // $device_id = '22d821e0-45bd-11ef-b8c3-a13625245eca';
+            // $params = (array) $request->all();
+            // $machine_id = $request->machine_id ?? null;
+            // if (isset($request->device_id)) {
+            //     if ($request->device_id == $device_id) { // May LH
+            //         $machine = Machine::where('device_id', $request->device_id)->first();
+            //         if (!empty($machine)) {
+            //             $machine_id = $machine->id;
+            //         }
+            //     }
+            // }
+
             if (isset($request->device_id) && $request->device_id == '22d821e0-45bd-11ef-b8c3-a13625245eca') {
                 $machine = Machine::where('device_id', $request->device_id)->first();
                 $params = (array) $request->all();
@@ -45,11 +56,11 @@ class LogWarningParameter extends Model
                                 if ($check_monitor) {
                                     $check_monitor->update(['content' => $tm->hang_muc . ': ' . $value]);
                                 } else {
-                                    $m = Monitor::where('parameter_id', $key)->where('machine_id', $machine_id)->where('status', 1)->orderByDesc('updated_at')->first();
-                                    if (empty($m->troubleshoot)) {
-                                        // Log::debug('👉 Ignore monitor');
-                                        continue;
-                                    }
+                                    // $m = Monitor::where('parameter_id', $key)->where('machine_id', $machine_id)->where('status', 1)->orderByDesc('updated_at')->first();
+                                    // if (empty($m->troubleshoot)) {
+                                    //     // Log::debug('👉 Ignore monitor');
+                                    //     continue;
+                                    // }
                                     $monitor = new Monitor();
                                     $monitor->type = 'cl';
                                     $monitor->content =  $tm->hang_muc;
@@ -67,7 +78,7 @@ class LogWarningParameter extends Model
                                 $log->save();
                             }
                         } elseif ($f4 && $f5 && $f3) {
-                            // LogWarningParameter::where('parameter_id', $key)->where('machine_id', $machine_id)->delete();
+                            LogWarningParameter::where('parameter_id', $key)->where('machine_id', $machine_id)->delete();
                             Monitor::where('parameter_id', $key)->where('machine_id', $machine_id)->where('status', 0)->update(['status' => 1]);
                         }
                     }
