@@ -7,6 +7,7 @@ use App\Imports\LotPlansImport;
 use App\Models\Material;
 use App\Models\LotPlan;
 use App\Traits\API;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -16,6 +17,11 @@ class LotPlanController extends Controller
     public function index(Request $request)
     {
         $query = LotPlan::orderBy('lo_sx')->orderBy('lot_id')->orderBy('start_time');
+        if (!empty($request->date)) {
+            $start = date('Y-m-d', strtotime($request->date[0]));
+            $end = date('Y-m-d', strtotime($request->date[1]));
+            $query->whereDate('start_time', '>=', $start)->whereDate('start_time', '<=', $end);
+        }
         if (!empty($request->lot_id)) {
             $query->where('lot_id', 'like', '%' . $request->lot_id . '%');
         }

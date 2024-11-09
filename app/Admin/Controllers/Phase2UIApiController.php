@@ -29,6 +29,8 @@ use App\Models\ProductOrder;
 use App\Models\QCHistory;
 use App\Models\Shift;
 use App\Models\Spec;
+use App\Models\TestCriteria;
+use App\Models\TestCriteriaDetailHistory;
 use App\Traits\API;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -289,6 +291,9 @@ class Phase2UIApiController extends Controller
             $lot = Lot::where('lo_sx', $request->lo_sx)->get();
             $query->whereIn('lot_id', $lot->pluck('id'));
         }
+        if (isset($request->lot_id)) {
+            $query->where('lot_id', 'like', "%$request->lot_id%");
+        }
         return $query;
     }
 
@@ -454,11 +459,10 @@ class Phase2UIApiController extends Controller
     //Pre Query QC History
     public function pqcHistoryQuery(Request $request)
     {
-        $line_ids = Line::query()->pluck('id')->toArray();
         $query = QCHistory::orderBy('created_at');
         if (isset($request->date) && count($request->date) == 2) {
-            $query->whereDate('scanned_time', '>=', date('Y-m-d', strtotime($request->date[0])))
-                ->whereDate('scanned_time', '<=', date('Y-m-d', strtotime($request->date[1])));
+            $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->date[0])))
+                ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->date[1])));
         }
         $query->whereHas('infoCongDoan', function ($query) use ($request) {
             if (isset($request->line_id)) {
@@ -525,7 +529,7 @@ class Phase2UIApiController extends Controller
             }
             $item = [
                 'stt' => $index + 1,
-                'thoi_gian_kiem_tra' => Carbon::parse($qc_history->created_at)->format('d/m/Y H:i:s'),
+                'thoi_gian_kiem_tra' => $qc_history->scanned_time ? Carbon::parse($qc_history->scanned_time)->format('d/m/Y H:i:s') : "",
                 'ca_sx' => $ca_sx,
                 'xuong' => $qc_history->line->factory->name ?? "Giấy",
                 'cong_doan' => $qc_history->infoCongDoan->line->name ?? '',
@@ -545,7 +549,6 @@ class Phase2UIApiController extends Controller
                 'user_pqc' => $user_qc->name ?? "",
                 'sl_ng' => $qc_history->infoCongDoan->sl_ng ?? 0,
                 'ti_le_ng' => (isset($qc_history->infoCongDoan->sl_dau_ra_hang_loat) && $qc_history->infoCongDoan->sl_dau_ra_hang_loat > 0) ? number_format(($qc_history->infoCongDoan->sl_ng / $qc_history->infoCongDoan->sl_dau_ra_hang_loat) * 100) . "%" : "0%",
-                'errors' => $qc_history->errorHistories ?? [],
             ];
             $index++;
             $record[] = $item;
@@ -578,7 +581,7 @@ class Phase2UIApiController extends Controller
         $errorRatio = $this->parseErrorRatioData($qcHistories);
         $data->errorTrending = array_values($errorTrending);
         $data->materialErrorRatioData = array_values($materialErrorRatio);
-        $data->errorRatioData = array_values($errorRatio);
+        $data->errorRatioData = ($errorRatio);
         return $this->success($data);
     }
 
@@ -630,24 +633,39 @@ class Phase2UIApiController extends Controller
     public function parseErrorRatioData($qcHistories)
     {
         $data = [];
+        $errors = array_unique($qcHistories->flatMap->errorHistories->filter(function ($value) {
+            return !str_contains($value->error_id, 'NVL');
+        })->pluck('error_id')->toArray());
         foreach ($qcHistories as $qc_history) {
-            if (count($qc_history->errorHistories ?? []) > 0) {
-                foreach (($qc_history->errorHistories ?? []) as $error) {
-                    if (!isset($data[$error->error_id])) {
-                        $data[$error->error_id] = [
-                            'name' => $error->error_id,
-                            'frequency' => 0,
-                            'value' => 0
-                        ];
-                    }
-                    $sl_ng = $error->quantity ?? 0;
-                    $sl_dau_vao_hang_loat = $qc_history->infoCongDoan->sl_dau_vao_hang_loat ?? 0;
-                    $data[$error->error_id]['value'] += $sl_dau_vao_hang_loat ? $sl_ng / $sl_dau_vao_hang_loat * 100 : 0;
-                    $data[$error->error_id]['frequency'] += 1;
+            foreach (($qc_history->errorHistories ?? []) as $error) {
+                if (!in_array($error->error_id, $errors)) {
+                    continue;
                 }
+                $sl_ng = $error->quantity ?? 0;
+                $sl_dau_ra_hang_loat = $qc_history->infoCongDoan->sl_dau_ra_hang_loat ?? 0;
+                // Tính tỷ lệ lỗi cho bản ghi này
+                $ratio = $sl_dau_ra_hang_loat > 0 ? ($sl_ng / $sl_dau_ra_hang_loat) * 100 : 0;
+                // Khởi tạo mảng nếu chưa tồn tại
+                if (!isset($data[$error->type])) {
+                    $data[$error->type] = ['name' => $error->type, 'data' => []];
+                }
+                // Thêm tỷ lệ lỗi vào mảng `data` cho lỗi cụ thể
+                if (!isset($data[$error->type]['data'][$error->error_id])) {
+                    $data[$error->type]['data'][$error->error_id] = [];
+                }
+                // Thêm tỷ lệ lỗi vào mảng cho error_id
+                $data[$error->type]['data'][$error->error_id][] = $ratio;
             }
         }
-        return $data;
+        $formattedData = [];
+        foreach ($data as $type => $typeData) {
+            $value = [];
+            foreach ($errors as $error) {
+                $value[] = isset($typeData['data'][$error]) ? round(array_sum($typeData['data'][$error]) / count($typeData['data'][$error]), 2) : 0;
+            }
+            $formattedData[$type] = $value;
+        }
+        return ['categories' => array_values($errors), 'series' => $formattedData];
     }
 
     public function exportQualityDataTable(Request $request)
@@ -711,7 +729,204 @@ class Phase2UIApiController extends Controller
         return $this->success($href);
     }
 
-    public function exportReportQC(Request $request)
+    public function exportTestCriteriaHistory(Request $request)
+    {
+        $query = $this->pqcHistoryQuery($request);
+        $result = $query->with('testCriteriaHistories.testCriteriaDetailHistories')->get();
+        $shifts = Shift::all();
+        $groupedQcHistories = $result->groupBy(function ($qc_history) {
+            return $qc_history->infoCongDoan->line_id ?? null;
+        });
+        $centerStyle = [
+            'alignment' => [
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
+                'wrapText' => true
+            ],
+            'borders' => array(
+                'outline' => array(
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => array('argb' => '000000'),
+                ),
+            ),
+        ];
+        $headerStyle = array_merge($centerStyle, [
+            'font' => ['bold' => true],
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => array('argb' => 'BFBFBF')
+            ]
+        ]);
+        $titleStyle = array_merge($centerStyle, [
+            'font' => ['size' => 16, 'bold' => true],
+        ]);
+        $border = [
+            'alignment' => [
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+            ],
+            'borders' => array(
+                'allBorders' => array(
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => array('argb' => '000000'),
+                ),
+            ),
+        ];
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet_index = 0;
+        foreach ($groupedQcHistories as $line_id => $qcHistories) {
+            $line = Line::with('testCriteria')->find($line_id);
+            $sheet = $spreadsheet->getSheet($sheet_index);
+            $sheet->setTitle($line->name);
+            $start_row = 2;
+            $start_col = 1;
+            $header = [
+                'STT',
+                'Ngày',
+                "Ca sản xuất",
+                "Xưởng",
+                "Công đoạn",
+                "Máy sản xuất",
+                "Mã máy",
+                "Khách hàng",
+                "Mã hàng",
+                'Tên sản phẩm',
+                'Lô sản xuất',
+                'Mã pallet/thùng',
+                "Số lượng sản xuất",
+                "Số lượng OK",
+                'Số lượng tem vàng',
+                "Số lượng NG (SX tự KT)",
+                'SX kiểm tra',
+                "Số lượng NG (PQC)",
+                'QC kiểm tra',
+                "Số lượng NG",
+                "Tỉ lệ NG"
+            ];
+            $list  = $line->testCriteria;
+            foreach ($list as $criteria) {
+                if (!isset($header[$criteria->chi_tieu])) {
+                    $header[$criteria->chi_tieu] = [];
+                }
+                $header[$criteria->chi_tieu][] = $criteria->hang_muc;
+            }
+            $data = [];
+            $index = 0;
+            foreach ($qcHistories as $key => $qc_history) {
+                if (!$qc_history->infoCongDoan) {
+                    continue;
+                }
+                $ca_sx = $shifts->first(function ($shift) use ($qc_history) {
+                    $createdTime = Carbon::parse($qc_history->created_at)->format('H:i:s');
+                    return ($shift->start_time < $shift->end_time && $createdTime >= $shift->start_time && $createdTime <= $shift->end_time) ||
+                        ($shift->start_time > $shift->end_time && ($createdTime >= $shift->start_time || $createdTime <= $shift->end_time));
+                })->name ?? "";
+
+                $user_sx = CustomUser::find($qc_history->infoCongDoan->user_id ?? null);
+                $user_qc = $qc_history->user;
+                $sl_ng_sx = 0;
+                $sl_ng_qc = 0;
+                if (count($qc_history->error_histories ?? [])) {
+                    foreach (($qc_history->error_histories ?? []) as $error) {
+                        if ($error->type === 'sx') {
+                            $sl_ng_sx += $error->quantity;
+                        } else {
+                            $sl_ng_qc += $error->quantity;
+                        }
+                    }
+                }
+                $item = [
+                    'stt' => $index + 1,
+                    'thoi_gian_kiem_tra' => Carbon::parse($qc_history->created_at)->format('d/m/Y H:i:s'),
+                    'ca_sx' => $ca_sx,
+                    'xuong' => $qc_history->line->factory->name ?? "Giấy",
+                    'cong_doan' => $qc_history->infoCongDoan->line->name ?? '',
+                    'machine' => $qc_history->infoCongDoan->machine->name ?? '',
+                    'machine_id' => $qc_history->infoCongDoan->machine_code ?? '',
+                    'khach_hang' => $qc_history->infoCongDoan->product->customer->name ?? "",
+                    'product_id' => $qc_history->infoCongDoan->product_id ?? '',
+                    'ten_san_pham' => $qc_history->infoCongDoan->product->name ?? "",
+                    'lo_sx' => $qc_history->infoCongDoan->lo_sx,
+                    'lot_id' => $qc_history->infoCongDoan->lot_id,
+                    'sl_dau_ra_hang_loat' => $qc_history->infoCongDoan->sl_dau_ra_hang_loat ?? 0,
+                    'sl_dau_ra_ok' => ($qc_history->infoCongDoan->sl_dau_ra_hang_loat ?? 0) - ($qc_history->infoCongDoan->sl_tem_vang ?? 0) - ($qc_history->infoCongDoan->sl_ng ?? 0),
+                    'sl_tem_vang' => $qc_history->infoCongDoan->sl_tem_vang ?? 0,
+                    'sl_ng_sxkt' => $sl_ng_sx,
+                    'user_sxkt' => $user_sx->name ?? "",
+                    'sl_ng_pqc' => $sl_ng_qc,
+                    'user_pqc' => $user_qc->name ?? "",
+                    'sl_ng' => $qc_history->infoCongDoan->sl_ng ?? 0,
+                    'ti_le_ng' => (isset($qc_history->infoCongDoan->sl_dau_ra_hang_loat) && $qc_history->infoCongDoan->sl_dau_ra_hang_loat > 0) ? number_format(($qc_history->infoCongDoan->sl_ng / $qc_history->infoCongDoan->sl_dau_ra_hang_loat) * 100) . "%" : "0%",
+                ];
+                $history = $qc_history->testCriteriaHistories->flatMap->testCriteriaDetailHistories->groupBy('test_criteria_id')
+                    ->mapWithKeys(function ($items, $test_criteria_id) {
+                        // Lấy giá trị đầu tiên của 'input' và 'result' trong nhóm và tạo key-value pair
+                        return [
+                            $test_criteria_id => [
+                                'input' => $items->first()->input,  // Lấy giá trị 'input' đầu tiên
+                                'result' => $items->first()->result // Lấy giá trị 'result' đầu tiên
+                            ]
+                        ];
+                    })
+                    ->toArray();;
+                foreach ($list as $criteria) {
+                    $record = $history[$criteria->id] ?? null;
+                    $item[$criteria->id] = !empty($record) ? (is_numeric($record['input']) ?  $record['input'] : $record['result']) : "";
+                }
+                $final_result = $qc_history->eligible_to_end ? ($qc_history->testCriteriaHistories->every(function ($testCriteriaHistory) {
+                    return $testCriteriaHistory->result === 'OK';
+                }) ? 'OK' : 'NG') : "";
+                $index++;
+                $item['final_result'] = $final_result;
+                $data[] = $item;
+            }
+            $header[] = 'Đánh giá';
+            foreach ($header as $key => $cell) {
+                if (!is_array($cell)) {
+                    $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row + 1])->getStyle([$start_col, $start_row, $start_col, $start_row + 1])->applyFromArray($headerStyle);
+                } else {
+                    if (count($cell) > 0) {
+                        $style = array_merge($headerStyle, array('fill' => [
+                            'fillType' => Fill::FILL_SOLID,
+                            'startColor' => array('argb' => 'EBF1DE')
+                        ]));
+                        $sheet->setCellValue([$start_col, $start_row], $key)->mergeCells([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->getStyle([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->applyFromArray($style);
+                        foreach ($cell as $val) {
+                            $sheet->setCellValue([$start_col, $start_row + 1], $val)->getStyle([$start_col, $start_row + 1])->applyFromArray($style);
+                            $start_col += 1;
+                        }
+                    }
+                    continue;
+                }
+                $start_col += 1;
+            }
+            $sheet->setCellValue([1, 1], 'BẢNG KIỂM TRA CHẤT LƯỢNG CÔNG ĐOẠN ' . mb_strtoupper($line->name))->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
+            $sheet->getRowDimension(1)->setRowHeight(40);
+            $table_row = $start_row + 2;
+            $sheet->fromArray($data, null, 'A4');
+            foreach ($sheet->getColumnIterator() as $column) {
+                $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+                $sheet->getStyle($column->getColumnIndex() . 2 . ':' . $column->getColumnIndex() . count($data) + 3)->applyFromArray($border);
+            }
+            if ($sheet_index < count($groupedQcHistories) - 1) {
+                $spreadsheet->createSheet();
+                $sheet_index += 1;
+            }
+        }
+
+        header("Content-Description: File Transfer");
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="Chi tiết QC.xlsx"');
+        header('Cache-Control: max-age=0');
+        header("Content-Transfer-Encoding: binary");
+        header('Expires: 0');
+        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('exported_files/Chi tiết QC.xlsx');
+        $href = '/exported_files/Chi tiết QC.xlsx';
+        return $this->success($href);
+    }
+
+    public function exportPQCReport(Request $request)
     {
         $input = $request->all();
         $sheet_array = [];
@@ -742,41 +957,35 @@ class Phase2UIApiController extends Controller
                     $sheet_array[$key]['end_date'] = date("Y-m-d", strtotime($value));
                     break;
             }
-            $query = InfoCongDoan::orderBy('created_at');
-            if (isset($sheet_array[$key]['start_date']) && isset($sheet_array[$key]['end_date'])) {
-                $query->whereDate('created_at', '>=', $sheet_array[$key]['start_date'])
-                    ->whereDate('created_at', '<=', $sheet_array[$key]['end_date']);
-            }
-            $infos = $query->with("lot.product", "lot.log", "plan", "line")->whereNotIn('line_id', [9, 21])->whereHas('lot', function ($lot_query) {
-                $lot_query->where(function ($q) {
-                    $q->where('info_cong_doan.line_id', 13)->whereIn('type', [0, 2, 3]);
-                })->orWhere(function ($q) {
-                    $q->where('info_cong_doan.line_id', '<>', 13)->whereIn('type', [0, 1, 2, 3]);
+            $groupedQcHistories = QCHistory::orderBy('created_at')
+                ->whereDate('created_at', '>=', $sheet_array[$key]['start_date'])
+                ->whereDate('created_at', '<=', $sheet_array[$key]['end_date'])
+                ->get()
+                ->groupBy(function ($qc_history) {
+                    return $qc_history->infoCongDoan->line_id ?? null;
                 });
-            })->get()->groupBy('line_id');
             $data = [];
-            foreach ($infos as $line_id => $info_cong_doan) {
+            foreach ($groupedQcHistories as $line_id => $qcHistories) {
                 $line = Line::find($line_id);
+                if(!$line) continue;
                 $sum_ok = 0;
                 $sum_ng = 0;
-                foreach ($info_cong_doan as $info) {
-                    $sum_ok += 1;
-                    $log = $info->lot->log ?? null;
-                    if ($log) {
-                        $qc_log = $log->info;
-                        $result = array_column(array_intersect_key($qc_log['qc'][Str::slug($line->name)] ?? [], array_flip(array('kich-thuoc', 'dac-tinh', 'ngoai-quan'))), 'result');
-                        if (in_array(0, $result)) {
-                            $sum_ng += 1;
-                            $sum_ok -= 1;
-                        }
+                foreach ($qcHistories as $qcHistory) {
+                    $isOK = $qcHistory->eligible_to_end ? $qcHistory->testCriteriaHistories->every(function ($testCriteriaHistory) {
+                        return $testCriteriaHistory->result === 'OK';
+                    }) : false;
+                    if($isOK){
+                        $sum_ok += 1;
+                    }else{
+                        $sum_ng += 1;
                     }
                 }
 
                 $data[$line_id]['cong_doan'] = $line->name;
-                $data[$line_id]['sum_lot_kt'] = count($info_cong_doan);
+                $data[$line_id]['sum_lot_kt'] = count($qcHistories);
                 $data[$line_id]['sum_lot_ok'] = $sum_ok;
                 $data[$line_id]['sum_lot_ng'] = $sum_ng;
-                $data[$line_id]['sum_ty_le_ng'] = count($info_cong_doan) ? number_format($sum_ng / count($info_cong_doan) * 100) : 0;
+                $data[$line_id]['sum_ty_le_ng'] = count($qcHistories) ? number_format($sum_ng / count($qcHistories) * 100) : 0;
                 $data[$line_id]['loi_phat_sinh'] = '';
             }
             $sheet_array[$key]['data'] = $data;
@@ -911,6 +1120,183 @@ class Phase2UIApiController extends Controller
         return $this->success($href);
     }
 
+    //Lỗi
+    public function qcErrorList(Request $request)
+    {
+        $page = $request->page - 1;
+        $pageSize = $request->pageSize;
+        $query = $this->pqcHistoryQuery($request);
+        $totalPage = $query->count();
+        $records = $query->offset($page * $pageSize)->limit($pageSize)->get();
+        $result = $this->parseErrorData($records);
+        $error_query  = Error::where('noi_dung', '<>', '')->join('lines', 'lines.id', '=', 'errors.line_id')->select('errors.*', 'lines.ordering as ordering')->orderBy('ordering')->orderBy('id');
+        if (isset($request->error_ids)) {
+            $error_query->whereIn('errors.id', $request->error_ids);
+        }
+        $list = $error_query->get();
+        foreach ($list as $key => $item) {
+            $columns['Lỗi NG'][$key]['title'] = $item->noi_dung;
+            $columns['Lỗi NG'][$key]['key'] = 'ng' . $item->id;
+            $columns['Lỗi KV'][$key]['title'] = $item->noi_dung;
+            $columns['Lỗi KV'][$key]['key'] = 'kv' . $item->id;
+        }
+        return $this->success(['data' => $result, "totalPage" => $totalPage, 'columns' => $columns]);
+    }
+
+    public function parseErrorData($qc_histories, $columns = [])
+    {
+        $record = [];
+        $shifts = Shift::all();
+        $index = 0;
+        foreach ($qc_histories as $key => $qc_history) {
+            if (!$qc_history->infoCongDoan) {
+                continue;
+            }
+            $ca_sx = $shifts->first(function ($shift) use ($qc_history) {
+                $createdTime = Carbon::parse($qc_history->created_at)->format('H:i:s');
+                return ($shift->start_time < $shift->end_time && $createdTime >= $shift->start_time && $createdTime <= $shift->end_time) ||
+                    ($shift->start_time > $shift->end_time && ($createdTime >= $shift->start_time || $createdTime <= $shift->end_time));
+            })->name ?? "";
+            $item = [
+                'stt' => $index + 1,
+                'ngay_sx' => Carbon::parse($qc_history->created_at)->format('d/m/Y H:i:s'),
+                'ca_sx' => $ca_sx,
+                'xuong' => $qc_history->line->factory->name ?? "Giấy",
+                'cong_doan' => $qc_history->infoCongDoan->line->name ?? '',
+                'ten_san_pham' => $qc_history->infoCongDoan->product->name ?? "",
+                'lo_sx' => $qc_history->infoCongDoan->lo_sx,
+                'lot_id' => $qc_history->infoCongDoan->lot_id,
+                'sl_dau_vao_hang_loat' => $qc_history->infoCongDoan->sl_dau_vao_hang_loat ?? 0,
+                'sl_dau_ra_ok' => ($qc_history->infoCongDoan->sl_dau_ra_hang_loat ?? 0) - ($qc_history->infoCongDoan->sl_tem_vang ?? 0) - ($qc_history->infoCongDoan->sl_ng ?? 0),
+                'sl_ng' => $qc_history->infoCongDoan->sl_ng ?? 0,
+                'sl_tem_vang' => $qc_history->infoCongDoan->sl_tem_vang ?? 0,
+            ];
+
+            if (!empty($columns)) {
+                $errors = [];
+                foreach (($qc_history->errorHistories ?? []) as $error_id => $value) {
+                    $errors['ng' . $value->error_id] = $value->quantity;
+                }
+                $errorColumns = collect($columns)->flatten(1)->all();
+                foreach ($errorColumns as $error_id => $value) {
+                    $item[$value['key']] = $errors[$value['key']] ?? '';
+                }
+            } else {
+                foreach (($qc_history->errorHistories ?? []) as $error_id => $value) {
+                    $item['ng' . $value->error_id] = $value->quantity;
+                }
+            }
+            $index++;
+            $record[] = $item;
+        }
+        return $record;
+    }
+
+    public function exportQCErrorList(Request $request)
+    {
+        $query = $this->pqcHistoryQuery($request);
+        $records = $query->get();
+        $error_query  = Error::where('noi_dung', '<>', '')->join('lines', 'lines.id', '=', 'errors.line_id')->select('errors.*', 'lines.ordering as ordering')->orderBy('ordering')->orderBy('id');
+        if (isset($request->error_ids)) {
+            $error_query->whereIn('errors.id', $request->error_ids);
+        }
+        $list = $error_query->get();
+        foreach ($list as $key => $item) {
+            $columns['Lỗi NG'][$key]['title'] = $item->noi_dung;
+            $columns['Lỗi NG'][$key]['key'] = 'ng' . $item->id;
+            $columns['Lỗi KV'][$key]['title'] = $item->noi_dung;
+            $columns['Lỗi KV'][$key]['key'] = 'kv' . $item->id;
+        }
+        $result = $this->parseErrorData($records, $columns);
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $start_row = 2;
+        $start_col = 1;
+        $centerStyle = [
+            'alignment' => [
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
+            ],
+            'borders' => array(
+                'outline' => array(
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => array('argb' => '000000'),
+                ),
+            ),
+        ];
+        $headerStyle = array_merge($centerStyle, [
+            'font' => ['bold' => true],
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => array('argb' => 'BFBFBF')
+            ]
+        ]);
+        $titleStyle = array_merge($centerStyle, [
+            'font' => ['size' => 16, 'bold' => true],
+        ]);
+        $border = [
+            'alignment' => [
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+            ],
+            'borders' => array(
+                'allBorders' => array(
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => array('argb' => '000000'),
+                ),
+            ),
+        ];
+        $header1 = [
+            'STT',
+            'Ngày sản xuất',
+            "Ca sản xuất",
+            "Công đoạn",
+            "Máy sản xuất",
+            'Tên sản phẩm',
+            'Lô sản xuất',
+            'Mã pallet/thùng',
+            "ĐV",
+            "OK",
+            "NG",
+            "KV"
+        ];
+        foreach ($columns as $key => $column) {
+            $header1[$key] = array_map(function ($col) {
+                return $col['title'];
+            }, $column);
+        }
+        foreach ($header1 as $key => $cell) {
+            if (!is_array($cell)) {
+                $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row + 1])->getStyle([$start_col, $start_row, $start_col, $start_row + 1])->applyFromArray($headerStyle);
+            } else {
+                $sheet->setCellValue([$start_col, $start_row], $key)->mergeCells([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->getStyle([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->applyFromArray($headerStyle);
+                foreach ($cell as $val) {
+                    $sheet->setCellValue([$start_col, $start_row + 1], $val)->getStyle([$start_col, $start_row + 1])->applyFromArray($headerStyle);
+                    $start_col += 1;
+                }
+                continue;
+            }
+            $start_col += 1;
+        }
+        $sheet->setCellValue([1, 1], 'BÁO CÁO SỐ LỖI')->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
+        $table_row = $start_row + 2;
+        $sheet->fromArray($result, null, 'A4');
+        foreach ($sheet->getColumnIterator() as $column) {
+            $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+            $sheet->getStyle($column->getColumnIndex() . 2 . ':' . $column->getColumnIndex() . count($result) + 3)->applyFromArray($border);
+        }
+        header("Content-Description: File Transfer");
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="Báo cáo số lỗi.xlsx"');
+        header('Cache-Control: max-age=0');
+        header("Content-Transfer-Encoding: binary");
+        header('Expires: 0');
+        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('exported_files/Báo cáo số lỗi.xlsx');
+        $href = '/exported_files/Báo cáo số lỗi.xlsx';
+        return $this->success($href);
+    }
+
     //Danh sách lot OQC
     public function oqcHistoryQuery(Request $request)
     {
@@ -981,7 +1367,7 @@ class Phase2UIApiController extends Controller
             })->toArray();
             $item = [
                 'stt' => $index + 1,
-                'ngay_sx' => Carbon::parse($qc_history->created_at)->format('d/m/Y H:i:s'),
+                'ngay_sx' => $qc_history->scanned_time ? Carbon::parse($qc_history->scanned_time)->format('d/m/Y H:i:s') : '',
                 'ca_sx' => $ca_sx,
                 'xuong' => $qc_history->line->factory->name ?? "Giấy",
                 'ten_sp' => $qc_history->infoCongDoan->product->name ?? "",
@@ -1818,7 +2204,7 @@ class Phase2UIApiController extends Controller
 
         // Thiết lập các cột tiêu đề
         foreach ($header as $col => $title) {
-            $sheet->setCellValueByColumnAndRow($col + 1, 3, $title);
+            $sheet->setCellValue([$col + 1, 3], $title);
         }
 
         // Duyệt dữ liệu $plans và ghi vào file Excel
@@ -1911,7 +2297,10 @@ class Phase2UIApiController extends Controller
                 $lo_sx = Losx::firstOrCreate(['product_order_id' => $order->id]);
                 $losx_id = $lo_sx->id;
                 $plan = $this->storeProductionPlan($input, $losx_id, $startTime, $endTime, $order, $line, $machine);
-                $this->generateLots($input, $losx_id, $plan, $startTime, $machine);
+                $lastLotPLan = $this->generateLots($input, $losx_id, $plan, $startTime, $machine);
+                if($lastLotPLan){
+                    $plan->update(['thoi_gian_ket_thuc'=>$lastLotPLan->end_time]);
+                }
             }
             DB::commit();
         } catch (\Exception $ex) {
@@ -2034,6 +2423,7 @@ class Phase2UIApiController extends Controller
 
     private function generateLots($input, $losx_id, $plan, $startTime, $machine)
     {
+        $lot_plan = null;
         $quantity = $input['sl_giao_sx'];
         $lotSize = $this->getLotSize($input['product_id'], $input['line_id']);
         $numLots = ceil($quantity / $lotSize);
@@ -2051,9 +2441,9 @@ class Phase2UIApiController extends Controller
                 $lotEndTime = $lotStartTime->copy()->addMinutes(($taskTime * $lotSize) + $rollChangeTime);
             }
             if ($input['line_id'] == 29) {
-                $lotEndTime = $lotStartTime->copy()->addMinutes($taskTime * $lotSize);
+                $lotEndTime = $lotStartTime->copy()->addMinutes(30);
             }
-            LotPlan::create([
+            $lot_plan = LotPlan::create([
                 'lot_id' => $lotId,
                 'lo_sx' => $losx_id,
                 'line_id' => $input['line_id'],
@@ -2076,6 +2466,7 @@ class Phase2UIApiController extends Controller
                 'production_plan_id' => $plan->id
             ]);
         }
+        return $lot_plan;
     }
     public function getKPIPassRateChart(Request $request)
     {

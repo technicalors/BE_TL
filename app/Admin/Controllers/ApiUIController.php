@@ -4946,8 +4946,6 @@ class ApiUIController extends AdminController
         }
         $count = count($infos);
         $totalPage = $count;
-        $ng = [];
-        $kv = [];
         $columns = [];
         $error_query  = Error::where('noi_dung', '<>', '')->join('lines', 'lines.id', '=', 'errors.line_id')->select('errors.*', 'lines.ordering as ordering')->orderBy('ordering')->orderBy('id');
         if (isset($request->error_ids)) {
@@ -4957,8 +4955,6 @@ class ApiUIController extends AdminController
         foreach ($list as $key => $item) {
             $columns['Lỗi NG'][$key]['title'] = $item->noi_dung;
             $columns['Lỗi NG'][$key]['key'] = 'ng' . $item->id;
-        }
-        foreach ($list as $key => $item) {
             $columns['Lỗi KV'][$key]['title'] = $item->noi_dung;
             $columns['Lỗi KV'][$key]['key'] = 'kv' . $item->id;
         }

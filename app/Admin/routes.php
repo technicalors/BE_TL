@@ -19,6 +19,7 @@ use App\Admin\Controllers\MaintenanceLogController;
 use App\Admin\Controllers\MaintenancePlanController;
 use App\Admin\Controllers\MaintenanceScheduleController;
 use App\Admin\Controllers\MaintenanceLogImageController;
+use App\Admin\Controllers\MaterialParameterLogController;
 use App\Admin\Controllers\Phase2DBApiController;
 use App\Admin\Controllers\Phase2OIApiController;
 use App\Admin\Controllers\Phase2UIApiController;
@@ -418,7 +419,7 @@ Route::group([
     $router->get('/export/pqc', [ApiUIController::class, 'exportPQC']);
     $router->get('/export/qc-history', [ApiUIController::class, 'exportQCHistory']);
     $router->get('/export/report-qc', [ApiUIController::class, 'exportReportQC']);
-    $router->get('/export/qc-error-list', [ApiUIController::class, 'exportQCErrorList']);
+    $router->get('/export/qc-error-list', [Phase2UIApiController::class, 'exportQCErrorList']);
     $router->get('/export/report-produce-history', [ApiUIController::class, 'exportReportProduceHistory']);
     $router->get('/export/warehouse/summary', [ApiUIController::class, 'exportSummaryWarehouse']);
     $router->get('/export/warehouse/bmcard', [ApiUIController::class, 'exportBMCardWarehouse']);
@@ -428,7 +429,7 @@ Route::group([
     $router->get('/export/maintanence-detail-status', [ApiUIController::class, 'exportChiTietThucHienKiemTra_TrangThai']);
     $router->get('/export/maintanence-detail', [ApiUIController::class, 'exportChiTietThucHienKiemTra']);
 
-    $router->get('ui/qc-error-list', [ApiUIController::class, 'qcErrorList']);
+    $router->get('ui/qc-error-list', [Phase2UIApiController::class, 'qcErrorList']);
     $router->get('ui/data-filter', [ApiUIController::class, 'getDataFilterUI']);
 
     $router->get('info-cong-doan/list', [InfoCongDoanController::class, 'getInfoCongDoan']);
@@ -605,6 +606,7 @@ Route::group([
     $router->post('random-info', [ApiUIController::class, 'randomInfo']);
     $router->get('/get-tracking-info-cong-doan', [ApiUIController::class, 'trackingProduction']);
 
+    $router->get('/machine-parameter-logs', [MaterialParameterLogController::class, 'index']);
     $router->get('/fake-data-consume', [Phase2UIApiController::class, 'generatePowerConsumes']);
 });
 //Dashboard
@@ -694,6 +696,8 @@ Route::group([
     
     $router->get('quality/pqc/data-table', [Phase2UIApiController::class, 'getQualityDataTable']);
     $router->get('quality/pqc/export-data-table', [Phase2UIApiController::class, 'exportQualityDataTable']);
+    $router->get('quality/pqc/export-test-criteria-history', [Phase2UIApiController::class, 'exportTestCriteriaHistory']);
+    $router->get('quality/pqc/export-pqc-report', [Phase2UIApiController::class, 'exportPQCReport']);
     $router->get('quality/pqc/data-chart', [Phase2UIApiController::class, 'getQualityDataChart']);
     $router->get('quality/oqc/data-table', [Phase2UIApiController::class, 'getOQCDataTable']);
     $router->get('quality/oqc/data-chart', [Phase2UIApiController::class, 'getOQCDataChart']);
