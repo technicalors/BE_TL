@@ -67,7 +67,7 @@ class LogWarningParameter extends Model
                                 $log->save();
                             }
                         } elseif ($f4 && $f5 && $f3) {
-                            LogWarningParameter::where('parameter_id', $key)->where('machine_id', $machine_id)->delete();
+                            // LogWarningParameter::where('parameter_id', $key)->where('machine_id', $machine_id)->delete();
                             Monitor::where('parameter_id', $key)->where('machine_id', $machine_id)->where('status', 0)->update(['status' => 1]);
                         }
                     }
