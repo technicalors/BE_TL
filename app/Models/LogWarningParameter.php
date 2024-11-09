@@ -43,9 +43,9 @@ class LogWarningParameter extends Model
                         $f5 = (float)$value >= (float)$tm->tieu_chuan_kiem_soat_duoi;
                         if (($f1 || $f2) && $f3) {
                             $check_log = LogWarningParameter::where('parameter_id', $key)->first();
-                            $check_log->value = $value;
-                            $check_log->save();
                             if ($check_log) {
+                                $check_log->value = $value;
+                                $check_log->save();
                                 $check_monitor = Monitor::where('parameter_id', $key)->where('machine_id', $machine_id)->where('status', 0)->first();
                                 if ($check_monitor) {
                                     $check_monitor->update(['content' => $tm->hang_muc . ': ' . $value]);
