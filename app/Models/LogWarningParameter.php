@@ -16,19 +16,24 @@ class LogWarningParameter extends Model
     public static function checkParameter($request)
     {
         try {
-            $device_id = '22d821e0-45bd-11ef-b8c3-a13625245eca';
-            $params = (array) $request->all();
-            $machine_id = $request->machine_id ?? null;
-            if (isset($request->device_id)) {
-                if ($request->device_id == $device_id) { // May LH
-                    $machine = Machine::where('device_id', $request->device_id)->first();
-                    if (!empty($machine)) {
-                        $machine_id = $machine->id;
-                    }
-                }
-            }
+            // $device_id = '22d821e0-45bd-11ef-b8c3-a13625245eca';
+            // $params = (array) $request->all();
+            // $machine_id = $request->machine_id ?? null;
+            // if (isset($request->device_id)) {
+            //     if ($request->device_id == $device_id) { // May LH
+            //         $machine = Machine::where('device_id', $request->device_id)->first();
+            //         if (!empty($machine)) {
+            //             $machine_id = $machine->id;
+            //         }
+            //     }
+            // }
 
-            if (isset($machine)) {
+            if (isset($request->device_id) && $request->device_id == '22d821e0-45bd-11ef-b8c3-a13625245eca') {
+                $machine = Machine::where('device_id', $request->device_id)->first();
+                $params = (array) $request->all();
+                if (!empty($machine)) {
+                    $machine_id = $machine->id;
+                }
                 $scenarios = Scenario::all();
                 $mark = [];
                 foreach ($scenarios as $item) {
