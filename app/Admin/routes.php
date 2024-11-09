@@ -12,7 +12,6 @@ use App\Admin\Controllers\KPIController;
 use App\Admin\Controllers\LotPlanController;
 use App\Admin\Controllers\MachineController;
 use App\Admin\Controllers\MachinePriorityOrderController;
-// use App\Admin\Controllers\ProductionPlanController;
 use App\Admin\Controllers\RoleController;
 use App\Admin\Controllers\MaintenanceCategoryController;
 use App\Admin\Controllers\MaintenanceItemController;
@@ -605,6 +604,8 @@ Route::group([
     $router->post('filter-file-to-plan', [ApiUIController::class, 'filterFileToPlan']);
     $router->post('random-info', [ApiUIController::class, 'randomInfo']);
     $router->get('/get-tracking-info-cong-doan', [ApiUIController::class, 'trackingProduction']);
+
+    $router->get('/fake-data-consume', [Phase2UIApiController::class, 'generatePowerConsumes']);
 });
 //Dashboard
 Route::group([
