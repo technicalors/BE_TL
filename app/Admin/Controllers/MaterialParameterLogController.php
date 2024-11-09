@@ -19,7 +19,7 @@ class MaterialParameterLogController extends Controller
         // $result = MachineParameterLogs::orderByDesc('created_at')->with('machineParameter.scenario')->get()->take(20);
         $result = LogWarningParameter::where('parameter_id', 'PLC_CB01')->with(['machine', 'scenario'])->orderByDesc('updated_at')->first();
         $monitor = Monitor::where('parameter_id', 'PLC_CB01')->orderByDesc('updated_at')->first();
-        $result = (object) $result;
+        $result = (object) ($result ?? []);
         $result->monitor = $monitor ?? null;
         return response()->json([
             'success' => true,
