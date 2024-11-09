@@ -33,7 +33,7 @@ class MaterialParameterLogController extends Controller
         $result->monitor = $monitor ?? null;
         return response()->json([
             'success' => true,
-            'data' => $result,
+            'data' => null,
             'message' => 'success',
         ], 200);
     }
