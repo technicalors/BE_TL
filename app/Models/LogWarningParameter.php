@@ -47,40 +47,7 @@ class LogWarningParameter extends Model
                         $f3 = $value != -1;
                         $f4 = (float)$value <= (float)$tm->tieu_chuan_kiem_soat_tren;
                         $f5 = (float)$value >= (float)$tm->tieu_chuan_kiem_soat_duoi;
-                        if (($f1 || $f2) && $f3) {
-                            $check_log = LogWarningParameter::where('parameter_id', $key)->where('machine_id', $machine_id)->first();
-                            if (!empty($check_log)) {
-                                $check_log->value = $value;
-                                $check_log->save();
-                                $check_monitor = Monitor::where('parameter_id', $key)->where('machine_id', $machine_id)->where('status', 0)->first();
-                                if ($check_monitor) {
-                                    $check_monitor->update(['content' => $tm->hang_muc . ': ' . $value]);
-                                } else {
-                                    // $m = Monitor::where('parameter_id', $key)->where('machine_id', $machine_id)->where('status', 1)->orderByDesc('updated_at')->first();
-                                    // if (empty($m->troubleshoot)) {
-                                    //     // Log::debug('👉 Ignore monitor');
-                                    //     continue;
-                                    // }
-                                    $monitor = new Monitor();
-                                    $monitor->type = 'cl';
-                                    $monitor->content =  $tm->hang_muc;
-                                    $monitor->value =  $value;
-                                    $monitor->parameter_id = $key;
-                                    $monitor->machine_id = $machine_id;
-                                    $monitor->status = 0;
-                                    $monitor->save();
-                                }
-                            } else {
-                                $log = new LogWarningParameter();
-                                $log->parameter_id = $key;
-                                $log->value = $value;
-                                $log->machine_id = $machine_id;
-                                $log->save();
-                            }
-                        } elseif ($f4 && $f5 && $f3) {
-                            LogWarningParameter::where('parameter_id', $key)->where('machine_id', $machine_id)->delete();
-                            Monitor::where('parameter_id', $key)->where('machine_id', $machine_id)->where('status', 0)->update(['status' => 1]);
-                        }
+                        
                     }
                 }
             }
