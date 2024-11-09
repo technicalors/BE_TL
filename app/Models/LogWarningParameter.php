@@ -75,15 +75,17 @@ class LogWarningParameter extends Model
                                 $log->value = $value;
                                 $log->machine_id = $machine_id;
                                 $log->save();
-
-                                $monitor = new Monitor();
-                                $monitor->type = 'cl';
-                                $monitor->content =  $tm->hang_muc;
-                                $monitor->value =  $value;
-                                $monitor->parameter_id = $key;
-                                $monitor->machine_id = $machine_id;
-                                $monitor->status = 0;
-                                $monitor->save();
+                                $monitor = Monitor::where('parameter_id', $key)->where('machine_id', $machine_id)->first();
+                                if (empty($monitor)) {
+                                    $monitor = new Monitor();
+                                    $monitor->type = 'cl';
+                                    $monitor->content =  $tm->hang_muc;
+                                    $monitor->value =  $value;
+                                    $monitor->parameter_id = $key;
+                                    $monitor->machine_id = $machine_id;
+                                    $monitor->status = 0;
+                                    $monitor->save();
+                                }
                             }
                         } elseif ($f4 && $f5 && $f3) {
                             LogWarningParameter::where('parameter_id', $key)->where('machine_id', $machine_id)->delete();

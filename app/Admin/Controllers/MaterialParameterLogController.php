@@ -50,6 +50,7 @@ class MaterialParameterLogController extends Controller
         if (!empty($monitor)) {
             $monitor->troubleshoot = $request->troubleshoot;
             $monitor->save();
+            Monitor::where('parameter_id', $request->parameter_id)->delete();
         }
 
         return response()->json([
