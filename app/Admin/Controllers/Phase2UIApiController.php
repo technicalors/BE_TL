@@ -2961,7 +2961,7 @@ class Phase2UIApiController extends Controller
 
         // Lặp qua tất cả các ngày trong tháng 11, trừ ngày Chủ nhật
         for ($day = 1; $day <= 30; $day++) {
-            $date = "2024-11-" . str_pad($day, 2, '0', STR_PAD_LEFT);
+            $date = "2024-10-" . str_pad($day, 2, '0', STR_PAD_LEFT);
             $dayOfWeek = date('w', strtotime($date));
 
             // Bỏ qua ngày Chủ nhật
