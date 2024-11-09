@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Log;
 
 class LogWarningParameter extends Model
@@ -75,5 +76,10 @@ class LogWarningParameter extends Model
         } catch (\Exception $e) {
             Log::error('🛑 ' . $e->getMessage());
         }
+    }
+
+    public function machine(): HasOne
+    {
+        return $this->hasOne(Machine::class, 'id', 'machine_id');
     }
 }
