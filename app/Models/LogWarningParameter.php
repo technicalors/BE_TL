@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Events\MonitorUpdated;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -85,6 +86,8 @@ class LogWarningParameter extends Model
                                     $monitor->machine_id = $machine_id;
                                     $monitor->status = 0;
                                     $monitor->save();
+                                    $monitorData = $monitor->toArray();
+                                    broadcast(new MonitorUpdated($monitorData))->toOthers();
                                 }
                             }
                         } elseif ($f4 && $f5 && $f3) {
