@@ -87,6 +87,8 @@ class LogWarningParameter extends Model
                                     $monitor->status = 0;
                                     $monitor->save();
                                     $monitorData = $monitor->toArray();
+                                    $monitorData['created_at'] = $monitor->created_at->format('d/m/Y H:i:s');
+                                    $monitorData['updated_at'] = $monitor->updated_at->format('d/m/Y H:i:s');
                                     broadcast(new MonitorUpdated($monitorData))->toOthers();
                                 }
                             }
