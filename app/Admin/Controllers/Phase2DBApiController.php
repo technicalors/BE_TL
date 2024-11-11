@@ -257,7 +257,6 @@ class Phase2DBApiController extends Controller
         $firstElement = array_shift($order);
         array_push($order, $firstElement);
         $orderByString = "'" . implode("','", $order) . "'";
-        Log::debug($orderByString);
         $lines = Line::where('factory_id', 2)->where('id', '<>', 25)->get();
         $query = Machine::with('line')->where('is_iot', 1)->whereIn('line_id', $lines->pluck('id')->toArray());
         if (!empty($request->ordering_machine)) {
