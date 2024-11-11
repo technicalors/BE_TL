@@ -193,17 +193,17 @@ class Phase2DBApiController extends Controller
                     ->where('product_id', $info->product_id)
                     ->whereIn('status', [InfoCongDoan::STATUS_INPROGRESS, InfoCongDoan::STATUS_COMPLETED])
                     ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->sum('sl_dau_ra_hang_loat');
-                    
+
                 // $plan = $info->lot->getPlanByLine($info->line_id);
                 $product = $info->product ?? null;
                 // if (!isset($plan)) $plan = $info->lot->plan;
-                
+
                 $upm = $lotPlan->quantity / (2 * 60);
                 $diff_time = strtotime('now') - strtotime($info->thoi_gian_bat_dau ?? 'now');
                 $target = (int)($upm * ($diff_time / 60));
                 // $tl_ht = (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ? number_format((($info->sl_dau_ra_hang_loat - $info->sl_ng) / $info->sl_dau_ra_hang_loat), 2) : 0));
                 $tl_ht = (int) number_format(($sumInfoActure ?? 0) / ($sumLotPlan ?? 0) * 100, 2);
-                
+
                 $status = 0;
                 if (!is_null($info->thoi_gian_bat_dau) && is_null($info->thoi_gian_bam_may) && is_null($info->thoi_gian_ket_thuc)) {
                     $status = 1; // orange
@@ -217,7 +217,7 @@ class Phase2DBApiController extends Controller
                 if ($tl_ht > 95) {
                     $status = 2; // blue
                 }
-                
+
                 // Ignore status 0
                 if ($status == 0) continue;
 
@@ -259,7 +259,7 @@ class Phase2DBApiController extends Controller
         $orderByString = "'" . implode("','", $order) . "'";
 
         $lines = Line::where('factory_id', 2)->where('id', '<>', 25)->get();
-        $query = Machine::with('line')->where('is_iot', 1)->whereIn('line_id', $lines->pluck('id')->orderBy('name')->toArray());
+        $query = Machine::with('line')->where('is_iot', 1)->whereIn('line_id', $lines->pluck('id')->toArray())->orderBy('name');
         // if (!empty($request->ordering_machine)) {
         //     $query->orderByRaw(DB::raw("FIELD(code, $orderByString)"));
         // } else {
@@ -307,13 +307,13 @@ class Phase2DBApiController extends Controller
                 $product = $info->product ?? null;
                 // if (!isset($plan)) $plan = $info->lot->plan;
                 $status = 0;
-                
+
                 $upm = $lotPlan->quantity / (2 * 60);
                 $diff_time = strtotime('now') - strtotime($info->thoi_gian_bat_dau ?? 'now');
                 $target = (int)($upm * ($diff_time / 60));
                 // $tl_ht = (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ? number_format((($info->sl_dau_ra_hang_loat - $info->sl_ng) / $info->sl_dau_ra_hang_loat), 2) : 0));
                 $tl_ht = (int) number_format(($sumInfoActure ?? 0) / ($sumLotPlan ?? 0) * 100, 2);
-                
+
                 if (!is_null($info->thoi_gian_bat_dau) && is_null($info->thoi_gian_bam_may) && is_null($info->thoi_gian_ket_thuc)) {
                     $status = 1;
                 }
@@ -334,7 +334,7 @@ class Phase2DBApiController extends Controller
                     'target' => $target,
                     "cong_doan" => mb_strtoupper($info->line->name, 'UTF-8'),
                     'machine_code' => $machine->code,
-                    'machine_name' =>$machine->code,
+                    'machine_name' => $machine->code,
                     "product" => $product ? $product->name : '',
                     // "sl_dau_ra_kh" => $lotPlan->quantity ?? 0,
                     // "sl_thuc_te" => $info->sl_dau_ra_hang_loat - $info->sl_ng,
