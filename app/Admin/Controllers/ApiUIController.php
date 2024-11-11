@@ -3392,6 +3392,19 @@ class ApiUIController extends AdminController
         ]);
     }
 
+    function getProductLogs($type, $startDate = null, $endDate = null, $includeAll = false)
+    {
+        return Product::with(['warehouseLog'=>function ($query) use ($type, $startDate, $endDate, $includeAll) {
+            $query->where('warehouse_logs.type', $type);
+            if ($startDate) {
+                $query->whereDate('warehouse_logs.created_at', '>=', $startDate);
+            }
+            if ($endDate) {
+                $query->whereDate('warehouse_logs.created_at', $includeAll ? '<' : '<=', $endDate);
+            }
+        }])->get();
+    }
+
     public function exportSummaryWarehouse(Request $request)
     {
         ini_set('max_execution_time', 0);
@@ -3404,32 +3417,47 @@ class ApiUIController extends AdminController
             'sl_xuat' => 0,
             'ton_cuoi' => 0,
         ];
-        $log_import = Product::leftJoin('lot', 'products.id', '=', 'lot.product_id')->leftJoin('warehouse_logs', function (JoinClause $join) use ($request) {
-            $join->on('warehouse_logs.lot_id', '=', 'lot.id')
-                ->where('warehouse_logs.type', 1)->whereDate('warehouse_logs.created_at', '<', date('Y-m-d', strtotime($request->date[0])));
-        })->select('products.id', 'products.name', DB::raw('SUM(warehouse_logs.so_luong) as so_luong'))->groupBy('products.id', 'products.name')->get();
-        $log_export = Product::leftJoin('lot', 'products.id', '=', 'lot.product_id')->leftJoin('warehouse_logs', function (JoinClause $join) use ($request) {
-            $join->on('warehouse_logs.lot_id', '=', 'lot.id')
-                ->where('warehouse_logs.type', 2)->whereDate('warehouse_logs.created_at', '<', date('Y-m-d', strtotime($request->date[0])));
-        })->select('products.id', 'products.name', DB::raw('SUM(warehouse_logs.so_luong) as so_luong'))->groupBy('products.id', 'products.name')->get();
 
-        $product_import = Product::leftJoin('lot', 'products.id', '=', 'lot.product_id')->leftJoin('warehouse_logs', function (JoinClause $join) use ($request) {
-            $join->on('warehouse_logs.lot_id', '=', 'lot.id')
-                ->where('warehouse_logs.type', 1)->whereDate('warehouse_logs.created_at', '>=', date('Y-m-d', strtotime($request->date[0])))->whereDate('warehouse_logs.created_at', '<=', date('Y-m-d', strtotime($request->date[1])));
-        })->select('products.id', 'products.name', DB::raw('SUM(warehouse_logs.so_luong) as so_luong'))->groupBy('products.id', 'products.name')->get();
-        $product_export = Product::leftJoin('lot', 'products.id', '=', 'lot.product_id')->leftJoin('warehouse_logs', function (JoinClause $join) use ($request) {
-            $join->on('warehouse_logs.lot_id', '=', 'lot.id')
-                ->where('warehouse_logs.type', 2)->whereDate('warehouse_logs.created_at', '>=', date('Y-m-d', strtotime($request->date[0])))->whereDate('warehouse_logs.created_at', '<=', date('Y-m-d', strtotime($request->date[1])));
-        })->select('products.id', 'products.name', DB::raw('SUM(warehouse_logs.so_luong) as so_luong'))->groupBy('products.id', 'products.name')->get();
-        // return $log_import;
+        // Dữ liệu từ request
+        $startDate = date('Y-m-d', strtotime($request->date[0]));
+        $endDate = date('Y-m-d', strtotime($request->date[1]));
+
+        // Lấy dữ liệu nhập và xuất trước khoảng thời gian
+        $log_import = $this->getProductLogs(1, null, $startDate, true);   
+        $log_export = $this->getProductLogs(2, null, $startDate, true);
+
+        // Lấy dữ liệu nhập và xuất trong khoảng thời gian
+        $product_import = $this->getProductLogs(1, $startDate, $endDate);
+        $product_export = $this->getProductLogs(2, $startDate, $endDate);
+        // $log_import = Product::leftJoin('lot', 'products.id', '=', 'lot.product_id')->leftJoin('warehouse_logs', function (JoinClause $join) use ($request) {
+        //     $join->on('warehouse_logs.lot_id', '=', 'lot.id')
+        //         ->where('warehouse_logs.type', 1)->whereDate('warehouse_logs.created_at', '<', date('Y-m-d', strtotime($request->date[0])));
+        // })->select('products.id', 'products.name', DB::raw('SUM(warehouse_logs.so_luong) as so_luong'))->groupBy('products.id', 'products.name')->get();
+        // $log_export = Product::leftJoin('lot', 'products.id', '=', 'lot.product_id')->leftJoin('warehouse_logs', function (JoinClause $join) use ($request) {
+        //     $join->on('warehouse_logs.lot_id', '=', 'lot.id')
+        //         ->where('warehouse_logs.type', 2)->whereDate('warehouse_logs.created_at', '<', date('Y-m-d', strtotime($request->date[0])));
+        // })->select('products.id', 'products.name', DB::raw('SUM(warehouse_logs.so_luong) as so_luong'))->groupBy('products.id', 'products.name')->get();
+
+        // $product_import = Product::leftJoin('lot', 'products.id', '=', 'lot.product_id')->leftJoin('warehouse_logs', function (JoinClause $join) use ($request) {
+        //     $join->on('warehouse_logs.lot_id', '=', 'lot.id')
+        //         ->where('warehouse_logs.type', 1)->whereDate('warehouse_logs.created_at', '>=', date('Y-m-d', strtotime($request->date[0])))->whereDate('warehouse_logs.created_at', '<=', date('Y-m-d', strtotime($request->date[1])));
+        // })->select('products.id', 'products.name', DB::raw('SUM(warehouse_logs.so_luong) as so_luong'))->groupBy('products.id', 'products.name')->get();
+        // $product_export = Product::leftJoin('lot', 'products.id', '=', 'lot.product_id')->leftJoin('warehouse_logs', function (JoinClause $join) use ($request) {
+        //     $join->on('warehouse_logs.lot_id', '=', 'lot.id')
+        //         ->where('warehouse_logs.type', 2)->whereDate('warehouse_logs.created_at', '>=', date('Y-m-d', strtotime($request->date[0])))->whereDate('warehouse_logs.created_at', '<=', date('Y-m-d', strtotime($request->date[1])));
+        // })->select('products.id', 'products.name', DB::raw('SUM(warehouse_logs.so_luong) as so_luong'))->groupBy('products.id', 'products.name')->get();
         $data = [];
         foreach ($log_import as $key => $log) {
+            $import_total = !empty($log->warehouseLog) ? $log->warehouseLog->sum('so_luong') : 0;
+            $export_total = !empty($log_export[$key]->warehouseLog) ? $log_export[$key]->warehouseLog->sum('so_luong') : 0;
+            $import_product = !empty($product_import->warehouseLog) ? $product_import->warehouseLog->sum('so_luong') : 0;
+            $export_product = !empty($product_export[$key]->warehouseLog) ? $product_export[$key]->warehouseLog->sum('so_luong') : 0;
             $obj = [];
             $obj['product_id'] = $log->id;
             $obj['product_name'] = $log->name;
-            $obj['ton_dau'] = $log->so_luong -  $log_export[$key]->so_luong;
-            $obj['sl_nhap'] = $product_import[$key]->so_luong ?? 0;
-            $obj['sl_xuat'] = $product_export[$key]->so_luong ?? 0;
+            $obj['ton_dau'] = $import_total -  $export_total;
+            $obj['sl_nhap'] = $import_product ?? 0;
+            $obj['sl_xuat'] = $export_product ?? 0;
             $obj['ton_cuoi'] = $obj['ton_dau'] + $obj['sl_nhap'] - $obj['sl_xuat'];
             $sum['sl_nhap'] += $obj['sl_nhap'];
             $sum['sl_xuat'] += $obj['sl_xuat'];
@@ -6400,20 +6428,21 @@ class ApiUIController extends AdminController
             return $this->failure(['msg' => $e->getMessage()], 'Thao tác thất bại');
         }
     }
-    
-    public function trackingProduction(Request $request){
+
+    public function trackingProduction(Request $request)
+    {
         $lines = Line::where('factory_id', 2)->pluck('id')->toArray();
         $machines = Machine::whereIn('line_id', $lines)->where('is_iot', 1)->pluck('code')->toArray();
         $query = InfoCongDoan::whereIn('machine_code', $machines);
-        if(!empty($request->date)){
+        if (!empty($request->date)) {
             $query->whereDate('created_at', date('Y-m-d', strtotime($request->date)));
-        }else{
+        } else {
             $query->whereDate('created_at', date('Y-m-d'));
         }
-        if(!empty($request->lot_id)){
+        if (!empty($request->lot_id)) {
             $query->where('lot_id', 'like', "%$request->lot_id%");
         }
-        if(!empty($request->machine_code)){
+        if (!empty($request->machine_code)) {
             $query->where('machine_code', 'like', "%$request->machine_code%");
         }
         $records = $query->with('line')->orderBy('created_at', 'DESC')->get();
