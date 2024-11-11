@@ -186,31 +186,10 @@ class Phase2OIApiController extends Controller
     }
 
     //Trả về sanh sách Lot sản xuất của công đoạn
-    public function getLotProductionList(Request $request)
+    public function parseLotPlanData($lotPlans)
     {
-        $line_id = $request->line_id;
-        $line = Line::find($line_id);
-        $machine_code = $request->machine_code;
-        $date  = date('Y-m-d');
-        $query = LotPlan::where(function ($query) use ($date) {
-            $query->whereDate('start_time', $date)
-                ->whereHas('plan', function ($q) {
-                    $q->whereIn('status_plan', [0, 1]);
-                })
-                ->orWhereHas('infoCongDoan', function ($q) {
-                    $q->where('status', 1);
-                });
-        })
-            ->with('infoCongDoan.qcHistory', 'spec', 'plan', 'infoCongDoan.assignments');
-        if (!empty($request->line_id)) {
-            $query->where('line_id', $line_id);
-        }
-        if (!empty($request->machine_code)) {
-            $query->where('machine_code', $machine_code);
-        }
-        $list = $query->orderBy('lo_sx', 'ASC')->orderBy('start_time', 'ASC')->get();
         $records = [];
-        foreach ($list as $item) {
+        foreach ($lotPlans as $item) {
             $hao_phi_sx = $item->spec->first(function ($record) {
                 return $record->name == 'Hao phí sản xuất các công đoạn (%)';
             }) ?? null;
@@ -239,7 +218,6 @@ class Phase2OIApiController extends Controller
                 "uph_an_dinh" => $item->plan->UPH ?? 0,
                 "uph_thuc_te" => 0,
                 "status" => $infoCongDoan->status ?? InfoCongDoan::STATUS_PLANNED,
-                "nguoi_sx" => $item->lot->log->info[str::slug($line->name)]['user_name'] ?? "",
                 "thoi_gian_bam_may" => isset($infoCongDoan->thoi_gian_bam_may) ? date('d/m/Y H:i:s', strtotime($infoCongDoan->thoi_gian_bam_may)) : "",
                 'hao_phi_cong_doan' => $hao_phi_sx ? $hao_phi_sx->value . "%" : "",
                 'sl_dau_vao' => $infoCongDoan->sl_dau_vao_hang_loat ?? 0,
@@ -247,7 +225,7 @@ class Phase2OIApiController extends Controller
                 'sl_tem_vang' => $infoCongDoan->sl_tem_vang ?? 0,
                 'sl_tem_ng' => $infoCongDoan->sl_ng ?? 0,
                 'is_qc' => ($infoCongDoan && !is_null($infoCongDoan->qcHistory)) ? $infoCongDoan->qcHistory->eligible_to_end : 0,
-                'is_assign' => $infoCongDoan && count($infoCongDoan->assignments) > 0 ? 1 : 0,
+                'is_assign' => $infoCongDoan && count($infoCongDoan->assignments ?? []) > 0 ? 1 : 0,
                 'info_id' => $infoCongDoan->id ?? null,
             ];
             $data['ti_le_ht'] = $item->quantity > 0 ? round($data['sl_dau_ra_ok'] / $item->quantity * 100) . '%' : "0%";
@@ -255,6 +233,85 @@ class Phase2OIApiController extends Controller
             $data['hao_phi'] = $data['sl_dau_vao'] ? round((($data['sl_tem_ng'] - (int)($hao_phi_vao_hang->value ?? 0)) > 0 ? ($data['sl_tem_ng'] - (int)($hao_phi_vao_hang->value ?? 0)) : 0 / $data['sl_dau_vao']) * 100) . '%' : "";
             $records[] = $data;
         }
+        return $records;
+    }
+
+    public function parseInfoData($infoList)
+    {
+        $records = [];
+        foreach ($infoList as $item) {
+            $hao_phi_sx = $item->spec->first(function ($record) {
+                return $record->name == 'Hao phí sản xuất các công đoạn (%)';
+            }) ?? null;
+            $hao_phi_vao_hang = $item->spec->first(function ($record) {
+                return $record->name == 'Hao phí vào hàng các công đoạn';
+            }) ?? null;
+            $infoCongDoan = $item;
+            $data =  [
+                "lo_sx" => $item->lo_sx,
+                "input_lot_id" => $infoCongDoan->input_lot_id ?? '',
+                "lot_id" => $item->lot_id,
+                "ma_hang" => $item->product->id ?? '',
+                "ten_sp" => $item->product->name ?? '',
+                "sl_ke_hoach" => $item->quantity ?? 0,
+                'thoi_gian_bat_dau_kh' => isset($item->lotPlan->start_time) ? date('d/m/Y H:i:s', strtotime($item->lotPlan->start_time)) : "",
+                "thoi_gian_ket_thuc_kh" => isset($item->lotPlan->end_time) ? date('d/m/Y H:i:s', strtotime($item->lotPlan->end_time)) : "",
+                'thoi_gian_bat_dau' => isset($infoCongDoan->thoi_gian_bat_dau) ? date('d/m/Y H:i:s', strtotime($infoCongDoan->thoi_gian_bat_dau)) : "",
+                'thoi_gian_ket_thuc' => isset($infoCongDoan->thoi_gian_ket_thuc) ? date('d/m/Y H:i:s', strtotime($infoCongDoan->thoi_gian_ket_thuc)) : "",
+                'sl_dau_vao_kh' => $item->lotPlan->quantity ?? 0,
+                'sl_dau_ra_kh' => $item->lotPlan->quantity ?? 0,
+                'sl_dau_vao_hang_loat' => $infoCongDoan->sl_dau_vao_hang_loat ?? 0,
+                'sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_ra_hang_loat ?? 0,
+                "sl_dau_ra_ok" => ($infoCongDoan->sl_dau_ra_hang_loat ?? 0) - ($infoCongDoan->sl_tem_vang ?? 0) - ($infoCongDoan->sl_ng ?? 0),
+                "sl_tem_vang" => $infoCongDoan->sl_tem_vang ?? 0,
+                "sl_ng" => $infoCongDoan->sl_ng ?? 0,
+                "uph_an_dinh" => $item->plan->UPH ?? 0,
+                "uph_thuc_te" => 0,
+                "status" => $infoCongDoan->status ?? InfoCongDoan::STATUS_PLANNED,
+                "thoi_gian_bam_may" => isset($infoCongDoan->thoi_gian_bam_may) ? date('d/m/Y H:i:s', strtotime($infoCongDoan->thoi_gian_bam_may)) : "",
+                'hao_phi_cong_doan' => $hao_phi_sx ? $hao_phi_sx->value . "%" : "",
+                'sl_dau_vao' => $infoCongDoan->sl_dau_vao_hang_loat ?? 0,
+                'sl_dau_ra' => $infoCongDoan->sl_dau_ra_hang_loat ?? 0,
+                'sl_tem_vang' => $infoCongDoan->sl_tem_vang ?? 0,
+                'sl_tem_ng' => $infoCongDoan->sl_ng ?? 0,
+                'is_qc' => ($infoCongDoan && !is_null($infoCongDoan->qcHistory)) ? $infoCongDoan->qcHistory->eligible_to_end : 0,
+                'is_assign' => $infoCongDoan && count($infoCongDoan->assignments ?? []) > 0 ? 1 : 0,
+                'info_id' => $infoCongDoan->id ?? null,
+            ];
+            $data['ti_le_ht'] = $data['sl_dau_vao_kh'] > 0 ? round($data['sl_dau_ra_ok'] / $data['sl_dau_vao_kh'] * 100) . '%' : "0%";
+            $data['sl_dau_ra_ok'] = $data['sl_dau_ra'] - $data['sl_tem_vang'] - $data['sl_tem_ng'];
+            $data['hao_phi'] = $data['sl_dau_vao'] ? round((($data['sl_tem_ng'] - (int)($hao_phi_vao_hang->value ?? 0)) > 0 ? ($data['sl_tem_ng'] - (int)($hao_phi_vao_hang->value ?? 0)) : 0 / $data['sl_dau_vao']) * 100) . '%' : "";
+            $records[] = $data;
+        }
+        return $records;
+    }
+
+    public function getLotProductionList(Request $request)
+    {
+        $line_id = $request->line_id;
+        $line = Line::find($line_id);
+        $machine_code = $request->machine_code;
+        $date  = date('Y-m-d');
+        $lot_plan_query = LotPlan::whereDate('start_time', $date)
+            ->whereHas('plan', function ($q) {
+                $q->whereIn('status_plan', [0, 1]);
+            })->with('infoCongDoan.qcHistory', 'spec', 'plan', 'infoCongDoan.assignments');
+        $info_query = InfoCongDoan::whereHas('lot', function ($q) {
+            $q->where('type', '!=', Lot::TYPE_TEM_TRANG);
+        })->whereDate('created_at', $date)->where('status', '>', 1)->with('qcHistory', 'spec', 'plan', 'assignments', 'lotPlan');
+        if (!empty($request->line_id)) {
+            $lot_plan_query->where('line_id', $line_id);
+            $info_query->where('line_id', $line_id);
+        }
+        if (!empty($request->machine_code)) {
+            $lot_plan_query->where('machine_code', $machine_code);
+            $info_query->where('machine_code', $machine_code);
+        }
+        $lotPlans = $lot_plan_query->orderBy('lo_sx', 'ASC')->orderBy('start_time', 'ASC')->get();
+        $lotPlanList = $this->parseLotPlanData($lotPlans);
+        $infos = $info_query->get();
+        $infoList = $this->parseInfoData($infos);
+        $records = array_merge($infoList ?? [], $lotPlanList ?? []);
         return $this->success($records);
     }
 
@@ -1184,15 +1241,16 @@ class Phase2OIApiController extends Controller
     public function getQCOverall(Request $request)
     {
         $info_query = InfoCongDoan::whereDate('thoi_gian_ket_thuc', Carbon::today());
-        if (empty($request->line_id)) {
-            $info_query->where('line_id', $request->line_id);
-        }
-        $info_cong_doan = $info_query->get();
-
         $lot_plan_query = LotPlan::whereDate('end_time', Carbon::today());
-        if (empty($request->line_id)) {
+        if (!empty($request->line_id)) {
+            $info_query->where('line_id', $request->line_id);
             $lot_plan_query->where('line_id', $request->line_id);
         }
+        if (!empty($request->machine_code)) {
+            $info_query->where('machine_code', $request->machine_code);
+            $lot_plan_query->where('machine_code', $request->machine_code);
+        }
+        $info_cong_doan = $info_query->get();
         $lot_plans = $lot_plan_query->get();
         $data = [];
         $data['ke_hoach'] = $lot_plans->sum('quantity');
@@ -1204,25 +1262,34 @@ class Phase2OIApiController extends Controller
     //Trả về danh sách lot QC
     public function getLotQCList(Request $request)
     {
-        $query = InfoCongDoan::where(function($q){
-            $q->whereDate('created_at', date('Y-m-d'))->orWhere('status', 1);
-        })->where('status', '>=', 1);
-        if (!empty($request->line_id)) {
-            $query->where('line_id', $request->line_id);
-        }
-        if (!empty($request->machine_code)) {
-            $query->where('machine_code', $request->machine_code);
-        }
+        $query = QCHistory::whereDate('scanned_time', date('Y-m-d'))->whereHas('infoCongDoan', function ($q) use ($request) {
+            if (!empty($request->line_id)) {
+                $q->where('line_id', $request->line_id);
+            }
+            if (!empty($request->machine_code)) {
+                $q->where('machine_code', $request->machine_code);
+            }
+        });
+
         $list = $query->get();
-        foreach ($list as $item) {
-            $item->ten_sp = $item->product->name ?? "";
-            $item->product_id = $item->product_id ?? "";
-            $item->ngay_sx = $item->created_at->format('d/m/Y');
-            $item->sl_ok = $item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang;
-            $item->ty_le_ht = $item->sl_dau_ra_hang_loat > 0 ? round($item->sl_ok / $item->sl_dau_ra_hang_loat * 100) : 0;
-            $item->qc_status = $item->qcHistory->eligible_to_end ?? 0;
+        $data = [];
+        foreach ($list as $value) {
+            $infoCongDoan = $value->infoCongDoan ?? null;
+            $item = [];
+            $item['ngay_sx'] = date('Y-m-d', strtotime($value->scanned_time));
+            $item['lot_id'] = $infoCongDoan->lot_id ?? "";
+            $item['ten_sp'] = $infoCongDoan->product->name ?? "";
+            $item['product_id'] = $infoCongDoan->product_id ?? "";
+            $item['lo_sx'] = $infoCongDoan->lo_sx ?? "";
+            $item['sl_dau_ra_hang_loat'] = $infoCongDoan->sl_dau_ra_hang_loat ?? 0;
+            $item['sl_ok'] = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang;
+            $item['ty_le_ht'] = $infoCongDoan->sl_dau_ra_hang_loat > 0 ? round($infoCongDoan->sl_ok / $infoCongDoan->sl_dau_ra_hang_loat * 100) : 0;
+            $item['sl_tem_vang'] = $infoCongDoan->sl_tem_vang ?? 0;
+            $item['sl_ng'] = $infoCongDoan->sl_ng ?? 0;
+            $item['qc_status'] = $value->eligible_to_end ?? 0;
+            $data[] = $item;
         }
-        return $this->success($list);
+        return $this->success($data);
     }
 
     public function getLotQCCurrent(Request $request)
@@ -1352,7 +1419,9 @@ class Phase2OIApiController extends Controller
         } else {
             $infoCongDoan = InfoCongDoan::with('qcHistory.testCriteriaHistories.testCriteriaDetailHistories')->where('lot_id', $request->lot_id)->where('line_id', $line->id)->first();
         }
-
+        if(!$infoCongDoan){
+            return $this->failure('', 'Không tìm thấy lot');
+        }
         $product = $infoCongDoan->product;
         $list = $line->testCriteria()->get()->groupBy('chi_tieu');
         $reference = array_merge($line->testCriteria()->pluck('reference')->toArray(), [$line->id]);
@@ -1390,7 +1459,7 @@ class Phase2OIApiController extends Controller
         if (count($specs) > 0) {
             $spec = $specs->toQuery()->where("slug", 'like', "%$hang_muc%")->first();
         }
-        if(!$spec || trim($spec->value) === 'N/A'){
+        if (!$spec || trim($spec->value) === 'N/A') {
             return null;
         }
         if (str_contains($spec->value, $find)) {
@@ -1401,7 +1470,7 @@ class Phase2OIApiController extends Controller
             $test["delta"] =  filter_var($arr[1], FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
             $test['note'] = $spec->value;
             return $test;
-        }else{
+        } else {
             $test['input'] = false;
         }
         return $test;
@@ -1477,22 +1546,22 @@ class Phase2OIApiController extends Controller
                     ]
                 );
             }
-            if($request->result === 'OK'){
-                $reference = array_merge($line->testCriteria()->pluck('reference')->toArray(), [$line->id], );
-                $specs = Spec::whereIn("line_id", explode(',',implode(',',$reference)))->whereNotNull('slug')->whereNotNull('name')->where("product_id", $infoCongDoan->product_id ?? "")->whereNotNull('value')->get();
+            if ($request->result === 'OK') {
+                $reference = array_merge($line->testCriteria()->pluck('reference')->toArray(), [$line->id],);
+                $specs = Spec::whereIn("line_id", explode(',', implode(',', $reference)))->whereNotNull('slug')->whereNotNull('name')->where("product_id", $infoCongDoan->product_id ?? "")->whereNotNull('value')->get();
                 $criteria = $line->testCriteria()->get()->groupBy('chi_tieu');
                 // return $specs;
                 $number_of_criteria_type = [];
                 foreach ($criteria as $key => $rows) {
                     $slug = Str::slug($key);
                     $data = [];
-                    foreach($rows as $value){
+                    foreach ($rows as $value) {
                         $parsedCriteria = $this->findSpec($value, $specs);
                         if ($parsedCriteria) $data[] = $parsedCriteria;
                     }
-                    if(count($data) > 0){
+                    if (count($data) > 0) {
                         $number_of_criteria_type[$slug] = 1;
-                    }else{
+                    } else {
                         unset($number_of_criteria_type[$slug]);
                     }
                 }
