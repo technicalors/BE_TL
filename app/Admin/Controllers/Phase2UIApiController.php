@@ -253,7 +253,7 @@ class Phase2UIApiController extends Controller
     public function productionHistoryQuery(Request $request)
     {
         $line_ids = Line::where('factory_id', 2)->pluck('id')->toArray();
-        $query = InfoCongDoan::whereIn('line_id', $line_ids)->whereNotNull('thoi_gian_bat_dau')->with("lotPlan", "product", "line", "qcHistory.errorHistories.error", "qcHistory.errorHistories.usert   ");
+        $query = InfoCongDoan::whereIn('line_id', $line_ids)->whereNotNull('thoi_gian_bat_dau')->with("lotPlan", "product", "line", "qcHistory.errorHistories.error", "qcHistory.errorHistories.user");
         if (isset($request->line_id)) {
             if (is_array($request->line_id)) {
                 $query->whereIn('line_id', $request->line_id);
@@ -2912,13 +2912,14 @@ class Phase2UIApiController extends Controller
     public function calculateMachineDownTime($start, $end, $label)
     {
         $lines = Line::where('factory_id', 2)->get();
-        $machines = Machine::whereIn('line_id', $lines->pluck('id')->toArray())->where('is_iot', 1)->get();
+        $machines = Machine::whereIn('line_id', $lines->pluck('id')->toArray())->get();
         $query = MachineLog::whereIn('machine_id', $machines->pluck('code')->toArray())
             ->whereDate('created_at', '>=', $start)
             ->whereDate('created_at', '<=', $end)
             ->whereNotNull('info->lot_id')
             ->whereNotNull('info->start_time')
             ->whereNotNull('info->end_time');
+            // return $query->get();
         $count = $query->count();
         $time = $query->select(DB::raw("SUM(JSON_UNQUOTE(JSON_EXTRACT(info, '$.end_time')) - JSON_UNQUOTE(JSON_EXTRACT(info, '$.start_time'))) as stop_time"))->first();
         $stopTime = 0;
