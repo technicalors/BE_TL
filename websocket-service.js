@@ -469,7 +469,7 @@ async function callAPIDevice() {
     );
   } catch (error) {
     console.error("Lỗi khi gọi API:", error);
-    setTimeout(callAPIDevice, 2000);
+    setTimeout(callAPIDevice, 3000);
   }
 }
 
