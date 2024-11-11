@@ -16,4 +16,11 @@ class ErrorHistory extends Model
         'type',
         'quantity',
     ];
+
+    public function error(){
+        return  $this->belongsTo(Error::class, 'error_id');
+    }
+    public function user(){
+        return  $this->belongsTo(CustomUser::class, 'user_id');
+    }
 }
