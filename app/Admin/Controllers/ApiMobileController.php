@@ -288,7 +288,7 @@ class ApiMobileController extends AdminController
     {
         $line = Line::find($request->line_id);
         if (!$line) return $this->success();
-        $error = ErrorMachine::all();
+        $error = ErrorMachine::where('line_id', $line->id)->get();
         // format lại data dùng tạm thời
         foreach ($error as $e) {
             $e['name'] = $e['noi_dung'];
