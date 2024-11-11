@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -30,6 +31,11 @@ class MachineLog extends Model
         $res = self::getLatestRecord($request->machine_id);
         if ((int)$isRun == 1 && isset($res) && !isset($res->info['end_time'])) {
             $info = $res->info;
+            $diff = Carbon::now()->diffInMinutes(Carbon::parse($info['start_time']));
+            if($diff < 10){
+                $res->delete();
+                return $res;
+            }
             $info['end_time'] = strtotime(now());
             $res->info = $info;
             $res->save();
