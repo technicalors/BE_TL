@@ -118,7 +118,7 @@ class ApiMobileController extends AdminController
         if (Admin::guard()->attempt($credentials)) {
             $user = Admin::user();
             $user = $this->user->find($user->id);
-            if($user->username !== 'admin'){
+            if ($user->username !== 'admin') {
                 $user->tokens()->delete();
             }
             return $this->success($this->parseDataUser($user), 'Đăng nhập thành công');
@@ -288,7 +288,7 @@ class ApiMobileController extends AdminController
     {
         $line = Line::find($request->line_id);
         if (!$line) return $this->success();
-        $error = ErrorMachine::all();
+        $error = ErrorMachine::where('line_id', $line->id)->get();
         // format lại data dùng tạm thời
         foreach ($error as $e) {
             $e['name'] = $e['noi_dung'];
@@ -304,7 +304,7 @@ class ApiMobileController extends AdminController
         if (!$machine) {
             return $this->failure([], 'Không tìm thấy mã máy');
         }
-        $logs = MachineLog::where('machine_id', $machine->code)->whereNull('info->error_id')->orderBy('created_at', 'DESC')
+        $logs = MachineLog::where('machine_id', $machine->code)->whereNull('info->error_id')->whereDate('created_at', date('Y-m-d'))->orderBy('created_at', 'DESC')
             ->get();
         $log_data = [];
         foreach ($logs as $log) {
@@ -3772,20 +3772,20 @@ class ApiMobileController extends AdminController
             //   return $model->getDirty();
             // }
             $newStartTime = Carbon::parse($input['thoi_gian_bat_dau']);
-            
-            
+
+
             $lotPlans = $model->lotPlan()->orderBy('start_time')->get();
             foreach ($lotPlans as $key => $lot_plan) {
                 $diff = Carbon::parse($lot_plan->end_time)->diffInSeconds($lot_plan->start_time);
-                if($key === 0){
+                if ($key === 0) {
                     $lotStartTime = $newStartTime;
-                }else{
+                } else {
                     $lotStartTime = Carbon::parse($lotPlans[$key - 1]->end_time);
                 }
                 $lotEndTime = $lotStartTime->copy()->addSeconds($diff);
                 $newEndTime = $lotEndTime;
                 $lot_plan->update([
-                    'machine_code'=>$model->machine_id,
+                    'machine_code' => $model->machine_id,
                     'start_time' => $lotStartTime,
                     'end_time' => $lotEndTime
                 ]);
