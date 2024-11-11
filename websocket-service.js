@@ -287,6 +287,7 @@ async function enqueueData(deviceId, data) {
   // Chuyển đổi và đẩy dữ liệu thông số máy
   if (deviceFieldConfig[deviceId]) {
     let convertedData = convertMachineInfoData(data, deviceId);
+    console.log("Thông số máy", convertedData);
     if (Object.keys(convertedData).length > 1) {
       dataQueues[deviceId].push({
         data: convertedData,
@@ -392,7 +393,7 @@ async function connectWebSocket(deviceId) {
   ws.on("message", async (data) => {
     try {
       const parsedData = JSON.parse(data);
-      console.log(`Received data from device ${deviceId}:`, parsedData);  
+      console.log(`Received data from device ${deviceId}:`, parsedData);
       // Thêm mã thiết bị vào dữ liệu
       parsedData.data.device_id = deviceId;
       // const data = parsedData.data;
@@ -452,3 +453,25 @@ connectAllDevices().catch((error) => {
     error.message
   );
 });
+async function callAPIDevice() {
+  try {
+    const result = await axios.get(
+      "http://103.77.215.18:3030/api/plugins/telemetry/DEVICE/22d821e0-45bd-11ef-b8c3-a13625245eca/values/timeseries?keys=PLC:AP01",
+      { headers: { Authorization: "Bearer " + authToken } }
+    );
+
+    await pushDataToMESAPI(
+      {
+        device_id: "22d821e0-45bd-11ef-b8c3-a13625245eca",
+        PLC_AP01: result.data["PLC:AP01"][0]["value"],
+      },
+      "https://backtl.ors.vn/api/iot/update-params"
+    );
+  } catch (error) {
+    console.error("Lỗi khi gọi API:", error);
+    setTimeout(callAPIDevice, 3000);
+  }
+}
+
+// Sử dụng setInterval để gọi hàm mỗi giây
+setInterval(callAPIDevice, 1500);

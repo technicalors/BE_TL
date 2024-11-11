@@ -48,15 +48,15 @@ class MachineLog extends Model
             $info['type'] = $request->type;
             $res->info = $info;
             $res->save();
-            $monitor = Monitor::where('machine_id', $request->machine_id)->where('type', 'tb')->where('status', 0)->first();
-            if (!$monitor) {
-                $record = new Monitor();
-                $record->type = 'tb';
-                $record->machine_id = $request->machine_id;
-                $record->content = 'Sự cố máy';
-                $record->status = 0;
-                $record->save();
-            }
+            // $monitor = Monitor::where('machine_id', $request->machine_id)->where('type', 'tb')->where('status', 0)->first();
+            // if (!$monitor) {
+            //     $record = new Monitor();
+            //     $record->type = 'tb';
+            //     $record->machine_id = $request->machine_id;
+            //     $record->content = 'Sự cố máy';
+            //     $record->status = 0;
+            //     $record->save();
+            // }
             return $res;
         }
 

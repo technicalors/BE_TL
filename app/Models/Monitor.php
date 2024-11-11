@@ -13,6 +13,6 @@ class Monitor extends Model
 
     public function machine()
     {
-        return $this->hasOne(Machine::class, 'code', 'machine_id');
+        return $this->hasOne(Machine::class, 'id', 'machine_id');
     }
 }

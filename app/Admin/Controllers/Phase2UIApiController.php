@@ -2953,4 +2953,33 @@ class Phase2UIApiController extends Controller
             ]
         ];
     }
+    public function generatePowerConsumes()
+    {
+        $deviceId = '9032a0e0-45bc-11ef-b8c3-a13625245eca';
+        $machineCode = 'IN_4_MAU_01';
+        $startValue = 0;
+
+        // Lặp qua tất cả các ngày trong tháng 11, trừ ngày Chủ nhật
+        for ($day = 1; $day <= 30; $day++) {
+            $date = "2024-10-" . str_pad($day, 2, '0', STR_PAD_LEFT);
+            $dayOfWeek = date('w', strtotime($date));
+
+            // Bỏ qua ngày Chủ nhật
+            if ($dayOfWeek == 0) {
+                continue;
+            }
+
+            // Tạo số random trong khoảng từ 150 đến 185.5
+            $endValue = mt_rand(1500, 1855) / 10;
+
+            // Chèn vào bảng power_consumes
+            DB::table('power_consumes')->insert([
+                'device_id' => $deviceId,
+                'machine_code' => $machineCode,
+                'start_value' => $startValue,
+                'end_value' => $endValue,
+                'date' => $date,
+            ]);
+        }
+    }
 }
