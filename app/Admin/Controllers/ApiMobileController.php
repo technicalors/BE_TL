@@ -309,11 +309,11 @@ class ApiMobileController extends AdminController
         $log_data = [];
         foreach ($logs as $log) {
             $info = $log['info'];
-            $start = Carbon::parse($log['info']['start_time'] ?? 'now');    
-            $end = Carbon::parse($log['info']['end_time'] ?? 'now');
-            if ($end->diffInMinutes($start) < 10) {
-                continue;
-            }
+            // $start = Carbon::parse($log['info']['start_time'] ?? 'now');    
+            // $end = Carbon::parse($log['info']['end_time'] ?? 'now');
+            // if ($end->diffInMinutes($start) < 10) {
+            //     continue;
+            // }
             $info['start_time'] = $log['info']['start_time'] ? date('d/m/Y H:i:s', $log['info']['start_time']) : '';
             $info['end_time'] =  isset($log['info']['end_time']) ? date('d/m/Y H:i:s', $log['info']['end_time']) : '';
             $log['info'] =  $info;

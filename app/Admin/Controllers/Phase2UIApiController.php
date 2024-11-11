@@ -2971,4 +2971,29 @@ class Phase2UIApiController extends Controller
             ]);
         }
     }
+
+    public function deleteOvertimeMachineLog(){
+        // Lấy tất cả các bản ghi MachineLog
+        $logs = MachineLog::all();
+    
+        foreach ($logs as $log) {
+            if(!isset($log->info['end_time'])){
+                $log->delete();
+            }
+            // Kiểm tra nếu info có cả start_time và end_time
+            if (isset($log->info['start_time']) && isset($log->info['end_time'])) {
+                $startTime = Carbon::createFromTimestamp($log->info['start_time']);
+                $endTime = Carbon::createFromTimestamp($log->info['end_time']);
+    
+                // Tính sự chênh lệch thời gian
+                $diff = $startTime->diffInMinutes($endTime);
+    
+                // Xóa bản ghi nếu khoảng thời gian nhỏ hơn 10 phút
+                if ($diff < 10) {
+                    $log->delete();
+                }
+            }
+        }
+        return 'ok';
+    }
 }
