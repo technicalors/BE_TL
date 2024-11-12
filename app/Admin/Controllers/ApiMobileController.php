@@ -3306,8 +3306,8 @@ class ApiMobileController extends AdminController
         }
         $data = $list_query->get();
         foreach ($data as $key => $value) {
-            $value->customer_id = $value->product->customer_id;
-            $value->khach_hang = $value->product->customer->name;
+            $value->customer_id = $value->product->customer_id ?? null;
+            $value->khach_hang = $value->product->customer->name ?? null;
         }
         return $this->success($data);
     }
