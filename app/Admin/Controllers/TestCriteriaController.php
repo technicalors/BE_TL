@@ -135,7 +135,8 @@ class TestCriteriaController extends AdminController
             $query->offset($page * $pageSize)->limit($pageSize);
         }
         $test_criterias = $query->with('lines')->get()->sortBy('id', SORT_NATURAL)->values();
-        return $this->success(['data' => $test_criterias, 'total' => $total]);
+        $frequency = [TestCriteria::MOT_MAU_TREN_MOT_CUON, TestCriteria::MOT_MAU_TREN_MOT_CA];
+        return $this->success(['data' => $test_criterias, 'total' => $total, 'frequency' => $frequency]);
     }
     public function updateTestCriteria(Request $request, $id)
     {
@@ -414,11 +415,11 @@ class TestCriteriaController extends AdminController
                     $lines = Line::whereIn(DB::raw('LOWER(name)'), array_map('strtolower', array_map('trim', $value)))->pluck('id')->toArray();
                     $input['reference'] = implode(',', $lines);
                 }
-                $input['frequency'] = $row['G'];
-                // $validated = TestCriteria::validateUpdate($input);
-                // if ($validated->fails()) {
-                //     return $this->failure('', 'Lỗi dòng thứ ' . ($key) . ': ' . $validated->errors()->first());
-                // }
+                $input['frequency'] = trim($row['G']);
+                $validated = TestCriteria::validateUpdate($input);
+                if ($validated->fails()) {
+                    return $this->failure('', 'Lỗi dòng thứ ' . ($key) . ': ' . $validated->errors()->first());
+                }
                 $input['is_show'] = 1;
                 $data[] = $input;
             }
