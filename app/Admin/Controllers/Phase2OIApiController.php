@@ -1330,7 +1330,7 @@ class Phase2OIApiController extends Controller
             }
         }
 
-        return $this->success($infoCongDoan);
+        return $this->success($infoCongDoans);
     }
 
     //Scan lot vào QC
