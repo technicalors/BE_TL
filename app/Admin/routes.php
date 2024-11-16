@@ -610,6 +610,7 @@ Route::group([
     $router->put('/machine-parameter-logs', [MaterialParameterLogController::class, 'update']);
     $router->get('/fake-data-consume', [Phase2UIApiController::class, 'generatePowerConsumes']);
     $router->get('/delete-overtime-machine-log', [Phase2UIApiController::class, 'deleteOvertimeMachineLog']);
+    $router->get('/clear-fake-data', [Phase2UIApiController::class, 'clearFakeData']);
 });
 //Dashboard
 Route::group([

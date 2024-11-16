@@ -11,6 +11,7 @@ use App\Models\Bom;
 use App\Models\Customer;
 use App\Models\CustomUser;
 use App\Models\Error;
+use App\Models\ErrorHistory;
 use App\Models\ErrorMachine;
 use App\Models\Factory;
 use App\Models\InfoCongDoan;
@@ -2996,5 +2997,22 @@ class Phase2UIApiController extends Controller
             }
         }
         return 'ok';
+    }
+
+    public function clearFakeData(){
+        $info = InfoCongDoan::where(function($query){
+            $query->whereDate('created_at', '<=', '2024-10-22')->orWhereDate('created_at', '>', date("Y-m-d"));
+        })->delete();
+        $err = ErrorHistory::where(function($query){
+            $query->whereDate('created_at', '<=', '2024-10-22')->orWhereDate('created_at', '>', date("Y-m-d"));
+        })->delete();
+        $plan = ProductionPlan::whereDate('created_at', '<=', '2024-10-22')->each(function ($plan) {
+            $plan->lotPlan()->delete();
+            $plan->delete();
+        });
+        $lot_plan = LotPlan::whereNotIn('production_plan_id', function ($query) {
+            $query->select('id')->from('production_plans');
+        })->delete();
+        return 'done';
     }
 }

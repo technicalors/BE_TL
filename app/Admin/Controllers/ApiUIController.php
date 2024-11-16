@@ -3055,7 +3055,7 @@ class ApiUIController extends AdminController
 
         //Table 3
         $table_lot_query = clone $query_lot;
-        $records =  $table_lot_query->whereIn('line_id', ['10', '22', '11', '12', '13', '14'])
+        $records =  $table_lot_query->whereIn('line_id', $lines)
             ->select([
                 'info_cong_doan.*',
                 DB::raw("SUM(TIME_TO_SEC(TIMEDIFF(thoi_gian_ket_thuc , thoi_gian_bat_dau))) as tong_thoi_gian_san_xuat"),
@@ -3163,7 +3163,7 @@ class ApiUIController extends AdminController
         }
 
         //Table 4
-        $query_lot->whereIn('line_id', ['10', '22', '11', '12', '13', '14', '15'])->selectRaw('lo_sx,line_id,SUM(sl_dau_vao_hang_loat) as sl_dau_vao_,
+        $query_lot->whereIn('line_id', $lines)->selectRaw('lo_sx,line_id,SUM(sl_dau_vao_hang_loat) as sl_dau_vao_,
         SUM(sl_dau_ra_hang_loat) as sl_dau_ra_, SUM(sl_tem_vang) as sl_tem_vang_, SUM(sl_ng) as sl_ng_,SUM(powerM) as powerM_, SUM(sl_dau_ra_hang_loat - sl_tem_vang - sl_ng) as sl_ok_
         , SUM(TIME_TO_SEC(TIMEDIFF(thoi_gian_ket_thuc , thoi_gian_bat_dau))) as tong_thoi_gian_san_xuat_, SUM(TIME_TO_SEC(TIMEDIFF(thoi_gian_bam_may , thoi_gian_bat_dau))) as thoi_gian_khong_san_luong_,
         SUM(TIME_TO_SEC(TIMEDIFF(thoi_gian_ket_thuc , thoi_gian_bam_may))) as thoi_gian_tinh_san_luong_,MAX(thoi_gian_bat_dau) as ngay_sx_gan_nhat_')
@@ -3206,104 +3206,34 @@ class ApiUIController extends AdminController
             'Tên sản phẩm',
             "Lô sản xuất",
             "Số bát",
-            "IN" => ["Ngày sản xuất gần nhất của lô", "Số lượng đầu vào", "Số lượng hàng đạt", 'Tem vàng', "Số lượng NG", "Sản lượng kế hoạch giao", "Tỷ lệ đạt thẳng (%)", "Tỷ lệ tem vàng (%)", "Tỷ lệ NG(%)", "Tỷ lệ hao phí thời gian (%)", "Điện năng", ""],
-            "PHỦ" => ["Ngày sản xuất gần nhất của lô", "Số lượng đầu vào", "Số lượng hàng đạt", 'Tem vàng', "Số lượng NG", "Sản lượng kế hoạch giao", "Tỷ lệ đạt thẳng (%)", "Tỷ lệ tem vàng (%)", "Tỷ lệ NG(%)", "Tỷ lệ hao phí thời gian (%)", "Điện năng", ""],
-            "IN LƯỚI" => ["Ngày sản xuất gần nhất của lô", "Số lượng đầu vào", "Số lượng hàng đạt", 'Tem vàng', "Số lượng NG", "Sản lượng kế hoạch giao", "Tỷ lệ đạt thẳng (%)", "Tỷ lệ tem vàng (%)", "Tỷ lệ NG(%)", "Tỷ lệ hao phí thời gian (%)", "Điện năng", ""],
-            "BẾ" => ["Ngày sản xuất gần nhất của lô", "Số lượng đầu vào", "Số lượng hàng đạt", 'Tem vàng', "Số lượng NG", "Sản lượng kế hoạch giao", "Tỷ lệ đạt thẳng (%)", "Tỷ lệ tem vàng (%)", "Tỷ lệ NG(%)", "Tỷ lệ hao phí thời gian (%)", "Điện năng", ""],
-            "BÓC" => ["Ngày sản xuất gần nhất của lô", "Số lượng đầu vào", "Số lượng hàng đạt", 'Tem vàng', "Số lượng NG", "Sản lượng kế hoạch giao", "Tỷ lệ đạt thẳng (%)", "Tỷ lệ tem vàng (%)", "Tỷ lệ NG(%)", "Tỷ lệ hao phí thời gian (%)", "Điện năng", ""],
-            "GẤP DÁN" => ["Ngày sản xuất gần nhất của lô", "Số lượng đầu vào", "Số lượng hàng đạt", 'Tem vàng', "Số lượng NG", "Sản lượng kế hoạch giao", "Tỷ lệ đạt thẳng (%)", "Tỷ lệ tem vàng (%)", "Tỷ lệ NG(%)", "Tỷ lệ hao phí thời gian (%)", "Điện năng", ""],
-            "CHỌN" => ["Ngày sản xuất gần nhất của lô", "Số lượng đầu vào", "Số lượng hàng đạt", 'Tem vàng', "Số lượng NG", "Sản lượng kế hoạch giao", "Tỷ lệ đạt thẳng (%)", "Tỷ lệ tem vàng (%)", "Tỷ lệ NG(%)", "Tỷ lệ hao phí thời gian (%)", "Điện năng", ""],
+            // "IN" => ["Ngày sản xuất gần nhất của lô", "Số lượng đầu vào", "Số lượng hàng đạt", 'Tem vàng', "Số lượng NG", "Sản lượng kế hoạch giao", "Tỷ lệ đạt thẳng (%)", "Tỷ lệ tem vàng (%)", "Tỷ lệ NG(%)", "Tỷ lệ hao phí thời gian (%)", "Điện năng", ""],
+            // "PHỦ" => ["Ngày sản xuất gần nhất của lô", "Số lượng đầu vào", "Số lượng hàng đạt", 'Tem vàng', "Số lượng NG", "Sản lượng kế hoạch giao", "Tỷ lệ đạt thẳng (%)", "Tỷ lệ tem vàng (%)", "Tỷ lệ NG(%)", "Tỷ lệ hao phí thời gian (%)", "Điện năng", ""],
+            // "IN LƯỚI" => ["Ngày sản xuất gần nhất của lô", "Số lượng đầu vào", "Số lượng hàng đạt", 'Tem vàng', "Số lượng NG", "Sản lượng kế hoạch giao", "Tỷ lệ đạt thẳng (%)", "Tỷ lệ tem vàng (%)", "Tỷ lệ NG(%)", "Tỷ lệ hao phí thời gian (%)", "Điện năng", ""],
+            // "BẾ" => ["Ngày sản xuất gần nhất của lô", "Số lượng đầu vào", "Số lượng hàng đạt", 'Tem vàng', "Số lượng NG", "Sản lượng kế hoạch giao", "Tỷ lệ đạt thẳng (%)", "Tỷ lệ tem vàng (%)", "Tỷ lệ NG(%)", "Tỷ lệ hao phí thời gian (%)", "Điện năng", ""],
+            // "BÓC" => ["Ngày sản xuất gần nhất của lô", "Số lượng đầu vào", "Số lượng hàng đạt", 'Tem vàng', "Số lượng NG", "Sản lượng kế hoạch giao", "Tỷ lệ đạt thẳng (%)", "Tỷ lệ tem vàng (%)", "Tỷ lệ NG(%)", "Tỷ lệ hao phí thời gian (%)", "Điện năng", ""],
+            // "GẤP DÁN" => ["Ngày sản xuất gần nhất của lô", "Số lượng đầu vào", "Số lượng hàng đạt", 'Tem vàng', "Số lượng NG", "Sản lượng kế hoạch giao", "Tỷ lệ đạt thẳng (%)", "Tỷ lệ tem vàng (%)", "Tỷ lệ NG(%)", "Tỷ lệ hao phí thời gian (%)", "Điện năng", ""],
+            // "CHỌN" => ["Ngày sản xuất gần nhất của lô", "Số lượng đầu vào", "Số lượng hàng đạt", 'Tem vàng', "Số lượng NG", "Sản lượng kế hoạch giao", "Tỷ lệ đạt thẳng (%)", "Tỷ lệ tem vàng (%)", "Tỷ lệ NG(%)", "Tỷ lệ hao phí thời gian (%)", "Điện năng", ""],
         ];
         $table_key4 = [
             'A' => 'product_id',
             'B' => 'product_name',
             'C' => 'lo_sx',
             'D' => 'so_bat',
-
-            'E' => 'ngay_sx_gan_nhat_10',
-            'F' => 'sl_dau_vao_10',
-            'G' => 'sl_ok_10',
-            'H' => 'sl_tem_vang_10',
-            'I' => 'sl_ng_10',
-            'J' => 'sl_ke_hoach_10',
-            'K' => 'ty_le_ok_10',
-            'L' => 'ty_le_tem_vang_10',
-            'M' => 'ty_le_ng_10',
-            'N' => 'ty_le_hao_phi_thoi_gian_10',
-            'O' => 'dien_nang_10',
-
-            'Q' => 'ngay_sx_gan_nhat_11',
-            'R' => 'sl_dau_vao_11',
-            'S' => 'sl_ok_11',
-            'T' => 'sl_tem_vang_11',
-            'U' => 'sl_ng_11',
-            'V' => 'sl_ke_hoach_11',
-            'W' => 'ty_le_ok_11',
-            'X' => 'ty_le_tem_vang_11',
-            'Y' => 'ty_le_ng_11',
-            'Z' => 'ty_le_hao_phi_thoi_gian_11',
-            'AA' => 'dien_nang_11',
-
-            'AC' => 'ngay_sx_gan_nhat_22',
-            'AD' => 'sl_dau_vao_22',
-            'AE' => 'sl_ok_22',
-            'AF' => 'sl_tem_vang_22',
-            'AG' => 'sl_ng_22',
-            'AH' => 'sl_ke_hoach_22',
-            'AI' => 'ty_le_ok_22',
-            'AJ' => 'ty_le_tem_vang_22',
-            'AK' => 'ty_le_ng_22',
-            'AL' => 'ty_le_hao_phi_thoi_gian_22',
-            'AM' => 'dien_nang_22',
-
-            'AO' => 'ngay_sx_gan_nhat_12',
-            'AP' => 'sl_dau_vao_12',
-            'AQ' => 'sl_ok_12',
-            'AR' => 'sl_tem_vang_12',
-            'AS' => 'sl_ng_12',
-            'AT' => 'sl_ke_hoach_12',
-            'AU' => 'ty_le_ok_12',
-            'AV' => 'ty_le_tem_vang_12',
-            'AW' => 'ty_le_ng_12',
-            'AX' => 'ty_le_hao_phi_thoi_gian_12',
-            'AY' => 'dien_nang_12',
-
-            'BA' => 'ngay_sx_gan_nhat_14',
-            'BB' => 'sl_dau_vao_14',
-            'BC' => 'sl_ok_14',
-            'BD' => 'sl_tem_vang_14',
-            'BE' => 'sl_ng_14',
-            'BF' => 'sl_ke_hoach_14',
-            'BG' => 'ty_le_ok_14',
-            'BH' => 'ty_le_tem_vang_14',
-            'BI' => 'ty_le_ng_14',
-            'BJ' => 'ty_le_hao_phi_thoi_gian_14',
-            'BK' => 'dien_nang_14',
-
-            'BM' => 'ngay_sx_gan_nhat_13',
-            'BN' => 'sl_dau_vao_13',
-            'BO' => 'sl_ok_13',
-            'BP' => 'sl_tem_vang_13',
-            'BQ' => 'sl_ng_13',
-            'BR' => 'sl_ke_hoach_13',
-            'BS' => 'ty_le_ok_13',
-            'BT' => 'ty_le_tem_vang_13',
-            'BU' => 'ty_le_ng_13',
-            'BV' => 'ty_le_hao_phi_thoi_gian_13',
-            'BW' => 'dien_nang_13',
-
-            'BY' => 'ngay_sx_gan_nhat_15',
-            'BZ' => 'sl_dau_vao_15',
-            'CA' => 'sl_ok_15',
-            'CB' => 'sl_tem_vang_15',
-            'CC' => 'sl_ng_15',
-            'CD' => 'sl_ke_hoach_15',
-            'CE' => 'ty_le_ok_15',
-            'CF' => 'ty_le_tem_vang_15',
-            'CG' => 'ty_le_ng_15',
-            'CH' => 'ty_le_hao_phi_thoi_gian_15',
-            'CI' => 'dien_nang_15',
         ];
+        $table_keys = ['ngay_sx_gan_nhat', 'sl_dau_vao', 'sl_ok', 'sl_tem_vang', 'sl_ng', 'sl_ke_hoach', 'ty_le_ok', 'ty_le_tem_vang', 'ty_le_ng', 'ty_le_hao_phi_thoi_gian', 'dien_nang', ''];
+        $header_keys = ["Ngày sản xuất gần nhất của lô", "Số lượng đầu vào", "Số lượng hàng đạt", 'Tem vàng', "Số lượng NG", "Sản lượng kế hoạch giao", "Tỷ lệ đạt thẳng (%)", "Tỷ lệ tem vàng (%)", "Tỷ lệ NG(%)", "Tỷ lệ hao phí thời gian (%)", "Điện năng", ""];
+        $index = 1;
+        foreach ($lines as $line_id) {
+            $line = Line::find($line_id);
+            $header4[$line->name] = $header_keys;
+            foreach ($table_keys as $i => $key) {
+                $table_key4[$this->getNextExcelColumn('D', $index)] = $key."_".$line_id;
+                $index++;
+            }
+        }
+        
+        
+
         foreach ($header4 as $key => $cell) {
             if (!is_array($cell)) {
                 $sheet->setCellValue([$start4_col, $start4_row], $cell)->mergeCells([$start4_col, $start4_row, $start4_col, $start4_row + 1])->getStyle([$start4_col, $start4_row, $start4_col, $start4_row + 1])->applyFromArray($headerStyle2);
@@ -3332,7 +3262,7 @@ class ApiUIController extends AdminController
                 }
                 $table4_col += 1;
             }
-            $sheet->getStyle([1, $table4_row, 88, $table4_row])->applyFromArray($fillWhite);
+            $sheet->getStyle([1, $table4_row, count($table_keys), $table4_row])->applyFromArray($fillWhite);
             $table4_row += 1;
         }
         foreach ($sheet->getColumnIterator() as $column) {
@@ -3349,6 +3279,23 @@ class ApiUIController extends AdminController
         $writer->save('exported_files/Báo cáo truy vấn lịch sử sản xuất.xlsx');
         $href = '/exported_files/Báo cáo truy vấn lịch sử sản xuất.xlsx';
         return $this->success($href);
+    }
+
+    function getNextExcelColumn($currentColumn, $index)
+    {
+        $columnNumber = array_reduce(str_split($currentColumn), function ($carry, $char) {
+            return $carry * 26 + (ord($char) - ord('A') + 1);
+        }, 0) - 1;
+
+        $newColumnNumber = $columnNumber + $index;
+
+        $newColumn = '';
+        while ($newColumnNumber >= 0) {
+            $newColumn = chr($newColumnNumber % 26 + ord('A')) . $newColumn;
+            $newColumnNumber = intdiv($newColumnNumber, 26) - 1;
+        }
+
+        return $newColumn;
     }
 
     public function getDataFilterUI(Request $request)
@@ -3394,7 +3341,7 @@ class ApiUIController extends AdminController
 
     function getProductLogs($type, $startDate = null, $endDate = null, $includeAll = false)
     {
-        return Product::with(['warehouseLog'=>function ($query) use ($type, $startDate, $endDate, $includeAll) {
+        return Product::with(['warehouseLog' => function ($query) use ($type, $startDate, $endDate, $includeAll) {
             $query->where('warehouse_logs.type', $type);
             if ($startDate) {
                 $query->whereDate('warehouse_logs.created_at', '>=', $startDate);
@@ -3423,7 +3370,7 @@ class ApiUIController extends AdminController
         $endDate = date('Y-m-d', strtotime($request->date[1]));
 
         // Lấy dữ liệu nhập và xuất trước khoảng thời gian
-        $log_import = $this->getProductLogs(1, null, $startDate, true);   
+        $log_import = $this->getProductLogs(1, null, $startDate, true);
         $log_export = $this->getProductLogs(2, null, $startDate, true);
 
         // Lấy dữ liệu nhập và xuất trong khoảng thời gian
