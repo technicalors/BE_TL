@@ -508,8 +508,8 @@ class Phase2UIApiController extends Controller
             $user_qc = $qc_history->user;
             $sl_ng_sx = 0;
             $sl_ng_qc = 0;
-            if (count($qc_history->error_histories ?? [])) {
-                foreach (($qc_history->error_histories ?? []) as $error) {
+            if (count($qc_history->errorHistories ?? [])) {
+                foreach (($qc_history->errorHistories ?? []) as $error) {
                     if ($error->type === 'sx') {
                         $sl_ng_sx += $error->quantity;
                     } else {
