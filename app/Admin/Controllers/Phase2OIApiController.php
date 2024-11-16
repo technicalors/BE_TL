@@ -289,7 +289,6 @@ class Phase2OIApiController extends Controller
     public function getLotProductionList(Request $request)
     {
         $line_id = $request->line_id;
-        $line = Line::find($line_id);
         $machine_code = $request->machine_code;
         $date  = date('Y-m-d');
         $lot_plan_query = LotPlan::where(function ($query) use ($date) {
@@ -1266,7 +1265,11 @@ class Phase2OIApiController extends Controller
     //Trả về danh sách lot QC
     public function getLotQCList(Request $request)
     {
-        $query = QCHistory::whereDate('scanned_time', date('Y-m-d'))->whereHas('infoCongDoan', function ($q) use ($request) {
+        $query = QCHistory::where(function ($q) {
+            $q->whereDate('scanned_time', date('Y-m-d'))->orWhereHas('infoCongDoan', function ($info_query) {
+                $info_query->where('status', 1);
+            });
+        })->whereHas('infoCongDoan', function ($q) use ($request) {
             if (!empty($request->line_id)) {
                 $q->where('line_id', $request->line_id);
             }
@@ -1291,6 +1294,7 @@ class Phase2OIApiController extends Controller
             $item['sl_tem_vang'] = $infoCongDoan->sl_tem_vang ?? 0;
             $item['sl_ng'] = $infoCongDoan->sl_ng ?? 0;
             $item['qc_status'] = $value->eligible_to_end ?? 0;
+            $item['status'] = $infoCongDoan->status ?? 0;
             $data[] = $item;
         }
         return $this->success($data);
@@ -1306,23 +1310,26 @@ class Phase2OIApiController extends Controller
         if (!$machine) {
             return $this->failure([], "Không tìm thấy máy");
         }
-        $infoCongDoan = InfoCongDoan::with('qcHistory')
+        $infoCongDoans = InfoCongDoan::with('qcHistory')
             ->where('line_id', $line->id)
             ->where('machine_code', $machine->code)
             ->where('status', InfoCongDoan::STATUS_INPROGRESS)
-            ->first();
-        if ($infoCongDoan) {
-            QCHistory::firstOrCreate(
-                [
-                    'info_cong_doan_id' => $infoCongDoan->id,
-                ],
-                [
-                    'scanned_time' => date('Y-m-d H:i:s'),
-                    'user_id' => $request->user()->id,
-                ]
-            );
+            ->get();
+        foreach ($infoCongDoans as $key => $infoCongDoan) {
+            if ($infoCongDoan) {
+                QCHistory::firstOrCreate(
+                    [
+                        'info_cong_doan_id' => $infoCongDoan->id,
+                    ],
+                    [
+                        'scanned_time' => date('Y-m-d H:i:s'),
+                        'user_id' => $request->user()->id,
+                    ]
+                );
+            }
         }
-        return $this->success($infoCongDoan);
+
+        return $this->success($infoCongDoans);
     }
 
     //Scan lot vào QC
@@ -1408,6 +1415,63 @@ class Phase2OIApiController extends Controller
         return $this->success($data, "Quét QC thành công");
     }
 
+    public function filterTestCriteria($infoCongDoan)
+    {
+        $line = $infoCongDoan->line;
+        $product = $infoCongDoan->product;
+        $tc_query = $line->testCriteria();
+        $list = $tc_query->get();
+        $testCriteriaHistories = $infoCongDoan->qcHistory->testCriteriaHistories;
+        $testCriteriaDetailHistories = $testCriteriaHistories->flatMap->testCriteriaDetailHistories ?? collect([]);
+        $reference = array_merge($list->pluck('reference')->toArray(), [$line->id]);
+        $specs = Spec::whereIn("line_id", $reference)->whereNotNull('slug')->whereNotNull('name')->where("product_id", $product->id ?? "")->whereNotNull('value')->get();
+        $data = [];
+        foreach ($list as $item) {
+
+            $chi_tieu_slug = Str::slug($item->chi_tieu);
+            if (!isset($data[$chi_tieu_slug]['data'])) {
+                $data[$chi_tieu_slug]['data'] = [];
+            }
+            $history = $testCriteriaDetailHistories->first(function ($value) use ($item) {
+                return $value->test_criteria_id == $item->id;
+            });
+            $item->value = $history['input'] ?? null;
+            $item->result = $history['result'] ?? null;
+            if (empty($item->result)) {
+                if ($item->frequency === TestCriteria::MOT_MAU_TREN_MOT_CA) {
+                    //Lọc theo sản phẩm và theo máy trong ca
+                    $detailHistory = TestCriteriaDetailHistory::with('testCriteriaHistory.qcHistory.infoCongDoan')
+                        ->where('test_criteria_id', $item->id)
+                        ->where('created_at', '>=', date('Y-m-d 07:00:00'))
+                        ->get()
+                        ->map(function ($detailHistory) {
+                            return [
+                                'product_id' => $detailHistory->testCriteriaHistory->qcHistory->infoCongDoan->product_id ?? null,
+                                'machine_code' => $detailHistory->testCriteriaHistory->qcHistory->infoCongDoan->machine_code ?? null,
+                            ];
+                        })
+                        ->filter(function ($item) {
+                            return $item['product_id'] !== null && $item['machine_code'] !== null;
+                        })
+                        ->toArray();
+                    $isExist = false;
+                    foreach ($detailHistory as $entry) {
+                        if ($entry['product_id'] === $infoCongDoan->product_id && $entry['machine_code'] === $infoCongDoan->machine_code) {
+                            $isExist = true;
+                        }
+                    }
+                    if ($isExist) {
+                        continue;
+                    }
+                }
+            }
+            $parsedCriteria = $this->findSpec($item, $specs);
+            if ($parsedCriteria) array_push($data[$chi_tieu_slug]['data'], $parsedCriteria);
+            $data[$chi_tieu_slug]['result'] = $history = $testCriteriaDetailHistories->firstWhere('type', $chi_tieu_slug)->result ?? null;
+        }
+        return $data;
+    }
+
     public function getCriteriaListOfLot(Request $request)
     {
         $line = Line::find($request->line_id);
@@ -1426,30 +1490,22 @@ class Phase2OIApiController extends Controller
         if (!$infoCongDoan) {
             return $this->failure('', 'Không tìm thấy lot');
         }
-        $product = $infoCongDoan->product;
-        $list = $line->testCriteria()->get()->groupBy('chi_tieu');
-        $reference = array_merge($line->testCriteria()->pluck('reference')->toArray(), [$line->id]);
-        $specs = Spec::whereIn("line_id", $reference)->whereNotNull('slug')->whereNotNull('name')->where("product_id", $product->id ?? "")->whereNotNull('value')->get();
-        $data = [];
-        foreach ($list as $key => $test_criteria) {
-            $chi_tieu_slug = Str::slug($key);
-            if (!isset($data[$chi_tieu_slug]['data'])) {
-                $data[$chi_tieu_slug]['data'] = [];
+        $data = $this->filterTestCriteria($infoCongDoan);
+        $criteria_type = ['kich-thuoc', 'dac-tinh', 'ngoai-quan'];
+        $counter = 0;
+        foreach ($criteria_type as $key => $type) {
+            $value = $data[$type] ?? [];
+            if (empty($value['data']) && empty($value['result']) && $infoCongDoan->qcHistory) {
+                TestCriteriaHistory::firstOrCreate(
+                    ['q_c_history_id' => $infoCongDoan->qcHistory->id, 'type' => $type, 'user_id' => $infoCongDoan->qcHistory->user_id],
+                    ['result' => 'OK']
+                );
+                $counter++;
             }
-            $testCriteriaHistory = $infoCongDoan->qcHistory->testCriteriaHistories->first(function ($value) use ($chi_tieu_slug) {
-                return $value->type === $chi_tieu_slug;
-            });
-            $qcDetailHistories = $testCriteriaHistory->testCriteriaDetailHistories ?? collect();
-            foreach ($test_criteria as $item) {
-                $history = $qcDetailHistories->first(function ($value) use ($item) {
-                    return $value->test_criteria_id == $item->id;
-                });
-                $item->value = $history['input'] ?? null;
-                $item->result = $history['result'] ?? null;
-                $parsedCriteria = $this->findSpec($item, $specs);
-                if ($parsedCriteria) array_push($data[$chi_tieu_slug]['data'], $parsedCriteria);
-            }
-            $data[$chi_tieu_slug]['result'] = $testCriteriaHistory->result ?? null;
+        }
+        if ($counter === 3) {
+            $infoCongDoan->qcHistory && $infoCongDoan->qcHistory->update(['eligible_to_end' => 1]);
+            $infoCongDoan->update(['sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_ng]);
         }
         return $this->success($data);
     }
@@ -1551,26 +1607,8 @@ class Phase2OIApiController extends Controller
                 );
             }
             if ($request->result === 'OK') {
-                $reference = array_merge($line->testCriteria()->pluck('reference')->toArray(), [$line->id],);
-                $specs = Spec::whereIn("line_id", explode(',', implode(',', $reference)))->whereNotNull('slug')->whereNotNull('name')->where("product_id", $infoCongDoan->product_id ?? "")->whereNotNull('value')->get();
-                $criteria = $line->testCriteria()->get()->groupBy('chi_tieu');
-                // return $specs;
-                $number_of_criteria_type = [];
-                foreach ($criteria as $key => $rows) {
-                    $slug = Str::slug($key);
-                    $data = [];
-                    foreach ($rows as $value) {
-                        $parsedCriteria = $this->findSpec($value, $specs);
-                        if ($parsedCriteria) $data[] = $parsedCriteria;
-                    }
-                    if (count($data) > 0) {
-                        $number_of_criteria_type[$slug] = 1;
-                    } else {
-                        unset($number_of_criteria_type[$slug]);
-                    }
-                }
                 $testCriteriaHistories = TestCriteriaHistory::where('q_c_history_id', $qc_history->id)->where('result', 'OK')->get();
-                if (count($testCriteriaHistories) >= count(array_values($number_of_criteria_type))) {
+                if (count($testCriteriaHistories) === 3) {
                     $qc_history->update(['eligible_to_end' => QCHistory::READY_TO_END]);
                     $qualityData = [
                         'machine_code' => $request->machine_code,

@@ -14,6 +14,9 @@ class TestCriteria extends Model
     public $incrementing = false;
     protected $fillable = ['id', 'hang_muc', 'line_id', 'chi_tieu', 'tieu_chuan', 'phan_dinh', 'reference', 'is_show', 'frequency'];
     protected $hidden = ['created_at', 'updated_at'];
+    const MOT_MAU_TREN_MOT_CUON = '1 mẫu/1 cuộn';//Hiển thị mỗi lot 1 lần
+    const MOT_MAU_TREN_MOT_CA = '1 mẫu/ 1 ca';//Hiển thị 1 lần vào lần đầu kiểm tra của ca
+
     public function line()
     {
         return $this->belongsTo(Line::class);
@@ -33,13 +36,15 @@ class TestCriteria extends Model
                 // 'line_id' => 'required',
                 'chi_tieu'=>'required', 
                 'hang_muc'=>'required',
+                'frequency' => 'required'
             ],
             [
                 'id.required'=>'Không có mã chỉ tiêu',
                 'id.unique' => 'Mã chỉ tiêu đã tồn tại',
                 // 'line_id.required'=>'Không tìm thấy công đoạn',
                 // 'chi_tieu.required'=>'Không có chỉ tiêu',
-                'hang_muc.required'=>'Không có hang mục', 
+                'hang_muc.required'=>'Không có hạng mục',
+                'frequency.required'=>'Không có tần suất kiểm tra',
             ]
         );
         return $validated;

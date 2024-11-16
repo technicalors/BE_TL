@@ -12,7 +12,7 @@ class TestCriteriaHistory extends Model
     protected $fillable = ['q_c_history_id', 'type', 'result', 'user_id'];
 
     public function qcHistory(){
-        return $this->belongsTo(QCHistory::class);
+        return $this->belongsTo(QCHistory::class, 'q_c_history_id');
     }
     public function testCriteriaDetailHistories(){
         return $this->hasMany(TestCriteriaDetailHistory::class);

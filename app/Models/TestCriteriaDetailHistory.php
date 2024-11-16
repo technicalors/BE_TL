@@ -10,4 +10,8 @@ class TestCriteriaDetailHistory extends Model
 {
     use HasFactory;
     protected $fillable = ['input', 'test_criteria_history_id', 'result', 'type', 'test_criteria_id'];
+
+    public function testCriteriaHistory(){
+        return $this->belongsTo(TestCriteriaHistory::class, 'test_criteria_history_id');
+    }
 }
