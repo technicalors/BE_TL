@@ -9,6 +9,7 @@ use App\Admin\Controllers\ExportFileController;
 use App\Admin\Controllers\InfoCongDoanController;
 use App\Admin\Controllers\IOTController;
 use App\Admin\Controllers\KPIController;
+use App\Admin\Controllers\LineInventoryController;
 use App\Admin\Controllers\LotPlanController;
 use App\Admin\Controllers\MachineController;
 use App\Admin\Controllers\MachinePriorityOrderController;
@@ -762,4 +763,5 @@ Route::group([
     Route::put('machine-shift', [MachineShiftController::class, 'update']);
 
     Route::apiResource('shift-breaks', ShiftBreakController::class);
+    Route::apiResource('line-inventory', LineInventoryController::class);
 });

@@ -16,6 +16,7 @@ use App\Models\ErrorMachine;
 use App\Models\Factory;
 use App\Models\InfoCongDoan;
 use App\Models\Line;
+use App\Models\LineInventories;
 use App\Models\Losx;
 use App\Models\Lot;
 use App\Models\LotPlan;
@@ -191,15 +192,15 @@ class Phase2UIApiController extends Controller
             //     $user_pqc = isset($info_qc['user_name']) ? $info_qc['user_name'] : '';
             // }
             foreach ($item->qcHistory->errorHistories ?? [] as $key => $errorHistory) {
-                if(!isset($error[$errorHistory->error_id])){
-                    $error[$errorHistory->error_id] = [];   
+                if (!isset($error[$errorHistory->error_id])) {
+                    $error[$errorHistory->error_id] = [];
                 }
                 $errors[$errorHistory->error_id]['value'] = ($errors[$errorHistory->error_id]['value'] ?? 0) + ($errorHistory->quantity ?? 0);
                 $errors[$errorHistory->error_id]['name'] = $errorHistory->error->name;
-                if($errorHistory->type === 'sx'){
+                if ($errorHistory->type === 'sx') {
                     $sl_ng_sxkt += ($errorHistory->quantity ?? 0);
                     $user_sxkt = $errorHistory->user->name;
-                }else{
+                } else {
                     $sl_ng_pqc += ($errorHistory->quantity ?? 0);
                     $user_pqc = $errorHistory->user->name;
                 }
@@ -1553,6 +1554,15 @@ class Phase2UIApiController extends Controller
             ->where('slug', 'hao-phi-vao-hang-cac-cong-doan')
             ->first();
 
+        //Lấy tồn theo sản phẩm và công đoạn
+        $line_inventory = LineInventories::where('line_id', $lineId)->where('product_id', $productId)->first();
+        $remain = $quantity - ($line_inventory->quantity ?? 0);
+        if ($remain > 0) {
+            $quantity = $remain;
+        } else {
+            return 0;
+        }
+        // Log::debug([$lineId, $bf, $line_inventory->quantity ?? 0, $quantity]);  
         // Tính toán sản lượng sau khi tính thêm hao phí
         if ($productionWaste) {
             $quantity += $quantity * ($productionWaste->value / 100); // Thêm hao phí sản xuất
@@ -1912,14 +1922,21 @@ class Phase2UIApiController extends Controller
         $numberMachineByStep = $this->getNumberMachine($orderId);
         $inputWaste = $this->calculateProductionWastage($productId);
         // Tính toán sản lượng cho từng công đoạn theo thứ tự DESC
+        $line_must_run = [];
         foreach ($productionSteps as $step) {
             $calculatedQuantity = $this->calculateProductionOutput($productId, $step->line_id, $initialQuantity);
+            if($calculatedQuantity !== 0){
+                $line_must_run[] = $step->line_id;
+            };
             $stepQuantities[$step->line_id] = $calculatedQuantity;
             // Cập nhật lại initialQuantity cho công đoạn tiếp theo
             $initialQuantity = $calculatedQuantity;
         }
         // Lấy lại danh sách công đoạn theo thứ tự ASC để tính toán thời gian bắt đầu và kết thúc
         $orderedSteps = $this->getOrderedProductionSteps($productId);
+        $orderedSteps = $orderedSteps->filter(function($value) use ($line_must_run) {
+            return in_array($value->line_id, $line_must_run);
+        })->values();
         // Khai báo mảng để lưu trữ thời gian bắt đầu và kết thúc của từng công đoạn
         $stepEndTimes = [];
         $lots = [];
@@ -1935,6 +1952,9 @@ class Phase2UIApiController extends Controller
             $losx_id = $lo_sx->id;
         }
         $losx_input = ['product_order_id' => $order->id, 'id' => $losx_id];
+        if(count($orderedSteps) <= 0){
+            return null;
+        }   
         // Tính toán thời gian bắt đầu và kết thúc cho từng công đoạn theo thứ tự ASC
         $quantity =  $stepQuantities[$orderedSteps[0]->line_id];
         $lotSize = $this->getLotSize($productId, $orderedSteps[0]->line_id);
@@ -1981,6 +2001,7 @@ class Phase2UIApiController extends Controller
                 if ($rollsPerTransport === 0 || ceil($quantity / $lotSize) < $rollsPerTransport) {
                     $rollsPerTransport = ceil($quantity / ($lotSize + (isset($inputWaste[$orderedSteps[$index]->line_id]) ? $inputWaste[$orderedSteps[$index]->line_id] : 0)));
                 }
+                Log::debug([$orderedSteps[$index]->line_id, $quantity]);
                 $startTime = $lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1][($rollsPerTransport / $machine_in_line[$orderedSteps[$index - 1]->line_id]) - 1]['endTime']->copy()->addMinutes($transportTime);
             }
 
@@ -2920,7 +2941,7 @@ class Phase2UIApiController extends Controller
             ->whereNotNull('info->lot_id')
             ->whereNotNull('info->start_time')
             ->whereNotNull('info->end_time');
-            // return $query->get();
+        // return $query->get();
         $count = $query->count();
         $time = $query->select(DB::raw("SUM(JSON_UNQUOTE(JSON_EXTRACT(info, '$.end_time')) - JSON_UNQUOTE(JSON_EXTRACT(info, '$.start_time'))) as stop_time"))->first();
         $stopTime = 0;
@@ -2974,22 +2995,23 @@ class Phase2UIApiController extends Controller
         }
     }
 
-    public function deleteOvertimeMachineLog(){
+    public function deleteOvertimeMachineLog()
+    {
         // Lấy tất cả các bản ghi MachineLog
         $logs = MachineLog::all();
-    
+
         foreach ($logs as $log) {
-            if(!isset($log->info['end_time'])){
+            if (!isset($log->info['end_time'])) {
                 $log->delete();
             }
             // Kiểm tra nếu info có cả start_time và end_time
             if (isset($log->info['start_time']) && isset($log->info['end_time'])) {
                 $startTime = Carbon::createFromTimestamp($log->info['start_time']);
                 $endTime = Carbon::createFromTimestamp($log->info['end_time']);
-    
+
                 // Tính sự chênh lệch thời gian
                 $diff = $startTime->diffInMinutes($endTime);
-    
+
                 // Xóa bản ghi nếu khoảng thời gian nhỏ hơn 10 phút
                 if ($diff < 10) {
                     $log->delete();
@@ -2999,11 +3021,12 @@ class Phase2UIApiController extends Controller
         return 'ok';
     }
 
-    public function clearFakeData(){
-        $info = InfoCongDoan::where(function($query){
+    public function clearFakeData()
+    {
+        $info = InfoCongDoan::where(function ($query) {
             $query->whereDate('created_at', '<=', '2024-10-22')->orWhereDate('created_at', '>', date("Y-m-d"));
         })->delete();
-        $err = ErrorHistory::where(function($query){
+        $err = ErrorHistory::where(function ($query) {
             $query->whereDate('created_at', '<=', '2024-10-22')->orWhereDate('created_at', '>', date("Y-m-d"));
         })->delete();
         $plan = ProductionPlan::whereDate('created_at', '<=', '2024-10-22')->each(function ($plan) {

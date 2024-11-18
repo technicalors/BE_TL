@@ -15,7 +15,7 @@ class Factory extends Model
     ];
 
     public function line(){
-        return $this->hasMany(Line::class);
+        return $this->hasMany(Line::class)->orderBy('ordering');
     }
 
     

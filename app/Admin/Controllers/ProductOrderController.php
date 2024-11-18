@@ -6,6 +6,7 @@ use App\Exports\Production\ProductOrderExport;
 use App\Http\Controllers\Controller;
 use App\Imports\ProductOrderImport;
 use App\Models\Line;
+use App\Models\LineInventories;
 use App\Models\Lot;
 use App\Models\MachinePriorityOrder;
 use App\Models\NumberMachineOrder;
@@ -71,12 +72,12 @@ class ProductOrderController extends Controller
                 })->number_machine ?? 0;
             }
             $ton = [];
-            $san_luong = Lot::where('product_id', $value->product_id)->get()->groupBy('final_line_id');
+            $san_luong = LineInventories::where('product_id', $value->product_id)->get()->groupBy('line_id');
             $sl_ton = 0;
             foreach ($san_luong as $line_id => $data) {
                 $ton[$line_id]['name'] = '';
                 $ton[$line_id]['line_id'] = $line_id;
-                $sl = $data->sum('so_luong');
+                $sl = $data->sum('quantity');
                 $ton[$line_id]['value'] = $sl;
                 $sl_ton += $sl;
             }
