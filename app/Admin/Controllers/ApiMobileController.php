@@ -3296,7 +3296,7 @@ class ApiMobileController extends AdminController
     {
         $list_query = WareHouseExportPlan::with('product')->select('*');
         if ($request->date && count($request->date) > 1) {
-            $list_query->whereDate('ngay_xuat_hang', '>=', date('Y-m-d', strtotime($request->date[0])))->whereDate('ngay_xuat_hang', '<=', date('Y-m-d', strtotime($request->date[1])));
+            $list_query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->date[0])))->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->date[1])));
         }
         if ($request->khach_hang) {
             $list_query->where('khach_hang', 'like', $request->khach_hang);
