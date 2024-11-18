@@ -209,7 +209,7 @@ class Phase2UIApiController extends Controller
                 'ca_sx' => $ca_sx,
                 'xuong' => 'Giấy',
                 "cong_doan" => $item->line->name,
-                "machine" => $item->machine->name ?? "",
+                "machine" => $item->machine_code ?? "",
                 "machine_id" => $item->machine_code ?? "",
                 "khach_hang" => $item->product->customer->name ?? "",
                 "ten_san_pham" => $item->product->name ?? '',
