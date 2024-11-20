@@ -294,11 +294,11 @@ class Phase2OIApiController extends Controller
         $date  = date('Y-m-d');
         $lot_plan_query = LotPlan::where(function ($query) use ($date) {
             $query->whereDate('start_time', $date)
-                ->whereHas('plan', function ($q) {
-                    $q->whereIn('status_plan', [0, 1]);
+                ->orWhereHas('infoCongDoan', function ($q) {
+                    $q->where('status', 1);
                 });
-        })->orWhereHas('infoCongDoan', function ($q) {
-            $q->where('status', 1);
+        })->whereHas('plan', function ($q) {
+            $q->whereIn('status_plan', [0, 1]);
         })->with('infoCongDoan.qcHistory', 'spec', 'plan', 'infoCongDoan.assignments');
         $info_query = InfoCongDoan::whereHas('lot', function ($q) {
             $q->where('type', '!=', Lot::TYPE_TEM_TRANG);
@@ -459,7 +459,7 @@ class Phase2OIApiController extends Controller
                 if ($line_inventory) {
                     $line_inventory->update(['quantity' => $line_inventory->quantity - $sl_dat]);
                 } else {
-                    LineInventories::create(['quantity' => $sl_dat, 'line_id' => $infoCongDoan->line_id, 'product_id' => $infoCongDoan->product_id]);
+                    LineInventories::create(['quantity' => $sl_dat, 'line_id'=>$infoCongDoan->line_id, 'product_id'=>$infoCongDoan->product_id]);
                 }
             }
             if (isset($tracking)) {
@@ -710,7 +710,7 @@ class Phase2OIApiController extends Controller
                 if ($line_inventory) {
                     $line_inventory->update(['quantity' => $line_inventory->quantity + $sl_dat]);
                 } else {
-                    LineInventories::create(['quantity' => $sl_dat, 'line_id' => $infoCongDoan->line_id, 'product_id' => $infoCongDoan->product_id]);
+                    LineInventories::create(['quantity' => $sl_dat, 'line_id'=>$infoCongDoan->line_id, 'product_id'=>$infoCongDoan->product_id]);
                 }
                 $spec = Spec::where('product_id', $infoCongDoan->product_id)->where('line_id', $infoCongDoan->line_id)->where('slug', 'so-luong')->first();
                 $count_info = InfoCongDoan::where('input_lot_id', $infoCongDoan->input_lot_id)->where('machine_code', $infoCongDoan->machine_code)->count();
