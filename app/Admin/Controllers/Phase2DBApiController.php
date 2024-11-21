@@ -160,6 +160,7 @@ class Phase2DBApiController extends Controller
         $data = [];
         foreach ($machines as $machine) {
             $info = InfoCongDoan::where("line_id", $machine->line_id)->where('machine_code', $machine->code)->with(["lotPlan", "lot.plan.product"])->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->orderBy('thoi_gian_bat_dau', 'DESC')->first();
+            $tracking = Tracking::where('machine_id', $machine->code)->first();
             if (!$info) {
                 // $tm = [
                 //     "cong_doan" => mb_strtoupper($machine->line->name, 'UTF-8'),
@@ -205,10 +206,10 @@ class Phase2DBApiController extends Controller
                 $tl_ht = (int) number_format(($sumInfoActure ?? 0) / ($sumLotPlan ?? 0) * 100, 2);
 
                 $status = 0;
-                if (!is_null($info->thoi_gian_bat_dau) && is_null($info->thoi_gian_bam_may) && is_null($info->thoi_gian_ket_thuc)) {
+                if ((!is_null($info->thoi_gian_bat_dau) && is_null($info->thoi_gian_bam_may) && is_null($info->thoi_gian_ket_thuc)) || ($tracking->status != 1 && $tl_ht < 95)) {
                     $status = 1; // orange
                 }
-                if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && is_null($info->thoi_gian_ket_thuc)) {
+                if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && is_null($info->thoi_gian_ket_thuc) && $tracking->status == 1) {
                     $status = 3; // green
                 }
                 // if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && !is_null($info->thoi_gian_ket_thuc)) {
@@ -268,6 +269,7 @@ class Phase2DBApiController extends Controller
         $data = [];
         foreach ($machines as $machine) {
             $info = InfoCongDoan::where("line_id", $machine->line_id)->where('machine_code', $machine->code)->with(["lotPlan", "lot.plan.product"])->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->orderBy('thoi_gian_bat_dau', 'DESC')->first();
+            $tracking = Tracking::where('machine_id', $machine->code)->first();
             if (!$info) {
                 // $tm = [
                 //     "cong_doan" => mb_strtoupper($machine->line->name, 'UTF-8'),
@@ -312,11 +314,10 @@ class Phase2DBApiController extends Controller
                 $target = (int)($upm * ($diff_time / 60));
                 // $tl_ht = (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ? number_format((($info->sl_dau_ra_hang_loat - $info->sl_ng) / $info->sl_dau_ra_hang_loat), 2) : 0));
                 $tl_ht = $sumLotPlan > 0 ? (int) number_format(($sumInfoActure ?? 0) / ($sumLotPlan ?? 0) * 100, 2) : 0;
-
-                if (!is_null($info->thoi_gian_bat_dau) && is_null($info->thoi_gian_bam_may) && is_null($info->thoi_gian_ket_thuc)) {
+                if ((!is_null($info->thoi_gian_bat_dau) && is_null($info->thoi_gian_bam_may) && is_null($info->thoi_gian_ket_thuc)) || ($tracking->status != 1 && $tl_ht < 95)) {
                     $status = 1;
                 }
-                if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && is_null($info->thoi_gian_ket_thuc)) {
+                if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && is_null($info->thoi_gian_ket_thuc) && $tracking->status == 1) {
                     $status = 3;
                 }
                 // if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && !is_null($info->thoi_gian_ket_thuc)) {
