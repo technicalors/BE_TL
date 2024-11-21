@@ -100,9 +100,9 @@ class Phase2OIApiController extends Controller
             ->where('factory_id', 2)
             ->orderBy('ordering', 'ASC');
         if (isset($request->line_id)) {
-            $list = $query->where('id', '<>', $request->line_id);
+            $query = $query->where('id', '<>', $request->line_id);
         }
-        $list = $list->get();
+        $list = $query->get();
         $except = [
             'sx' => ['kho-thanh-pham', 'oqc', 'iqc'],
             'cl' => ['kho-thanh-pham', 'kho-bao-on', 'u']
