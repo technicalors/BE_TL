@@ -9,7 +9,7 @@ use PhpOffice\PhpPresentation\Style\Fill;
 
 class ExcelStyleHelper
 {
-    public static function alignment($position = 'center')
+    public static function alignment($position = 'center', $isWrap = false)
     {
         switch ($position) {
             case 'center':
@@ -22,13 +22,14 @@ class ExcelStyleHelper
                 break;
             default:
                 $vertical = \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER;
-                $horizontal = \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT;
+                $horizontal = \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT;
                 break;
         }
         return [
             'alignment' => [
                 'vertical' => $vertical,
-                'horizontal' => $horizontal
+                'horizontal' => $horizontal,
+                'wrapText' => $isWrap
             ]
         ];
     }

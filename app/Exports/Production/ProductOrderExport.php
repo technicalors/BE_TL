@@ -19,7 +19,7 @@ class ProductOrderExport implements  FromCollection, WithHeadings, WithMapping, 
     */
     public function collection()
     {
-        return ProductOrder::all();
+        return ProductOrder::with('product')->get();
     }
 
     public function headings(): array
@@ -29,6 +29,7 @@ class ProductOrderExport implements  FromCollection, WithHeadings, WithMapping, 
             'Số đơn hàng',
             'Mã khách hàng',
             'Mã hàng',
+            'Tên hàng hoá',
             'Ngày đặt hàng',
             'Số lượng',
             'Ngày giao',
@@ -44,6 +45,7 @@ class ProductOrderExport implements  FromCollection, WithHeadings, WithMapping, 
             $record->order_number,
             $record->customer_id,
             $record->product_id,
+            $record->product->name ?? '',
             $record->order_date ? Carbon::parse($record->order_date)->format('d/m/Y') : '',
             $record->quantity,
             $record->delivery_date ? Carbon::parse($record->delivery_date)->format('d/m/Y') : '',

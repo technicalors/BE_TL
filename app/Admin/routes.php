@@ -678,10 +678,12 @@ Route::group([
 //UI
 Route::group([
     'prefix'        => "/api/p2/ui",
-    'middleware'    => "auth:sanctum",
+    'middleware'    => [],
 ], function (Router $router) {
     $router->get('/tree-select', [Phase2UIApiController::class, 'getTreeSelect']);
     $router->get('/production-history', [Phase2UIApiController::class, 'getProductionHistory']);
+    $router->get('/production-history/export', [Phase2UIApiController::class, 'exportProduceHistory']);
+    $router->get('/production-history/export-report', [Phase2UIApiController::class, 'exportReportProduceHistory']);
 
     Route::apiResource('maintenance-categories', MaintenanceCategoryController::class);
     Route::apiResource('maintenance-items', MaintenanceItemController::class);

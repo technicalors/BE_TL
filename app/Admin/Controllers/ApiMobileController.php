@@ -20,6 +20,7 @@ use App\Models\Insulation;
 use App\Models\IOTLog;
 use App\Models\MachineIot;
 use App\Models\Line;
+use App\Models\LineInventories;
 use App\Models\LineTable;
 use App\Models\LogInTem;
 use App\Models\LogWarningParameter;
@@ -3556,6 +3557,10 @@ class ApiMobileController extends AdminController
         $input['created_by'] = $request->user()->id;
         $input['so_luong'] = $lot->so_luong;
         WareHouseLog::create($input);
+        $lineInventory = LineInventories::where('product_id', $lot->product_id)->orderBy('updated_at', 'DESC')->first();
+        if($lineInventory){
+            $lineInventory->update(['quantity'=>$lineInventory->quantity - $lot->so_luong]);
+        }
         return $this->success([], 'Xuất kho thành công');
     }
     public function infoExportWareHouse()
