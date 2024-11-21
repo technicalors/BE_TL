@@ -96,10 +96,13 @@ class Phase2OIApiController extends Controller
     //Trả về danh sách công đoạn theo nhà máy
     public function getLineList(Request $request)
     {
-        $list = Line::where("display", "1")
+        $query = Line::where("display", "1")
             ->where('factory_id', 2)
-            ->orderBy('ordering', 'ASC')
-            ->get();
+            ->orderBy('ordering', 'ASC');
+        if (isset($request->line_id)) {
+            $list = $query->where('id', '<>', $request->line_id);
+        }
+        $list = $list->get();
         $except = [
             'sx' => ['kho-thanh-pham', 'oqc', 'iqc'],
             'cl' => ['kho-thanh-pham', 'kho-bao-on', 'u']

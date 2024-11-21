@@ -1514,6 +1514,7 @@ class Phase2UIApiController extends Controller
         // Sắp xếp theo thứ tự giảm dần (DESC) để tính toán sản lượng
         return Spec::where('product_id', $productId)
             ->where('slug', 'hanh-trinh-san-xuat')
+            ->where('line_id', '<>', 24) //
             ->orderBy('value', 'desc')
             ->get();
     }
@@ -1523,6 +1524,7 @@ class Phase2UIApiController extends Controller
         // Bước 8: Truy vấn để lấy các công đoạn từ bảng spec theo product_id và sắp xếp theo value ASC
         return Spec::where('product_id', $productId)
             ->where('slug', 'hanh-trinh-san-xuat')
+            ->where('line_id', '<>', 24) //
             ->orderBy('value', 'asc')
             ->get()->filter(function ($value) {
                 return is_numeric($value->value);
@@ -1820,7 +1822,7 @@ class Phase2UIApiController extends Controller
     function getNumberMachine($orderId)
     {
         // Truy vấn số lượng máy mỗi công đoạn
-        $numberMachineOrders = NumberMachineOrder::where('product_order_id', $orderId)->get();
+        $numberMachineOrders = NumberMachineOrder::where('line_id', '<>', 24)->where('product_order_id', $orderId)->get();
         return $numberMachineOrders->pluck('number_machine', 'line_id');
     }
 
@@ -1925,7 +1927,7 @@ class Phase2UIApiController extends Controller
         $line_must_run = [];
         foreach ($productionSteps as $step) {
             $calculatedQuantity = $this->calculateProductionOutput($productId, $step->line_id, $initialQuantity);
-            if($calculatedQuantity !== 0){
+            if ($calculatedQuantity !== 0) {
                 $line_must_run[] = $step->line_id;
             };
             $stepQuantities[$step->line_id] = $calculatedQuantity;
@@ -1934,7 +1936,7 @@ class Phase2UIApiController extends Controller
         }
         // Lấy lại danh sách công đoạn theo thứ tự ASC để tính toán thời gian bắt đầu và kết thúc
         $orderedSteps = $this->getOrderedProductionSteps($productId);
-        $orderedSteps = $orderedSteps->filter(function($value) use ($line_must_run) {
+        $orderedSteps = $orderedSteps->filter(function ($value) use ($line_must_run) {
             return in_array($value->line_id, $line_must_run);
         })->values();
         // Khai báo mảng để lưu trữ thời gian bắt đầu và kết thúc của từng công đoạn
@@ -1952,9 +1954,9 @@ class Phase2UIApiController extends Controller
             $losx_id = $lo_sx->id;
         }
         $losx_input = ['product_order_id' => $order->id, 'id' => $losx_id];
-        if(count($orderedSteps) <= 0){
+        if (count($orderedSteps) <= 0) {
             return null;
-        }   
+        }
         // Tính toán thời gian bắt đầu và kết thúc cho từng công đoạn theo thứ tự ASC
         $quantity =  $stepQuantities[$orderedSteps[0]->line_id];
         $lotSize = $this->getLotSize($productId, $orderedSteps[0]->line_id);
@@ -1963,18 +1965,18 @@ class Phase2UIApiController extends Controller
             if (!isset($lots[$lineId])) {
                 $lots[$lineId] = [];
             }
-            if ($lineId == '24') {
-                $bom = Bom::where('product_id', $productId)->where('priority', 1)->first();
-                Log::debug($bom);
-                if (!$bom) {
-                    throw new Exception("Không tìm thấy bom của " . $productId . " tại công đoạn Gấp dán", 1);
-                } elseif (!$bom->material_id) {
-                    throw new Exception("Không tìm thấy mã NVL của mã sản phẩm" . $productId . " tại công đoạn Gấp dán", 1);
-                }
-                $productId = $bom->material_id;
-            } else {
-                $productId = $order->product_id;
-            }
+            // if ($lineId == '24') {
+            //     $bom = Bom::where('product_id', $productId)->where('priority', 1)->first();
+            //     Log::debug($bom);
+            //     if (!$bom) {
+            //         throw new Exception("Không tìm thấy bom của " . $productId . " tại công đoạn Gấp dán", 1);
+            //     } elseif (!$bom->material_id) {
+            //         throw new Exception("Không tìm thấy mã NVL của mã sản phẩm" . $productId . " tại công đoạn Gấp dán", 1);
+            //     }
+            //     $productId = $bom->material_id;
+            // } else {
+            //     $productId = $order->product_id;
+            // }
             $product = Product::find($productId);
             if (!$product) {
                 throw new Exception("Không tìm thấy mã sản phẩm " . $productId, 1);
@@ -1993,7 +1995,7 @@ class Phase2UIApiController extends Controller
             $shiftPreparationTime = $this->getShiftPreparationTime($productId, $lineId);
             $transportTime = $this->getTransportTimeBetweenSteps($productId, $lineId);
             //Tính thời gian bắt đầu của lô
-            if ($index == 0) {
+            if (!isset($startTime)) {
                 // Công đoạn đầu tiên
                 $startTime = Carbon::now('Asia/Bangkok');
             } else {
