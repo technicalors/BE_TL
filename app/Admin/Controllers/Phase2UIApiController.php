@@ -145,52 +145,6 @@ class Phase2UIApiController extends Controller
             $sl_ng_sxkt = 0;
             $user_pqc = '';
             $user_sxkt = '';
-            // if (isset($info['qc']) && isset($info['qc'][$line_key])) {
-            //     $info_qc = $info['qc'][$line_key];
-            //     if ($line_key === 'gap-dan' && isset($info_qc['bat'])) {
-            //         $qc_error = [];
-            //         foreach ($info_qc['bat'] as $bat_error) {
-            //             if (isset($bat_error['errors'])) {
-            //                 $qc_error = array_merge($qc_error, $bat_error['errors']);
-            //             }
-            //         }
-            //     } else {
-            //         $qc_error = $info_qc['errors'] ?? [];
-            //     }
-            //     foreach ($qc_error as $key => $err) {
-            //         if (!is_numeric($err)) {
-            //             foreach ($err['data'] ?? [] as $err_key => $err_val) {
-            //                 if (isset($err['type']) && $err['type'] === 'qc') {
-            //                     if ($line_key === 'gap-dan' || $line_key === 'chon' || $line_key === 'oqc') {
-            //                         $sl_ng_pqc += $err_val;
-            //                     } else {
-            //                         $sl_ng_pqc += $err_val * $item->lot->product->so_bat;
-            //                     }
-            //                     $user_pqc = $user_arr[$err['user_id']] ? $user_arr[$err['user_id']] : '';
-            //                 } else {
-            //                     if ($line_key === 'gap-dan' || $line_key === 'chon' || $line_key === 'oqc') {
-            //                         $sl_ng_sxkt += $err_val;
-            //                     } else {
-            //                         $sl_ng_sxkt += $err_val * $item->lot->product->so_bat;
-            //                     }
-            //                     $user_sxkt = $user_arr[$err['user_id']] ? $user_arr[$err['user_id']] : '';
-            //                 }
-            //                 if ($line_key === 'gap-dan' || $line_key === 'chon' || $line_key === 'oqc') {
-            //                     $errors[$err_key]['value'] = ($errors[$err_key]['value'] ?? 0) + $err_val;;
-            //                 } else {
-            //                     $errors[$err_key]['value'] = ($errors[$err_key]['value'] ?? 0) + $err_val * $item->lot->product->so_bat;
-            //                 }
-            //                 $errors[$err_key]['name'] = $err_arr[$err_key];
-            //             }
-            //         } else {
-            //             $sl_ng_pqc += $err;
-            //             $errors[$key]['value'] = ($errors[$key]['value'] ?? 0) + $err;
-            //             $errors[$key]['name'] = $err_arr[$key];
-            //         }
-            //     }
-            //     $user_sxkt = isset($info[$line_key]['user_name']) ? $info[$line_key]['user_name'] : '';
-            //     $user_pqc = isset($info_qc['user_name']) ? $info_qc['user_name'] : '';
-            // }
             foreach ($item->qcHistory->errorHistories ?? [] as $key => $errorHistory) {
                 if (!isset($error[$errorHistory->error_id])) {
                     $error[$errorHistory->error_id] = [];
@@ -317,6 +271,646 @@ class Phase2UIApiController extends Controller
             "table" => $table,
             "totalPage" => $totalPage,
         ]);
+    }
+
+    function parseExportProduceHistoryTable($infos)
+    {
+        $data = [];
+        $shift = Shift::first();
+        foreach ($infos as $index => $item) {
+            $start = new Carbon($item->thoi_gian_bat_dau);
+            $end = new Carbon($item->thoi_gian_ket_thuc);
+            $d = $end->diffInMinutes($start);
+
+            $start_date = date("Y/m/d", strtotime($start));
+            $start_shift = strtotime($start_date . ' ' . $shift->start_time);
+            $end_shift = strtotime($start_date . ' ' . $shift->end_time);
+            if (strtotime($start) >= $start_shift && strtotime($start) <= $end_shift) {
+                $ca_sx = 'Ca 1';
+            } else {
+                $ca_sx = 'Ca 2';
+            }
+
+            // $info = $item->lot->log ? $item->lot->log->info : [];
+            // $line_key = Str::slug($item->line->name);
+            $errors = [];
+            $thoi_gian_kiem_tra = '';
+            $sl_ng_pqc = 0;
+            $sl_ng_sxkt = 0;
+            $user_pqc = '';
+            $user_sxkt = '';
+            foreach ($item->qcHistory->errorHistories ?? [] as $key => $errorHistory) {
+                if (!isset($error[$errorHistory->error_id])) {
+                    $error[$errorHistory->error_id] = [];
+                }
+                $errors[$errorHistory->error_id]['value'] = ($errors[$errorHistory->error_id]['value'] ?? 0) + ($errorHistory->quantity ?? 0);
+                $errors[$errorHistory->error_id]['name'] = $errorHistory->error->name;
+                if ($errorHistory->type === 'sx') {
+                    $sl_ng_sxkt += ($errorHistory->quantity ?? 0);
+                    $user_sxkt = $errorHistory->user->name;
+                } else {
+                    $sl_ng_pqc += ($errorHistory->quantity ?? 0);
+                    $user_pqc = $errorHistory->user->name;
+                }
+            }
+            $tm = [
+                "stt" => $index + 1,
+                "ngay_sx" => date('d/m/Y H:i:s', strtotime($item->created_at)),
+                'ca_sx' => $ca_sx,
+                'xuong' => 'Giấy',
+                "cong_doan" => $item->line->name,
+                "machine" => $item->machine->name ?? "",
+                "machine_id" => $item->machine_code ?? "",
+                "ten_san_pham" => $item->product->name ?? '',
+                "khach_hang" => $item->product->customer->name ?? "",
+                "product_id" => $item->product_id ?? '',
+                "material_id" => $item->product->boms[0]->material_id ?? '',
+                "lo_sx" => $item->lo_sx,
+                "lot_id" => $item->lot_id,
+                "thoi_gian_bat_dau_kh" => $item->lotPlan ? date('d/m/Y H:i:s', strtotime($item->lotPlan->start_time)) : '',
+                "thoi_gian_ket_thuc_kh" => $item->lotPlan ? date('d/m/Y H:i:s', strtotime($item->lotPlan->end_time)) : '',
+                "sl_dau_vao_kh" => $item->lotPlan->quantity ?? 0,
+                "sl_dau_ra_kh" => $item->lotPlan->quantity ?? 0,
+                "thoi_gian_bat_dau_vao_hang" => $item->thoi_gian_bat_dau ? date('d/m/Y H:i:s', strtotime($item->thoi_gian_bat_dau)) : '-',
+                "thoi_gian_ket_thuc_vao_hang" => $item->thoi_gian_bam_may ? date('d/m/Y H:i:s', strtotime($item->thoi_gian_bam_may)) : '-',
+                "sl_dau_vao_chay_thu" => $item->sl_dau_vao_chay_thu ?? 0,
+                "sl_dau_ra_chay_thu" => $item->sl_dau_ra_chay_thu ?? 0,
+                "thoi_gian_bat_dau_san_luong" => $item->thoi_gian_bam_may ? date('d/m/Y H:i:s', strtotime($item->thoi_gian_bam_may)) : '-',
+                "thoi_gian_ket_thuc_san_luong" => $item->thoi_gian_ket_thuc ? date('d/m/Y H:i:s', strtotime($item->thoi_gian_ket_thuc)) : '-',
+                "sl_dau_vao_hang_loat" => $item->sl_dau_vao_hang_loat ?? 0,
+                "sl_dau_ra_hang_loat" => $item->sl_dau_ra_hang_loat ?? 0,
+                "sl_dau_ra_ok" => $item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang,
+                "sl_tem_vang" => $item->sl_tem_vang,
+                "sl_ng" => $sl_ng_pqc + $sl_ng_sxkt,
+                "chenh_lech" => $item->sl_dau_vao_hang_loat - $item->sl_dau_ra_hang_loat,
+                "ty_le_dat" => $item->sl_dau_ra_hang_loat > 0 ? number_format(($item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang) / $item->sl_dau_ra_hang_loat) : '-',
+                "thoi_gian_chay_san_luong" => number_format($d / 60, 2),
+                "leadtime" => $item->thoi_gian_ket_thuc ? number_format((strtotime($item->thoi_gian_ket_thuc) - strtotime($item->thoi_gian_bat_dau)) / 3600, 2) : '-',
+                'dien_nang' => $item->powerM ? number_format($item->powerM) : '',
+                'user_sxkt' => $user_sxkt,
+            ];
+            $data[] = $tm;
+        }
+        return $data;
+    }
+
+    public function exportProduceHistory(Request $request)
+    {
+        $query = $this->productionHistoryQuery($request);
+        $records = $query->get();
+        $data = $this->parseExportProduceHistoryTable($records);
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $start_row = 2;
+        $start_col = 1;
+        $titleStyle = array_merge(ExcelStyleHelper::alignment(), ExcelStyleHelper::bold(true, 16));
+        $headerStyle = array_merge(ExcelStyleHelper::alignment(), ExcelStyleHelper::bold(), ExcelStyleHelper::fill());
+        $border = ExcelStyleHelper::borders();
+        $header = [
+            'STT',
+            'Ngày sản xuất',
+            'Ca sản xuất',
+            'Xưởng',
+            'Công đoạn',
+            'Máy sản xuất',
+            'Mã máy',
+            'Tên sản phẩm',
+            'Khách hàng',
+            'Mã hàng',
+            'Mã nguyên vật liệu',
+            'Lô sản xuất',
+            'Mã pallet/thùng',
+            'Kế hoạch' => ['Thời gian bắt đầu', 'Thời gian kết thúc', 'Số lượng đầu vào', 'Số lượng đầu ra'],
+            'Thực tế' => [
+                'Vào hàng' => ['Thời gian bắt đầu vào hàng', 'Thời gian kết thúc vào hàng', 'Số lượng đầu vào vào hàng', 'Số lượng đầu ra vào hàng'],
+                'Sản xuất sản lượng' => ['Thời gian bắt đầu sản xuất sản lượng', 'Thời gian kết thúc sản xuất sản lượng', 'Số lượng đầu vào thực tế', 'Số lượng đầu ra thực tế', 'Số lượng đầu ra OK', 'Số lượng tem vàng', 'Số lượng NG']
+            ],
+            'Chênh lệch',
+            "tỷ lệ đạt",
+            'T/T Thực tế (Phút)',
+            'Leadtime',
+            'Điện năng tiêu thụ',
+            'Công nhân sản xuất'
+        ];
+        foreach ($header as $key => $cell) {
+            if (!is_array($cell)) {
+                $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row + 2])->getStyle([$start_col, $start_row, $start_col, $start_row + 2])->applyFromArray($headerStyle);
+            } else {
+                if (!is_array(array_values($cell)[0])) {
+                    $sheet->setCellValue([$start_col, $start_row], $key)->mergeCells([$start_col, $start_row, $start_col + count($cell) - 1, $start_row + 1])->getStyle([$start_col, $start_row, $start_col + count($cell) - 1, $start_row + 1])->applyFromArray($headerStyle);
+                    foreach ($cell as $val) {
+                        $sheet->setCellValue([$start_col, $start_row + 2], $val)->getStyle([$start_col, $start_row + 2, $start_col, $start_row + 2])->applyFromArray($headerStyle);
+                        $start_col += 1;
+                    }
+                    continue;
+                } else {
+                    $p_row = $start_row;
+                    $p_col = $start_col;
+                    $count_merge = 0;
+                    foreach ($cell as $val_key => $val) {
+                        $count_merge += count($val);
+                        $sheet->setCellValue([$start_col, $start_row + 1], $val_key)->mergeCells([$start_col, $start_row + 1, $start_col + count($val) - 1, $start_row + 1])->getStyle([$start_col, $start_row + 1, $start_col + count($val) - 1, $start_row + 1])->applyFromArray($headerStyle);
+                        foreach ($val as $v) {
+                            // return [$start_col, $start_row+2];
+                            $sheet->setCellValue([$start_col, $start_row + 2], $v)->getStyle([$start_col, $start_row + 2])->applyFromArray($headerStyle);
+                            $start_col += 1;
+                        }
+                    }
+                    // return [$p_col, $p_row, $p_col+$count_merge-1, $p_row];
+                    $sheet->setCellValue([$p_col, $p_row], $key)->mergeCells([$p_col, $p_row, $p_col + $count_merge - 1, $p_row])->getStyle([$p_col, $p_row, $p_col + $count_merge - 1, $p_row])->applyFromArray($headerStyle);
+                    continue;
+                }
+            }
+            $start_col += 1;
+        }
+        $sheet->setCellValue([1, 1], 'UI Lịch sử sản xuất')->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
+        $sheet->getRowDimension(1)->setRowHeight(40);
+        $table_col = 1;
+        $table_row = count($data) + 2;
+        $sheet->fromArray((array)$data, NULL, 'A5', true);
+        // $sheet->getStyle([1, 5, 30, count($data) + 4])->applyFromArray($centerStyle);
+        foreach ($sheet->getColumnIterator() as $column) {
+            $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+            $sheet->getStyle($column->getColumnIndex() . 1 . ':' . $column->getColumnIndex() . ($table_row))->applyFromArray(array_merge(ExcelStyleHelper::alignment(), $border));
+        }
+        header("Content-Description: File Transfer");
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="Lịch sử sản xuất.xlsx"');
+        header('Cache-Control: max-age=0');
+        header("Content-Transfer-Encoding: binary");
+        header('Expires: 0');
+        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('exported_files/Lịch sử sản xuất.xlsx');
+        $href = '/exported_files/Lịch sử sản xuất.xlsx';
+        return $this->success($href);
+    }
+
+    function parseReportTable3($val, $lo_sx, $date, $machine_code){
+        $sl_kh = (int)$val->sum(function ($item) {
+            return $item->lotPlan->quantity;
+        });
+        $sl_dau_vao = (int)$val->sum('sl_dau_vao_hang_loat');
+        $sl_dau_ra = (int)$val->sum('sl_dau_ra_hang_loat');
+        $sl_tem_vang = (int)$val->sum('sl_tem_vang');
+        $sl_ng = $val->sum('sl_ng');
+        $sl_ok = $sl_dau_ra - $sl_tem_vang - $sl_ng;
+        $tg_sx = 0;
+        $tg_vao_hang = 0;
+        $tg_hang_loat = 0;
+        $lead_time = 0;
+        $tg_sx_kh = 0;
+        $sl_muc_tieu = 0;
+        $val->map(function ($item) use (&$tg_sx, &$tg_vao_hang, &$tg_hang_loat, &$lead_time, &$tg_sx_kh, &$sl_muc_tieu) {
+            $start = Carbon::parse($item->thoi_gian_bat_dau);
+            $end = Carbon::parse($item->thoi_gian_ket_thuc);
+            $tg_sx += $start->diffInMinutes($end); // Tính tổng phút
+
+            $start = Carbon::parse($item->thoi_gian_bat_dau);
+            $end = Carbon::parse($item->thoi_gian_bam_may);
+            $tg_vao_hang += $start->diffInMinutes($end); // Tính tổng phút
+
+            $start = Carbon::parse($item->thoi_gian_bam_may);
+            $end = Carbon::parse($item->thoi_gian_ket_thuc);
+            $tg_hang_loat += $start->diffInMinutes($end); // Tính tổng phút
+
+            $start = Carbon::parse($item->thoi_gian_bat_dau);
+            $end = Carbon::parse($item->lotPlan->start_time);
+            $lead_time += $start->diffInMinutes($end); // Tính tổng phút
+
+            $start = Carbon::parse($item->lotPlan->start_time);
+            $end = Carbon::parse($item->lotPlan->end_time);
+            $tg_sx_kh += $start->diffInMinutes($end); // Tính tổng phút
+
+            $start = Carbon::parse($item->thoi_gian_bat_dau);
+            $end = Carbon::parse($item->thoi_gian_ket_thuc);
+            $tg_sx_in_hours = $start->diffInHours($end); // Tính tổng phút
+            $sl_muc_tieu += ($tg_sx_in_hours / 3600) * ($item->lotPlan->plan->UPH ?? 0);
+        });
+        $ty_le_ng = ($sl_dau_ra > 0 ? number_format($sl_ng / $sl_dau_ra, 2) * 100 : 0) . '%';
+        $ty_le_hao_phi_tg = ($tg_sx > 0 ? number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0) . '%';
+        $ty_le_hoan_thanh = ($sl_kh > 0 ? number_format($sl_ok / $sl_kh, 2) * 100 : 0) . '%';
+        $item = [
+            'ngay_sx' => $date,
+            'so_may' => $machine_code,
+            'ten_sp' => $val[0]->product->name ?? "",
+            'lo_sx' => $lo_sx,
+            'tg_kh' => number_format($tg_sx_kh/60, 2),
+            'tg_sx' => number_format($tg_sx/60, 2),
+            'sl_kh' => $sl_kh,
+            'sl_dau_vao' => $sl_dau_vao,
+            'sl_ok' => $sl_ok,
+            'sl_tem_vang' => $sl_tem_vang,
+            'sl_ng' => $sl_ng,
+            'ty_le_ng' => $ty_le_ng,
+            'tg_ko_sp' => number_format($tg_vao_hang/60, 2),
+            'tg_hang_loat' => number_format($tg_hang_loat/60, 2),
+            'tg_vao_hang' => number_format($tg_vao_hang/60, 2),
+            'ty_le_hao_phi_tg' => $ty_le_hao_phi_tg,
+            'ty_le_hoan_thanh' => $ty_le_hoan_thanh,
+            'so_nhan_su' => $val[0]->lotPlan->plan->nhan_luc ?? "",
+        ];
+        return $item;
+    }
+
+    function parseReportTable1($value, $date, $machine_code){
+        $sl_dau_vao = (int)$value->sum('sl_dau_vao_hang_loat');
+        $sl_dau_ra = (int)$value->sum('sl_dau_ra_hang_loat');
+        $sl_tem_vang = (int)$value->sum('sl_tem_vang');
+        $sl_ng = $value->sum('sl_ng');
+        $sl_ok = $sl_dau_ra - $sl_tem_vang - $sl_ng;
+        $tg_sx = 0;
+        $tg_vao_hang = 0;
+        $tg_hang_loat = 0;
+        $lead_time = 0;
+        $tg_sx_kh = 0;
+        $sl_muc_tieu = 0;
+        $value->map(function ($item) use (&$tg_sx, &$tg_vao_hang, &$tg_hang_loat, &$lead_time, &$tg_sx_kh, &$sl_muc_tieu) {
+            $start = Carbon::parse($item->thoi_gian_bat_dau);
+            $end = Carbon::parse($item->thoi_gian_ket_thuc);
+            $tg_sx += $start->diffInMinutes($end); // Tính tổng phút
+
+            $start = Carbon::parse($item->thoi_gian_bat_dau);
+            $end = Carbon::parse($item->thoi_gian_bam_may);
+            $tg_vao_hang += $start->diffInMinutes($end); // Tính tổng phút
+
+            $start = Carbon::parse($item->thoi_gian_bam_may);
+            $end = Carbon::parse($item->thoi_gian_ket_thuc);
+            $tg_hang_loat += $start->diffInMinutes($end); // Tính tổng phút
+
+            $start = Carbon::parse($item->thoi_gian_bat_dau);
+            $end = Carbon::parse($item->lotPlan->start_time);
+            $lead_time += $start->diffInMinutes($end); // Tính tổng phút
+
+            $start = Carbon::parse($item->lotPlan->start_time);
+            $end = Carbon::parse($item->lotPlan->end_time);
+            $tg_sx_kh += $start->diffInMinutes($end); // Tính tổng phút
+
+            $start = Carbon::parse($item->thoi_gian_bat_dau);
+            $end = Carbon::parse($item->thoi_gian_ket_thuc);
+            $tg_sx_in_hours = $start->diffInHours($end); // Tính tổng phút
+            $sl_muc_tieu += ($tg_sx_in_hours / 3600) * ($item->lotPlan->plan->UPH ?? 0);
+        });
+        $ty_le_ng = ($sl_dau_ra > 0 ? number_format($sl_ng / $sl_dau_ra, 2) * 100 : 0) . '%';
+        $ty_le_hao_phi_tg = ($tg_sx > 0 ? number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0) . '%';
+        $A = ($tg_sx > 0 ? number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0);
+        $Q = ($sl_dau_ra > 0 ? number_format($sl_ok / $sl_dau_ra, 2) * 100 : 0);
+        $P = ($sl_muc_tieu > 0 ? number_format($sl_dau_ra / $sl_muc_tieu, 2) * 100 : 0);
+        $OEE = number_format(($A * $P * $Q) / 10000, 2);
+        $power = $value->sum('powerM');
+        $row = [
+            'ngay_sx' => $date,
+            'so_may' => $machine_code,
+            'so_nhan_su' => $value[0]->plan->nhan_luc ?? "",
+            'sl_dau_vao' => $sl_dau_vao,
+            'sl_tem_vang' => $sl_tem_vang,
+            'sl_ok' => $sl_ok,
+            'sl_ng' => $sl_ng,
+            'tg_sx' => number_format($tg_sx/60, 2),
+            'tg_ko_sp' => number_format($tg_vao_hang/60, 2),
+            'tg_hang_loat' => number_format($tg_hang_loat/60, 2),
+            'tg_vao_hang' => $tg_vao_hang,
+            'ty_le_ng' => $ty_le_ng,
+            'ty_le_hao_phi_tg' => $ty_le_hao_phi_tg,
+            'lead_time' => number_format($lead_time/60, 2),
+            'A' => $A . "%",
+            'P' => $P . "%",
+            'Q' => $Q . "%",
+            'OEE' => $OEE . "%",
+            'power' => $power
+        ];
+        return $row;
+    }
+
+    function parseReportTable2($value, $date, $machine_code){
+        $sl_dau_vao = (int)$value->sum(function ($item) {
+            $sl_bat = $item->product->so_bat ?? 1;
+            return $item->sl_dau_vao_hang_loat / $sl_bat;
+        });
+        $sl_dau_ra = (int)$value->sum(function ($item) {
+            $sl_bat = $item->product->so_bat ?? 1;
+            return $item->sl_dau_ra_hang_loat / $sl_bat;
+        });
+        $sl_tem_vang = (int)$value->sum(function ($item) {
+            $sl_bat = $item->product->so_bat ?? 1;
+            return $item->sl_tem_vang / $sl_bat;
+        });
+        $sl_ng = (int)$value->sum(function ($item) {
+            $sl_bat = $item->product->so_bat ?? 1;
+            return $item->sl_ng / $sl_bat;
+        });
+        $sl_ok = $sl_dau_ra - $sl_tem_vang - $sl_ng;
+        $tg_sx = 0;
+        $tg_vao_hang = 0;
+        $tg_hang_loat = 0;
+        $lead_time = 0;
+        $tg_sx_kh = 0;
+        $sl_muc_tieu = 0;
+        $value->map(function ($item) use (&$tg_sx, &$tg_vao_hang, &$tg_hang_loat, &$lead_time, &$tg_sx_kh, &$sl_muc_tieu) {
+            $start = Carbon::parse($item->thoi_gian_bat_dau);
+            $end = Carbon::parse($item->thoi_gian_ket_thuc);
+            $tg_sx += $start->diffInMinutes($end); // Tính tổng phút
+
+            $start = Carbon::parse($item->thoi_gian_bat_dau);
+            $end = Carbon::parse($item->thoi_gian_bam_may);
+            $tg_vao_hang += $start->diffInMinutes($end); // Tính tổng phút
+
+            $start = Carbon::parse($item->thoi_gian_bam_may);
+            $end = Carbon::parse($item->thoi_gian_ket_thuc);
+            $tg_hang_loat += $start->diffInMinutes($end); // Tính tổng phút
+
+            $start = Carbon::parse($item->thoi_gian_bat_dau);
+            $end = Carbon::parse($item->lotPlan->start_time);
+            $lead_time += $start->diffInMinutes($end); // Tính tổng phút
+
+            $start = Carbon::parse($item->lotPlan->start_time);
+            $end = Carbon::parse($item->lotPlan->end_time);
+            $tg_sx_kh += $start->diffInMinutes($end); // Tính tổng phút
+
+            $start = Carbon::parse($item->thoi_gian_bat_dau);
+            $end = Carbon::parse($item->thoi_gian_ket_thuc);
+            $tg_sx_in_hours = $start->diffInHours($end); // Tính tổng phút
+            $sl_muc_tieu += ($tg_sx_in_hours / 3600) * ($item->lotPlan->plan->UPH ?? 0);
+        });
+        $ty_le_ng = ($sl_dau_ra > 0 ? number_format($sl_ng / $sl_dau_ra, 2) * 100 : 0) . '%';
+        $ty_le_hao_phi_tg = ($tg_sx > 0 ? number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0) . '%';
+        $A = ($tg_sx > 0 ? number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0);
+        $Q = ($sl_dau_ra > 0 ? number_format($sl_ok / $sl_dau_ra, 2) * 100 : 0);
+        $P = ($sl_muc_tieu > 0 ? number_format($sl_dau_ra / $sl_muc_tieu, 2) * 100 : 0);
+        $OEE = number_format(($A * $P * $Q) / 10000, 2);
+        $power = $value->sum('powerM');
+        $row = [
+            'ngay_sx' => $date,
+            'so_may' => $machine_code,
+            'so_nhan_su' => $value[0]->plan->nhan_luc ?? "",
+            'sl_dau_vao' => $sl_dau_vao,
+            'sl_tem_vang' => $sl_tem_vang,
+            'sl_ok' => $sl_ok,
+            'sl_ng' => $sl_ng,
+            'tg_sx' => number_format($tg_sx/60, 2),
+            'tg_ko_sp' => number_format($tg_vao_hang/60, 2),
+            'tg_hang_loat' => number_format($tg_hang_loat/60, 2),
+            'tg_vao_hang' => $tg_vao_hang,
+            'ty_le_ng' => $ty_le_ng,
+            'ty_le_hao_phi_tg' => $ty_le_hao_phi_tg,
+            'lead_time' => number_format($lead_time/60, 2),
+            'A' => $A . "%",
+            'P' => $P . "%",
+            'Q' => $Q . "%",
+            'OEE' => $OEE . "%",
+            'power' => $power
+        ];
+        return $row;
+    }
+
+    public function exportReportProduceHistory(Request $request)
+    {
+        $query = InfoCongDoan::with('product', 'lotPlan')
+            ->whereNotNull('thoi_gian_bat_dau')
+            ->whereNotNull('thoi_gian_bam_may')
+            ->whereNotNull('thoi_gian_ket_thuc')
+            ->orderBy('thoi_gian_bat_dau', 'DESC')
+            ->whereDate('thoi_gian_bat_dau', '>=', date("Y-m-d", strtotime($request->date[0])))
+            ->whereDate('thoi_gian_bat_dau', '<=', date("Y-m-d", strtotime($request->date[1])));
+        $records = $query->get()->groupBy('machine_code');
+        $table1 = [];
+        $table2 = [];
+        $table3 = [];
+        $table4 = [];
+        foreach ($records as $machine_code => $infos) {
+            $groupByDate = $infos->groupBy(function ($item) {
+                return date("d/m/Y", strtotime($item->thoi_gian_bat_dau));
+            });
+            foreach ($groupByDate as $date => $value) {
+                $groupByLSX = $value->groupBy('lo_sx');
+                foreach ($groupByLSX as $lo_sx => $val) {
+                    $itemTable3 = $this->parseReportTable3($val, $lo_sx, $date, $machine_code);
+                    $table3[] = $itemTable3;
+                }
+                $row = $this->parseReportTable1($value, $date, $machine_code);
+                $table1[] = $row;
+            }
+        }
+
+        
+        foreach ($records as $machine_code => $infos) {
+            $groupByDate = $infos->groupBy(function ($item) {
+                return date("d/m/Y", strtotime($item->thoi_gian_bat_dau));
+            });
+            foreach ($groupByDate as $date => $value) {
+                $row = $this->parseReportTable2($value, $date, $machine_code);
+                $table2[] = $row;
+            }
+        }
+        
+        $lines = Line::where('factory_id', 2)->pluck('id')->toArray();
+        $queryHistory = $this->productionHistoryQuery($request);
+        $queryHistory->whereIn('line_id', $lines)->selectRaw('lo_sx,line_id,SUM(sl_dau_vao_hang_loat) as sl_dau_vao_,
+        SUM(sl_dau_ra_hang_loat) as sl_dau_ra_, SUM(sl_tem_vang) as sl_tem_vang_, SUM(sl_ng) as sl_ng_,SUM(powerM) as powerM_, SUM(sl_dau_ra_hang_loat - sl_tem_vang - sl_ng) as sl_ok_
+        , SUM(TIME_TO_SEC(TIMEDIFF(thoi_gian_ket_thuc , thoi_gian_bat_dau))) as tong_thoi_gian_san_xuat_, SUM(TIME_TO_SEC(TIMEDIFF(thoi_gian_bam_may , thoi_gian_bat_dau))) as thoi_gian_khong_san_luong_,
+        SUM(TIME_TO_SEC(TIMEDIFF(thoi_gian_ket_thuc , thoi_gian_bam_may))) as thoi_gian_tinh_san_luong_,MAX(thoi_gian_bat_dau) as ngay_sx_gan_nhat_')
+            ->whereNotNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc');
+        $records = $queryHistory->groupBy('lo_sx', 'line_id')->get()->groupBy('lo_sx');
+        foreach ($records as $key => $record) {
+            $obj = [];
+            $plan_product = ProductionPlan::where('lo_sx', $key)->first();
+            foreach ($record as $k => $item) {
+                if ($k == 0) {
+                    $plan = $item->plan;
+                    $obj['product_id'] = $plan_product->product_id;
+                    $obj['product_name'] = $plan_product->product->name;
+                    $obj['lo_sx'] = $item->lo_sx;
+                    $obj['so_bat'] = $plan_product->product->so_bat;
+                }
+                $obj['ngay_sx_gan_nhat_' . $item->line_id] = $item->ngay_sx_gan_nhat_;
+                $obj['sl_dau_vao_' . $item->line_id] = $item->sl_dau_vao_;
+                $obj['dien_nang_' . $item->line_id] = $item->powerM_ > 0 ? number_format($item->powerM_) : '';
+                $obj['sl_dau_ra_' . $item->line_id] = $item->sl_dau_ra_;
+                $obj['sl_tem_vang_' . $item->line_id] = $item->sl_tem_vang_;
+                $obj['sl_ng_' . $item->line_id] = $item->sl_ng_;
+                $obj['sl_ok_' . $item->line_id] =  $item->sl_ok_;
+                $obj['tong_thoi_gian_san_xuat_' . $item->line_id] = $item->tong_thoi_gian_san_xuat_;
+                $obj['thoi_gian_khong_san_luong_' . $item->line_id] = $item->thoi_gian_khong_san_luong_;
+                $obj['thoi_gian_tinh_san_luong_' . $item->line_id] = $item->thoi_gian_tinh_san_luong_;
+                $obj['sl_ke_hoach_' . $item->line_id] = $plan ? (($plan->sl_thanh_pham && $plan->product->so_bat) ? $plan->product->so_bat * $plan->sl_thanh_pham : $plan->sl_giao_sx) : 0;
+                $obj['ty_le_ok_' . $item->line_id] = ($obj['sl_dau_ra_' . $item->line_id] > 0) ? number_format($obj['sl_ok_' . $item->line_id] / $obj['sl_dau_ra_' . $item->line_id], 2) * 100 . '%' : 0;
+                $obj['ty_le_tem_vang_' . $item->line_id] = ($obj['sl_dau_ra_' . $item->line_id] > 0) ? number_format($obj['sl_tem_vang_' . $item->line_id] / $obj['sl_dau_ra_' . $item->line_id], 2) * 100 . '%' : 0;
+                $obj['ty_le_ng_' . $item->line_id] = ($obj['sl_dau_ra_' . $item->line_id] > 0) ? number_format($obj['sl_ng_' . $item->line_id] / $obj['sl_dau_ra_' . $item->line_id], 2) * 100 . '%' : 0;
+                $obj['ty_le_hao_phi_thoi_gian_' . $item->line_id] = ($obj['thoi_gian_khong_san_luong_' . $item->line_id] > 0) ? number_format($obj['thoi_gian_khong_san_luong_' . $item->line_id] / $obj['tong_thoi_gian_san_xuat_' . $item->line_id], 2) * 100 . '%' : 0;
+            }
+            $table4[] = $obj;
+        }
+        
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->getParent()->getDefaultStyle()->applyFromArray([
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => array('argb' => 'F2F2F2')
+            ]
+        ]);
+        $titleStyle = array_merge(['font' => ['size' => 16, 'bold' => true, 'color' => array('argb' => '4519FF')]]);
+        $header1Style = array_merge(ExcelStyleHelper::bold(), ExcelStyleHelper::fill('DAEEF3'), ExcelStyleHelper::borders(), ExcelStyleHelper::alignment('center', true));
+        $header3Style = array_merge(ExcelStyleHelper::bold(), ExcelStyleHelper::fill('EBF1DE'), ExcelStyleHelper::borders(), ExcelStyleHelper::alignment('center', true));
+        $header4Style = array_merge(ExcelStyleHelper::bold(), ExcelStyleHelper::fill('EBF1DE'), ExcelStyleHelper::borders(), ExcelStyleHelper::alignment('center', true));
+        $border = ExcelStyleHelper::borders();
+        $sheet->setCellValue([1, 1], 'Báo cáo sản lượng sản xuất')->getStyle([1, 1])->applyFromArray($titleStyle);
+        $header1 = [
+            'Ngày sản xuất',
+            'Số máy',
+            "Số nhân sự chạy máy",
+            "Số lượng đầu vào (tờ)",
+            "Số lượng khoanh vùng (tem vàng) (tờ)",
+            "Số lượng OK (tờ)",
+            "Số lượng NG (tờ)",
+            "Tổng thời gian sản xuất",
+            'Thời gian không ra sản phẩm',
+            "Thời gian chạy sản lượng",
+            "Thời gian vào hàng",
+            "Tỷ lệ NG (%)",
+            'Tỷ lệ hao phí thời gian (%)',
+            'Leadtime',
+            "Hiệu suất (A)",
+            "Hiệu suất (P)",
+            "Hiệu suất (Q)",
+            "OEE",
+            'Điện năng'
+        ];
+
+        $header3 = [
+            'Ngày',
+            "Số máy",
+            'Tên sản phẩm',
+            'Lô sản xuất',
+            "Thời gian kế hoạch giao",
+            "Thời gian thực tế làm",
+            "Số lượng KH giao",
+            "Số lượng đầu vào",
+            "Số lượng OK",
+            "Số lượng tem vàng",
+            "Số lượng NG",
+            'Tỷ lệ NG',
+            'Thời gian không ra SP',
+            'Thời gian máy chạy ra SP',
+            'Thời gian vào hàng',
+            'Tỷ lệ hao phí thời gian',
+            'Tỷ lệ hoàn thành KH',
+            'Nhân sự chạy máy'
+        ];
+
+        $start_row = 3;
+
+        $sheet->fromArray($header1, null, 'A'.$start_row);
+        $sheet->getRowDimension($start_row)->setRowHeight(42);
+        $sheet->getStyle([1, $start_row, count($header1), $start_row])->applyFromArray($header1Style);
+        $start_row += 1;
+        $startTable = $start_row;
+        $sheet->fromArray($table1, null, 'A'.$start_row);
+        $start_row += count($table1);
+        $sheet->getStyle([1, $startTable, count($header1), $start_row-1])->applyFromArray(array_merge($border, ExcelStyleHelper::fill('FFFFFF')));
+        $start_row += 1;
+
+        $sheet->fromArray($header1, null, 'A'.$start_row);
+        $sheet->getRowDimension($start_row)->setRowHeight(42);
+        $sheet->getStyle([1, $start_row, count($header1), $start_row])->applyFromArray($header1Style);
+        $start_row += 1;
+        $startTable = $start_row;
+        $sheet->fromArray($table2, null, 'A'.$start_row);
+        $start_row += count($table2);
+        $sheet->getStyle([1, $startTable, count($header1), $start_row-1])->applyFromArray(array_merge($border, ExcelStyleHelper::fill('FFFFFF')));
+        $start_row += 1;
+        
+        $sheet->fromArray($header3, null, 'A'.$start_row);
+        $sheet->getRowDimension($start_row)->setRowHeight(42);
+        $sheet->getStyle([1, $start_row, count($header3), $start_row])->applyFromArray($header3Style);
+        $start_row += 1;
+        $startTable = $start_row;
+        $sheet->fromArray($table3, null, 'A'.$start_row);
+        $start_row += count($table3);
+        $sheet->getStyle([1, $startTable, count($header3), $start_row-1])->applyFromArray(array_merge($border, ExcelStyleHelper::fill('FFFFFF')));
+        $start_row += 1;
+
+        $header4 = [
+            'Mã hàng',
+            'Tên sản phẩm',
+            "Lô sản xuất",
+            "Số bát",
+        ];
+        $table_key4 = [
+            'A' => 'product_id',
+            'B' => 'product_name',
+            'C' => 'lo_sx',
+            'D' => 'so_bat',
+        ];
+        $table_keys = ['ngay_sx_gan_nhat', 'sl_dau_vao', 'sl_ok', 'sl_tem_vang', 'sl_ng', 'sl_ke_hoach', 'ty_le_ok', 'ty_le_tem_vang', 'ty_le_ng', 'ty_le_hao_phi_thoi_gian', 'dien_nang', ''];
+        $header_keys = ["Ngày sản xuất gần nhất của lô", "Số lượng đầu vào", "Số lượng hàng đạt", 'Tem vàng', "Số lượng NG", "Sản lượng kế hoạch giao", "Tỷ lệ đạt thẳng (%)", "Tỷ lệ tem vàng (%)", "Tỷ lệ NG(%)", "Tỷ lệ hao phí thời gian (%)", "Điện năng", ""];
+        $index = 1;
+        foreach ($lines as $line_id) {
+            $line = Line::find($line_id);
+            $header4[$line->name] = $header_keys;
+            foreach ($table_keys as $i => $key) {
+                $table_key4[$this->getNextExcelColumn('D', $index)] = $key."_".$line_id;
+                $index++;
+            }
+        }
+        $start4_row = $start_row;
+        $start4_col = 1;
+        foreach ($header4 as $key => $cell) {
+            if (!is_array($cell)) {
+                $sheet->setCellValue([$start4_col, $start4_row], $cell)->mergeCells([$start4_col, $start4_row, $start4_col, $start4_row + 1])->getStyle([$start4_col, $start4_row, $start4_col, $start4_row + 1])->applyFromArray($header4Style);
+            } else {
+                $sheet->setCellValue([$start4_col, $start4_row], $key)->mergeCells([$start4_col, $start4_row, $start4_col + count($cell) - 1, $start4_row])->getStyle([$start4_col, $start4_row, $start4_col + count($cell) - 1, $start4_row])->applyFromArray($header4Style);
+                foreach ($cell as $val) {
+                    $sheet->setCellValue([$start4_col, $start4_row + 1], $val)->getStyle([$start4_col, $start4_row + 1])->applyFromArray($header4Style);
+                    $start4_col += 1;
+                }
+                continue;
+            }
+            $start4_col += 1;
+        }
+        $table4_col = 1;
+        $table4_row = $start_row + 2;
+        foreach ($table4 as $key => $row) {
+            foreach ((array)$row as $key => $cell) {
+                if (in_array($key, $table_key4) && array_search($key, $table_key4) !== "") {
+                    $sheet->setCellValue(array_search($key, $table_key4) . $table4_row, $cell);
+                } else {
+                    continue;
+                }
+                $table4_col += 1;
+            }
+            $sheet->getStyle([1, $table4_row, count($table_key4), $table4_row])->applyFromArray(array_merge(ExcelStyleHelper::fill('FFFFFF'), $border, ExcelStyleHelper::alignment('center', true)));
+            $table4_row += 1;
+        }
+        
+        $sheet->getRowDimension(1)->setRowHeight(40);
+        foreach ($sheet->getColumnIterator() as $column) {
+            $sheet->getColumnDimension($column->getColumnIndex())->setWidth(16);
+            $sheet->getStyle($column->getColumnIndex() . 2 . ':' . $column->getColumnIndex() . $start_row)->applyFromArray(ExcelStyleHelper::alignment('center', true));
+        }
+        header("Content-Description: File Transfer");
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="Báo cáo sản lượng sản xuất.xlsx"');
+        header('Cache-Control: max-age=0');
+        header("Content-Transfer-Encoding: binary");
+        header('Expires: 0');
+        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('exported_files/Báo cáo sản lượng sản xuất.xlsx');
+        $href = '/exported_files/Báo cáo sản lượng sản xuất.xlsx';
+        return $this->success($href);
+    }
+
+    function getNextExcelColumn($currentColumn, $index)
+    {
+        $columnNumber = array_reduce(str_split($currentColumn), function ($carry, $char) {
+            return $carry * 26 + (ord($char) - ord('A') + 1);
+        }, 0) - 1;
+        $newColumnNumber = $columnNumber + $index;
+        $newColumn = '';
+        while ($newColumnNumber >= 0) {
+            $newColumn = chr($newColumnNumber % 26 + ord('A')) . $newColumn;
+            $newColumnNumber = intdiv($newColumnNumber, 26) - 1;
+        }
+        return $newColumn;
     }
 
     public function uploadInfoCongDoan(Request $request)

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Imports\FcPlantImport;
 use App\Imports\WarehouseExportPlanImport;
 use App\Models\FcPlant;
+use App\Models\LineInventories;
 use App\Models\MachineShift;
 use App\Models\Shift;
 use App\Models\ShiftBreak;
@@ -35,8 +36,14 @@ class WarehouseExportPlanController extends Controller
         }
 
         $records = $query->paginate($pageSize);
+        $data = [];
+        foreach ($records->items() as $key => $value) {
+            $ton_kho = LineInventories::where('product_id', $value->product_id)->orderBy('updated_at', 'DESC')->first();
+            $value->ton_kho = $ton_kho->quantity ?? 0;
+            $data[] = $value;
+        }
         return $this->success([
-            'data' => $records->items(),
+            'data' => $data,
             'paginate' => [
                 'page' => $records->currentPage(),
                 'page_size' => $pageSize,
