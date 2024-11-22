@@ -2597,8 +2597,16 @@ class Phase2UIApiController extends Controller
                 if ($rollsPerTransport === 0 || ceil($quantity / $lotSize) < $rollsPerTransport) {
                     $rollsPerTransport = ceil($quantity / ($lotSize + (isset($inputWaste[$orderedSteps[$index]->line_id]) ? $inputWaste[$orderedSteps[$index]->line_id] : 0)));
                 }
-                Log::debug([$orderedSteps[$index]->line_id, $quantity]);
-                $startTime = $lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1][($rollsPerTransport / $machine_in_line[$orderedSteps[$index - 1]->line_id]) - 1]['endTime']->copy()->addMinutes($transportTime);
+                
+                try {
+                    //code...
+                    if(isset(($machine_in_line[$orderedSteps[$index - 1]->line_id])) && ($machine_in_line[$orderedSteps[$index - 1]->line_id]) > 0 && ($rollsPerTransport / $machine_in_line[$orderedSteps[$index - 1]->line_id]) > 0 && isset($lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1][($rollsPerTransport / $machine_in_line[$orderedSteps[$index - 1]->line_id]) - 1]['endTime'])){
+                        $startTime = $lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1][($rollsPerTransport / $machine_in_line[$orderedSteps[$index - 1]->line_id]) - 1]['endTime']->copy()->addMinutes($transportTime);
+                    }
+                } catch (\Throwable $th) {
+                    Log::debug([($rollsPerTransport / $machine_in_line[$orderedSteps[$index - 1]->line_id])]);
+                    throw $th;
+                }
             }
 
             // Tính toán thời gian bắt đầu và kết thúc cho từng công đoạn
