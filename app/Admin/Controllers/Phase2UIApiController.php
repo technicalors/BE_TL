@@ -23,7 +23,6 @@ use App\Models\LotPlan;
 use App\Models\Machine;
 use App\Models\MachineLog;
 use App\Models\MachinePriorityOrder;
-use App\Models\MachineShift;
 use App\Models\NumberMachineOrder;
 use App\Models\Product;
 use App\Models\ProductionPlan;
@@ -31,8 +30,6 @@ use App\Models\ProductOrder;
 use App\Models\QCHistory;
 use App\Models\Shift;
 use App\Models\Spec;
-use App\Models\TestCriteria;
-use App\Models\TestCriteriaDetailHistory;
 use App\Traits\API;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -2552,9 +2549,10 @@ class Phase2UIApiController extends Controller
             return null;
         }
         // Tính toán thời gian bắt đầu và kết thúc cho từng công đoạn theo thứ tự ASC
-        $quantity =  $stepQuantities[$orderedSteps[0]->line_id];
-        $lotSize = $this->getLotSize($productId, $orderedSteps[0]->line_id);
+        
         foreach ($orderedSteps as $index => $step) {
+            $quantity =  $stepQuantities[$step->line_id];
+            $lotSize = $this->getLotSize($productId, $step->line_id);
             $lineId = $step->line_id;
             if (!isset($lots[$lineId])) {
                 $lots[$lineId] = [];
@@ -2618,6 +2616,7 @@ class Phase2UIApiController extends Controller
             $machine_in_line[$lineId] = $numMachines;
             // Tính toán số lượng sản xuất cho mỗi máy
             $quantityPerMachine = $numMachines > 0 ? ceil($quantity / $numMachines) : $quantity;
+            Log::debug([$lineId, $quantity, $quantityPerMachine, $stepQuantities]);
             $lotIndexOffset = 0; // Offset để đánh số lot cho mỗi máy
             $numLots = ceil($quantityPerMachine / $lotSize); // Tổng số lot, dùng ceil để làm tròn lên
             // Chia lot và tính toán thời gian cho từng lot cho máy nàys
@@ -2718,9 +2717,9 @@ class Phase2UIApiController extends Controller
                     $machine_available_list[$machine->code] = $stepEndTimes[$lineId];
                 }
             }
-            if (isset($inputWaste[$lineId])) {
-                $quantity = $quantity - $inputWaste[$lineId];
-            }
+            // if (isset($inputWaste[$lineId])) {
+            //     $quantity = $quantity - $inputWaste[$lineId];
+            // }
         }
         //Gán giá trị cho đơn hàng
         $losx_input['lo_sx'] = $losx_input['id'];
