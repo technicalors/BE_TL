@@ -347,7 +347,7 @@ class Phase2DBApiController extends Controller
                     "status" => $status,
                     "time" => $info->updated_at,
                 ];
-                $tm['ti_le_ht'] = (int) (100 * (($tm['sl_dau_ra_kh']) > 0 ? number_format(($tm['sl_thuc_te'] / ($tm['sl_dau_ra_kh'])), 2) : 0));
+                $tm['ti_le_ht'] = (int) (100 * (($tm['sl_dau_ra_kh']) > 0 ? number_format(floatval($tm['sl_thuc_te'] / $tm['sl_dau_ra_kh']), 2) : 0));
                 if ($tm['ti_le_ht'] > 100) {
                     $tm['ti_le_ht'] = 100;
                 }
