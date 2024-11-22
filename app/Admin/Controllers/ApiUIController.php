@@ -35,6 +35,7 @@ use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Models\CustomUser;
 use App\Models\ErrorHistory;
+use App\Models\Losx;
 use App\Models\LotPlan;
 use App\Models\LSXLog;
 use App\Models\MaintenanceSchedule;
@@ -3308,6 +3309,10 @@ class ApiUIController extends AdminController
             $plan = ProductionPlan::where('khach_hang', $khach_hang->name)->get();
             $data->product = Product::whereIn('customer_id', $khach_hang)->get();
             $data->lo_sx = (array)array_unique($plan->pluck('lo_sx')->toArray());
+        }else{
+            // $plan = ProductionPlan::all();
+            $data->product = Product::all();
+            $data->lo_sx = Losx::all()->pluck('id')->toArray();
         }
         return $this->success($data, '');
     }
