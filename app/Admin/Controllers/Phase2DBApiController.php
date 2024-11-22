@@ -293,12 +293,12 @@ class Phase2DBApiController extends Controller
                 }
 
                 // Fix DB
-                $sumLotPlan = LotPlan::query()->where('line_id', $machine->line_id)
+                $sumLotPlan = (int)LotPlan::query()->where('line_id', $machine->line_id)
                     ->where('machine_code', $machine->code)
                     ->where('product_id', $info->product_id)
                     ->whereDate('start_time', date('Y-m-d'))->sum('quantity');
 
-                $sumInfoActure = InfoCongDoan::query()->where('line_id', $machine->line_id)
+                $sumInfoActure = (int)InfoCongDoan::query()->where('line_id', $machine->line_id)
                     ->where('machine_code', $machine->code)
                     ->where('product_id', $info->product_id)
                     ->whereIn('status', [InfoCongDoan::STATUS_INPROGRESS, InfoCongDoan::STATUS_COMPLETED])
