@@ -36,8 +36,7 @@ class TemplateImport implements ToCollection, WithHeadingRow, WithStartRow
     }
     public function collection(Collection $collection)
     {
-        // Template::query()->delete();
-        Template::query()->update(['status' => 1]);
+        return $collection;
         foreach ($collection as $row) {
             $this->importRow($row->toArray());
         }
@@ -58,10 +57,9 @@ class TemplateImport implements ToCollection, WithHeadingRow, WithStartRow
         if (!empty($manufacture_date)) {
             $manufacture_date = $this->transformDate($manufacture_date);
         }
-
         $material = Material::find($material_id);
         if (empty($material)) throw new Exception("Không tìm thấy NVL: $material_id");
-        for ($i=0; $i<$roll_quantity; $i++) {
+        for ($i = 0; $i < $roll_quantity; $i++) {
             $template = Template::create([
                 'material_id' => $material->id,
                 'quantity' => $quantity, // 👈 Số lượng NVL của 1 cuộn
@@ -71,7 +69,7 @@ class TemplateImport implements ToCollection, WithHeadingRow, WithStartRow
                 'worker_name' => $worker_name,
                 'status' => 0,
             ]);
-    
+
             // Lưu roll
             $prefix = 'C' . date('dmy');
             $roll_id = QueryHelper::generateNewId(new RollMaterial(), $prefix, 3);

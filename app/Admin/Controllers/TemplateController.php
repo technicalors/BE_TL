@@ -108,6 +108,7 @@ class TemplateController extends Controller
         ]);
         DB::beginTransaction();
         try {
+            Template::where('status', 0)->update(['status' => 1]);
             Excel::import(new TemplateImport, $request->file('file'));
             DB::commit();
             return $this->success('', 'Upload thành công');
