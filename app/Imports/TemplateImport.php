@@ -26,13 +26,13 @@ class TemplateImport implements ToCollection, WithHeadingRow, WithStartRow
     // Hàm này xác định hàng bắt đầu lấy tiêu đề (heading row)
     public function headingRow(): int
     {
-        return 2;
+        return 3;
     }
 
     // Hàm này xác định hàng bắt đầu lấy dữ liệu (data row)
     public function startRow(): int
     {
-        return 5;
+        return 6;
     }
     public function collection(Collection $collection)
     {
