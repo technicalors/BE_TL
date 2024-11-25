@@ -1266,7 +1266,7 @@ class Phase2OIApiController extends Controller
             }
         });
 
-        $list = $query->get();
+        $list = $query->orderBy('scanned_time', 'DESC')->get();
         $data = [];
         foreach ($list as $value) {
             $infoCongDoan = $value->infoCongDoan ?? null;
