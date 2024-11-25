@@ -293,12 +293,12 @@ class Phase2DBApiController extends Controller
                 }
 
                 // Fix DB
-                $sumLotPlan = LotPlan::query()->where('line_id', $machine->line_id)
+                $sumLotPlan = (int)LotPlan::query()->where('line_id', $machine->line_id)
                     ->where('machine_code', $machine->code)
                     ->where('product_id', $info->product_id)
                     ->whereDate('start_time', date('Y-m-d'))->sum('quantity');
 
-                $sumInfoActure = InfoCongDoan::query()->where('line_id', $machine->line_id)
+                $sumInfoActure = (int)InfoCongDoan::query()->where('line_id', $machine->line_id)
                     ->where('machine_code', $machine->code)
                     ->where('product_id', $info->product_id)
                     ->whereIn('status', [InfoCongDoan::STATUS_INPROGRESS, InfoCongDoan::STATUS_COMPLETED])
@@ -347,7 +347,12 @@ class Phase2DBApiController extends Controller
                     "status" => $status,
                     "time" => $info->updated_at,
                 ];
-                $tm['ti_le_ht'] = (int) (100 * (($tm['sl_dau_ra_kh']) > 0 ? number_format(($tm['sl_thuc_te'] / ($tm['sl_dau_ra_kh'])), 2) : 0));
+                try {
+                    $tm['ti_le_ht'] = (int) (100 * (($tm['sl_dau_ra_kh']) > 0 ? number_format(floatval($tm['sl_thuc_te'] / $tm['sl_dau_ra_kh']), 2) : 0));
+                } catch (\Throwable $th) {
+                    //throw $th;
+                }
+                
                 if ($tm['ti_le_ht'] > 100) {
                     $tm['ti_le_ht'] = 100;
                 }
