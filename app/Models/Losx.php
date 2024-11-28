@@ -33,12 +33,12 @@ class Losx extends Model
             ->first();
 
         if ($latestLosx) {
-            $lastSequence = (int) substr($latestLosx->id, -3);
+            $lastSequence = (int) substr($latestLosx->id, -4);
         } else {
             $lastSequence = 0;
         }
 
-        $newSequence = str_pad($lastSequence + 1, 3, '0', STR_PAD_LEFT);
+        $newSequence = str_pad($lastSequence + 1, 4, '0', STR_PAD_LEFT);
 
         return $currentMonth . $newSequence;
     }
@@ -51,12 +51,12 @@ class Losx extends Model
             ->first();
 
         if ($latestLosx) {
-            $lastSequence = (int) substr($latestLosx->id, -3);
+            $lastSequence = (int) substr($latestLosx->id, -4);
         } else {
             $lastSequence = 0;
         }
 
-        $newSequence = str_pad($lastSequence + $index + 1, 3, '0', STR_PAD_LEFT);
+        $newSequence = str_pad($lastSequence + $index + 1, 4, '0', STR_PAD_LEFT);
 
         return $currentMonth . $newSequence;
     }

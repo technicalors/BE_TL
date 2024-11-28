@@ -378,10 +378,10 @@ class Phase2OIApiController extends Controller
                 $lot_plan->plan->update(['status_plan' => ProductionPlan::STATUS_IN_PROGRESS]);
             }
             MachineStatus::reset($machine->code);
-            $infoCongDoan = InfoCongDoan::firstOrCreate(
-                ['input_lot_id' => $request->roll_id, 'lot_plan_id' => $lot_plan->id, 'line_id' => $machine->line_id, 'machine_code' => $machine->code],
+            InfoCongDoan::firstOrCreate(
+                ['lot_id' => $lot_plan->lot_id,'lot_plan_id' => $lot_plan->id, 'line_id' => $machine->line_id, 'machine_code' => $machine->code],
                 [
-                    'lot_id' => $lot_plan->lot_id,
+                    'input_lot_id' => $request->roll_id,
                     'lo_sx' => $lot_plan->lo_sx,
                     'product_id' => $lot_plan->product_id,
                     'thoi_gian_bat_dau' => Carbon::now(),
@@ -423,11 +423,6 @@ class Phase2OIApiController extends Controller
                 return $this->failure([], "Máy này đang sản xuất lot khác");
             }
         }
-        // $check = InfoCongDoan::where('lot_id', $request->scanned_lot)
-        //     ->orderBy('created_at', 'DESC')
-        //     // ->where('status', '<>', InfoCongDoan::STATUS_COMPLETED)
-        //     ->first();
-        // if ($check) {
         $lot_plan = LotPlan::where('lot_id', $request->lot_id)->whereDate('start_time', date('Y-m-d'))->where('machine_code', $machine->code)->where('line_id', $machine->line->id)->first();
         if (!$lot_plan) {
             return $this->failure([], 'Không tìm thấy lot');
@@ -442,18 +437,16 @@ class Phase2OIApiController extends Controller
         try {
             DB::beginTransaction();
             MachineStatus::reset($machine->code);
-            InfoCongDoan::create(
+            InfoCongDoan::firstOrCreate(
+                ['lot_id' => $lot_plan->lot_id,'lot_plan_id' => $lot_plan->id, 'line_id' => $machine->line_id, 'machine_code' => $machine->code],
                 [
                     'input_lot_id' => $request->scanned_lot,
-                    'lot_plan_id' => $lot_plan->id,
-                    'line_id' => $machine->line_id,
-                    'machine_code' => $machine->code,
-                    'lot_id' => $lot_plan->lot_id,
                     'lo_sx' => $lot_plan->lo_sx,
                     'product_id' => $lot_plan->product_id,
                     'thoi_gian_bat_dau' => Carbon::now(),
                     'status' => InfoCongDoan::STATUS_INPROGRESS,
                     'user_id' => $request->user()->id,
+                    'sl_kh' => $lot_plan->quantity,
                 ]
             );
             $lot = Lot::where('id', $request->scanned_lot)->first();
@@ -1253,20 +1246,32 @@ class Phase2OIApiController extends Controller
     //Trả về danh sách lot QC
     public function getLotQCList(Request $request)
     {
-        $query = QCHistory::where(function ($q) {
-            $q->whereDate('scanned_time', date('Y-m-d'))->orWhereHas('infoCongDoan', function ($info_query) {
-                $info_query->where('status', 1);
+        if ($request->line_id == 30) {
+            $query = QCHistory::where(function ($q) {
+                $q->whereDate('scanned_time', date('Y-m-d'))->orWhere('eligible_to_end', 0);
+            })->whereHas('infoCongDoan', function ($q) use ($request) {
+                if (!empty($request->line_id)) {
+                    $q->where('line_id', $request->line_id);
+                }
+                if (!empty($request->machine_code)) {
+                    $q->where('machine_code', $request->machine_code);
+                }
             });
-        })->whereHas('infoCongDoan', function ($q) use ($request) {
-            if (!empty($request->line_id)) {
-                $q->where('line_id', $request->line_id);
-            }
-            if (!empty($request->machine_code)) {
-                $q->where('machine_code', $request->machine_code);
-            }
-        });
-
-        $list = $query->get();
+        } else {
+            $query = QCHistory::where(function ($q) {
+                $q->whereDate('scanned_time', date('Y-m-d'))->orWhereHas('infoCongDoan', function ($info_query) {
+                    $info_query->where('status', 1);
+                });
+            })->whereHas('infoCongDoan', function ($q) use ($request) {
+                if (!empty($request->line_id)) {
+                    $q->where('line_id', $request->line_id);
+                }
+                if (!empty($request->machine_code)) {
+                    $q->where('machine_code', $request->machine_code);
+                }
+            });
+        }
+        $list = $query->orderBy('scanned_time', 'DESC')->get();
         $data = [];
         foreach ($list as $value) {
             $infoCongDoan = $value->infoCongDoan ?? null;
