@@ -12,7 +12,7 @@ class TestCriteria extends Model
     use HasFactory;
 
     public $incrementing = false;
-    protected $fillable = ['id', 'hang_muc', 'line_id', 'chi_tieu', 'tieu_chuan', 'phan_dinh', 'reference', 'is_show', 'frequency'];
+    protected $fillable = ['id', 'hang_muc', 'line_id', 'chi_tieu', 'tieu_chuan', 'phan_dinh', 'reference', 'is_show', 'frequency', 'so_chi_tieu'];
     protected $hidden = ['created_at', 'updated_at'];
     const MOT_MAU_TREN_MOT_CUON = '1 mẫu/1 cuộn';//Hiển thị mỗi lot 1 lần
     const MOT_MAU_TREN_MOT_CA = '1 mẫu/ 1 ca';//Hiển thị 1 lần vào lần đầu kiểm tra của ca

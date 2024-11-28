@@ -701,6 +701,7 @@ Route::group([
     $router->get('equipment/error-frequency', [Phase2UIApiController::class, 'getErrorFrequencyData']);
     
     $router->get('quality/pqc/data-table', [Phase2UIApiController::class, 'getQualityDataTable']);
+    $router->get('quality/pqc/data-detail', [Phase2UIApiController::class, 'getQualityDataDetail']);
     $router->get('quality/pqc/export-data-table', [Phase2UIApiController::class, 'exportQualityDataTable']);
     $router->get('quality/pqc/export-test-criteria-history', [Phase2UIApiController::class, 'exportTestCriteriaHistory']);
     $router->get('quality/pqc/export-pqc-report', [Phase2UIApiController::class, 'exportPQCReport']);

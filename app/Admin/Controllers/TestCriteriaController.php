@@ -388,6 +388,7 @@ class TestCriteriaController extends AdminController
         }
         $id_arr = [];
         $lines = [];
+        $so_chi_tieu = "";
         foreach ($allDataInSheet as $key => $row) {
             //Lấy dứ liệu từ dòng thứ 3
             if ($key > 2) {
@@ -408,14 +409,18 @@ class TestCriteriaController extends AdminController
                 $input['line_ids'] = $lines;
                 $input['hang_muc'] = str_replace(array("\n", "\r\n", "\r"), ' ', $row['C']);
                 $input['chi_tieu'] = $row['D'];
+                if(!empty($row['E'])){
+                    $so_chi_tieu = trim($row['E']);
+                }
+                $input['so_chi_tieu'] = $so_chi_tieu;
                 $input['tieu_chuan'] = $row['F'];
                 $input['phan_dinh'] = $row['H'];
                 if (!empty($row['I'])) {
                     $value = explode('+', $row['I']);
-                    $lines = Line::whereIn(DB::raw('LOWER(name)'), array_map('strtolower', array_map('trim', $value)))->pluck('id')->toArray();
-                    $input['reference'] = implode(',', $lines);
+                    $reference = Line::whereIn(DB::raw('LOWER(name)'), array_map('strtolower', array_map('trim', $value)))->pluck('id')->toArray();
+                    $input['reference'] = implode(',', $reference);
                 }
-                $input['frequency'] = trim($row['G']);
+                $input['frequency'] = trim($row['G']) == '1 mẫu đầu ca' ? TestCriteria::MOT_MAU_TREN_MOT_CA : TestCriteria::MOT_MAU_TREN_MOT_CUON;
                 $validated = TestCriteria::validateUpdate($input);
                 if ($validated->fails()) {
                     return $this->failure('', 'Lỗi dòng thứ ' . ($key) . ': ' . $validated->errors()->first());
