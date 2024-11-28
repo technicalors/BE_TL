@@ -442,7 +442,8 @@ class Phase2UIApiController extends Controller
         return $this->success($href);
     }
 
-    function parseReportTable3($val, $lo_sx, $date, $machine_code){
+    function parseReportTable3($val, $lo_sx, $date, $machine_code)
+    {
         $sl_kh = (int)$val->sum(function ($item) {
             return $item->lotPlan->quantity;
         });
@@ -491,17 +492,17 @@ class Phase2UIApiController extends Controller
             'so_may' => $machine_code,
             'ten_sp' => $val[0]->product->name ?? "",
             'lo_sx' => $lo_sx,
-            'tg_kh' => number_format($tg_sx_kh/60, 2),
-            'tg_sx' => number_format($tg_sx/60, 2),
+            'tg_kh' => number_format($tg_sx_kh / 60, 2),
+            'tg_sx' => number_format($tg_sx / 60, 2),
             'sl_kh' => $sl_kh,
             'sl_dau_vao' => $sl_dau_vao,
             'sl_ok' => $sl_ok,
             'sl_tem_vang' => $sl_tem_vang,
             'sl_ng' => $sl_ng,
             'ty_le_ng' => $ty_le_ng,
-            'tg_ko_sp' => number_format($tg_vao_hang/60, 2),
-            'tg_hang_loat' => number_format($tg_hang_loat/60, 2),
-            'tg_vao_hang' => number_format($tg_vao_hang/60, 2),
+            'tg_ko_sp' => number_format($tg_vao_hang / 60, 2),
+            'tg_hang_loat' => number_format($tg_hang_loat / 60, 2),
+            'tg_vao_hang' => number_format($tg_vao_hang / 60, 2),
             'ty_le_hao_phi_tg' => $ty_le_hao_phi_tg,
             'ty_le_hoan_thanh' => $ty_le_hoan_thanh,
             'so_nhan_su' => $val[0]->lotPlan->plan->nhan_luc ?? "",
@@ -509,7 +510,8 @@ class Phase2UIApiController extends Controller
         return $item;
     }
 
-    function parseReportTable1($value, $date, $machine_code){
+    function parseReportTable1($value, $date, $machine_code)
+    {
         $sl_dau_vao = (int)$value->sum('sl_dau_vao_hang_loat');
         $sl_dau_ra = (int)$value->sum('sl_dau_ra_hang_loat');
         $sl_tem_vang = (int)$value->sum('sl_tem_vang');
@@ -562,13 +564,13 @@ class Phase2UIApiController extends Controller
             'sl_tem_vang' => $sl_tem_vang,
             'sl_ok' => $sl_ok,
             'sl_ng' => $sl_ng,
-            'tg_sx' => number_format($tg_sx/60, 2),
-            'tg_ko_sp' => number_format($tg_vao_hang/60, 2),
-            'tg_hang_loat' => number_format($tg_hang_loat/60, 2),
+            'tg_sx' => number_format($tg_sx / 60, 2),
+            'tg_ko_sp' => number_format($tg_vao_hang / 60, 2),
+            'tg_hang_loat' => number_format($tg_hang_loat / 60, 2),
             'tg_vao_hang' => $tg_vao_hang,
             'ty_le_ng' => $ty_le_ng,
             'ty_le_hao_phi_tg' => $ty_le_hao_phi_tg,
-            'lead_time' => number_format($lead_time/60, 2),
+            'lead_time' => number_format($lead_time / 60, 2),
             'A' => $A . "%",
             'P' => $P . "%",
             'Q' => $Q . "%",
@@ -578,7 +580,8 @@ class Phase2UIApiController extends Controller
         return $row;
     }
 
-    function parseReportTable2($value, $date, $machine_code){
+    function parseReportTable2($value, $date, $machine_code)
+    {
         $sl_dau_vao = (int)$value->sum(function ($item) {
             $sl_bat = $item->product->so_bat ?? 1;
             return $item->sl_dau_vao_hang_loat / $sl_bat;
@@ -643,13 +646,13 @@ class Phase2UIApiController extends Controller
             'sl_tem_vang' => $sl_tem_vang,
             'sl_ok' => $sl_ok,
             'sl_ng' => $sl_ng,
-            'tg_sx' => number_format($tg_sx/60, 2),
-            'tg_ko_sp' => number_format($tg_vao_hang/60, 2),
-            'tg_hang_loat' => number_format($tg_hang_loat/60, 2),
+            'tg_sx' => number_format($tg_sx / 60, 2),
+            'tg_ko_sp' => number_format($tg_vao_hang / 60, 2),
+            'tg_hang_loat' => number_format($tg_hang_loat / 60, 2),
             'tg_vao_hang' => $tg_vao_hang,
             'ty_le_ng' => $ty_le_ng,
             'ty_le_hao_phi_tg' => $ty_le_hao_phi_tg,
-            'lead_time' => number_format($lead_time/60, 2),
+            'lead_time' => number_format($lead_time / 60, 2),
             'A' => $A . "%",
             'P' => $P . "%",
             'Q' => $Q . "%",
@@ -688,7 +691,7 @@ class Phase2UIApiController extends Controller
             }
         }
 
-        
+
         foreach ($records as $machine_code => $infos) {
             $groupByDate = $infos->groupBy(function ($item) {
                 return date("d/m/Y", strtotime($item->thoi_gian_bat_dau));
@@ -698,7 +701,7 @@ class Phase2UIApiController extends Controller
                 $table2[] = $row;
             }
         }
-        
+
         $lines = Line::where('factory_id', 2)->pluck('id')->toArray();
         $queryHistory = $this->productionHistoryQuery($request);
         $queryHistory->whereIn('line_id', $lines)->selectRaw('lo_sx,line_id,SUM(sl_dau_vao_hang_loat) as sl_dau_vao_,
@@ -736,7 +739,7 @@ class Phase2UIApiController extends Controller
             }
             $table4[] = $obj;
         }
-        
+
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->getParent()->getDefaultStyle()->applyFromArray([
@@ -796,34 +799,34 @@ class Phase2UIApiController extends Controller
 
         $start_row = 3;
 
-        $sheet->fromArray($header1, null, 'A'.$start_row);
+        $sheet->fromArray($header1, null, 'A' . $start_row);
         $sheet->getRowDimension($start_row)->setRowHeight(42);
         $sheet->getStyle([1, $start_row, count($header1), $start_row])->applyFromArray($header1Style);
         $start_row += 1;
         $startTable = $start_row;
-        $sheet->fromArray($table1, null, 'A'.$start_row);
+        $sheet->fromArray($table1, null, 'A' . $start_row);
         $start_row += count($table1);
-        $sheet->getStyle([1, $startTable, count($header1), $start_row-1])->applyFromArray(array_merge($border, ExcelStyleHelper::fill('FFFFFF')));
+        $sheet->getStyle([1, $startTable, count($header1), $start_row - 1])->applyFromArray(array_merge($border, ExcelStyleHelper::fill('FFFFFF')));
         $start_row += 1;
 
-        $sheet->fromArray($header1, null, 'A'.$start_row);
+        $sheet->fromArray($header1, null, 'A' . $start_row);
         $sheet->getRowDimension($start_row)->setRowHeight(42);
         $sheet->getStyle([1, $start_row, count($header1), $start_row])->applyFromArray($header1Style);
         $start_row += 1;
         $startTable = $start_row;
-        $sheet->fromArray($table2, null, 'A'.$start_row);
+        $sheet->fromArray($table2, null, 'A' . $start_row);
         $start_row += count($table2);
-        $sheet->getStyle([1, $startTable, count($header1), $start_row-1])->applyFromArray(array_merge($border, ExcelStyleHelper::fill('FFFFFF')));
+        $sheet->getStyle([1, $startTable, count($header1), $start_row - 1])->applyFromArray(array_merge($border, ExcelStyleHelper::fill('FFFFFF')));
         $start_row += 1;
-        
-        $sheet->fromArray($header3, null, 'A'.$start_row);
+
+        $sheet->fromArray($header3, null, 'A' . $start_row);
         $sheet->getRowDimension($start_row)->setRowHeight(42);
         $sheet->getStyle([1, $start_row, count($header3), $start_row])->applyFromArray($header3Style);
         $start_row += 1;
         $startTable = $start_row;
-        $sheet->fromArray($table3, null, 'A'.$start_row);
+        $sheet->fromArray($table3, null, 'A' . $start_row);
         $start_row += count($table3);
-        $sheet->getStyle([1, $startTable, count($header3), $start_row-1])->applyFromArray(array_merge($border, ExcelStyleHelper::fill('FFFFFF')));
+        $sheet->getStyle([1, $startTable, count($header3), $start_row - 1])->applyFromArray(array_merge($border, ExcelStyleHelper::fill('FFFFFF')));
         $start_row += 1;
 
         $header4 = [
@@ -845,7 +848,7 @@ class Phase2UIApiController extends Controller
             $line = Line::find($line_id);
             $header4[$line->name] = $header_keys;
             foreach ($table_keys as $i => $key) {
-                $table_key4[$this->getNextExcelColumn('D', $index)] = $key."_".$line_id;
+                $table_key4[$this->getNextExcelColumn('D', $index)] = $key . "_" . $line_id;
                 $index++;
             }
         }
@@ -878,7 +881,7 @@ class Phase2UIApiController extends Controller
             $sheet->getStyle([1, $table4_row, count($table_key4), $table4_row])->applyFromArray(array_merge(ExcelStyleHelper::fill('FFFFFF'), $border, ExcelStyleHelper::alignment('center', true)));
             $table4_row += 1;
         }
-        
+
         $sheet->getRowDimension(1)->setRowHeight(40);
         foreach ($sheet->getColumnIterator() as $column) {
             $sheet->getColumnDimension($column->getColumnIndex())->setWidth(16);
@@ -2135,19 +2138,16 @@ class Phase2UIApiController extends Controller
 
     function calculateProductionOutput($productId, $lineId, $quantity)
     {
-        // Bước 2: Lấy hao phí sản xuất theo % từ bảng spec
         $productionWaste = Spec::where('line_id', $lineId)
             ->where('product_id', $productId)
             ->where('slug', 'hao-phi-san-xuat-cac-cong-doan')
             ->first();
 
-        // Lấy hao phí vào hàng từ bảng spec
         $inputWaste = Spec::where('line_id', $lineId)
             ->where('product_id', $productId)
             ->where('slug', 'hao-phi-vao-hang-cac-cong-doan')
             ->first();
 
-        //Lấy tồn theo sản phẩm và công đoạn
         $line_inventory = LineInventories::where('line_id', $lineId)->where('product_id', $productId)->first();
         $remain = $quantity - ($line_inventory->quantity ?? 0);
         if ($remain > 0) {
@@ -2155,14 +2155,12 @@ class Phase2UIApiController extends Controller
         } else {
             return 0;
         }
-        // Log::debug([$lineId, $bf, $line_inventory->quantity ?? 0, $quantity]);  
-        // Tính toán sản lượng sau khi tính thêm hao phí
         if ($productionWaste) {
-            $quantity += $quantity * ($productionWaste->value / 100); // Thêm hao phí sản xuất
+            $quantity += $quantity * ($productionWaste->value / 100);
         }
 
         if ($inputWaste) {
-            $quantity += $inputWaste->value; // Thêm hao phí vào hàng
+            $quantity += $inputWaste->value;
         }
 
         return $quantity;
@@ -2211,6 +2209,17 @@ class Phase2UIApiController extends Controller
             ->first();
 
         return $efficiencySpec ? $efficiencySpec->value : 0;
+    }
+
+    function getBottleneckStage($productId)
+    {
+        // Truy vấn để lấy công đoạn bottleneck từ bảng spec theo slug 'bottleneck'
+        $bottleneckSpec = Spec::where('product_id', $productId)
+            ->where('slug', 'nang-suat-an-dinhgio')
+            ->orderByRaw('CAST(value AS UNSIGNED) ASC')
+            ->first();
+
+        return $bottleneckSpec ? $bottleneckSpec->value : 0;
     }
 
     function getRollsPerTransport($productId, $lineId)
@@ -2328,30 +2337,23 @@ class Phase2UIApiController extends Controller
         $currentTime = $startTime->copy();
         $remainingDuration = $duration;
         $maxDays = 30;
-
-        // Biến đếm số ngày đã xử lý
         $daysProcessed = 0;
 
         while ($remainingDuration > 0 && $daysProcessed < $maxDays) {
             $currentDate = $currentTime->copy()->startOfDay();
             $dateString = $currentDate->toDateString();
-
-            // Lấy các shift_breaks sản xuất của máy trong ngày hiện tại
             $productionShifts = $this->getMachineProductionShifts($machineId, $dateString);
 
             if ($productionShifts->isEmpty()) {
-                // Nếu không có shift_breaks trong ngày này, chuyển sang ngày tiếp theo
                 $currentTime->addDay()->startOfDay();
                 $daysProcessed++;
                 continue;
             }
 
-            // Duyệt qua từng shift_break để phân bổ thời gian
             foreach ($productionShifts as $shift) {
                 $shiftStart = Carbon::parse("{$dateString} {$shift->start_time}", 'Asia/Bangkok');
                 $shiftEnd = Carbon::parse("{$dateString} {$shift->end_time}", 'Asia/Bangkok');
 
-                // Xử lý shift_breaks bắt đầu trước 07:00, gán vào ngày hôm sau
                 if ($shiftStart->hour < 7 && $startTime->hour >= 7) {
                     $shiftStart->addDay();
                 }
@@ -2363,7 +2365,6 @@ class Phase2UIApiController extends Controller
                 if ($shiftEnd->hour < 7 && $startTime->hour >= 7) {
                     $shiftEnd->addDay();
                 }
-                // Nếu currentTime nằm trước thời gian bắt đầu shift_break, chuyển đến shiftStart và thêm shiftPreparationTime nếu không phải lần đầu
                 if ($currentTime->lessThan($shiftStart) && $currentTime->day == $shiftStart->day) {
                     if (!$currentTime->equalTo($startTime)) {
                         $currentTime->addMinutes($shiftPreparationTime);
@@ -2371,48 +2372,39 @@ class Phase2UIApiController extends Controller
                     $currentTime = $shiftStart->copy();
                 }
 
-                // Nếu currentTime nằm trong shift_break
                 if ($currentTime->between($shiftStart, $shiftEnd) || $currentTime->equalTo($shiftStart)) {
                     $availableTime = $shiftEnd->diffInMinutes($currentTime);
 
                     if ($availableTime >= $remainingDuration) {
-                        // Có đủ thời gian để hoàn thành trong shift_break này
                         $endTime = $currentTime->copy()->addMinutes($remainingDuration);
                         return [$startTime, $endTime];
                     } else {
-                        // Phân bổ hết thời gian có trong shift_break này
                         $currentTime = $shiftEnd->copy();
                         $remainingDuration -= $availableTime;
                     }
-                }
-                // Nếu currentTime lớn hơn shiftEnd, tiếp tục với shift_break tiếp theo
-                elseif ($currentTime->greaterThanOrEqualTo($shiftEnd)) {
+                } elseif ($currentTime->greaterThanOrEqualTo($shiftEnd)) {
                     continue;
                 }
             }
 
-            // Chuyển sang ngày tiếp theo sau khi duyệt hết các shift_breaks trong ngày
             $currentTime->addDay()->startOfDay();
             $daysProcessed++;
         }
-        // Nếu vẫn còn thời lượng chưa phân bổ sau khi đạt giới hạn ngày
         return [$startTime, $currentTime];
     }
 
     function getShiftPreparationTime($productId, $lineId)
     {
-        // Truy vấn để lấy giá trị thời gian chuẩn bị đầu ca từ bảng spec theo slug 'chuan-bidau-ca'
         $preparationTimeSpec = Spec::where('line_id', $lineId)
             ->where('product_id', $productId)
             ->where('slug', 'chuan-bidau-ca')
             ->first();
 
-        return $preparationTimeSpec ? $preparationTimeSpec->value : 0; // Nếu không tìm thấy, trả về 0
+        return $preparationTimeSpec ? $preparationTimeSpec->value : 0;
     }
 
     function getNumberMachine($orderId)
     {
-        // Truy vấn số lượng máy mỗi công đoạn
         $numberMachineOrders = NumberMachineOrder::where('line_id', '<>', 24)->where('product_order_id', $orderId)->get();
         return $numberMachineOrders->pluck('number_machine', 'line_id');
     }
@@ -2441,8 +2433,6 @@ class Phase2UIApiController extends Controller
 
                 $groupedOrders[$materialId][] = $order;
             } catch (Exception $e) {
-                // Xử lý nếu không có nguyên vật liệu khả dụng
-                // Có thể bỏ qua đơn hàng này hoặc thông báo lỗi
                 continue;
             }
         }
@@ -2458,14 +2448,10 @@ class Phase2UIApiController extends Controller
         $orders = ProductOrder::with(['product.materials', 'customer'])
             ->whereIn('id', $orderIds)
             ->get();
-
-        // Nhóm các đơn hàng theo nguyên vật liệu khả dụng
         $groupedOrders = $this->groupOrdersByAvailableMaterial($orders);
         $sortedGroups = [];
         foreach ($groupedOrders as $materialId => $groupOrders) {
-            // Sắp xếp các đơn hàng trong nhóm theo các tiêu chí ưu tiên
             $sortedOrders = collect($groupOrders)->sort(function ($a, $b) {
-                // So sánh thời hạn giao hàng (EDD)
                 if ($a->delivery_date != $b->delivery_date) {
                     return $a->delivery_date < $b->delivery_date ? -1 : 1;
                 }
@@ -2484,7 +2470,7 @@ class Phase2UIApiController extends Controller
         $sortedByProductId = collect($prioritizedOrders)->groupBy('product_id')->flatten(1);
         foreach ($sortedByProductId as $index => $order) {
             try {
-                $result = $this->processProductionPlan($order, $index, $machine_available_list);
+                $result = $this->processProductionPlanV1($order, $index, $machine_available_list);
                 if ($result) {
                     $data[] = $result;
                 }
@@ -2501,20 +2487,17 @@ class Phase2UIApiController extends Controller
 
     public function processProductionPlan($order, $orderIndex = 0, &$machine_available_list = [])
     {
-        // Lấy thông tin đơn hàng
         if (!$order->sl_giao_sx) {
             throw new Exception("Không có số lượng giao sản xuất", 1);
         }
         $orderId = $order->id;
         $productId = $order->product_id;
         $initialQuantity = $order->sl_giao_sx;
-        // Lấy danh sách công đoạn theo thứ tự DESC để tính toán sản lượng
         $productionSteps = $this->getProductionSteps($productId);
-        // Khai báo mảng để lưu trữ sản lượng của từng công đoạn
         $stepQuantities = [];
+        $productionTimes = [];
         $numberMachineByStep = $this->getNumberMachine($orderId);
         $inputWaste = $this->calculateProductionWastage($productId);
-        // Tính toán sản lượng cho từng công đoạn theo thứ tự DESC
         $line_must_run = [];
         foreach ($productionSteps as $step) {
             $calculatedQuantity = $this->calculateProductionOutput($productId, $step->line_id, $initialQuantity);
@@ -2522,15 +2505,16 @@ class Phase2UIApiController extends Controller
                 $line_must_run[] = $step->line_id;
             };
             $stepQuantities[$step->line_id] = $calculatedQuantity;
-            // Cập nhật lại initialQuantity cho công đoạn tiếp theo
+            $efficiencySpec = $this->getEfficiency($productId, $step->line_id);
+            if ($efficiencySpec > 0) {
+                $productionTimes[$step->line_id] = round($calculatedQuantity / $efficiencySpec, 2);
+            }
             $initialQuantity = $calculatedQuantity;
         }
-        // Lấy lại danh sách công đoạn theo thứ tự ASC để tính toán thời gian bắt đầu và kết thúc
         $orderedSteps = $this->getOrderedProductionSteps($productId);
         $orderedSteps = $orderedSteps->filter(function ($value) use ($line_must_run) {
             return in_array($value->line_id, $line_must_run);
         })->values();
-        // Khai báo mảng để lưu trữ thời gian bắt đầu và kết thúc của từng công đoạn
         $stepEndTimes = [];
         $lots = [];
         $plans = [];
@@ -2548,8 +2532,7 @@ class Phase2UIApiController extends Controller
         if (count($orderedSteps) <= 0) {
             return null;
         }
-        // Tính toán thời gian bắt đầu và kết thúc cho từng công đoạn theo thứ tự ASC
-        
+
         foreach ($orderedSteps as $index => $step) {
             $quantity =  $stepQuantities[$step->line_id];
             $lotSize = $this->getLotSize($productId, $step->line_id);
@@ -2557,26 +2540,12 @@ class Phase2UIApiController extends Controller
             if (!isset($lots[$lineId])) {
                 $lots[$lineId] = [];
             }
-            // if ($lineId == '24') {
-            //     $bom = Bom::where('product_id', $productId)->where('priority', 1)->first();
-            //     Log::debug($bom);
-            //     if (!$bom) {
-            //         throw new Exception("Không tìm thấy bom của " . $productId . " tại công đoạn Gấp dán", 1);
-            //     } elseif (!$bom->material_id) {
-            //         throw new Exception("Không tìm thấy mã NVL của mã sản phẩm" . $productId . " tại công đoạn Gấp dán", 1);
-            //     }
-            //     $productId = $bom->material_id;
-            // } else {
-            //     $productId = $order->product_id;
-            // }
             $product = Product::find($productId);
             if (!$product) {
                 throw new Exception("Không tìm thấy mã sản phẩm " . $productId, 1);
             }
-            // Lấy thời gian lên xuống cuộn tại công đoạn với slug 'thoi-gian-len-xuong-cuon'
             $rollChangeTime = $this->getRollChangeTime($productId, $lineId);
 
-            // Lấy năng suất tại công đoạn và tính toán taskTime
             $efficiency = $this->getEfficiency($productId, $lineId);
             $taskTime = $efficiency > 0 ? 60 / $efficiency : 0; // Tính taskTime, nếu năng suất > 0
 
@@ -2595,10 +2564,10 @@ class Phase2UIApiController extends Controller
                 if ($rollsPerTransport === 0 || ceil($quantity / $lotSize) < $rollsPerTransport) {
                     $rollsPerTransport = ceil($quantity / ($lotSize + (isset($inputWaste[$orderedSteps[$index]->line_id]) ? $inputWaste[$orderedSteps[$index]->line_id] : 0)));
                 }
-                
+
                 try {
                     //code...
-                    if(isset(($machine_in_line[$orderedSteps[$index - 1]->line_id])) && ($machine_in_line[$orderedSteps[$index - 1]->line_id]) > 0 && ($rollsPerTransport / $machine_in_line[$orderedSteps[$index - 1]->line_id]) > 0 && isset($lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1][($rollsPerTransport / $machine_in_line[$orderedSteps[$index - 1]->line_id]) - 1]['endTime'])){
+                    if (isset(($machine_in_line[$orderedSteps[$index - 1]->line_id])) && ($machine_in_line[$orderedSteps[$index - 1]->line_id]) > 0 && ($rollsPerTransport / $machine_in_line[$orderedSteps[$index - 1]->line_id]) > 0 && isset($lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1][($rollsPerTransport / $machine_in_line[$orderedSteps[$index - 1]->line_id]) - 1]['endTime'])) {
                         $startTime = $lots[$orderedSteps[$index - 1]->line_id][$numberMachineByStep[$orderedSteps[$index - 1]->line_id] - 1][($rollsPerTransport / $machine_in_line[$orderedSteps[$index - 1]->line_id]) - 1]['endTime']->copy()->addMinutes($transportTime);
                     }
                 } catch (\Throwable $th) {
@@ -2606,30 +2575,22 @@ class Phase2UIApiController extends Controller
                     throw $th;
                 }
             }
-
-            // Tính toán thời gian bắt đầu và kết thúc cho từng công đoạn
             $numMachines  = $numberMachineByStep[$lineId] ?? 0;
             $machines = $this->getMachineReady($lineId, $numMachines, $order->product_id, $machine_available_list, $startTime);
 
-            //Tính lại số lượng máy nếu số máy thực tế nhỏ hơn số máy yêu cầu
             $numMachines = count($machines);
             $machine_in_line[$lineId] = $numMachines;
-            // Tính toán số lượng sản xuất cho mỗi máy
             $quantityPerMachine = $numMachines > 0 ? ceil($quantity / $numMachines) : $quantity;
             Log::debug([$lineId, $quantity, $quantityPerMachine, $stepQuantities]);
             $lotIndexOffset = 0; // Offset để đánh số lot cho mỗi máy
             $numLots = ceil($quantityPerMachine / $lotSize); // Tổng số lot, dùng ceil để làm tròn lên
-            // Chia lot và tính toán thời gian cho từng lot cho máy nàys
             foreach ($machines as $machineIndex => $machine) {
                 $machineReadyTime = Carbon::parse($machine->available_at, 'Asia/Bangkok');
                 if (!$startTime->greaterThan($machineReadyTime)) {
                     $startTime = $machineReadyTime;
                 }
-                // Thời gian kết thúc là thời gian bắt đầu cộng thêm thời gian sản xuất
                 $endTime = $startTime->copy()->addMinutes(((($taskTime * $lotSize) + $rollChangeTime) * $numLots) + $setupTime);
-                // Lưu trữ thời gian bắt đầu và kết thúc vào mảng
                 $stepEndTimes[$lineId] = $endTime;
-                //Mã mã lô, nếu đon hàng đã tồn tại lo_sx thì lấy lô cũ, nếu không tạo lô mới
                 $plan_input = [
                     'product_order_id' => $order->id,
                     'ngay_dat_hang' => $order->order_date,
@@ -2666,11 +2627,9 @@ class Phase2UIApiController extends Controller
                         $quantityPerLot = $lotSize;
                     }
                     list($lotStartTime, $lotEndTime) = $this->adjustTimeWithinShift($lotStartTime, ($taskTime * $quantityPerLot) + $rollChangeTime, $machine->code, $shiftPreparationTime);
-                    //Trường hợp thời gian sx vượt quá thời gian giao hàng, đánh dấu KH được tạo
                     if ($order->delivery_date && $lotStartTime->greaterThan(Carbon::parse($order->delivery_date))) {
                         $isExceedDeliveryTime = true;
                     }
-                    // Lưu thông tin lot vào object
                     $lot_plan_input = [
                         'lot_id' => $lotId,
                         'lo_sx' => $losx_id,
@@ -2704,7 +2663,6 @@ class Phase2UIApiController extends Controller
                 }
                 $plan_input['lots'] = $lot_in_plan;
                 $plan_input['is_exceed_time'] = $isExceedDeliveryTime;
-                // Thời gian kết thúc của công đoạn là thời gian kết thúc của lot cuối cùng
                 if (!empty($lots[$lineId][$machineIndex])) {
                     $stepEndTimes[$lineId] = end($lots[$lineId][$machineIndex])['endTime'];
                     $plan_input['thoi_gian_ket_thuc'] = $stepEndTimes[$lineId];
@@ -2717,9 +2675,6 @@ class Phase2UIApiController extends Controller
                     $machine_available_list[$machine->code] = $stepEndTimes[$lineId];
                 }
             }
-            // if (isset($inputWaste[$lineId])) {
-            //     $quantity = $quantity - $inputWaste[$lineId];
-            // }
         }
         //Gán giá trị cho đơn hàng
         $losx_input['lo_sx'] = $losx_input['id'];
@@ -2732,15 +2687,56 @@ class Phase2UIApiController extends Controller
         $losx_input['delivery_date'] = $order->delivery_date ? date('d/m/Y', strtotime($order->delivery_date)) : null;
         $losx_input['plans'] = $plans;
         $losx_input['is_exceed_time'] = $isExceedDeliveryTime;
-        // Trả về danh sách các công đoạn và các thông số tính toán
         return [
-            'lots' => $lot_plans, // Danh sách lot tại mỗi công đoạn
+            'lots' => $lot_plans,
             'plans' => $plans,
             'machines' => $machine_input,
             'lo_sx' => $losx_input,
         ];
-        // return $plans;
     }
+    public function processProductionPlanV1($order, $orderIndex = 0, &$machine_available_list = [])
+    {
+        if (!$order->sl_giao_sx) {
+            throw new Exception("Không có số lượng giao sản xuất", 1);
+        }
+        $orderId = $order->id;
+        $productId = $order->product_id;
+        $quantity = $order->sl_giao_sx;
+        $productionSteps = $this->getProductionSteps($productId);
+        $stepQuantities = [];
+        $productionTimes = [];
+        $line_must_run = [];
+        $bottleneckSpec = $this->getBottleneckStage($productId);
+        $taskTime = 1 / $bottleneckSpec;
+        $workingHoursPerDay = 8.0;
+        return $taskTime;
+        foreach ($productionSteps as $step) {
+            $calculatedQuantity = $this->calculateProductionOutput($productId, $step->line_id, $quantity );
+            if ($calculatedQuantity !== 0) {
+                $line_must_run[] = $step->line_id;
+            };
+            $stepQuantities[$step->line_id] = $calculatedQuantity;
+            $efficiencySpec = $this->getEfficiency($productId, $step->line_id);
+            if ($efficiencySpec > 0) {
+                $productionTimes[$step->line_id] = round($calculatedQuantity / $efficiencySpec, 2);
+            }
+            $quantity = $calculatedQuantity;
+        }
+        $orderedSteps = $this->getOrderedProductionSteps($productId);
+        $orderedSteps = $orderedSteps->filter(function ($value) use ($line_must_run) {
+            return in_array($value->line_id, $line_must_run);
+        })->values();
+
+        return $productionTimes;
+        
+        return [
+            'lots' => $lot_plans,
+            'plans' => $plans,
+            'machines' => $machine_input,
+            'lo_sx' => $losx_input,
+        ];
+    }
+
 
     public function createProductionPlan(Request $request)
     {
@@ -2840,12 +2836,11 @@ class Phase2UIApiController extends Controller
             $rowIndex++;
         }
 
-        // Thiết lập tự động điều chỉnh độ rộng cột
         foreach (range('A', 'W') as $columnID) {
             $sheet->getColumnDimension($columnID)->setAutoSize(true);
         }
-        $highestRow = $rowIndex - 1; // Dòng cuối cùng chứa dữ liệu
-        $highestColumn = 'W'; // Cột cuối cùng chứa dữ liệu (cập nhật theo cột bạn dùng)
+        $highestRow = $rowIndex - 1;
+        $highestColumn = 'W';
         $sheet->getStyle("B3:$highestColumn$highestRow")->applyFromArray([
             'borders' => [
                 'allBorders' => [
@@ -2855,14 +2850,10 @@ class Phase2UIApiController extends Controller
             ],
         ]);
 
-        // Lưu file Excel
         $filePath = "exported_files/KHSX_output.xlsx";
         $writer = new Xlsx($spreadsheet);
         $writer->save($filePath);
-
-        // Trả về link tải file
         return $this->success(url($filePath), 'Đã tạo file Excel thành công');
-        return $this->success('', 'Đã tạo thành công');
     }
 
     public function uploadProductionPlan(Request $request)
@@ -3008,8 +2999,7 @@ class Phase2UIApiController extends Controller
     }
     public function getTaskTime($productId, $lineId, $uph)
     {
-        // Tính toán task time (thời gian thực hiện mỗi lô) dựa vào UPH hoặc các yếu tố khác
-        $efficiency = $this->getEfficiency($productId, $lineId); // Giả sử bạn đã có hàm getEfficiency
+        $efficiency = $this->getEfficiency($productId, $lineId);
         return $efficiency > 0 ? (60 / $efficiency) : ($uph > 0 ? (60 / $uph) : 0);
     }
 
