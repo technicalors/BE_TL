@@ -404,7 +404,7 @@ class TestCriteriaController extends AdminController
                     $lines = Line::whereIn(DB::raw('LOWER(name)'), array_map('strtolower', array_map('trim', $value)))->pluck('id')->toArray();
                 }
                 if (count($lines) <= 0) {
-                    return 'Không tìm thấy công đoạn';
+                    return $this->failure('', 'Không tìm thấy công đoạn');
                 }
                 $input['line_ids'] = $lines;
                 $input['hang_muc'] = str_replace(array("\n", "\r\n", "\r"), ' ', $row['C']);
@@ -414,7 +414,7 @@ class TestCriteriaController extends AdminController
                 }
                 $input['so_chi_tieu'] = $so_chi_tieu;
                 $input['tieu_chuan'] = $row['F'];
-                $input['phan_dinh'] = $row['H'];
+                $input['phan_dinh'] = $row['J'];
                 if (!empty($row['I'])) {
                     $value = explode('+', $row['I']);
                     $reference = Line::whereIn(DB::raw('LOWER(name)'), array_map('strtolower', array_map('trim', $value)))->pluck('id')->toArray();

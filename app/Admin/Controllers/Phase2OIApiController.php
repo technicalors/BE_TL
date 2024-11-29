@@ -1458,7 +1458,8 @@ class Phase2OIApiController extends Controller
                     }
                 }
             }
-            $parsedCriteria = $this->findSpec($item, $specs);
+            $parsedCriteria = $this->findSpec($item, $product);
+            // $parsedCriteria = $item;
             if ($parsedCriteria) array_push($data[$chi_tieu_slug]['data'], $parsedCriteria);
             $data[$chi_tieu_slug]['result'] = $history = $testCriteriaDetailHistories->firstWhere('type', $chi_tieu_slug)->result ?? null;
         }
@@ -1503,30 +1504,63 @@ class Phase2OIApiController extends Controller
         return $this->success($data);
     }
 
-    public function findSpec($test, $specs)
+    public function findSpec($test, $product)
     {
-        $find = "±";
-        // return $test;
+        $plusOrMinus = "±";
+        $approximate = "~";
+        $fromTo = "-";
         $hang_muc = Str::slug($test->hang_muc);
-        $spec = null;
-        if (count($specs) > 0) {
-            $spec = $specs->toQuery()->where("slug", 'like', "%$hang_muc%")->first();
-        }
+        $reference = !empty($test->reference) ? explode(",", $test->hang_muc) : [];
+        $lines = array_merge($reference, $test->lines->pluck('id')->toArray());
+        $spec = Spec::whereIn("line_id", $lines)->where('slug', $hang_muc)->whereNotNull('name')->where("product_id", $product->id ?? "")->whereNotNull('value')->first();
         if (!$spec || trim($spec->value) === 'N/A') {
             return null;
         }
-        if (str_contains($spec->value, $find)) {
-            $filtered_value = preg_replace('/-\D+/', '', $spec->value);
-            $arr = explode($find, $filtered_value);
+        if (str_contains($spec->value, $plusOrMinus)) {
+            $arr = $this->extractNumbers($spec->value);
+            if(empty($arr)){
+                return $test;
+            }
             $test["input"] = true;
-            $test["tieu_chuan"] = filter_var($arr[0], FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
-            $test["delta"] =  filter_var($arr[1], FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
+            $test["max"] = $arr['before'] + $arr['after'];
+            $test["min"] = $arr['before'] - $arr['after'];
             $test['note'] = $spec->value;
             return $test;
-        } else {
-            $test['input'] = false;
+        } else if(str_contains($spec->value, $approximate)){
+            $arr = $this->extractNumbers($spec->value);
+            if(empty($arr)){
+                return $test;
+            }
+            $test["input"] = true;
+            $test["max"] = $arr['before'];
+            $test["min"] = $arr['after'];
+            $test['note'] = $spec->value;
+            return $test;
+        }else if(str_contains($spec->value, $fromTo)){
+            $arr = $this->extractNumbers($spec->value);
+            if(empty($arr)){
+                return $test;
+            }
+            $test["input"] = true;
+            $test["max"] = $arr['before'];
+            $test["min"] = $arr['after'];
+            $test['note'] = $spec->value;
+            return $test;
         }
         return $test;
+    }
+
+    function extractNumbers($string) {
+        // Tìm số trước và sau các ký tự ±, -, ~
+        preg_match('/([\d\.]+)\s*[±\-~]\s*([\d\.]+)/', $string, $matches);
+        if (empty($matches) || empty($matches[1]) || empty($matches[2]) || is_numeric($matches[1]) || is_numeric($matches[2])) {
+            return null;
+        }
+        return [
+            'before' => $matches[1], // Số trước ký tự
+            'after' => $matches[2],  // Số sau ký tự
+        ];
+        
     }
 
     //Lưu kết quả QC
