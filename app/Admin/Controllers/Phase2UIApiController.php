@@ -1367,17 +1367,39 @@ class Phase2UIApiController extends Controller
     public function exportTestCriteriaHistory(Request $request)
     {
         $query = $this->pqcHistoryQuery($request);
+        $lineMachineQuery = clone $query;
         $query->with('testCriteriaHistories.testCriteriaDetailHistories.testCriteriaHistory.qcHistory.infoCongDoan');
+        $lineMachines = $lineMachineQuery->get()->map(function ($history) {
+            return [
+                'machine_code' => $history->infoCongDoan->machine_code ?? null,
+                'line_id' => $history->infoCongDoan->line_id ?? null,
+                'product_id' => $history->infoCongDoan->product_id ?? null,
+            ];
+        })->toArray();
+        $lineMachines = array_map('unserialize', array_values(array_unique(array_map('serialize', $lineMachines))));
+        usort($lineMachines, function ($a, $b) {
+            if ($a['line_id'] === $b['line_id']) {
+                if ($a['machine_code'] === $b['machine_code']) {
+                    return strcmp($a['product_id'], $b['product_id']); // So sánh product_id nếu line_id và machine_code giống nhau
+                }
+                return strcmp($a['machine_code'], $b['machine_code']); // So sánh machine_code nếu line_id giống nhau
+            }
+            return $a['line_id'] <=> $b['line_id']; // So sánh line_id
+        });
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-        $lines = Line::where('factory_id', 2)->orderBy('ordering')->get();
         $sheet_index = 0;
-        foreach ($lines as $line) {
+        foreach ($lineMachines as $lineMachine) {
+            $line = Line::find($lineMachine['line_id']);
+            $machine = Machine::where('code', $lineMachine['machine_code'])->first();
+            $product = Product::find($lineMachine['product_id']);
+            if(!$line || !$machine || !$product){
+                continue;
+            }
             $sheet = $spreadsheet->getSheet($sheet_index);
-            $sheet->setTitle($line->name);
-
+            $sheet->setTitle($line->name . " - " . $machine->code);
             $lineQcHistoriesQuery = clone $query;
-            $qcHistories = $lineQcHistoriesQuery->whereHas('infoCongDoan', function ($infoQuery) use ($line) {
-                $infoQuery->where('line_id', $line->id);
+            $qcHistories = $lineQcHistoriesQuery->whereHas('infoCongDoan', function ($infoQuery) use ($line, $machine, $product) {
+                $infoQuery->where('line_id', $line->id)->where('machine_code', $machine->code)->where('product_id', $product->id);
             })->get();
             $infos = $this->parseQCData($qcHistories);
             $history = $qcHistories->flatMap->testCriteriaHistories->flatMap->testCriteriaDetailHistories->groupBy(function ($item) {
@@ -1485,7 +1507,7 @@ class Phase2UIApiController extends Controller
             foreach ($sheet->getColumnIterator() as $column) {
                 $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
             }
-            if ($sheet_index < count($lines) - 1) {
+            if ($sheet_index < count($lineMachines) - 1) {
                 $spreadsheet->createSheet();
                 $sheet_index += 1;
             }
