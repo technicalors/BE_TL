@@ -1581,7 +1581,7 @@ class Phase2UIApiController extends Controller
                     $sheet_array[$key]['end_date'] = date("Y-m-d", strtotime($value));
                     break;
             }
-            $groupedQcHistories = QCHistory::orderBy('created_at')
+            $groupedQcHistories = QCHistory::with('testCriteriaHistories', 'infoCongDoan')->orderBy('created_at')
                 ->whereDate('created_at', '>=', $sheet_array[$key]['start_date'])
                 ->whereDate('created_at', '<=', $sheet_array[$key]['end_date'])
                 ->get()
@@ -1595,13 +1595,13 @@ class Phase2UIApiController extends Controller
                 $sum_ok = 0;
                 $sum_ng = 0;
                 foreach ($qcHistories as $qcHistory) {
-                    $isOK = $qcHistory->eligible_to_end ? $qcHistory->testCriteriaHistories->every(function ($testCriteriaHistory) {
-                        return $testCriteriaHistory->result === 'OK';
-                    }) : false;
-                    if ($isOK) {
-                        $sum_ok += 1;
-                    } else {
-                        $sum_ng += 1;
+                    $final_result = $qcHistory->testCriteriaHistories->pluck('result')->toArray();
+                    if(count($final_result) >= 3){
+                        if (in_array('NG', $final_result)) {
+                            $sum_ng += 1;
+                        } else {
+                            $sum_ok+= 1;
+                        }
                     }
                 }
 
@@ -1609,7 +1609,7 @@ class Phase2UIApiController extends Controller
                 $data[$line_id]['sum_lot_kt'] = count($qcHistories);
                 $data[$line_id]['sum_lot_ok'] = $sum_ok;
                 $data[$line_id]['sum_lot_ng'] = $sum_ng;
-                $data[$line_id]['sum_ty_le_ng'] = count($qcHistories) ? number_format($sum_ng / count($qcHistories) * 100) : 0;
+                $data[$line_id]['sum_ty_le_ng'] = count($qcHistories) ? number_format($sum_ng / count($qcHistories) * 100, 2) : 0;
                 $data[$line_id]['loi_phat_sinh'] = '';
             }
             $sheet_array[$key]['data'] = $data;
@@ -1904,7 +1904,7 @@ class Phase2UIApiController extends Controller
         }
         $sheet->setCellValue([1, 1], 'BÁO CÁO SỐ LỖI')->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
         $table_row = $start_row + 2;
-        $sheet->fromArray($result, null, 'A4');
+        $sheet->fromArray($result, null, 'A4', true);
         foreach ($sheet->getColumnIterator() as $column) {
             $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
             $sheet->getStyle($column->getColumnIndex() . 2 . ':' . $column->getColumnIndex() . count($result) + 3)->applyFromArray($border);
