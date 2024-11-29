@@ -1061,10 +1061,10 @@ class Phase2UIApiController extends Controller
                 }
             }
             if (isset($request->product_id)) {
-                $query->where('lot_id', 'like',  '%' . $request->product_id . '%');
+                $query->where('product_id', 'like',  '%' . $request->product_id . '%');
             }
             if (isset($request->ten_sp)) {
-                $query->where('lot_id', 'like',  '%' . $request->ten_sp . '%');
+                $query->where('product_id', 'like',  '%' . $request->ten_sp . '%');
             }
             if (isset($request->khach_hang)) {
                 $khach_hang = Customer::where('id', $request->khach_hang)->first();
