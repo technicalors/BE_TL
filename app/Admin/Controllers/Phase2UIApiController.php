@@ -445,7 +445,7 @@ class Phase2UIApiController extends Controller
     }
 
     function parseReportTable3($val, $lo_sx, $date, $machine_code)
-    
+
     {
         $sl_kh = (int)$val->sum(function ($item) {
             return $item->lotPlan->quantity;
@@ -1392,7 +1392,7 @@ class Phase2UIApiController extends Controller
             $line = Line::find($lineMachine['line_id']);
             $machine = Machine::where('code', $lineMachine['machine_code'])->first();
             $product = Product::find($lineMachine['product_id']);
-            if(!$line || !$machine || !$product){
+            if (!$line || !$machine || !$product) {
                 continue;
             }
             $sheet = $spreadsheet->getSheet($sheet_index);
@@ -1412,15 +1412,17 @@ class Phase2UIApiController extends Controller
             $product_array = [];
             $machine_array = [];
             foreach ($infos as $info) {
-                if ($info['lot_id'] && isset($history[$info['lot_id']])) {
+                if ($info['lot_id']) {
                     if (isset($info['lot_id']) && !in_array($info['lot_id'], $lot_id_array)) $lot_id_array[] = $info['lot_id'];
                     if (isset($info['lo_sx']) && !in_array($info['lo_sx'], $losx_array)) $losx_array[] = $info['lo_sx'];
                     if (isset($info['ngay_sx']) && !in_array($info['ngay_sx'], $ngay_sx_array)) $ngay_sx_array[] = $info['ngay_sx'];
                     if (isset($info['ten_san_pham']) && !in_array($info['ten_san_pham'], $product_array)) $product_array[] = $info['ten_san_pham'];
                     if (isset($info['machine_id']) && !in_array($info['machine_id'], $machine_array)) $machine_array[] = $info['machine_id'];
-                    $checked_data[$info['lot_id']] = $history[$info['lot_id']]->mapWithKeys(function ($e) {
-                        return [$e->test_criteria_id => $e->input ?? $e->result];
-                    });
+                    if(isset($history[$info['lot_id']])){
+                        $checked_data[$info['lot_id']] = $history[$info['lot_id']]->mapWithKeys(function ($e) {
+                            return [$e->test_criteria_id => $e->input ?? $e->result];
+                        });
+                    }
                 }
             }
             $transformData = $this->transformArray($checked_data);
@@ -1448,9 +1450,11 @@ class Phase2UIApiController extends Controller
                 // Ghi cột "Chỉ tiêu kiểm tra"
                 $sheet->setCellValue([1, $row_index], $so_chi_tieu);
                 foreach ($testCriteria as $index => $testCriterion) {
+                    $slug_hang_muc = Str::slug($testCriterion->hang_muc);
+                    $spec = Spec::where("line_id", $line->id)->where('slug', $slug_hang_muc)->whereNotNull('name')->where("product_id", $product->id)->whereNotNull('value')->first();
                     // Ghi dữ liệu cột "Hạng mục kiểm tra" và "Tiêu chuẩn"
                     $sheet->setCellValue([2, $row_index], $testCriterion->hang_muc);
-                    $sheet->setCellValue([3, $row_index], $testCriterion->tieu_chuan);
+                    $sheet->setCellValue([3, $row_index], $spec->value ?? $testCriterion->tieu_chuan ?? null);
                     // Xử lý dữ liệu đã kiểm tra
                     if (!isset($transformData[$testCriterion->id])) {
                         foreach ($infos as $info) {
@@ -1459,26 +1463,31 @@ class Phase2UIApiController extends Controller
                     } else {
                         $data[$testCriterion->id] = $transformData[$testCriterion->id];
                     }
+                    $row_data = array_filter($data[$testCriterion->id]);
+                    if(empty($row_data)){
+                        unset($data[$testCriterion->id]);
+                        continue;
+                    };
                     // Merge các ô trong cột "Tiêu chuẩn" (Cột 3)
-                    if ($testCriterion->tieu_chuan !== $current_tieu_chuan) {
-                        if ($current_tieu_chuan !== null && $tieu_chuan_merge_start < $row_index - 1) {
-                            $sheet->mergeCells([3, $tieu_chuan_merge_start, 3, $row_index - 1]);
-                        }
-                        $current_tieu_chuan = $testCriterion->tieu_chuan;
-                        $tieu_chuan_merge_start = $row_index; // Đặt lại vị trí bắt đầu merge
-                    }
+                    // if ($testCriterion->tieu_chuan !== $current_tieu_chuan) {
+                    //     if ($current_tieu_chuan !== null && $tieu_chuan_merge_start < $row_index - 1) {
+                    //         $sheet->mergeCells([3, $tieu_chuan_merge_start, 3, $row_index - 1]);
+                    //     }
+                    //     $current_tieu_chuan = $testCriterion->tieu_chuan;
+                    //     $tieu_chuan_merge_start = $row_index; // Đặt lại vị trí bắt đầu merge
+                    // }
                     $row_index++;
                 }
-                
+
                 // Merge các ô trong cột "Chỉ tiêu kiểm tra" (Cột 1)
                 if ($start_index < $row_index - 1) {
                     $sheet->mergeCells([1, $start_index, 1, $row_index - 1]);
                 }
             }
-            // Merge tiêu chuẩn cuối cùng trong nhóm
-            if ($tieu_chuan_merge_start < $row_index - 1) {
-                $sheet->mergeCells([3, $tieu_chuan_merge_start, 3, $row_index - 1]);
-            }
+            // // Merge tiêu chuẩn cuối cùng trong nhóm
+            // if ($tieu_chuan_merge_start < $row_index - 1) {
+            //     $sheet->mergeCells([3, $tieu_chuan_merge_start, 3, $row_index - 1]);
+            // }
             $next_rows = [
                 'final_qc_result' => 'Đánh giá tổng thể kết quả kiểm tra',
                 'sl_dau_ra_hang_loat' => 'Số lượng sản xuất',
@@ -1596,11 +1605,11 @@ class Phase2UIApiController extends Controller
                 $sum_ng = 0;
                 foreach ($qcHistories as $qcHistory) {
                     $final_result = $qcHistory->testCriteriaHistories->pluck('result')->toArray();
-                    if(count($final_result) >= 3){
+                    if (count($final_result) >= 3) {
                         if (in_array('NG', $final_result)) {
                             $sum_ng += 1;
                         } else {
-                            $sum_ok+= 1;
+                            $sum_ok += 1;
                         }
                     }
                 }
@@ -2750,7 +2759,7 @@ class Phase2UIApiController extends Controller
         $workingHoursPerDay = 8.0;
         return $taskTime;
         foreach ($productionSteps as $step) {
-            $calculatedQuantity = $this->calculateProductionOutput($productId, $step->line_id, $quantity );
+            $calculatedQuantity = $this->calculateProductionOutput($productId, $step->line_id, $quantity);
             if ($calculatedQuantity !== 0) {
                 $line_must_run[] = $step->line_id;
             };
@@ -2767,7 +2776,7 @@ class Phase2UIApiController extends Controller
         })->values();
 
         return $productionTimes;
-        
+
         return [
             'lots' => $lot_plans,
             'plans' => $plans,
