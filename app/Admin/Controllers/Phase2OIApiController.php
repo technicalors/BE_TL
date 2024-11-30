@@ -1516,44 +1516,47 @@ class Phase2OIApiController extends Controller
         if (!$spec || trim($spec->value) === 'N/A') {
             return null;
         }
-        if (str_contains($spec->value, $plusOrMinus)) {
-            $arr = $this->extractNumbers($spec->value);
-            if(empty($arr)){
+        if($test["phan_dinh"] = 'Nhập số'){
+            if (str_contains($spec->value, $plusOrMinus)) {
+                $arr = $this->extractNumbers($spec->value);
+                if(empty($arr)){
+                    return $test;
+                }
+                $test["input"] = true;
+                $test["max"] = $arr['before'] + $arr['after'];
+                $test["min"] = $arr['before'] - $arr['after'];
+                $test['note'] = $spec->value;
+                return $test;
+            } else if(str_contains($spec->value, $approximate)){
+                $arr = $this->extractNumbers($spec->value);
+                if(empty($arr)){
+                    return $test;
+                }
+                $test["input"] = true;
+                $test["max"] = $arr['before'];
+                $test["min"] = $arr['after'];
+                $test['note'] = $spec->value;
+                return $test;
+            }else if(str_contains($spec->value, $fromTo)){
+                $arr = $this->extractNumbers($spec->value);
+                if(empty($arr)){
+                    return $test;
+                }
+                $test["input"] = true;
+                $test["max"] = $arr['before'];
+                $test["min"] = $arr['after'];
+                $test['note'] = $spec->value;
                 return $test;
             }
-            $test["input"] = true;
-            $test["max"] = $arr['before'] + $arr['after'];
-            $test["min"] = $arr['before'] - $arr['after'];
-            $test['note'] = $spec->value;
-            return $test;
-        } else if(str_contains($spec->value, $approximate)){
-            $arr = $this->extractNumbers($spec->value);
-            if(empty($arr)){
-                return $test;
-            }
-            $test["input"] = true;
-            $test["max"] = $arr['before'];
-            $test["min"] = $arr['after'];
-            $test['note'] = $spec->value;
-            return $test;
-        }else if(str_contains($spec->value, $fromTo)){
-            $arr = $this->extractNumbers($spec->value);
-            if(empty($arr)){
-                return $test;
-            }
-            $test["input"] = true;
-            $test["max"] = $arr['before'];
-            $test["min"] = $arr['after'];
-            $test['note'] = $spec->value;
-            return $test;
         }
+        
         return $test;
     }
 
     function extractNumbers($string) {
         // Tìm số trước và sau các ký tự ±, -, ~
         preg_match('/([\d\.]+)\s*[±\-~]\s*([\d\.]+)/', $string, $matches);
-        if (empty($matches) || empty($matches[1]) || empty($matches[2]) || is_numeric($matches[1]) || is_numeric($matches[2])) {
+        if (empty($matches) || empty($matches[1]) || empty($matches[2]) || !is_numeric($matches[1]) || !is_numeric($matches[2])) {
             return null;
         }
         return [
