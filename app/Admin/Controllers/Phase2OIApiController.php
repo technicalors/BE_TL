@@ -315,7 +315,7 @@ class Phase2OIApiController extends Controller
             $lot_plan_query->where('machine_code', $machine_code);
             $info_query->where('machine_code', $machine_code);
         }
-        $lotPlans = $lot_plan_query->orderBy('lo_sx', 'ASC')->orderBy('start_time', 'ASC')->get();
+        $lotPlans = $lot_plan_query->orderBy('start_time', 'ASC')->orderBy('lo_sx', 'ASC')->get();
         $lotPlanList = $this->parseLotPlanData($lotPlans);
         $infos = $info_query->get();
         $infoList = $this->parseInfoData($infos);
@@ -409,6 +409,10 @@ class Phase2OIApiController extends Controller
         $machine = Machine::where('code', $request->machine_code)->first();
         if (!$machine) {
             return $this->failure([], "Không tìm thấy máy");
+        }
+        $isExist = InfoCongDoan::where('machine_code', $machine->code)->where('status', 1)->first();
+        if($isExist){
+            return $this->failure('', 'Có lot chưa hoàn thành, không thể tiếp tục lot khác');
         }
         if ($machine->is_iot) {
             $checksheet_logs = CheckSheetLog::where('info->machine_id', $machine->code)->whereDate('created_at', Carbon::today())->get();
