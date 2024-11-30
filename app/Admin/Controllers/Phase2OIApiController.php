@@ -334,6 +334,10 @@ class Phase2OIApiController extends Controller
         if (!$machine) {
             return $this->failure([], "Không tìm thấy máy");
         }
+        $isExist = InfoCongDoan::where('machine_code', $machine->code)->where('status', 1)->first();
+        if($isExist){
+            return $this->failure('', 'Có lot chưa hoàn thành, không thể tiếp tục lot khác');
+        }
         if ($machine->is_iot) {
             $checksheet_logs = CheckSheetLog::where('info->machine_id', $machine->code)->whereDate('created_at', Carbon::today())->get();
             if (count($checksheet_logs) <= 0) {
