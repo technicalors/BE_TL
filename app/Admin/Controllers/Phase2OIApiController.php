@@ -1424,8 +1424,6 @@ class Phase2OIApiController extends Controller
         $list = $tc_query->get();
         $testCriteriaHistories = $infoCongDoan->qcHistory->testCriteriaHistories;
         $testCriteriaDetailHistories = $testCriteriaHistories->flatMap->testCriteriaDetailHistories ?? collect([]);
-        $reference = array_merge($list->pluck('reference')->toArray(), [$line->id]);
-        $specs = Spec::whereIn("line_id", $reference)->whereNotNull('slug')->whereNotNull('name')->where("product_id", $product->id ?? "")->whereNotNull('value')->get();
         $data = [];
         foreach ($list as $item) {
 
@@ -1518,9 +1516,9 @@ class Phase2OIApiController extends Controller
         $approximate = "~";
         $fromTo = "-";
         $hang_muc = Str::slug($test->hang_muc);
-        $reference = !empty($test->reference) ? explode(",", $test->hang_muc) : [];
-        $lines = array_merge($reference, $test->lines->pluck('id')->toArray());
-        $spec = Spec::whereIn("line_id", $lines)->where('slug', $hang_muc)->whereNotNull('name')->where("product_id", $product->id ?? "")->whereNotNull('value')->first();
+        $reference = !empty($test->reference) ? explode(",", $test->reference) : [];
+        $lines = array_merge($test->lines->pluck('id')->toArray(), $reference);
+        $spec = Spec::whereIn("line_id", $lines)->where('slug', $hang_muc)->where("product_id", $product->id ?? "")->whereNotNull('name')->whereNotNull('value')->first();
         if (!$spec || trim($spec->value) === 'N/A') {
             return null;
         }
