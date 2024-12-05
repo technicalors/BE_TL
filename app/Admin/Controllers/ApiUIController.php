@@ -4533,9 +4533,9 @@ class ApiUIController extends AdminController
         }
         if (isset($request->machine_code)) {
             if (is_array($request->machine_code)) {
-                $query->whereIn('machine_code', $request->machine_code);
+                $query->whereIn('machine_id', $request->machine_code);
             } else {
-                $query->where('machine_code', $request->machine_code);
+                $query->where('machine_id', $request->machine_code);
             }
         }
         if (isset($input['product_id'])) {
