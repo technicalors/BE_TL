@@ -1067,6 +1067,13 @@ class Phase2UIApiController extends Controller
                     $query->where('line_id', $request->line_id);
                 }
             }
+            if (isset($request->machine_code)) {
+                if (is_array($request->machine_code)) {
+                    $query->whereIn('machine_code', $request->machine_code);
+                } else {
+                    $query->where('machine_code', $request->machine_code);
+                }
+            }
             if (isset($request->product_id)) {
                 $query->where('product_id', 'like',  '%' . $request->product_id . '%');
             }
