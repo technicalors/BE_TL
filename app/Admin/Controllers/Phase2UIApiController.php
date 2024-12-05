@@ -432,7 +432,7 @@ class Phase2UIApiController extends Controller
         $sheet->setCellValue([1, 1], 'UI Lịch sử sản xuất')->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
         $sheet->getRowDimension(1)->setRowHeight(40);
         $table_col = 1;
-        $table_row = count($data) + 2;
+        $table_row = count($data) + 4;
         $sheet->fromArray((array)$data, NULL, 'A5', true);
         // $sheet->getStyle([1, 5, 30, count($data) + 4])->applyFromArray($centerStyle);
         foreach ($sheet->getColumnIterator() as $column) {
