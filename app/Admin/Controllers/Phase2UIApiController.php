@@ -216,6 +216,13 @@ class Phase2UIApiController extends Controller
                 $query->where('line_id', $request->line_id);
             }
         }
+        if (isset($request->machine_code)) {
+            if (is_array($request->machine_code)) {
+                $query->whereIn('machine_code', $request->machine_code);
+            } else {
+                $query->where('machine_code', $request->machine_code);
+            }
+        }
         if (isset($request->date) && count($request->date)) {
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->date[0])))
                 ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->date[1])));
