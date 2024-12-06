@@ -216,6 +216,13 @@ class Phase2UIApiController extends Controller
                 $query->where('line_id', $request->line_id);
             }
         }
+        if (isset($request->machine_code)) {
+            if (is_array($request->machine_code)) {
+                $query->whereIn('machine_code', $request->machine_code);
+            } else {
+                $query->where('machine_code', $request->machine_code);
+            }
+        }
         if (isset($request->date) && count($request->date)) {
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->date[0])))
                 ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->date[1])));
@@ -425,7 +432,7 @@ class Phase2UIApiController extends Controller
         $sheet->setCellValue([1, 1], 'UI Lịch sử sản xuất')->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
         $sheet->getRowDimension(1)->setRowHeight(40);
         $table_col = 1;
-        $table_row = count($data) + 2;
+        $table_row = count($data) + 4;
         $sheet->fromArray((array)$data, NULL, 'A5', true);
         // $sheet->getStyle([1, 5, 30, count($data) + 4])->applyFromArray($centerStyle);
         foreach ($sheet->getColumnIterator() as $column) {
@@ -1058,6 +1065,13 @@ class Phase2UIApiController extends Controller
                     $query->whereIn('line_id', $request->line_id);
                 } else {
                     $query->where('line_id', $request->line_id);
+                }
+            }
+            if (isset($request->machine_code)) {
+                if (is_array($request->machine_code)) {
+                    $query->whereIn('machine_code', $request->machine_code);
+                } else {
+                    $query->where('machine_code', $request->machine_code);
                 }
             }
             if (isset($request->product_id)) {
