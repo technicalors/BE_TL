@@ -13,10 +13,7 @@ use App\Models\NumberMachineOrder;
 use App\Models\ProductOrder;
 use App\Models\Spec;
 use App\Traits\API;
-use Encore\Admin\Controllers\AdminController;
-use Encore\Admin\Form;
-use Encore\Admin\Grid;
-use Encore\Admin\Show;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -51,6 +48,11 @@ class ProductOrderController extends Controller
             $query->with($request->withs);
         }
         $result = $query->with('product', 'customer', 'material', 'numberProductOrder')->get();
+        $lines = Line::where("display", "1")
+        ->where('factory_id', 2)
+        ->orderBy('ordering', 'ASC')
+        ->get();
+        $except = ['kho-thanh-pham', 'oqc', 'iqc', 'kho-thanh-pham', 'kho-bao-on', 'u'];
         foreach ($result as $value) {
             $spec = Spec::with('line')
                 ->whereIn('id', function ($query) use ($value) {
@@ -65,23 +67,39 @@ class ProductOrderController extends Controller
                 ->get();
             $sl_may = [];
             $numberProductOrder = $value->numberProductOrder;
-            foreach ($spec as $key => $data) {
-                $sl_may[$key]['name'] = $data->line->name;
-                $sl_may[$key]['line_id'] = $data->line_id;
-                $sl_may[$key]['value'] = $numberProductOrder->first(function ($item) use ($data) {
-                    return $item->line_id == $data->line_id;
+            foreach ($lines as $key => $line) {
+                if(in_array(Str::slug($line->name), $except)) continue;
+                $sl_may[$key]['name'] = $line->name;
+                $sl_may[$key]['line_id'] = $line->id;
+                $sl_may[$key]['value'] = $numberProductOrder->first(function ($item) use ($line) {
+                    return $item->line_id == $line->id;
                 })->number_machine ?? 0;
             }
+            // foreach ($spec as $key => $data) {
+            //     $sl_may[$key]['name'] = $data->line->name;
+            //     $sl_may[$key]['line_id'] = $data->line_id;
+            //     $sl_may[$key]['value'] = $numberProductOrder->first(function ($item) use ($data) {
+            //         return $item->line_id == $data->line_id;
+            //     })->number_machine ?? 0;
+            // }
             $ton = [];
-            $san_luong = LineInventories::where('product_id', $value->product_id)->get()->groupBy('line_id');
+            $san_luong = LineInventories::with('line')->where('product_id', $value->product_id)->get()->groupBy('line_id');
             $sl_ton = 0;
-            foreach ($san_luong as $line_id => $data) {
-                $ton[$line_id]['name'] = '';
-                $ton[$line_id]['line_id'] = $line_id;
-                $sl = $data->sum('quantity');
-                $ton[$line_id]['value'] = $sl;
+            foreach ($lines as $key => $line) {
+                if(in_array(Str::slug($line->name), $except)) continue;
+                $ton[$key]['name'] = $line->name ?? '';
+                $ton[$key]['line_id'] = $line->id;
+                $sl = isset($san_luong[$line->id]) ? $san_luong[$line->id]->sum('quantity') : 0;
+                $ton[$key]['value'] = $sl;
                 $sl_ton += $sl;
             }
+            // foreach ($san_luong as $line_id => $data) {
+            //     $ton[$line_id]['name'] = $data[0]->line->name ?? '';
+            //     $ton[$line_id]['line_id'] = $line_id;
+            //     $sl = $data->sum('quantity');
+            //     $ton[$line_id]['value'] = $sl;
+            //     $sl_ton += $sl;
+            // }
             $value->order_date = $value->order_date ? date('d/m/Y', strtotime($value->order_date)) : null;
             $value->delivery_date = $value->delivery_date ? date('d/m/Y', strtotime($value->delivery_date)) : null;
             $value->sl_may = $sl_may;
@@ -206,12 +224,11 @@ class ProductOrderController extends Controller
             $productOrder->update($request->all());
             NumberMachineOrder::where('product_order_id', $request->id)->delete();
             foreach ($request->sl_may as $key => $value) {
-                $line = Line::with('machine')->find($value['line_id']);
                 $numberMachine = MachinePriorityOrder::where('product_id', $productOrder->product_id)
                     ->where('line_id', $value['line_id'])
                     ->count();
                 if ($numberMachine > 0 && $value['value'] > $numberMachine) {
-                    return $this->failure('', 'Số lượng máy của công đoạn "' . $line->name . '" không được vượt quá ' . $numberMachine . ' máy.');
+                    return $this->failure('', 'Số lượng máy của công đoạn "' . $value['name'] . '" không được vượt quá ' . $numberMachine . ' máy.');
                 }
                 NumberMachineOrder::create([
                     'product_order_id' => $productOrder->id,
@@ -219,6 +236,9 @@ class ProductOrderController extends Controller
                     'number_machine' => $value['value'],
                     'user_id' => $request->user()->id,
                 ]);
+            }
+            foreach ($request->ton as $key => $value) {
+                LineInventories::where('line_id', $value['line_id'])->where('product_id', $productOrder->product_id)->update(['quantity'=>$value['value']]);
             }
             DB::commit();
         } catch (\Throwable $th) {
