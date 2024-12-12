@@ -1432,7 +1432,7 @@ class Phase2UIApiController extends Controller
                     if (isset($info['ngay_sx']) && !in_array($info['ngay_sx'], $ngay_sx_array)) $ngay_sx_array[] = $info['ngay_sx'];
                     if (isset($info['ten_san_pham']) && !in_array($info['ten_san_pham'], $product_array)) $product_array[] = $info['ten_san_pham'];
                     if (isset($info['machine_id']) && !in_array($info['machine_id'], $machine_array)) $machine_array[] = $info['machine_id'];
-                    if(isset($history[$info['lot_id']])){
+                    if (isset($history[$info['lot_id']])) {
                         $checked_data[$info['lot_id']] = $history[$info['lot_id']]->mapWithKeys(function ($e) {
                             return [$e->test_criteria_id => $e->input ?? $e->result];
                         });
@@ -1478,7 +1478,7 @@ class Phase2UIApiController extends Controller
                         $data[$testCriterion->id] = $transformData[$testCriterion->id];
                     }
                     $row_data = array_filter($data[$testCriterion->id]);
-                    if(empty($row_data)){
+                    if (empty($row_data)) {
                         unset($data[$testCriterion->id]);
                         continue;
                     };
@@ -2281,7 +2281,7 @@ class Phase2UIApiController extends Controller
             ->orderByRaw('CAST(value AS UNSIGNED) ASC')
             ->first();
 
-        return $bottleneckSpec ? $bottleneckSpec->value : 0;
+        return $bottleneckSpec;
     }
 
     function getRollsPerTransport($productId, $lineId)
@@ -2532,7 +2532,7 @@ class Phase2UIApiController extends Controller
         $sortedByProductId = collect($prioritizedOrders)->groupBy('product_id')->flatten(1);
         foreach ($sortedByProductId as $index => $order) {
             try {
-                $result = $this->processProductionPlanV1($order, $index, $machine_available_list);
+                $result = $this->processProductionPlan($order, $index, $machine_available_list);
                 if ($result) {
                     $data[] = $result;
                 }
@@ -2545,6 +2545,49 @@ class Phase2UIApiController extends Controller
             return $this->failure('', 'Không có kế hoạch nào được tạo');
         }
         return $this->success($data);
+    }
+
+    function calculateEndTime1($startTime, $taskTime, $lotSize, $rollChangeTime, $numLots, $setupTime)
+    {
+        $workdayStartHour = 7 * 60 + 30; // 7:30 sáng (phút từ 0h)
+        $workdayEndHour = 19 * 60;       // 19:00 tối (phút từ 0h)
+        $workdayDuration = $workdayEndHour - $workdayStartHour; // Thời gian làm việc mỗi ngày (phút)
+
+        // Tổng thời gian công việc
+        $totalMinutes = ((($taskTime * $lotSize) + $rollChangeTime) * $numLots) + $setupTime;
+
+        // Chuyển thời gian bắt đầu sang phút từ 0h
+        $currentMinutes = $startTime->hour * 60 + $startTime->minute;
+
+        // Nếu thời gian bắt đầu trước giờ làm việc, điều chỉnh đến 7:30
+        if ($currentMinutes < $workdayStartHour) {
+            $currentMinutes = $workdayStartHour;
+        }
+
+        // Tính toán
+        while ($totalMinutes > 0) {
+            // Tính số phút còn lại trong ngày làm việc hiện tại
+            $remainingMinutesToday = $workdayEndHour - $currentMinutes;
+
+            if ($totalMinutes <= $remainingMinutesToday) {
+                // Nếu thời gian đủ để hoàn thành công việc trong ngày
+                $currentMinutes += $totalMinutes;
+                $totalMinutes = 0;
+            } else {
+                // Nếu không, tiêu thụ hết thời gian trong ngày và chuyển sang ngày kế tiếp
+                $totalMinutes -= $remainingMinutesToday;
+                $currentMinutes = $workdayStartHour; // Đặt lại thời gian bắt đầu ngày tiếp theo
+            }
+        }
+
+        // Chuyển phút từ 0h thành giờ và phút thực tế
+        $daysAdded = intdiv($currentMinutes, 24 * 60); // Số ngày vượt quá
+        $finalMinutes = $currentMinutes % (24 * 60);  // Phút còn lại trong ngày
+        $hour = intdiv($finalMinutes, 60);
+        $minute = $finalMinutes % 60;
+
+        // Trả về đối tượng Carbon với ngày giờ được tính toán
+        return $startTime->copy()->addDays($daysAdded)->setTime($hour, $minute);
     }
 
     public function processProductionPlan($order, $orderIndex = 0, &$machine_available_list = [])
@@ -2594,7 +2637,6 @@ class Phase2UIApiController extends Controller
         if (count($orderedSteps) <= 0) {
             return null;
         }
-
         foreach ($orderedSteps as $index => $step) {
             $quantity =  $stepQuantities[$step->line_id];
             $lotSize = $this->getLotSize($productId, $step->line_id);
@@ -2620,7 +2662,7 @@ class Phase2UIApiController extends Controller
             //Tính thời gian bắt đầu của lô
             if (!isset($startTime)) {
                 // Công đoạn đầu tiên
-                $startTime = Carbon::now('Asia/Bangkok');
+                $startTime = Carbon::now()->addDay()->setTime(7, 30, 0);
             } else {
                 //Nếu số lượng cuộn vận chuyển lớn hơn số lượng lot của công đoạn trước đó thì số lượng cuộn vc = số lượng lot của công đoạn trước đó 
                 if ($rollsPerTransport === 0 || ceil($quantity / $lotSize) < $rollsPerTransport) {
@@ -2647,11 +2689,12 @@ class Phase2UIApiController extends Controller
             $lotIndexOffset = 0; // Offset để đánh số lot cho mỗi máy
             $numLots = ceil($quantityPerMachine / $lotSize); // Tổng số lot, dùng ceil để làm tròn lên
             foreach ($machines as $machineIndex => $machine) {
-                $machineReadyTime = Carbon::parse($machine->available_at, 'Asia/Bangkok');
-                if (!$startTime->greaterThan($machineReadyTime)) {
-                    $startTime = $machineReadyTime;
-                }
-                $endTime = $startTime->copy()->addMinutes(((($taskTime * $lotSize) + $rollChangeTime) * $numLots) + $setupTime);
+                // $machineReadyTime = Carbon::parse($machine->available_at, 'Asia/Bangkok');
+                // if (!$startTime->greaterThan($machineReadyTime)) {
+                //     $startTime = $machineReadyTime;
+                // }
+                $endTime = $this->calculateEndTime1($startTime, $taskTime, $lotSize, $rollChangeTime, $numLots, $setupTime);
+                // $endTime = $startTime->copy()->addMinutes(((($taskTime * $lotSize) + $rollChangeTime) * $numLots) + $setupTime);
                 $stepEndTimes[$lineId] = $endTime;
                 $plan_input = [
                     'product_order_id' => $order->id,
@@ -2769,11 +2812,12 @@ class Phase2UIApiController extends Controller
         $productionTimes = [];
         $line_must_run = [];
         $bottleneckSpec = $this->getBottleneckStage($productId);
-        $taskTime = 1 / $bottleneckSpec;
+        $taskTime = 1 / $bottleneckSpec->value;
         $workingHoursPerDay = 8.0;
-        return $taskTime;
+        $finishTime = 0;
         foreach ($productionSteps as $step) {
             $calculatedQuantity = $this->calculateProductionOutput($productId, $step->line_id, $quantity);
+            $lotsize = $this->getLotSize($productId, $step->line_id);
             if ($calculatedQuantity !== 0) {
                 $line_must_run[] = $step->line_id;
             };
@@ -2783,14 +2827,31 @@ class Phase2UIApiController extends Controller
                 $productionTimes[$step->line_id] = round($calculatedQuantity / $efficiencySpec, 2);
             }
             $quantity = $calculatedQuantity;
+            if ($step->line_id != $bottleneckSpec->line_id) {
+                $finishTime += round($lotsize / $efficiencySpec, 2);
+            } else {
+                $bottleneckTime = round($calculatedQuantity / $efficiencySpec, 2);
+            }
         }
         $orderedSteps = $this->getOrderedProductionSteps($productId);
         $orderedSteps = $orderedSteps->filter(function ($value) use ($line_must_run) {
             return in_array($value->line_id, $line_must_run);
         })->values();
-
-        return $productionTimes;
-
+        $totalProductionTime = $finishTime + $bottleneckTime;
+        $startDate = Carbon::now()->addDay()->setTime(7, 30, 0);
+        $endDate = Carbon::parse($order->delivery_date)->setTime(12, 00, 00);
+        $requiredWorkingDays = ceil($totalProductionTime / $workingHoursPerDay);
+        $estimatedEndDate = $startDate->copy()->addDays($requiredWorkingDays - 1);
+        if ($estimatedEndDate->gt($endDate)) {
+            $canMeetDeadline = false;
+        } else {
+            $canMeetDeadline = true;
+        }
+        return [
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'estimated_end_date' => $estimatedEndDate,
+        ];
         return [
             'lots' => $lot_plans,
             'plans' => $plans,
