@@ -19,7 +19,7 @@ class InfoCongDoanController extends AdminController
 
     public function getInfoCongDoan(Request $request){
         $line_ids = Line::where('factory_id', 2)->pluck('id')->toArray();
-        $query = InfoCongDoan::with('line')->whereIn('line_id', $line_ids)->where('status', InfoCongDoan::STATUS_COMPLETED)->orderBy('lot_id')->orderBy('thoi_gian_bat_dau');
+        $query = InfoCongDoan::with('line')->whereIn('line_id', $line_ids)->orderBy('lot_id')->orderBy('thoi_gian_bat_dau');
         if(isset($request->date) && count($request->date) > 1){
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->date[0])))
             ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->date[1])));
