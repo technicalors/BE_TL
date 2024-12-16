@@ -3228,12 +3228,12 @@ class ApiUIController extends AdminController
             $line = Line::find($line_id);
             $header4[$line->name] = $header_keys;
             foreach ($table_keys as $i => $key) {
-                $table_key4[$this->getNextExcelColumn('D', $index)] = $key."_".$line_id;
+                $table_key4[$this->getNextExcelColumn('D', $index)] = $key . "_" . $line_id;
                 $index++;
             }
         }
-        
-        
+
+
 
         foreach ($header4 as $key => $cell) {
             if (!is_array($cell)) {
@@ -3309,7 +3309,7 @@ class ApiUIController extends AdminController
             $plan = ProductionPlan::where('khach_hang', $khach_hang->name)->get();
             $data->product = Product::whereIn('customer_id', $khach_hang)->get();
             $data->lo_sx = (array)array_unique($plan->pluck('lo_sx')->toArray());
-        }else{
+        } else {
             // $plan = ProductionPlan::all();
             $data->product = Product::all();
             $data->lo_sx = Losx::all()->pluck('id')->toArray();
@@ -6406,5 +6406,29 @@ class ApiUIController extends AdminController
         }
         $records = $query->with('line')->orderBy('created_at', 'DESC')->get();
         return $this->success($records);
+    }
+
+    public function updateFinishedProductInventory(Request $request)
+    {
+        $import_logs = WareHouseLog::with('lot')->where('type', 1)->get()->groupBy(function ($item) {
+            return $item->lot->product_id ?? "";
+        });
+        $export_logs = WareHouseLog::with('lot')->where('type', 2)->get()->groupBy(function ($item) {
+            return $item->lot->product_id ?? "";
+        });
+        try {
+            DB::beginTransaction();
+            Inventory::truncate();
+            foreach ($import_logs as $key => $value) {
+                $sl_nhap = $value->sum('so_luong') ?? 0;
+                $sl_xuat = isset($export_logs[$key]) ? $export_logs[$key]->sum('so_luong') : 0;
+                $sl_ton = $sl_nhap - $sl_xuat;
+                Inventory::create(['product_id' => $key, 'sl_ton' => $sl_ton, 'sl_nhap' => $sl_nhap, 'sl_xuat' => $sl_xuat]);
+            }
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+        }
+        return 'ok';
     }
 }

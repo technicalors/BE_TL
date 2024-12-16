@@ -733,6 +733,8 @@ Route::group([
 
     Route::get('warehouse-export-plans', [WarehouseExportPlanController::class, 'index']);
     Route::post('warehouse-export-plans-import', [WarehouseExportPlanController::class, 'import']);
+
+    Route::get('update-finished-product-inventory', [ApiUIController::class, 'updateFinishedProductInventory']);
 });
 
 //UI

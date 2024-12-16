@@ -5,6 +5,7 @@ namespace App\Admin\Controllers;
 use App\Exports\Production\ProductOrderExport;
 use App\Http\Controllers\Controller;
 use App\Imports\ProductOrderImport;
+use App\Models\Inventory;
 use App\Models\Line;
 use App\Models\LineInventories;
 use App\Models\Lot;
@@ -75,13 +76,6 @@ class ProductOrderController extends Controller
                     return $item->line_id == $line->id;
                 })->number_machine ?? 0;
             }
-            // foreach ($spec as $key => $data) {
-            //     $sl_may[$key]['name'] = $data->line->name;
-            //     $sl_may[$key]['line_id'] = $data->line_id;
-            //     $sl_may[$key]['value'] = $numberProductOrder->first(function ($item) use ($data) {
-            //         return $item->line_id == $data->line_id;
-            //     })->number_machine ?? 0;
-            // }
             $ton = [];
             $san_luong = LineInventories::with('line')->where('product_id', $value->product_id)->get()->groupBy('line_id');
             $sl_ton = 0;
@@ -93,18 +87,12 @@ class ProductOrderController extends Controller
                 $ton[$key]['value'] = $sl;
                 $sl_ton += $sl;
             }
-            // foreach ($san_luong as $line_id => $data) {
-            //     $ton[$line_id]['name'] = $data[0]->line->name ?? '';
-            //     $ton[$line_id]['line_id'] = $line_id;
-            //     $sl = $data->sum('quantity');
-            //     $ton[$line_id]['value'] = $sl;
-            //     $sl_ton += $sl;
-            // }
             $value->order_date = $value->order_date ? date('d/m/Y', strtotime($value->order_date)) : null;
             $value->delivery_date = $value->delivery_date ? date('d/m/Y', strtotime($value->delivery_date)) : null;
             $value->sl_may = $sl_may;
             $value->ton = array_values($ton);
-            $value->sl_ton = $sl_ton;
+            $inventory = Inventory::where('product_id', $value->product_id)->first();
+            $value->sl_ton = $inventory->sl_ton ?? 0;
         }
         return $this->success(['data' => $result, 'total' => $total]);
     }
@@ -239,6 +227,9 @@ class ProductOrderController extends Controller
             }
             foreach ($request->ton as $key => $value) {
                 LineInventories::where('line_id', $value['line_id'])->where('product_id', $productOrder->product_id)->update(['quantity'=>$value['value']]);
+            }
+            if(isset($request->sl_ton)){
+                Inventory::where('product_id', $request->product_id)->update(['sl_ton'=>$request->sl_ton]);
             }
             DB::commit();
         } catch (\Throwable $th) {

@@ -17,6 +17,7 @@ use App\Models\CustomUser;
 use App\Models\Error;
 use App\Models\InfoCongDoan;
 use App\Models\Insulation;
+use App\Models\Inventory;
 use App\Models\IOTLog;
 use App\Models\MachineIot;
 use App\Models\Line;
@@ -3411,6 +3412,12 @@ class ApiMobileController extends AdminController
             $input['created_by'] = $request->user()->id;
             $input['so_luong'] = $lot->so_luong;
             WareHouseLog::create($input);
+            $inventory = Inventory::where('product_id', $lot->product_id)->first();
+            if($inventory){
+                $inventory->update(['sl_ton'=>$inventory->sl_ton + $lot->so_luong, 'sl_nhap'=>$inventory->sl_nhap + $lot->so_luong]);
+            }else{
+                Inventory::create(['product_id'=>$request->product_id, 'sl_ton'=>$lot->so_luong, 'sl_nhap'=>$lot->so_luong]);
+            }
         }
         return $this->success([], 'Nhập kho thành công');
     }
@@ -3558,8 +3565,12 @@ class ApiMobileController extends AdminController
         $input['so_luong'] = $lot->so_luong;
         WareHouseLog::create($input);
         $lineInventory = LineInventories::where('product_id', $lot->product_id)->orderBy('updated_at', 'DESC')->first();
-        if($lineInventory){
-            $lineInventory->update(['quantity'=>$lineInventory->quantity - $lot->so_luong]);
+        if ($lineInventory) {
+            $lineInventory->update(['quantity' => $lineInventory->quantity - $lot->so_luong]);
+        }
+        $inventory = Inventory::where('product_id', $lot->product_id)->first();
+        if($inventory){
+            $inventory->update(['sl_ton'=>$inventory->sl_ton - $lot->so_luong, 'sl_xuat'=>$inventory->sl_xuat + $lot->so_luong]);
         }
         return $this->success([], 'Xuất kho thành công');
     }
@@ -3721,7 +3732,7 @@ class ApiMobileController extends AdminController
             $object->so_luong_xuat  = $log_export ? $log_export->so_luong : 0;
             $object->nguoi_xuat  = $log_export ? $log_export->creator->name : '';
             $object->ton_kho = $object->so_luong_nhap - $object->so_luong_xuat;
-            $object->so_ngay_ton = !$log_export ? ((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d', strtotime($log_import->created_at)))) / 86400) : '';
+            $object->so_ngay_ton = !$log_export ? ((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d', strtotime($log_import->created_at)))) / 86400) : 0;
             $data[] = $object;
         }
         $record = new stdClass();
