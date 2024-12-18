@@ -123,11 +123,16 @@ class IOTController extends AdminController
                 $parameters = MachineParameters::where('machine_id', $machine->code)->where('is_if', 1)->pluck('parameter_id')->toArray();
                 $arr = [];
                 foreach ($parameters as $key => $parameter) {
-                    $arr[$parameter] = 0;
+                    $value = 0;
+                    $count = 0;
                     foreach ((array) $logs as $key => $log) {
                         if (isset($log[$parameter])) {
-                            $arr[$parameter] = (float)$arr[$parameter] + (float)$log[$parameter];
+                            $value = (float)$value + (float)$log[$parameter];
+                            $count = $count + 1;
                         }
+                    }
+                    if ($count > 0) {
+                        $arr[$parameter] = $value / $count;
                     }
                 }
                 $machineIotQuery->delete();

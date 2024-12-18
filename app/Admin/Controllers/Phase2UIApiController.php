@@ -15,6 +15,7 @@ use App\Models\ErrorHistory;
 use App\Models\ErrorMachine;
 use App\Models\Factory;
 use App\Models\InfoCongDoan;
+use App\Models\Inventory;
 use App\Models\Line;
 use App\Models\LineInventories;
 use App\Models\Losx;
@@ -2804,17 +2805,22 @@ class Phase2UIApiController extends Controller
         if (!$order->sl_giao_sx) {
             throw new Exception("Không có số lượng giao sản xuất", 1);
         }
-        $orderId = $order->id;
-        $productId = $order->product_id;
-        $quantity = $order->sl_giao_sx;
-        $productionSteps = $this->getProductionSteps($productId);
         $stepQuantities = [];
         $productionTimes = [];
         $line_must_run = [];
-        $bottleneckSpec = $this->getBottleneckStage($productId);
-        $taskTime = 1 / $bottleneckSpec->value;
+        $productId = $order->product_id;
         $workingHoursPerDay = 8.0;
         $finishTime = 0;
+
+        // Tính số lượng cần sản xuất trừ tồn
+        $inventory = Inventory::where('product_id', $productId)->first();
+        $quantity = $inventory ? $order->sl_giao_sx - $inventory->sl_ton : $order->sl_giao_sx;
+
+        $productionSteps = $this->getProductionSteps($productId);
+        return $productionSteps->reverse();
+        $bottleneckSpec = $this->getBottleneckStage($productId);
+        $taskTime = 1 / $bottleneckSpec->value;
+        
         foreach ($productionSteps as $step) {
             $calculatedQuantity = $this->calculateProductionOutput($productId, $step->line_id, $quantity);
             $lotsize = $this->getLotSize($productId, $step->line_id);
@@ -2833,6 +2839,7 @@ class Phase2UIApiController extends Controller
                 $bottleneckTime = round($calculatedQuantity / $efficiencySpec, 2);
             }
         }
+
         $orderedSteps = $this->getOrderedProductionSteps($productId);
         $orderedSteps = $orderedSteps->filter(function ($value) use ($line_must_run) {
             return in_array($value->line_id, $line_must_run);
