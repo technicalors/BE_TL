@@ -2240,8 +2240,17 @@ class Phase2UIApiController extends Controller
 
         return $transportTimeSpec ? $transportTimeSpec->value : 0; // Nếu không tìm thấy, trả về 0
     }
+    function getLotSize($productId, $lineId)
+    {
+        // Truy vấn để lấy giá trị lotsize từ bảng spec theo slug 'so-luong'
+        $lotSizeSpec = Spec::where('line_id', $lineId)
+            ->where('product_id', $productId)
+            ->where('slug', 'so-luong')
+            ->first();
 
-    function getLotSize($productId, array $lineIds)
+        return $lotSizeSpec ? $lotSizeSpec->value : 11000; // Nếu không tìm thấy, trả về 0
+    }
+    function getLotSizes($productId, array $lineIds)
     {
         $specs = Spec::whereIn('line_id', $lineIds)
             ->where('product_id', $productId)
@@ -2271,22 +2280,33 @@ class Phase2UIApiController extends Controller
         return $rollChangeSpec ? $rollChangeSpec->value : 0;
     }
 
-    function getEfficiency($productId, array $lineIds)
+    function getEfficiency($productId, $lineId)
+    {
+        // Truy vấn để lấy giá trị năng suất từ bảng spec theo slug 'nang-suat'
+        $efficiencySpec = Spec::where('line_id', $lineId)
+            ->where('product_id', $productId)
+            ->where('slug', 'nang-suat-an-dinhgio')
+            ->first();
+
+        return $efficiencySpec ? $efficiencySpec->value : 0;
+    }
+
+    function getEfficiencys($productId, array $lineIds)
     {
         $specs = Spec::whereIn('line_id', $lineIds)
             ->where('product_id', $productId)
             ->where('slug', 'nang-suat-an-dinhgio')
             ->get();
-    
-        $efficiencies = $specs->mapWithKeys(function($spec) {
+
+        $efficiencies = $specs->mapWithKeys(function ($spec) {
             return [$spec->line_id => $spec->value];
         })->toArray();
-    
+
         $result = [];
         foreach ($lineIds as $id) {
             $result[$id] = $efficiencies[$id] ?? 0;
         }
-    
+
         return $result;
     }
 
@@ -2836,8 +2856,8 @@ class Phase2UIApiController extends Controller
         $bottleneckSpec = $this->getBottleneckStage($productId);
         $taskTime = 1 / $bottleneckSpec->value;
         $lineIDs = $productionSteps->pluck('line_id')->toArray();
-        $lotSizes = $this->getLotSize($productId, $lineIDs);
-        $efficiencySpecs = $this->getEfficiency($productId, $lineIDs);
+        $lotSizes = $this->getLotSizes($productId, $lineIDs);
+        $efficiencySpecs = $this->getEfficiencys($productId, $lineIDs);
 
         return $lotSizes;
         foreach ($productionSteps as $step) {
