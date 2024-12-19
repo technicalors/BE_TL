@@ -38,6 +38,7 @@ use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -2240,15 +2241,22 @@ class Phase2UIApiController extends Controller
         return $transportTimeSpec ? $transportTimeSpec->value : 0; // Nếu không tìm thấy, trả về 0
     }
 
-    function getLotSize($productId, $lineId)
+    function getLotSize($productId, array $lineIds)
     {
-        // Truy vấn để lấy giá trị lotsize từ bảng spec theo slug 'so-luong'
-        $lotSizeSpec = Spec::where('line_id', $lineId)
+        $specs = Spec::whereIn('line_id', $lineIds)
             ->where('product_id', $productId)
             ->where('slug', 'so-luong')
-            ->first();
+            ->get();
 
-        return $lotSizeSpec ? $lotSizeSpec->value : 11000; // Nếu không tìm thấy, trả về 0
+        $lotSizes = $specs->mapWithKeys(function ($spec) {
+            return [$spec->line_id => $spec->value];
+        })->toArray();
+        $result = [];
+        foreach ($lineIds as $id) {
+            $result[$id] = $lotSizes[$id] ?? 11000;
+        }
+
+        return $result;
     }
 
     function getRollChangeTime($productId, $lineId)
@@ -2263,15 +2271,23 @@ class Phase2UIApiController extends Controller
         return $rollChangeSpec ? $rollChangeSpec->value : 0;
     }
 
-    function getEfficiency($productId, $lineId)
+    function getEfficiency($productId, array $lineIds)
     {
-        // Truy vấn để lấy giá trị năng suất từ bảng spec theo slug 'nang-suat'
-        $efficiencySpec = Spec::where('line_id', $lineId)
+        $specs = Spec::whereIn('line_id', $lineIds)
             ->where('product_id', $productId)
             ->where('slug', 'nang-suat-an-dinhgio')
-            ->first();
-
-        return $efficiencySpec ? $efficiencySpec->value : 0;
+            ->get();
+    
+        $efficiencies = $specs->mapWithKeys(function($spec) {
+            return [$spec->line_id => $spec->value];
+        })->toArray();
+    
+        $result = [];
+        foreach ($lineIds as $id) {
+            $result[$id] = $efficiencies[$id] ?? 0;
+        }
+    
+        return $result;
     }
 
     function getBottleneckStage($productId)
@@ -2533,7 +2549,7 @@ class Phase2UIApiController extends Controller
         $sortedByProductId = collect($prioritizedOrders)->groupBy('product_id')->flatten(1);
         foreach ($sortedByProductId as $index => $order) {
             try {
-                $result = $this->processProductionPlan($order, $index, $machine_available_list);
+                $result = $this->processProductionPlanV1($order, $index, $machine_available_list);
                 if ($result) {
                     $data[] = $result;
                 }
@@ -2817,13 +2833,16 @@ class Phase2UIApiController extends Controller
         $quantity = $inventory ? $order->sl_giao_sx - $inventory->sl_ton : $order->sl_giao_sx;
 
         $productionSteps = $this->getProductionSteps($productId);
-        return $productionSteps->reverse();
         $bottleneckSpec = $this->getBottleneckStage($productId);
         $taskTime = 1 / $bottleneckSpec->value;
-        
+        $lineIDs = $productionSteps->pluck('line_id')->toArray();
+        $lotSizes = $this->getLotSize($productId, $lineIDs);
+        $efficiencySpecs = $this->getEfficiency($productId, $lineIDs);
+
+        return $lotSizes;
         foreach ($productionSteps as $step) {
             $calculatedQuantity = $this->calculateProductionOutput($productId, $step->line_id, $quantity);
-            $lotsize = $this->getLotSize($productId, $step->line_id);
+            $lotsize = $lotSizes[$step->line_id];
             if ($calculatedQuantity !== 0) {
                 $line_must_run[] = $step->line_id;
             };
@@ -2840,7 +2859,7 @@ class Phase2UIApiController extends Controller
             }
         }
 
-        $orderedSteps = $this->getOrderedProductionSteps($productId);
+        $orderedSteps = $productionSteps->reverse()->values();
         $orderedSteps = $orderedSteps->filter(function ($value) use ($line_must_run) {
             return in_array($value->line_id, $line_must_run);
         })->values();
