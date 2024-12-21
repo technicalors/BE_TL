@@ -2569,7 +2569,7 @@ class Phase2UIApiController extends Controller
         $sortedByProductId = collect($prioritizedOrders)->groupBy('product_id')->flatten(1);
         foreach ($sortedByProductId as $index => $order) {
             try {
-                $result = $this->processProductionPlanV1($order, $index, $machine_available_list);
+                $result = $this->processProductionPlan($order, $index, $machine_available_list);
                 if ($result) {
                     $data[] = $result;
                 }
