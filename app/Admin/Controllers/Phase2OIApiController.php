@@ -1504,6 +1504,7 @@ class Phase2OIApiController extends Controller
             $infoCongDoan->qcHistory && $infoCongDoan->qcHistory->update(['eligible_to_end' => 1]);
             $infoCongDoan->update(['sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_ng]);
         }
+        $data = $this->filterTestCriteria($infoCongDoan);
         return $this->success($data);
     }
 
