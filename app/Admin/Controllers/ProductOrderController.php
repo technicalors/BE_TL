@@ -211,7 +211,7 @@ class ProductOrderController extends Controller
             $productOrder = ProductOrder::find($request->id);
             $productOrder->update($request->all());
             NumberMachineOrder::where('product_order_id', $request->id)->delete();
-            foreach ($request->sl_may as $key => $value) {
+            foreach (($request->sl_may ?? []) as $key => $value) {
                 $numberMachine = MachinePriorityOrder::where('product_id', $productOrder->product_id)
                     ->where('line_id', $value['line_id'])
                     ->count();
@@ -225,8 +225,8 @@ class ProductOrderController extends Controller
                     'user_id' => $request->user()->id,
                 ]);
             }
-            foreach ($request->ton as $key => $value) {
-                LineInventories::where('line_id', $value['line_id'])->where('product_id', $productOrder->product_id)->update(['quantity'=>$value['value']]);
+            foreach (($request->ton ?? []) as $key => $value) {
+                LineInventories::updateOrCreate(['line_id'=>$value['line_id'], 'product_id'=>$productOrder->product_id], ['quantity'=>$value['value']]);
             }
             if(isset($request->sl_ton)){
                 Inventory::where('product_id', $request->product_id)->update(['sl_ton'=>$request->sl_ton]);
