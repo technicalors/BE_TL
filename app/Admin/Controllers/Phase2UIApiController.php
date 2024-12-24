@@ -2496,7 +2496,7 @@ class Phase2UIApiController extends Controller
 
     function getNumberMachine($orderId)
     {
-        $numberMachineOrders = NumberMachineOrder::where('line_id', '<>', 24)->where('product_order_id', $orderId)->get();
+        $numberMachineOrders = NumberMachineOrder::where('product_order_id', $orderId)->get();
         return $numberMachineOrders->pluck('number_machine', 'line_id');
     }
 
