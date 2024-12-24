@@ -2172,7 +2172,7 @@ class Phase2UIApiController extends Controller
         // Sắp xếp theo thứ tự giảm dần (DESC) để tính toán sản lượng
         return Spec::where('product_id', $productId)
             ->where('slug', 'hanh-trinh-san-xuat')
-            ->where('line_id', '<>', 24) //
+            // ->where('line_id', '<>', 24) //
             ->orderBy('value', 'desc')
             ->get();
     }
@@ -2182,7 +2182,7 @@ class Phase2UIApiController extends Controller
         // Bước 8: Truy vấn để lấy các công đoạn từ bảng spec theo product_id và sắp xếp theo value ASC
         return Spec::where('product_id', $productId)
             ->where('slug', 'hanh-trinh-san-xuat')
-            ->where('line_id', '<>', 24) //
+            // ->where('line_id', '<>', 24) //
             ->orderBy('value', 'asc')
             ->get()->filter(function ($value) {
                 return is_numeric($value->value);
