@@ -57,15 +57,7 @@ class Phase2UIApiController extends Controller
     use API;
     public function getTreeSelect(Request $request)
     {
-        $factories = Factory::with(
-            [
-                'line' => function ($query) {
-                    $query->with('machine')->whereHas('machine');
-                },
-            ]
-        )
-            ->where('id', 2)
-            ->get();
+        $factories = Factory::where('id', 2)->get();
         foreach ($factories as $factory) {
             foreach ($factory->line as $line) {
                 foreach ($line->machine as $machine) {
@@ -2172,7 +2164,7 @@ class Phase2UIApiController extends Controller
         // Sắp xếp theo thứ tự giảm dần (DESC) để tính toán sản lượng
         return Spec::where('product_id', $productId)
             ->where('slug', 'hanh-trinh-san-xuat')
-            ->where('line_id', '<>', 24) //
+            // ->where('line_id', '<>', 24) //
             ->orderBy('value', 'desc')
             ->get();
     }
@@ -2182,7 +2174,7 @@ class Phase2UIApiController extends Controller
         // Bước 8: Truy vấn để lấy các công đoạn từ bảng spec theo product_id và sắp xếp theo value ASC
         return Spec::where('product_id', $productId)
             ->where('slug', 'hanh-trinh-san-xuat')
-            ->where('line_id', '<>', 24) //
+            // ->where('line_id', '<>', 24) //
             ->orderBy('value', 'asc')
             ->get()->filter(function ($value) {
                 return is_numeric($value->value);
@@ -2504,7 +2496,7 @@ class Phase2UIApiController extends Controller
 
     function getNumberMachine($orderId)
     {
-        $numberMachineOrders = NumberMachineOrder::where('line_id', '<>', 24)->where('product_order_id', $orderId)->get();
+        $numberMachineOrders = NumberMachineOrder::where('product_order_id', $orderId)->get();
         return $numberMachineOrders->pluck('number_machine', 'line_id');
     }
 

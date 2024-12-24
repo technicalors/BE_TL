@@ -44,8 +44,10 @@ class InfoCongDoanController extends AdminController
             return $this->failure('', $validated->errors()->first());
         }
         $info_cong_doan = InfoCongDoan::where('lot_id', $input['lot_id'])->where('line_id', $input['line_id'])->first();
-        // return array_intersect_key($input, array_flip($info_cong_doan->getFillable()));
-        // $info_cong_doan->update($input);
+        if($info_cong_doan){
+            $info_cong_doan->update($input);
+        }
+        
         return $this->success($info_cong_doan);
     }
     public function exportInfoCongDoan(Request $request){
