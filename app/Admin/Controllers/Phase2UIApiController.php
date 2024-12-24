@@ -57,15 +57,7 @@ class Phase2UIApiController extends Controller
     use API;
     public function getTreeSelect(Request $request)
     {
-        $factories = Factory::with(
-            [
-                'line' => function ($query) {
-                    $query->with('machine')->whereHas('machine');
-                },
-            ]
-        )
-            ->where('id', 2)
-            ->get();
+        $factories = Factory::where('id', 2)->get();
         foreach ($factories as $factory) {
             foreach ($factory->line as $line) {
                 foreach ($line->machine as $machine) {
