@@ -27,7 +27,9 @@ class ProductOrderController extends Controller
     use API;
     public function index(Request $request)
     {
-        $query = ProductOrder::where('quantity', '>', 0)->orderBy('created_at', 'DESC');
+        $query = ProductOrder::where('quantity', '>', 0)
+        ->orderBy('product_id')
+        ->orderBy('created_at', 'DESC');
         if (isset($request->start_date) && isset($request->end_date)) {
             $query->whereDate('order_date', '>=', date('Y-m-d', strtotime($request->start_date)))
                 ->whereDate('order_date', '<=', date('Y-m-d', strtotime($request->end_date)));
