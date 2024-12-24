@@ -1464,7 +1464,7 @@ class Phase2OIApiController extends Controller
             $parsedCriteria = $this->findSpec($item, $product);
             // $parsedCriteria = $item;
             if ($parsedCriteria) array_push($data[$chi_tieu_slug]['data'], $parsedCriteria);
-            $data[$chi_tieu_slug]['result'] = $history = $testCriteriaDetailHistories->firstWhere('type', $chi_tieu_slug)->result ?? null;
+            $data[$chi_tieu_slug]['result'] = $testCriteriaDetailHistories->firstWhere('type', $chi_tieu_slug)->result ?? null;
         }
         return $data;
     }
@@ -1504,7 +1504,6 @@ class Phase2OIApiController extends Controller
             $infoCongDoan->qcHistory && $infoCongDoan->qcHistory->update(['eligible_to_end' => 1]);
             $infoCongDoan->update(['sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_ng]);
         }
-        $data = $this->filterTestCriteria($infoCongDoan);
         return $this->success($data);
     }
 
