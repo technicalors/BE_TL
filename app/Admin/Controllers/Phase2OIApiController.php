@@ -1492,11 +1492,12 @@ class Phase2OIApiController extends Controller
         $counter = 0;
         foreach ($criteria_type as $key => $type) {
             $value = $data[$type] ?? [];
-            if (empty($value['data']) && empty($value['result']) && $infoCongDoan->qcHistory) {
+            if ((empty($data[$type]) || empty($value['data'])) && $infoCongDoan->qcHistory) {
                 TestCriteriaHistory::firstOrCreate(
                     ['q_c_history_id' => $infoCongDoan->qcHistory->id, 'type' => $type, 'user_id' => $infoCongDoan->qcHistory->user_id],
                     ['result' => 'OK']
                 );
+                $data[$type] = ['data' => [], 'result' => 'OK'];
                 $counter++;
             }
         }
