@@ -1464,7 +1464,7 @@ class Phase2OIApiController extends Controller
             $parsedCriteria = $this->findSpec($item, $product);
             // $parsedCriteria = $item;
             if ($parsedCriteria) array_push($data[$chi_tieu_slug]['data'], $parsedCriteria);
-            $data[$chi_tieu_slug]['result'] = $history = $testCriteriaDetailHistories->firstWhere('type', $chi_tieu_slug)->result ?? null;
+            $data[$chi_tieu_slug]['result'] = $testCriteriaHistories->firstWhere('type', $chi_tieu_slug)->result ?? null;
         }
         return $data;
     }
