@@ -867,7 +867,8 @@ class Phase2OIApiController extends Controller
         $lot_plan = LotPlan::where('lot_id', $request->lot_id)->whereDate('start_time', date('Y-m-d'))->where('line_id', $line->id)->where('machine_code', $machine->code)->first();
         try {
             DB::beginTransaction();
-            InfoCongDoan::create([
+            InfoCongDoan::firstOrCreate( ['lot_id' => $lot_plan->lot_id,'lot_plan_id' => $lot_plan->id, 'line_id' => $machine->line_id, 'machine_code' => $machine->code],
+            [
                 'input_lot_id' => $request->scanned_lot,
                 'lot_id' => $lot_plan->lot_id,
                 'lo_sx' => $lot_plan->lo_sx,
@@ -904,10 +905,6 @@ class Phase2OIApiController extends Controller
     public function getAssignment(Request $request)
     {
         $info = InfoCongDoan::where('lot_id', $request->lot_id)->first();
-        // $lot = Lot::find($info->input_lot_id);
-        // if (!$lot) {
-        //     return $this->failure([], "Không tìm thấy lot");
-        // }
         $assignment = Assignment::with(['worker:id,name', 'lot'])->where('lot_id', $request->lot_id)->get();
         foreach ($assignment as $item) {
             $item['so_luong'] = $info->sl_dau_vao_hang_loat ?? 0;

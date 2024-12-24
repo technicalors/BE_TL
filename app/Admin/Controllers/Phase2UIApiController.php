@@ -15,6 +15,7 @@ use App\Models\ErrorHistory;
 use App\Models\ErrorMachine;
 use App\Models\Factory;
 use App\Models\InfoCongDoan;
+use App\Models\Inventory;
 use App\Models\Line;
 use App\Models\LineInventories;
 use App\Models\Losx;
@@ -37,6 +38,7 @@ use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -2238,7 +2240,6 @@ class Phase2UIApiController extends Controller
 
         return $transportTimeSpec ? $transportTimeSpec->value : 0; // Nếu không tìm thấy, trả về 0
     }
-
     function getLotSize($productId, $lineId)
     {
         // Truy vấn để lấy giá trị lotsize từ bảng spec theo slug 'so-luong'
@@ -2248,6 +2249,23 @@ class Phase2UIApiController extends Controller
             ->first();
 
         return $lotSizeSpec ? $lotSizeSpec->value : 11000; // Nếu không tìm thấy, trả về 0
+    }
+    function getLotSizes($productId, array $lineIds)
+    {
+        $specs = Spec::whereIn('line_id', $lineIds)
+            ->where('product_id', $productId)
+            ->where('slug', 'so-luong')
+            ->get();
+
+        $lotSizes = $specs->mapWithKeys(function ($spec) {
+            return [$spec->line_id => $spec->value];
+        })->toArray();
+        $result = [];
+        foreach ($lineIds as $id) {
+            $result[$id] = $lotSizes[$id] ?? 11000;
+        }
+
+        return $result;
     }
 
     function getRollChangeTime($productId, $lineId)
@@ -2271,6 +2289,25 @@ class Phase2UIApiController extends Controller
             ->first();
 
         return $efficiencySpec ? $efficiencySpec->value : 0;
+    }
+
+    function getEfficiencys($productId, array $lineIds)
+    {
+        $specs = Spec::whereIn('line_id', $lineIds)
+            ->where('product_id', $productId)
+            ->where('slug', 'nang-suat-an-dinhgio')
+            ->get();
+
+        $efficiencies = $specs->mapWithKeys(function ($spec) {
+            return [$spec->line_id => $spec->value];
+        })->toArray();
+
+        $result = [];
+        foreach ($lineIds as $id) {
+            $result[$id] = $efficiencies[$id] ?? 0;
+        }
+
+        return $result;
     }
 
     function getBottleneckStage($productId)
@@ -2804,20 +2841,28 @@ class Phase2UIApiController extends Controller
         if (!$order->sl_giao_sx) {
             throw new Exception("Không có số lượng giao sản xuất", 1);
         }
-        $orderId = $order->id;
-        $productId = $order->product_id;
-        $quantity = $order->sl_giao_sx;
-        $productionSteps = $this->getProductionSteps($productId);
         $stepQuantities = [];
         $productionTimes = [];
         $line_must_run = [];
-        $bottleneckSpec = $this->getBottleneckStage($productId);
-        $taskTime = 1 / $bottleneckSpec->value;
+        $productId = $order->product_id;
         $workingHoursPerDay = 8.0;
         $finishTime = 0;
+
+        // Tính số lượng cần sản xuất trừ tồn
+        $inventory = Inventory::where('product_id', $productId)->first();
+        $quantity = $inventory ? $order->sl_giao_sx - $inventory->sl_ton : $order->sl_giao_sx;
+
+        $productionSteps = $this->getProductionSteps($productId);
+        $bottleneckSpec = $this->getBottleneckStage($productId);
+        $taskTime = 1 / $bottleneckSpec->value;
+        $lineIDs = $productionSteps->pluck('line_id')->toArray();
+        $lotSizes = $this->getLotSizes($productId, $lineIDs);
+        $efficiencySpecs = $this->getEfficiencys($productId, $lineIDs);
+
+        return $lotSizes;
         foreach ($productionSteps as $step) {
             $calculatedQuantity = $this->calculateProductionOutput($productId, $step->line_id, $quantity);
-            $lotsize = $this->getLotSize($productId, $step->line_id);
+            $lotsize = $lotSizes[$step->line_id];
             if ($calculatedQuantity !== 0) {
                 $line_must_run[] = $step->line_id;
             };
@@ -2833,7 +2878,8 @@ class Phase2UIApiController extends Controller
                 $bottleneckTime = round($calculatedQuantity / $efficiencySpec, 2);
             }
         }
-        $orderedSteps = $this->getOrderedProductionSteps($productId);
+
+        $orderedSteps = $productionSteps->reverse()->values();
         $orderedSteps = $orderedSteps->filter(function ($value) use ($line_must_run) {
             return in_array($value->line_id, $line_must_run);
         })->values();
