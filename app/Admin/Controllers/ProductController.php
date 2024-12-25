@@ -252,19 +252,19 @@ class ProductController extends Controller
         $spec_data = [];
         foreach ($currRow as $key => $item) {
             $line_id = [];
-            if (in_array($key, $this->excelColumnRange("DW", "ER", "AD", "AR", "BC", "BL", "BU", "CF", "CP", "DB"))) {
+            if (in_array($key, $this->excelColumnRange("DW", "EU", "AD", "AR", "BC", "BL", "BU", "CF", "CP", "DB"))) {
                 $line_id = [24]; //Gap dan lien hoan
-            } else if (in_array($key, $this->excelColumnRange("GC", "GV", "AE", "AS", "BD", "BM", "BV", "CG", "CQ", "DC"))) {
+            } else if (in_array($key, $this->excelColumnRange("GI", "HF", "AE", "AS", "BD", "BM", "BV", "CG", "CQ", "DC"))) {
                 $line_id = [27]; //Dan liner
-            } else if (in_array($key, $this->excelColumnRange("EQ", "FZ", "AF", "AU", "BE", "BN", "BW", "CH", "CS", "DE"))) {
+            } else if (in_array($key, $this->excelColumnRange("EV", "GH", "AF", "AU", "BE", "BN", "BW", "CH", "CS", "DE"))) {
                 $line_id = [25]; //In flexo
-            } else if (in_array($key, $this->excelColumnRange("HT", "IX", "AI", "AY", "BH", "BQ", "BZ", "CK", "CW", "DG"))) {
+            } else if (in_array($key, $this->excelColumnRange("IF", "JO", "AI", "AY", "BH", "BQ", "BZ", "CK", "CW", "DG"))) {
                 $line_id = [26]; //Duc cat
-            } else if (in_array($key, $this->excelColumnRange("IY", "JY", "AN", "CD", "DA"))) {
+            } else if (in_array($key, $this->excelColumnRange("JP", "LI", "AN", "CD", "DA"))) {
                 $line_id = [29]; //Chon Phase2 
-            } else if (in_array($key, $this->excelColumnRange("JZ", "KL"))) {
+            } else if (in_array($key, $this->excelColumnRange("LJ", "MA"))) {
                 $line_id = [30]; //OQC Phase2
-            } else if (in_array($key, ["CE", "CO"])) {
+            } else if (in_array($key, $this->excelColumnRange("MB", "MF", "CE", "CO"))) {
                 $line_id = [24, 27, 25, 26, 29, 30];
             }
 
@@ -290,7 +290,7 @@ class ProductController extends Controller
                         $input["name"] = "Vào hàng (Setup máy)";
                     } else if (in_array($key, $this->excelColumnRange("CP", "DA"))) {
                         $input["name"] = "Năng suất ấn định/giờ";
-                    } else if (in_array($key, $this->excelColumnRange("DB", "DI"))) {
+                    } else if (in_array($key, $this->excelColumnRange("DB", "DJ"))) {
                         $input["name"] = "Nhân sự ấn định máy (người)";
                     } else {
                         $input['name'] = $title[$key];
@@ -994,16 +994,16 @@ class ProductController extends Controller
         foreach ($row as $key => $value) {
             $line_id = null;
             $machine_id = null;
-            if ($key === 'KT') {
+            if ($key === 'MK') {
                 $line_id = 24;
                 $machine_id = $value;
-            } else if ($key === 'KZ') {
+            } else if ($key === 'MQ') {
                 $line_id = 25;
                 $machine_id = $value;
-            } else if ($key === 'MA') {
+            } else if ($key === 'NR') {
                 $line_id = 27;
                 $machine_id = $value;
-            } else if ($key === 'MK') {
+            } else if ($key === 'OB') {
                 $line_id = 26;
                 $machine_id = $value;
             } else {
