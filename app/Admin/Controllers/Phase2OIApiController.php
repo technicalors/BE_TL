@@ -315,7 +315,7 @@ class Phase2OIApiController extends Controller
             $lot_plan_query->where('machine_code', $machine_code);
             $info_query->where('machine_code', $machine_code);
         }
-        $lotPlans = $lot_plan_query->orderBy('start_time', 'ASC')->orderBy('lo_sx', 'ASC')->get();
+        $lotPlans = $lot_plan_query->orderBy('lo_sx', 'ASC')->orderBy('start_time', 'ASC')->get();
         $lotPlanList = $this->parseLotPlanData($lotPlans);
         $infos = $info_query->get();
         $infoList = $this->parseInfoData($infos);

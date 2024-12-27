@@ -1400,14 +1400,14 @@ class Phase2UIApiController extends Controller
             $line = Line::find($lineMachine['line_id']);
             $machine = Machine::where('code', $lineMachine['machine_code'])->first();
             $product = Product::find($lineMachine['product_id']);
-            if (!$line || !$machine || !$product) {
+            if (!$line || !$product) {
                 continue;
             }
             $sheet = $spreadsheet->getSheet($sheet_index);
-            $sheet->setTitle($line->name . " - " . $machine->code);
+            $sheet->setTitle($line->name . ($machine ? " - " . $machine->code : ''));
             $lineQcHistoriesQuery = clone $query;
             $qcHistories = $lineQcHistoriesQuery->whereHas('infoCongDoan', function ($infoQuery) use ($line, $machine, $product) {
-                $infoQuery->where('line_id', $line->id)->where('machine_code', $machine->code)->where('product_id', $product->id);
+                $infoQuery->where('line_id', $line->id)->where('machine_code', $machine->code ?? null)->where('product_id', $product->id);
             })->get();
             $infos = $this->parseQCData($qcHistories);
             $history = $qcHistories->flatMap->testCriteriaHistories->flatMap->testCriteriaDetailHistories->groupBy(function ($item) {
