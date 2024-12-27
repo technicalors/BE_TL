@@ -689,7 +689,8 @@ class Phase2OIApiController extends Controller
                         ]);
                     } else {
                         $lot->update([
-                            'so_luong' => 0
+                            'so_luong' => 0,
+                            'final_line_id' => $line->id,
                         ]);
                     }
                 } else {
