@@ -1453,7 +1453,7 @@ class Phase2OIApiController extends Controller
                         ->toArray();
                     $isExist = false;
                     foreach ($detailHistory as $entry) {
-                        if($infoCongDoan->line_id === 30){
+                        if($infoCongDoan->line_id == '30'){
                             if ($entry['product_id'] === $infoCongDoan->product_id) {
                                 $isExist = true;
                             }
