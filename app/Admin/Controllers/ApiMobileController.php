@@ -173,7 +173,11 @@ class ApiMobileController extends AdminController
         if (isset($request->is_iot)) {
             $query->where('is_iot', $request->is_iot);
         }
-
+        if(isset($request->withs) && $request->withs == 'plan'){
+            $result = $query->with('plan')->get();
+        }else{
+            $result = $query->get();
+        }
         $result = $query->get();
 
         return $this->success($result);
