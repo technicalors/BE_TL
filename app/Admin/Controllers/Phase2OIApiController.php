@@ -689,7 +689,8 @@ class Phase2OIApiController extends Controller
                         ]);
                     } else {
                         $lot->update([
-                            'so_luong' => 0
+                            'so_luong' => 0,
+                            'final_line_id' => $line->id,
                         ]);
                     }
                 } else {
@@ -1501,7 +1502,7 @@ class Phase2OIApiController extends Controller
                 $counter++;
             }
         }
-        if ($counter === 3) {
+        if ($counter >= 3) {
             $infoCongDoan->qcHistory && $infoCongDoan->qcHistory->update(['eligible_to_end' => 1]);
             $infoCongDoan->update(['sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_ng]);
         }
