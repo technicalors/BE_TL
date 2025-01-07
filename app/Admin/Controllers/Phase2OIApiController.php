@@ -1462,8 +1462,8 @@ class Phase2OIApiController extends Controller
                     }
                 }
             }
+            // array_push($data[$chi_tieu_slug]['data'], $item);
             $parsedCriteria = $this->findSpec($item, $product);
-            // $parsedCriteria = $item;
             if ($parsedCriteria) array_push($data[$chi_tieu_slug]['data'], $parsedCriteria);
             $data[$chi_tieu_slug]['result'] = $testCriteriaHistories->firstWhere('type', $chi_tieu_slug)->result ?? null;
         }
