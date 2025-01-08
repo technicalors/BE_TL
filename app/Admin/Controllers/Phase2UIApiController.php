@@ -1427,7 +1427,7 @@ class Phase2UIApiController extends Controller
                     if (isset($info['ten_san_pham']) && !in_array($info['ten_san_pham'], $product_array)) $product_array[] = $info['ten_san_pham'];
                     if (isset($info['machine_id']) && !in_array($info['machine_id'], $machine_array)) $machine_array[] = $info['machine_id'];
                     if (isset($history[$info['lot_id']])) {
-                        $checked_data[$info['lot_id']] = $history[$info['lot_id']]->mapWithKeys(function ($e) {
+                        $checked_data[$info['lot_id']] = $history[$info['lot_id']]->mapWithKeyss(function ($e) {
                             return [$e->test_criteria_id => $e->input ?? $e->result];
                         });
                     }
@@ -2164,7 +2164,7 @@ class Phase2UIApiController extends Controller
         // Sắp xếp theo thứ tự giảm dần (DESC) để tính toán sản lượng
         return Spec::where('product_id', $productId)
             ->where('slug', 'hanh-trinh-san-xuat')
-            // ->where('line_id', '<>', 24) //
+            ->whereRaw('value REGEXP "^[0-9]+$"')
             ->orderBy('value', 'desc')
             ->get();
     }
@@ -2174,11 +2174,9 @@ class Phase2UIApiController extends Controller
         // Bước 8: Truy vấn để lấy các công đoạn từ bảng spec theo product_id và sắp xếp theo value ASC
         return Spec::where('product_id', $productId)
             ->where('slug', 'hanh-trinh-san-xuat')
-            // ->where('line_id', '<>', 24) //
+            ->whereRaw('value REGEXP "^[0-9]+$"')
             ->orderBy('value', 'asc')
-            ->get()->filter(function ($value) {
-                return is_numeric($value->value);
-            })->values();
+            ->get();
     }
 
     function calculateProductionWastage($productId)
@@ -2222,6 +2220,30 @@ class Phase2UIApiController extends Controller
         return $quantity;
     }
 
+    function modifiedCalculateProductionOutput($lineId, $quantity, $lineProductionWaste = [], $lineInputWaste = [], $lineInventory = [])
+    {
+        $productionWaste = $lineProductionWaste[$lineId] ?? 0;
+
+        $inputWaste = $lineInputWaste[$lineId] ?? 0;
+
+        $line_inventory = $lineInventory[$lineId] ?? 0;
+        $remain = $quantity - $line_inventory;
+        if ($remain > 0) {
+            $quantity = $remain;
+        } else {
+            return 0;
+        }
+        if ($productionWaste) {
+            $quantity += $quantity * ($productionWaste / 100);
+        }
+
+        if ($inputWaste) {
+            $quantity += $inputWaste;
+        }
+
+        return $quantity;
+    }
+
     function getTransportTimeBetweenSteps($productId, $lineId)
     {
         // Truy vấn để lấy thời gian vận chuyển giữa các công đoạn từ bảng spec theo slug 'van-chuyen-chuyen-hang-cong-doan-truoc-sang-cong-doan-sau'
@@ -2249,7 +2271,7 @@ class Phase2UIApiController extends Controller
             ->where('slug', 'so-luong')
             ->get();
 
-        $lotSizes = $specs->mapWithKeys(function ($spec) {
+        $lotSizes = $specs->mapWithKeyss(function ($spec) {
             return [$spec->line_id => $spec->value];
         })->toArray();
         $result = [];
@@ -2290,7 +2312,7 @@ class Phase2UIApiController extends Controller
             ->where('slug', 'nang-suat-an-dinhgio')
             ->get();
 
-        $efficiencies = $specs->mapWithKeys(function ($spec) {
+        $efficiencies = $specs->mapWithKeyss(function ($spec) {
             return [$spec->line_id => $spec->value];
         })->toArray();
 
@@ -2619,6 +2641,31 @@ class Phase2UIApiController extends Controller
         return $startTime->copy()->addDays($daysAdded)->setTime($hour, $minute);
     }
 
+    function getSpecByKey($productionSteps, $productId, $materialId, $key){
+        $lineIdFirst = end($productionSteps);
+        // Khởi tạo mảng kết quả
+        $specData = [];
+        // Nếu công đoạn đầu tiên là gấp dán, lấy từ $material
+        if ($lineIdFirst == 24) {
+            $specData = Spec::where('product_id', $materialId)
+                ->where('line_id', 24)
+                ->where('slug', $key)
+                ->pluck('value', 'line_id')
+                ->all();
+            // Loại bỏ line_id = 24 khỏi danh sách $productionSteps
+            $productionSteps = array_diff($productionSteps, [24]);
+        }
+        // Lấy dữ liệu còn lại từ $product
+        $specForOthers = Spec::where('product_id', $productId)
+            ->whereIn('line_id', $productionSteps)
+            ->where('slug', $key)
+            ->pluck('value', 'line_id')
+            ->all();
+        // Gộp kết quả từ hai truy vấn
+        $specData = ($specData + $specForOthers);
+        return $specData;
+    }
+
     public function processProductionPlan($order, $orderIndex = 0, &$machine_available_list = [])
     {
         if (!$order->sl_giao_sx) {
@@ -2626,20 +2673,33 @@ class Phase2UIApiController extends Controller
         }
         $orderId = $order->id;
         $productId = $order->product_id;
-        $initialQuantity = $order->sl_giao_sx;
+        $inventory = Inventory::where('product_id', $order->product_id)->first();
+        $initialQuantity = ($order->sl_giao_sx - ($inventory->sl_ton ?? 0) ?? 0);
         $productionSteps = $this->getProductionSteps($productId);
+        $lineProductionArray = $productionSteps->pluck('line_id')->toArray();
+        $materialId = $productId;
+        if(end($lineProductionArray) == 24){
+            $bom = Bom::where('product_id', $productId)->whereRaw('priority REGEXP "^[0-9]+$"')->first();
+            if($bom){
+                $materialId = $bom->material_id;
+            }
+        }
         $stepQuantities = [];
         $productionTimes = [];
         $numberMachineByStep = $this->getNumberMachine($orderId);
         $inputWaste = $this->calculateProductionWastage($productId);
         $line_must_run = [];
+        $lineProductionWaste = $this->getSpecByKey($lineProductionArray, $productId, $materialId, 'hao-phi-san-xuat-cac-cong-doan');
+        $lineInputWaste = $this->getSpecByKey($lineProductionArray, $productId, $materialId, 'hao-phi-vao-hang-cac-cong-doan');
+        $lineInventory = LineInventories::where('product_id', $productId)->pluck('quantity', 'line_id');
+        $efficiencies = $this->getSpecByKey($lineProductionArray, $productId, $materialId, 'nang-suat-an-dinhgio');
         foreach ($productionSteps as $step) {
-            $calculatedQuantity = $this->calculateProductionOutput($productId, $step->line_id, $initialQuantity);
+            $calculatedQuantity = $this->modifiedCalculateProductionOutput($step->line_id, $initialQuantity, $lineProductionWaste, $lineInputWaste, $lineInventory);
             if ($calculatedQuantity !== 0) {
                 $line_must_run[] = $step->line_id;
             };
             $stepQuantities[$step->line_id] = $calculatedQuantity;
-            $efficiencySpec = $this->getEfficiency($productId, $step->line_id);
+            $efficiencySpec = $efficiencies[$step->line_id] ?? 0;
             if ($efficiencySpec > 0) {
                 $productionTimes[$step->line_id] = round($calculatedQuantity / $efficiencySpec, 2);
             }
@@ -2666,10 +2726,17 @@ class Phase2UIApiController extends Controller
         if (count($orderedSteps) <= 0) {
             return null;
         }
+        $lineLotSize = $this->getSpecByKey($lineProductionArray, $productId, $materialId, 'so-luong');
+        $rollChangeTimes = $this->getSpecByKey($lineProductionArray, $productId, $materialId, 'thoi-gian-len-xuong-cuon');
+        $rollsPerTransports = $this->getSpecByKey($lineProductionArray, $productId, $materialId, 'so-luong-cuon-1-lan-van-chuyen-cuon');
+        $lineSetupTime = $this->getSpecByKey($lineProductionArray, $productId, $materialId, 'vao-hang-setup-may');
+        $preparationTimeSpecs = $this->getSpecByKey($lineProductionArray, $productId, $materialId, 'chuan-bidau-ca');
+        $transportTimeSpecs = $this->getSpecByKey($lineProductionArray, $productId, $materialId, 'van-chuyen-chuyen-hang-cong-doan-truoc-sang-cong-doan-sau');
+        Log::debug([$lineLotSize, $rollChangeTimes, $rollsPerTransports, $lineSetupTime, $preparationTimeSpecs, $transportTimeSpecs]);
         foreach ($orderedSteps as $index => $step) {
-            $quantity =  $stepQuantities[$step->line_id];
-            $lotSize = $this->getLotSize($productId, $step->line_id);
             $lineId = $step->line_id;
+            $quantity =  $stepQuantities[$lineId];
+            $lotSize = $lineLotSize[$lineId] ?? 11000;
             if (!isset($lots[$lineId])) {
                 $lots[$lineId] = [];
             }
@@ -2677,17 +2744,17 @@ class Phase2UIApiController extends Controller
             if (!$product) {
                 throw new Exception("Không tìm thấy mã sản phẩm " . $productId, 1);
             }
-            $rollChangeTime = $this->getRollChangeTime($productId, $lineId);
+            $rollChangeTime = $rollChangeTimes[$lineId] ?? 0;
 
-            $efficiency = $this->getEfficiency($productId, $lineId);
+            $efficiency = $efficiencies[$lineId] ?? 0;
             $taskTime = $efficiency > 0 ? 60 / $efficiency : 0; // Tính taskTime, nếu năng suất > 0
 
             // Lấy số lượng cuộn một lần vận chuyển và tính toán thời gian sản xuất cho 1 xe hàng
-            $rollsPerTransport = $this->getRollsPerTransport($productId, $lineId);
+            $rollsPerTransport = $rollsPerTransports[$lineId] ?? 0;
             // Lấy thời gian vào hàng tại công đoạn với slug 'vao-hang-setup-may'
-            $setupTime = $this->getSetupTime($productId, $lineId);
-            $shiftPreparationTime = $this->getShiftPreparationTime($productId, $lineId);
-            $transportTime = $this->getTransportTimeBetweenSteps($productId, $lineId);
+            $setupTime = $lineSetupTime[$lineId] ?? 0;
+            $shiftPreparationTime = $preparationTimeSpecs[$lineId] ?? 0;
+            $transportTime = $transportTimeSpecs[$lineId] ?? 0;
             //Tính thời gian bắt đầu của lô
             if (!isset($startTime)) {
                 // Công đoạn đầu tiên
@@ -2714,7 +2781,6 @@ class Phase2UIApiController extends Controller
             $numMachines = count($machines);
             $machine_in_line[$lineId] = $numMachines;
             $quantityPerMachine = $numMachines > 0 ? ceil($quantity / $numMachines) : $quantity;
-            Log::debug([$lineId, $quantity, $quantityPerMachine, $stepQuantities]);
             $lotIndexOffset = 0; // Offset để đánh số lot cho mỗi máy
             $numLots = ceil($quantityPerMachine / $lotSize); // Tổng số lot, dùng ceil để làm tròn lên
             foreach ($machines as $machineIndex => $machine) {

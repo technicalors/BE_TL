@@ -57,17 +57,6 @@ class ProductOrderController extends Controller
         ->get();
         $except = ['kho-thanh-pham', 'oqc', 'iqc', 'kho-thanh-pham', 'kho-bao-on', 'u'];
         foreach ($result as $value) {
-            $spec = Spec::with('line')
-                ->whereIn('id', function ($query) use ($value) {
-                    $query->selectRaw('MIN(id)')
-                        ->from('spec')
-                        ->where('product_id', $value->product_id)
-                        ->where('slug', 'hanh-trinh-san-xuat')
-                        ->where('line_id', '<>', 24)
-                        ->groupBy('line_id');
-                })
-                ->orderBy('value', 'asc')
-                ->get();
             $sl_may = [];
             $numberProductOrder = $value->numberProductOrder;
             foreach ($lines as $key => $line) {
