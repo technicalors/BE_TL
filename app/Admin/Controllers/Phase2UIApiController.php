@@ -2366,7 +2366,12 @@ class Phase2UIApiController extends Controller
             ->orderBy('priority')
             ->pluck('priority', 'machine_id')
             ->toArray();
-
+        if(count($machinePriorityOrder) == 0){
+            $machinePriorityOrder = Machine::where('line_id', $lineId)->get()->toArray();
+            foreach ($machinePriorityOrder as $key => $value) {
+                $machinePriorityOrder[$key]['priority'] = 1;
+            }
+        }
         // Lấy danh sách mã máy từ thứ tự ưu tiên
         $machineCodes = array_keys($machinePriorityOrder);
 
