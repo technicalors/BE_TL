@@ -2747,12 +2747,17 @@ class Phase2UIApiController extends Controller
         $orderedSteps = $this->getOrderedProductionSteps($productId)
             ->filter(fn($value) => in_array($value->line_id, $line_must_run))
             ->values();
-
         // Nếu không có công đoạn nào phải chạy => không cần tính tiếp
         if ($orderedSteps->count() <= 0) {
             return null;
         }
-
+        foreach($orderedSteps as $key=> $step){
+            if($key == 0 && $step->line_id == 24){
+                $step->product_id = $materialId;
+            }else{
+                $step->product_id = $productId;
+            }
+        }
         // 7. Chuẩn bị các biến để tính lô/lots
         $stepEndTimes      = [];
         $lots              = [];
@@ -2794,6 +2799,7 @@ class Phase2UIApiController extends Controller
         // 9. Vòng lặp các công đoạn đã sắp xếp
         $startTime = null;
         foreach ($orderedSteps as $index => $step) {
+            $productId = $step->product_id;
             $lineId   = $step->line_id;
             $quantity = $stepQuantities[$lineId];
 
