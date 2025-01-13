@@ -2716,6 +2716,7 @@ class Phase2UIApiController extends Controller
         $line_must_run = [];
         foreach ($productionSteps as $step) {
             $lineId            = $step->line_id;
+            $lineName          = $step->line->name;
             $calculatedQuantity = $this->modifiedCalculateProductionOutput(
                 $lineId,
                 $initialQuantity,
@@ -2733,7 +2734,7 @@ class Phase2UIApiController extends Controller
             $stepQuantities[$lineId] = $calculatedQuantity;
 
             // Tính thời gian (giờ) nếu có năng suất
-            $efficiencySpec = $efficiencies[$lineId] ?? 0;
+            $efficiencySpec = $efficiencies[$lineId] ?? throw new Exception("Không tìm thấy năng suất cho sản phẩm $productId tại công đoạn $lineName", 1);
             if ($efficiencySpec > 0) {
                 // round(..., 2) làm tròn 2 chữ số thập phân
                 $productionTimes[$lineId] = round($calculatedQuantity / $efficiencySpec, 2);

@@ -732,6 +732,8 @@ Route::group([
     Route::get('monthly-consumption', [PowerConsumeController::class, 'monthlyConsumption']);
 
     Route::get('warehouse-export-plans', [WarehouseExportPlanController::class, 'index']);
+    Route::post('warehouse-export-plans/update', [WarehouseExportPlanController::class, 'update']);
+    Route::post('warehouse-export-plans/delete', [WarehouseExportPlanController::class, 'delete']);
     Route::post('warehouse-export-plans-import', [WarehouseExportPlanController::class, 'import']);
 
     Route::get('update-finished-product-inventory', [ApiUIController::class, 'updateFinishedProductInventory']);

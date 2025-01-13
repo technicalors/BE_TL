@@ -66,4 +66,30 @@ class WarehouseExportPlanController extends Controller
             return $this->failure([], $e->getMessage(), 500);
         }
     }
+    public function update(Request $request)
+    {
+        $request->validate([
+            'id' => 'required',
+            'sl_yeu_cau_giao' => 'required',
+        ]);
+        $record = WareHouseExportPlan::find($request->id);
+        if (!$record) {
+            return $this->failure([], 'Không tìm thấy bản ghi', 404);
+        }
+        $record->update($request->all());
+        return $this->success($record, 'Cập nhật thành công');
+    }
+
+    public function delete(Request $request)
+    {
+        $request->validate([
+            'id' => 'required',
+        ]);
+        $record = WareHouseExportPlan::find($request->id);
+        if (!$record) {
+            return $this->failure([], 'Không tìm thấy bản ghi', 404);
+        }
+        $record->delete();
+        return $this->success([], 'Xóa thành công');
+    }
 }
