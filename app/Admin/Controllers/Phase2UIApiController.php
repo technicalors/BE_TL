@@ -2788,14 +2788,6 @@ class Phase2UIApiController extends Controller
         $lineSetupTime        = $this->getSpecByKey($lineProductionArray, $productId, $materialId, 'vao-hang-setup-may');
         $preparationTimeSpecs = $this->getSpecByKey($lineProductionArray, $productId, $materialId, 'chuan-bidau-ca');
         $transportTimeSpecs   = $this->getSpecByKey($lineProductionArray, $productId, $materialId, 'van-chuyen-chuyen-hang-cong-doan-truoc-sang-cong-doan-sau');
-        Log::debug([
-            $lineLotSize,
-            $rollChangeTimes,
-            $rollsPerTransports,
-            $lineSetupTime,
-            $preparationTimeSpecs,
-            $transportTimeSpecs
-        ]);
 
         // 9. Vòng lặp các công đoạn đã sắp xếp
         $startTime = null;
@@ -2886,7 +2878,10 @@ class Phase2UIApiController extends Controller
             // 9.3. Vòng lặp từng máy
           
             foreach ($machines as $machineIndex => $machine) {
-
+                $machineReadyTime = Carbon::parse($machine->available_at, 'Asia/Bangkok');
+                if (!$startTime->greaterThan($machineReadyTime)) {
+                    $startTime = $machineReadyTime;
+                }
                 // Ước tính endTime cho toàn bộ lot
                 $endTime = $this->calculateEndTime1($startTime, $taskTime, $lotSize, $rollChangeTime, $numLots, $setupTime);
                 $stepEndTimes[$lineId] = $endTime;
@@ -3014,7 +3009,7 @@ class Phase2UIApiController extends Controller
                 if (!isset($machine_available_list[$machine->code]) ||
                     $stepEndTimes[$lineId]->greaterThan($machine_available_list[$machine->code])
                 ) {
-                    $machine_available_list[$machine->code] = $stepEndTimes[$lineId];
+                    $machine_available_list[$machine->code] = $stepEndTimes[$lineId]->format('Y-m-d H:i:s');
                 }
             }
         }
