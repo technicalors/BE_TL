@@ -209,10 +209,6 @@ class Phase2UIApiController extends Controller
             } else {
                 $query->where('line_id', $request->line_id);
             }
-            if (isset($request->khach_hang)) {
-                $product_ids = Product::where('customer_id', $request->khach_hang)->pluck('id')->toArray();
-                $query->whereIn('product_id', $product_ids);
-            }
         }
         if (isset($request->machine_code)) {
             if (is_array($request->machine_code)) {
@@ -239,6 +235,10 @@ class Phase2UIApiController extends Controller
         }
         if (isset($request->lot_id)) {
             $query->where('lot_id', 'like', "%$request->lot_id%");
+        }
+        if (isset($request->khach_hang)) {
+            $product_ids = Product::where('customer_id', $request->khach_hang)->pluck('id')->toArray();
+            $query->whereIn('product_id', $product_ids);
         }
         return $query;
     }
@@ -1045,33 +1045,33 @@ class Phase2UIApiController extends Controller
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->date[0])))
                 ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->date[1])));
         }
-        $query->whereHas('infoCongDoan', function ($query) use ($request) {
+        $query->whereHas('infoCongDoan', function ($infoQuery) use ($request) {
             if (isset($request->line_id)) {
                 if (is_array($request->line_id)) {
-                    $query->whereIn('line_id', $request->line_id);
+                    $infoQuery->whereIn('line_id', $request->line_id);
                 } else {
-                    $query->where('line_id', $request->line_id);
-                }
-                if (isset($request->khach_hang)) {
-                    $product_ids = Product::where('customer_id', $request->khach_hang)->pluck('id')->toArray();
-                    $query->whereIn('product_id', $product_ids);
+                    $infoQuery->where('line_id', $request->line_id);
                 }
             }
             if (isset($request->machine_code)) {
                 if (is_array($request->machine_code)) {
-                    $query->whereIn('machine_code', $request->machine_code);
+                    $infoQuery->whereIn('machine_code', $request->machine_code);
                 } else {
-                    $query->where('machine_code', $request->machine_code);
+                    $infoQuery->where('machine_code', $request->machine_code);
                 }
             }
             if (isset($request->product_id)) {
-                $query->where('product_id', 'like',  '%' . $request->product_id . '%');
+                $infoQuery->where('product_id', 'like',  '%' . $request->product_id . '%');
             }
             if (isset($request->ten_sp)) {
-                $query->where('product_id', 'like',  '%' . $request->ten_sp . '%');
+                $infoQuery->where('product_id', 'like',  '%' . $request->ten_sp . '%');
             }
             if (isset($request->lo_sx)) {
-                $query->where('lot_id', 'like', "%$request->lo_sx%");
+                $infoQuery->where('lot_id', 'like', "%$request->lo_sx%");
+            }
+            if (isset($request->khach_hang)) {
+                $product_ids = Product::where('customer_id', $request->khach_hang)->pluck('id')->toArray();
+                $infoQuery->whereIn('product_id', $product_ids);
             }
         });
 
