@@ -209,6 +209,10 @@ class Phase2UIApiController extends Controller
             } else {
                 $query->where('line_id', $request->line_id);
             }
+            if (isset($request->khach_hang)) {
+                $product_ids = Product::where('product_id', $request->khach_hang)->pluck('id')->toArray();
+                $query->whereIn('product_id', $product_ids);
+            }
         }
         if (isset($request->machine_code)) {
             if (is_array($request->machine_code)) {
@@ -228,18 +232,6 @@ class Phase2UIApiController extends Controller
         }
         if (isset($request->ten_sp)) {
             $query->where('product_id', $request->ten_sp);
-        }
-        if (isset($request->khach_hang)) {
-            $khach_hang = Customer::where('id', $request->khach_hang)->first();
-            if ($khach_hang) {
-                $plan = ProductionPlan::where('khach_hang', $khach_hang->name)->get();
-                $product_ids = $plan->pluck('product_id')->toArray();
-                $query->where(function ($qr) use ($product_ids) {
-                    for ($i = 0; $i < count($product_ids); $i++) {
-                        $qr->orwhere('lot_id', 'like',  '%' . $product_ids[$i] . '%');
-                    }
-                });
-            }
         }
         if (isset($request->lo_sx)) {
             $lot = Lot::where('lo_sx', $request->lo_sx)->get();
@@ -1060,6 +1052,10 @@ class Phase2UIApiController extends Controller
                 } else {
                     $query->where('line_id', $request->line_id);
                 }
+                if (isset($request->khach_hang)) {
+                    $product_ids = Product::where('product_id', $request->khach_hang)->pluck('id')->toArray();
+                    $query->whereIn('product_id', $product_ids);
+                }
             }
             if (isset($request->machine_code)) {
                 if (is_array($request->machine_code)) {
@@ -1073,18 +1069,6 @@ class Phase2UIApiController extends Controller
             }
             if (isset($request->ten_sp)) {
                 $query->where('product_id', 'like',  '%' . $request->ten_sp . '%');
-            }
-            if (isset($request->khach_hang)) {
-                $khach_hang = Customer::where('id', $request->khach_hang)->first();
-                if ($khach_hang) {
-                    $plan = ProductionPlan::where('khach_hang', $khach_hang->name)->get();
-                    $product_ids = $plan->pluck('product_id')->toArray();
-                    $query->where(function ($qr) use ($product_ids) {
-                        for ($i = 0; $i < count($product_ids); $i++) {
-                            $qr->orwhere('lot_id', 'like',  '%' . $product_ids[$i] . '%');
-                        }
-                    });
-                }
             }
             if (isset($request->lo_sx)) {
                 $query->where('lot_id', 'like', "%$request->lo_sx%");
