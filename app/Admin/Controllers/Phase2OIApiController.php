@@ -358,11 +358,14 @@ class Phase2OIApiController extends Controller
 
         try {
             DB::beginTransaction();
-            $roll = RollMaterial::with('material.products')->find($request->roll_id);
+            $roll = RollMaterial::with(['material.products', 'warehouse_inventory'])->find($request->roll_id);
             // return $roll;
             // $material = Material::with('bom.product')->find($request->material_id);
             if (!$roll) {
                 return $this->failure([], "Không tìm thấy cuộn");
+            }
+            if (!$roll->warehouse_inventory) {
+                return $this->failure([], "Cuộn không còn tồn");
             }
             $product_ids = $roll->material->products->pluck('id')->toArray() ?? [];
             if (count($product_ids) === 0) {

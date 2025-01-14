@@ -26,4 +26,8 @@ class RollMaterial extends Model
     {
         return $this->belongsTo(Material::class);
     }
+    public function warehouse_inventory()
+    {
+        return $this->hasOne(WarehouseInventory::class, 'roll_id');
+    }
 }
