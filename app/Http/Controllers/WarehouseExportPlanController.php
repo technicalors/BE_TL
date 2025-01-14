@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Imports\FcPlantImport;
 use App\Imports\WarehouseExportPlanImport;
+use App\Models\ApprovalWarehouseExportPlan;
 use App\Models\FcPlant;
 use App\Models\LineInventories;
 use App\Models\WareHouseExportPlan;
@@ -11,6 +12,7 @@ use Illuminate\Http\Request;
 use App\Traits\API;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
@@ -22,7 +24,7 @@ class WarehouseExportPlanController extends Controller
     public function index(Request $request)
     {
         $pageSize = $request->pageSize ?? 25;
-        $query = WareHouseExportPlan::query()->orderByDesc('ngay_xuat_hang');
+        $query = WareHouseExportPlan::with('approval')->orderByDesc('ngay_xuat_hang');
 
         if (isset($request->start_date)) {
             $query->whereDate('ngay_xuat_hang', '>=', $request->start_date);
@@ -91,5 +93,22 @@ class WarehouseExportPlanController extends Controller
         }
         $record->delete();
         return $this->success([], 'Xóa thành công');
+    }
+
+    public function approval(Request $request)
+    {
+        $request->validate([
+            'id' => 'required',
+        ]);
+        $record = WareHouseExportPlan::find($request->id);
+        if (!$record) {
+            return $this->failure([], 'Không tìm thấy bản ghi', 404);
+        }
+        ApprovalWarehouseExportPlan::firstOrCreate([
+            'warehouse_export_plan_id' => $record->id
+        ], [
+            'approver_id' => $request->user()->id
+        ]);
+        return $this->success($record, 'Duyệt thành công');
     }
 }
