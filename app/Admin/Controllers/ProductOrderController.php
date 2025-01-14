@@ -220,7 +220,7 @@ class ProductOrderController extends Controller
                 LineInventories::updateOrCreate(['line_id'=>$value['line_id'], 'product_id'=>$productOrder->product_id], ['quantity'=>$value['value']]);
             }
             if(isset($request->sl_ton)){
-                Inventory::where('product_id', $request->product_id)->update(['sl_ton'=>$request->sl_ton]);
+                Inventory::updateOrCreate(['product_id'=>$request->product_id], ['sl_ton'=>$request->sl_ton]);
             }
             DB::commit();
         } catch (\Throwable $th) {

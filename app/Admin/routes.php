@@ -678,7 +678,7 @@ Route::group([
 //UI
 Route::group([
     'prefix'        => "/api/p2/ui",
-    'middleware'    => [],
+    'middleware'    => "auth:sanctum",
 ], function (Router $router) {
     $router->get('/tree-select', [Phase2UIApiController::class, 'getTreeSelect']);
     $router->get('/production-history', [Phase2UIApiController::class, 'getProductionHistory']);
@@ -734,6 +734,7 @@ Route::group([
     Route::get('warehouse-export-plans', [WarehouseExportPlanController::class, 'index']);
     Route::post('warehouse-export-plans/update', [WarehouseExportPlanController::class, 'update']);
     Route::post('warehouse-export-plans/delete', [WarehouseExportPlanController::class, 'delete']);
+    Route::post('warehouse-export-plans/approval', [WarehouseExportPlanController::class, 'approval']);
     Route::post('warehouse-export-plans-import', [WarehouseExportPlanController::class, 'import']);
 
     Route::get('update-finished-product-inventory', [ApiUIController::class, 'updateFinishedProductInventory']);
