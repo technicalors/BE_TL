@@ -993,8 +993,7 @@ class Phase2OIApiController extends Controller
             $infoCongDoan = InfoCongDoan::where('lot_id', $assignment->lot_id)->where('line_id', 29)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
             if ($infoCongDoan) {
                 $infoCongDoan->update([
-                    'sl_dau_vao_hang_loat' => $request->actual_quantity ?? 0,
-                    'sl_dau_ra_hang_loat' => $request->ok_quantity ?? 0,
+                    'sl_dau_ra_hang_loat' => $request->actual_quantity ?? 0,
                 ]);
                 $lot = Lot::updateOrCreate(
                     ['id' => $infoCongDoan->lot_id, 'product_id' => $infoCongDoan->product_id, 'lo_sx' => $infoCongDoan->lo_sx],
