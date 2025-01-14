@@ -21,4 +21,9 @@ class RollMaterial extends Model
     protected $primaryKey = 'id';
     protected $keyType = 'string';
     public $incrementing = false;
+
+    public function material()
+    {
+        return $this->belongsTo(Material::class);
+    }
 }
