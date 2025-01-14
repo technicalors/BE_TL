@@ -210,7 +210,7 @@ class Phase2UIApiController extends Controller
                 $query->where('line_id', $request->line_id);
             }
             if (isset($request->khach_hang)) {
-                $product_ids = Product::where('product_id', $request->khach_hang)->pluck('id')->toArray();
+                $product_ids = Product::where('customer_id', $request->khach_hang)->pluck('id')->toArray();
                 $query->whereIn('product_id', $product_ids);
             }
         }
@@ -1053,7 +1053,7 @@ class Phase2UIApiController extends Controller
                     $query->where('line_id', $request->line_id);
                 }
                 if (isset($request->khach_hang)) {
-                    $product_ids = Product::where('product_id', $request->khach_hang)->pluck('id')->toArray();
+                    $product_ids = Product::where('customer_id', $request->khach_hang)->pluck('id')->toArray();
                     $query->whereIn('product_id', $product_ids);
                 }
             }
