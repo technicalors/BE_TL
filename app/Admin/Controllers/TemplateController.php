@@ -24,6 +24,11 @@ class TemplateController extends Controller
         if (isset($request->id)) {
             $query->where('id', 'like', "%$request->id%");
         }
+        if (isset($request->roll_id)) {
+            $query->whereHas('roll', function ($q) use ($request) {
+                $q->where('id', 'like', "%$request->roll_id%");
+            });
+        }
         if (isset($request->material_id)) {
             $query->where('material_id', 'like', "%$request->material_id%");
         }

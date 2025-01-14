@@ -21,4 +21,13 @@ class RollMaterial extends Model
     protected $primaryKey = 'id';
     protected $keyType = 'string';
     public $incrementing = false;
+
+    public function material()
+    {
+        return $this->belongsTo(Material::class);
+    }
+    public function warehouse_inventory()
+    {
+        return $this->hasOne(WarehouseInventory::class, 'roll_id');
+    }
 }
