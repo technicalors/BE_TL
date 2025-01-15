@@ -224,10 +224,22 @@ class Phase2UIApiController extends Controller
             $query->whereDate('created_at', date('Y-m-d'));
         }
         if (isset($request->product_id)) {
-            $query->where('product_id',$request->product_id);
+            $query->where('lot_id', 'like',  '%' . $request->product_id . '%');
         }
         if (isset($request->ten_sp)) {
-            $query->where('product_id', $request->ten_sp);
+            $query->where('lot_id', 'like',  '%' . $request->ten_sp . '%');
+        }
+        if (isset($request->khach_hang)) {
+            $khach_hang = Customer::where('id', $request->khach_hang)->first();
+            if ($khach_hang) {
+                $plan = ProductionPlan::where('khach_hang', $khach_hang->name)->get();
+                $product_ids = $plan->pluck('product_id')->toArray();
+                $query->where(function ($qr) use ($product_ids) {
+                    for ($i = 0; $i < count($product_ids); $i++) {
+                        $qr->orwhere('lot_id', 'like',  '%' . $product_ids[$i] . '%');
+                    }
+                });
+            }
         }
         if (isset($request->lo_sx)) {
             $lot = Lot::where('lo_sx', $request->lo_sx)->get();
@@ -235,10 +247,6 @@ class Phase2UIApiController extends Controller
         }
         if (isset($request->lot_id)) {
             $query->where('lot_id', 'like', "%$request->lot_id%");
-        }
-        if (isset($request->khach_hang)) {
-            $product_ids = Product::where('customer_id', $request->khach_hang)->pluck('id')->toArray();
-            $query->whereIn('product_id', $product_ids);
         }
         return $query;
     }
@@ -1045,33 +1053,41 @@ class Phase2UIApiController extends Controller
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->date[0])))
                 ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->date[1])));
         }
-        $query->whereHas('infoCongDoan', function ($infoQuery) use ($request) {
+        $query->whereHas('infoCongDoan', function ($query) use ($request) {
             if (isset($request->line_id)) {
                 if (is_array($request->line_id)) {
-                    $infoQuery->whereIn('line_id', $request->line_id);
+                    $query->whereIn('line_id', $request->line_id);
                 } else {
-                    $infoQuery->where('line_id', $request->line_id);
+                    $query->where('line_id', $request->line_id);
                 }
             }
             if (isset($request->machine_code)) {
                 if (is_array($request->machine_code)) {
-                    $infoQuery->whereIn('machine_code', $request->machine_code);
+                    $query->whereIn('machine_code', $request->machine_code);
                 } else {
-                    $infoQuery->where('machine_code', $request->machine_code);
+                    $query->where('machine_code', $request->machine_code);
                 }
             }
             if (isset($request->product_id)) {
-                $infoQuery->where('product_id', 'like',  '%' . $request->product_id . '%');
+                $query->where('product_id', 'like',  '%' . $request->product_id . '%');
             }
             if (isset($request->ten_sp)) {
-                $infoQuery->where('product_id', 'like',  '%' . $request->ten_sp . '%');
-            }
-            if (isset($request->lo_sx)) {
-                $infoQuery->where('lot_id', 'like', "%$request->lo_sx%");
+                $query->where('product_id', 'like',  '%' . $request->ten_sp . '%');
             }
             if (isset($request->khach_hang)) {
-                $product_ids = Product::where('customer_id', $request->khach_hang)->pluck('id')->toArray();
-                $infoQuery->whereIn('product_id', $product_ids);
+                $khach_hang = Customer::where('id', $request->khach_hang)->first();
+                if ($khach_hang) {
+                    $plan = ProductionPlan::where('khach_hang', $khach_hang->name)->get();
+                    $product_ids = $plan->pluck('product_id')->toArray();
+                    $query->where(function ($qr) use ($product_ids) {
+                        for ($i = 0; $i < count($product_ids); $i++) {
+                            $qr->orwhere('lot_id', 'like',  '%' . $product_ids[$i] . '%');
+                        }
+                    });
+                }
+            }
+            if (isset($request->lo_sx)) {
+                $query->where('lot_id', 'like', "%$request->lo_sx%");
             }
         });
 
@@ -2793,16 +2809,16 @@ class Phase2UIApiController extends Controller
                 throw new Exception("Không tìm thấy mã sản phẩm " . $productId, 1);
             }
 
-            $rollChangeTime = $rollChangeTimes[$lineId] ?? 0;
-            $efficiency     = $efficiencies[$lineId] ?? 0;
+            $rollChangeTime = $rollChangeTimes[$lineId] ?? throw new Exception("Không tìm thấy thời gian lên xuống cuộn cho sản phẩm $productId tại công đoạn $lineId", 1);
+            $efficiency     = $efficiencies[$lineId] ?? throw new Exception("Không tìm thấy năng suất cho sản phẩm $productId tại công đoạn $lineId", 1);
             // taskTime = số phút để làm xong 1 sản phẩm (minute/product)
             $taskTime       = $efficiency > 0 ? 60 / $efficiency : 0;
 
             // Số lượng cuộn 1 lần vận chuyển
-            $rollsPerTransport = $rollsPerTransports[$lineId] ?? 0;
-            $setupTime         = $lineSetupTime[$lineId] ?? 0;
-            $shiftPrepTime     = $preparationTimeSpecs[$lineId] ?? 0;
-            $transportTime     = $transportTimeSpecs[$lineId] ?? 0;
+            $rollsPerTransport = $rollsPerTransports[$lineId] ?? throw new Exception("Không tìm thấy số lượng cuộn 1 lần vận chuyển cho sản phẩm $productId tại công đoạn $lineId", 1);
+            $setupTime         = $lineSetupTime[$lineId] ?? throw new Exception("Không tìm thấy thời gian vào hàng setup máy cho sản phẩm $productId tại công đoạn $lineId", 1);
+            $shiftPrepTime     = $preparationTimeSpecs[$lineId] ?? throw new Exception("Không tìm thấy thời gian chuẩn bị ca cho sản phẩm $productId tại công đoạn $lineId", 1);
+            $transportTime     = $transportTimeSpecs[$lineId] ?? throw new Exception("Không tìm thấy thời gian vận chuyển cho sản phẩm $productId tại công đoạn $lineId", 1);
 
             // 9.1. Tính $startTime cho công đoạn đầu tiên hay tiếp theo
             if (!isset($startTime)) {
@@ -2835,7 +2851,8 @@ class Phase2UIApiController extends Controller
                         if (
                             isset($lots[$prevLineId][$prevMachineCount - 1]) &&
                             isset($lots[$prevLineId][$prevMachineCount - 1][$transportIndex]) &&
-                            isset($lots[$prevLineId][$prevMachineCount - 1][$transportIndex]['endTime'])
+                            isset($lots[$prevLineId][$prevMachineCount - 1][$transportIndex]['endTime'])&&
+                            !isset($lineInventory[$prevLineId]) 
                         ) {
                             $prevEndTime = $lots[$prevLineId][$prevMachineCount - 1][$transportIndex]['endTime'];
                             $startTime   = $prevEndTime->copy()->addMinutes($transportTime);
@@ -2860,7 +2877,6 @@ class Phase2UIApiController extends Controller
             $lotIndexOffset     = 0;
 
             // 9.3. Vòng lặp từng máy
-          
             foreach ($machines as $machineIndex => $machine) {
                 $machineReadyTime = Carbon::parse($machine->available_at, 'Asia/Bangkok');
                 if (!$startTime->greaterThan($machineReadyTime)) {
