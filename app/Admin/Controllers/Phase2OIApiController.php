@@ -9,6 +9,7 @@ use App\Models\Assignment;
 use App\Models\Bom;
 use App\Models\Cell;
 use App\Models\CheckSheetLog;
+use App\Models\Customer;
 use App\Models\CustomUser;
 use App\Models\Error;
 use App\Models\ErrorHistory;
@@ -57,6 +58,7 @@ use Illuminate\Support\Str;
 use PhpParser\Node\Expr\Assign;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Http;
+use stdClass;
 
 class Phase2OIApiController extends Controller
 {
@@ -1980,12 +1982,103 @@ class Phase2OIApiController extends Controller
         return $this->success($data);
     }
 
-    public function overallExport()
+    public function overallExport(Request $request)
     {
-        $sum_so_luong_kh = WareHouseExportPlan::whereDate('ngay_xuat_hang', date('Y-m-d'))->sum('sl_yeu_cau_giao');
-        $sum_so_luong_tt = WareHouseExportPlan::whereDate('ngay_xuat_hang', date('Y-m-d'))->sum('sl_thuc_xuat');
+        $date = isset($request->date) ? date('Y-m-d', strtotime($request->date)) : date('Y-m-d');
+        $exportPlans = WareHouseExportPlan::whereDate('ngay_xuat_hang', $date)->get();
+        $sum_so_luong_kh = $exportPlans->sum('sl_yeu_cau_giao');
+        $sum_so_luong_tt = $exportPlans->sum('sl_thuc_xuat');
         $ti_le = $sum_so_luong_kh != 0 ? number_format(($sum_so_luong_tt * 100) / $sum_so_luong_kh) . ' %' : 0;
         $data = ['number_of_plan' => $sum_so_luong_kh, 'quantity' => $sum_so_luong_tt, 'ratio' => $ti_le];
+        return $this->success($data);
+    }
+
+    public function warehouseExportCustomer(Request $request){
+        $date = isset($request->date) ? date('Y-m-d', strtotime($request->date)) : date('Y-m-d');
+        $product_ids = WareHouseExportPlan::whereDate('ngay_xuat_hang', $date)->pluck('product_id')->toArray();
+        $customer_ids = Product::whereIn('id', $product_ids)->pluck('customer_id')->toArray();
+        $customers = Customer::select('id as value', 'name as label')->whereIn('id', $customer_ids)->get();
+        return $this->success($customers);
+    }
+
+    public function getProposeWarehouseExportList(Request $request){
+        $date = isset($request->date) ? date('Y-m-d', strtotime($request->date)) : date('Y-m-d');
+        $product_ids = Product::where('customer_id', $request->khach_hang)->pluck('id')->toArray();
+        $records = WareHouseExportPlan::with('inventory')->whereIn('product_id', $product_ids)
+            ->whereDate('ngay_xuat_hang', $date)
+            ->where(function($subQuery){
+                $subQuery->has('approval')
+                ->orWhereHas('inventory', function ($query) {
+                    $query->whereColumn('warehouse_export_plan.sl_yeu_cau_giao', '<=', 'inventory.sl_ton');
+                });
+            })
+            ->where(function ($query) {
+                $query->whereColumn('sl_yeu_cau_giao', '>=', 'sl_thuc_xuat')
+                    ->orWhereNull('sl_thuc_xuat');
+            })->get();
+        $data = [];
+        $lot_arr = [];
+        foreach ($records as $key => $record) {
+            $cell_ids = Cell::where('product_id', $record->product_id)->pluck('id')->toArray();
+            $cell_lots = DB::table('cell_lot')->whereIn('cell_id', $cell_ids)->orderBy('created_at', 'ASC')->get();
+            if (count($cell_lots) == 0) {
+                $object = new stdClass();
+                $object->product_id = $record->product ? $record->product->id : '';
+                $object->ten_san_pham = $record->product ? $record->product->name : '';
+                $object->lot_id = 'Không có tồn';
+                $object->ke_hoach_xuat = $record->sl_yeu_cau_giao;
+                $object->thuc_te_xuat = $record->sl_thuc_xuat;
+                $object->vi_tri = '-';
+                $object->so_luong =  '-';
+                $object->pic = '-';
+                $data[] = $object;
+            }
+            $product = Product::find($record->product_id);
+            $dinh_muc = 0;
+            foreach ($cell_lots as $key => $cell_lot) {
+                if (in_array($cell_lot->lot_id, $lot_arr)) {
+                    continue;
+                } else {
+                    $lot_arr[] = $cell_lot->lot_id;
+                }
+                if ($dinh_muc <  ($record->sl_yeu_cau_giao - $record->sl_hang_le - $record->sl_thuc_xuat)) {
+                    $lot = Lot::find($cell_lot->lot_id);
+                    if ($lot->so_luong < $product->dinh_muc_thung) continue;
+                    $object = new stdClass();
+                    $object->product_id = $record->product->id;
+                    $object->ten_san_pham = $record->product->name;
+                    $object->lot_id = $cell_lot->lot_id;
+                    $object->ke_hoach_xuat = $record->sl_yeu_cau_giao;
+                    $object->thuc_te_xuat = $record->sl_thuc_xuat;
+                    $object->vi_tri = $cell_lot->cell_id;
+                    $object->so_luong =  $lot->so_luong;
+                    $object->pic = '';
+                    $data[] = $object;
+                    $dinh_muc = $dinh_muc + $lot->so_luong;
+                }
+            }
+            if ($record->sl_hang_le > 0 && $dinh_muc < ($record->sl_yeu_cau_giao - $record->sl_thuc_xuat)) {
+                $lot_ids = Lot::where('product_id', $record->product_id)->where('so_luong', $record->sl_hang_le)->pluck('id');
+                if ($lot_ids) {
+                    $object = new stdClass();
+                    $cell_lot1 = DB::table('cell_lot')->whereIn('lot_id', $lot_ids)->first();
+                    if ($cell_lot1) {
+                        $lot_le = Lot::find($cell_lot1->lot_id);
+                        if ($cell_lot1) {
+                            $object->product_id = $record->product->id;
+                            $object->ten_san_pham = $record->product->name;
+                            $object->lot_id = $lot_le->id;
+                            $object->ke_hoach_xuat = $record->sl_yeu_cau_giao;
+                            $object->thuc_te_xuat =  $record->sl_thuc_xuat;
+                            $object->vi_tri =  $cell_lot1->cell_id;
+                            $object->so_luong =  $lot_le->so_luong;
+                            $object->pic = '';
+                            $data[] = $object;
+                        }
+                    }
+                }
+            }
+        }
         return $this->success($data);
     }
 

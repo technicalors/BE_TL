@@ -672,8 +672,11 @@ Route::group([
     //Kho
     $router->get('scan-import', [Phase2OIApiController::class, 'scanImport']);
     $router->get('overall-import', [Phase2OIApiController::class, 'overallImport']);
+
     $router->get('scan-export', [Phase2OIApiController::class, 'scanExport']);
     $router->get('overall-export', [Phase2OIApiController::class, 'overallExport']);
+    $router->get('warehoure-export-customer', [Phase2OIApiController::class, 'warehouseExportCustomer']);
+    $router->get('propose-warehoure-export-list', [Phase2OIApiController::class, 'getProposeWarehouseExportList']);
     
 });
 //UI

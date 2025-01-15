@@ -6,6 +6,7 @@ use App\Imports\FcPlantImport;
 use App\Imports\WarehouseExportPlanImport;
 use App\Models\ApprovalWarehouseExportPlan;
 use App\Models\FcPlant;
+use App\Models\Inventory;
 use App\Models\LineInventories;
 use App\Models\WareHouseExportPlan;
 use Illuminate\Http\Request;
@@ -37,8 +38,8 @@ class WarehouseExportPlanController extends Controller
         $records = $query->paginate($pageSize);
         $data = [];
         foreach ($records->items() as $key => $value) {
-            $ton_kho = LineInventories::where('product_id', $value->product_id)->orderBy('updated_at', 'DESC')->first();
-            $value->ton_kho = $ton_kho->quantity ?? 0;
+            $ton_kho = Inventory::where('product_id', $value->product_id)->orderBy('updated_at', 'DESC')->first();
+            $value->ton_kho = $ton_kho->sl_ton ?? 0;
             $data[] = $value;
         }
         return $this->success([

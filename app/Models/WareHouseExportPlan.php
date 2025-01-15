@@ -20,5 +20,8 @@ class WareHouseExportPlan extends Model
     {
         return $this->hasOne(ApprovalWarehouseExportPlan::class,'warehouse_export_plan_id','id');
     }
-    
+    public function inventory()
+    {
+        return $this->hasOne(Inventory::class, 'product_id', 'product_id');
+    }
 }
