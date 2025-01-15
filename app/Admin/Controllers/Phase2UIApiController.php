@@ -2837,7 +2837,6 @@ class Phase2UIApiController extends Controller
 
                 // Lấy endTime của công đoạn trước => + transportTime
                 //   (Cần cẩn thận kiểm tra index - 1, máy, v.v...)
-                return $lineInventory;
                 try {
                     $prevLineId = $orderedSteps[$index - 1]->line_id ?? null;
                     if (
