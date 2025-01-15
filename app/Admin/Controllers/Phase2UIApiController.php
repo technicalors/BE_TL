@@ -4021,4 +4021,15 @@ class Phase2UIApiController extends Controller
         })->delete();
         return 'done';
     }
+
+    public function updateLineSelectInfo(Request $request){
+        $infos = InfoCongDoan::with('assignments')->where('line_id', 29)->get();
+        foreach($infos as $info){
+            $assignment = count($info->assignments) ? $info->assignments[0] : null;
+            if(isset($assignment->actual_quantity)){
+                $info->update(['sl_dau_ra_hang_loat' => $assignment->actual_quantity]);
+            }
+        }
+        return 'done';
+    }
 }

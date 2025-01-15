@@ -612,6 +612,7 @@ Route::group([
     $router->get('/fake-data-consume', [Phase2UIApiController::class, 'generatePowerConsumes']);
     $router->get('/delete-overtime-machine-log', [Phase2UIApiController::class, 'deleteOvertimeMachineLog']);
     $router->get('/clear-fake-data', [Phase2UIApiController::class, 'clearFakeData']);
+    $router->get('/update-line-select-info', [Phase2UIApiController::class, 'updateLineSelectInfo']);
 });
 //Dashboard
 Route::group([
