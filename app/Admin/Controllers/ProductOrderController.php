@@ -50,9 +50,10 @@ class ProductOrderController extends Controller
         if (isset($request->withs)) {
             $query->with($request->withs);
         }
-        $result = $query->with('product', 'customer', 'material', 'numberProductOrder')->get();
+        $result = $query->with('product.materials.warehouse_inventories', 'customer', 'material', 'numberProductOrder')->get();
         $lines = Line::where("display", "1")
         ->where('factory_id', 2)
+        ->where('id', '!=', 29)
         ->orderBy('ordering', 'ASC')
         ->get();
         $except = ['kho-thanh-pham', 'oqc', 'iqc', 'kho-thanh-pham', 'kho-bao-on', 'u'];
@@ -84,6 +85,9 @@ class ProductOrderController extends Controller
             $value->ton = array_values($ton);
             $inventory = Inventory::where('product_id', $value->product_id)->first();
             $value->sl_ton = $inventory->sl_ton ?? 0;
+            $value->ton_kho_nvl = $value->product->materials->sum(function($material){
+                return $material->warehouse_inventories->sum('quantity') ?? 0;
+            });
         }
         return $this->success(['data' => $result, 'total' => $total]);
     }

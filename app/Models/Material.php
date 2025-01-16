@@ -44,4 +44,8 @@ class Material extends Model
         return $this->belongsToMany(Product::class, 'bom', 'material_id', 'product_id')
             ->withPivot('priority');
     }
+    public function warehouse_inventories()
+    {
+        return $this->hasMany(WarehouseInventory::class, 'material_id', 'id');
+    }
 }
