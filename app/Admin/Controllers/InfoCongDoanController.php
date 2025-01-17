@@ -31,6 +31,13 @@ class InfoCongDoanController extends AdminController
                 $query->where('line_id', $request->line_id);
             }
         }
+        if(isset($request->machine_id)){
+            if(is_array($request->machine_id)){
+                $query->whereIn('machine_code', $request->machine_id);
+            }else{
+                $query->where('machine_code', $request->machine_id);
+            }
+        }
         if(isset($request->lot_id)){
             $query->where('lot_id', 'like', "%$request->lot_id%");
         }
