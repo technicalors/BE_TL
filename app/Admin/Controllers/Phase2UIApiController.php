@@ -230,16 +230,8 @@ class Phase2UIApiController extends Controller
             $query->where('lot_id', 'like',  '%' . $request->ten_sp . '%');
         }
         if (isset($request->khach_hang)) {
-            $khach_hang = Customer::where('id', $request->khach_hang)->first();
-            if ($khach_hang) {
-                $plan = ProductionPlan::where('khach_hang', $khach_hang->name)->get();
-                $product_ids = $plan->pluck('product_id')->toArray();
-                $query->where(function ($qr) use ($product_ids) {
-                    for ($i = 0; $i < count($product_ids); $i++) {
-                        $qr->orwhere('lot_id', 'like',  '%' . $product_ids[$i] . '%');
-                    }
-                });
-            }
+            $product_ids = Product::where('customer_id', $request->khach_hang)->pluck('id')->toArray();
+            $query->whereIn('product_id', $product_ids);
         }
         if (isset($request->lo_sx)) {
             $lot = Lot::where('lo_sx', $request->lo_sx)->get();
@@ -1075,16 +1067,8 @@ class Phase2UIApiController extends Controller
                 $query->where('product_id', 'like',  '%' . $request->ten_sp . '%');
             }
             if (isset($request->khach_hang)) {
-                $khach_hang = Customer::where('id', $request->khach_hang)->first();
-                if ($khach_hang) {
-                    $plan = ProductionPlan::where('khach_hang', $khach_hang->name)->get();
-                    $product_ids = $plan->pluck('product_id')->toArray();
-                    $query->where(function ($qr) use ($product_ids) {
-                        for ($i = 0; $i < count($product_ids); $i++) {
-                            $qr->orwhere('lot_id', 'like',  '%' . $product_ids[$i] . '%');
-                        }
-                    });
-                }
+                $product_ids = Product::where('customer_id', $request->khach_hang)->pluck('id')->toArray();
+                $query->whereIn('product_id', $product_ids);
             }
             if (isset($request->lo_sx)) {
                 $query->where('lot_id', 'like', "%$request->lo_sx%");
@@ -1955,16 +1939,8 @@ class Phase2UIApiController extends Controller
                 $query->where('lot_id', 'like',  '%' . $request->ten_sp . '%');
             }
             if (isset($request->khach_hang)) {
-                $khach_hang = Customer::where('id', $request->khach_hang)->first();
-                if ($khach_hang) {
-                    $plan = ProductionPlan::where('khach_hang', $khach_hang->name)->get();
-                    $product_ids = $plan->pluck('product_id')->toArray();
-                    $query->where(function ($qr) use ($product_ids) {
-                        for ($i = 0; $i < count($product_ids); $i++) {
-                            $qr->orwhere('lot_id', 'like',  '%' . $product_ids[$i] . '%');
-                        }
-                    });
-                }
+                $product_ids = Product::where('customer_id', $request->khach_hang)->pluck('id')->toArray();
+                $query->whereIn('product_id', $product_ids);
             }
             if (isset($request->lo_sx)) {
                 $query->where('lot_id', 'like', "%$request->lo_sx%");
