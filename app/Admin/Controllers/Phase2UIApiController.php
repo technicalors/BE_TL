@@ -1411,7 +1411,7 @@ class Phase2UIApiController extends Controller
                     if (isset($info['ten_san_pham']) && !in_array($info['ten_san_pham'], $product_array)) $product_array[] = $info['ten_san_pham'];
                     if (isset($info['machine_id']) && !in_array($info['machine_id'], $machine_array)) $machine_array[] = $info['machine_id'];
                     if (isset($history[$info['lot_id']])) {
-                        $checked_data[$info['lot_id']] = $history[$info['lot_id']]->mapWithKeyss(function ($e) {
+                        $checked_data[$info['lot_id']] = $history[$info['lot_id']]->mapWithKeys(function ($e) {
                             return [$e->test_criteria_id => $e->input ?? $e->result];
                         });
                     }
@@ -2248,7 +2248,7 @@ class Phase2UIApiController extends Controller
             ->where('slug', 'so-luong')
             ->get();
 
-        $lotSizes = $specs->mapWithKeyss(function ($spec) {
+        $lotSizes = $specs->mapWithKeys(function ($spec) {
             return [$spec->line_id => $spec->value];
         })->toArray();
         $result = [];
@@ -2289,7 +2289,7 @@ class Phase2UIApiController extends Controller
             ->where('slug', 'nang-suat-an-dinhgio')
             ->get();
 
-        $efficiencies = $specs->mapWithKeyss(function ($spec) {
+        $efficiencies = $specs->mapWithKeys(function ($spec) {
             return [$spec->line_id => $spec->value];
         })->toArray();
 
