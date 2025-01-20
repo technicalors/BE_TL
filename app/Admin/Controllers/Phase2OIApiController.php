@@ -477,7 +477,7 @@ class Phase2OIApiController extends Controller
             if ($lot_plan->plan && $lot_plan->plan->status_plan == ProductionPlan::STATUS_PENDING) {
                 $lot_plan->plan->update(['status_plan' => ProductionPlan::STATUS_IN_PROGRESS]);
             }
-            InfoCongDoan::firstOrCreate(
+            $infoCongDoan = InfoCongDoan::firstOrCreate(
                 ['lot_id' => $lot_plan->lot_id, 'lot_plan_id' => $lot_plan->id, 'line_id' => $machine->line_id, 'machine_code' => $machine->code],
                 [
                     'input_lot_id' => $request->scanned_lot,

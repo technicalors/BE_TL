@@ -3252,6 +3252,10 @@ class Phase2UIApiController extends Controller
                 $machine = Machine::where('code', preg_replace('/\s+/', '', $row['H']))->first();
                 if (!$machine) throw new Exception("Không tìm thấy máy " . $row['H']);
 
+                if($machine->line_id != 29){
+                    continue;
+                }
+
                 $line = Line::find($machine->line_id);
                 if (!$line) throw new Exception("Không tìm thấy công đoạn");
 
