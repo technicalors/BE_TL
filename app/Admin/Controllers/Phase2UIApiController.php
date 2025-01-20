@@ -3253,7 +3253,7 @@ class Phase2UIApiController extends Controller
                 if (!$machine) throw new Exception("Không tìm thấy máy " . $row['H']);
 
                 if($machine->line_id != 29){
-                    continue;
+                    return $this->failure('', 'Không thể upload kế hoạch ngoài công đoạn chọn');
                 }
 
                 $line = Line::find($machine->line_id);
