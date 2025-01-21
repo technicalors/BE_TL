@@ -58,6 +58,9 @@ class ProductOrderController extends Controller
         ->get();
         $except = ['kho-thanh-pham', 'oqc', 'iqc', 'kho-thanh-pham', 'kho-bao-on', 'u'];
         foreach ($result as $value) {
+            if(!$value->product){
+                continue;
+            }
             $sl_may = [];
             $numberProductOrder = $value->numberProductOrder;
             foreach ($lines as $key => $line) {

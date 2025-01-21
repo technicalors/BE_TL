@@ -297,7 +297,7 @@ class Phase2OIApiController extends Controller
         $line_id = $request->line_id;
         $machine_code = $request->machine_code;
         $date  = date('Y-m-d');
-        $lot_plan_query = LotPlan::orderBy('lo_sx', 'ASC')->orderBy('start_time', 'ASC');
+        $lot_plan_query = LotPlan::orderBy('created_at', 'ASC')->orderBy('lo_sx', 'ASC')->orderBy('start_time', 'ASC');
         $info_query = InfoCongDoan::query();
         if (!empty($request->line_id)) {
             $lot_plan_query->where('line_id', $line_id);
