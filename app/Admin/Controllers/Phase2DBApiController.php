@@ -10,6 +10,7 @@ use App\Models\Lot;
 use App\Models\LotPlan;
 use App\Models\Machine;
 use App\Models\MachineParameterLogs;
+use App\Models\ProductionPlan;
 use App\Models\Shift;
 use App\Models\Tracking;
 use App\Traits\API;
@@ -184,10 +185,10 @@ class Phase2DBApiController extends Controller
                 }
 
                 // Fix DB
-                $sumLotPlan = LotPlan::query()->where('line_id', $machine->line_id)
-                    ->where('machine_code', $machine->code)
+                $sumLotPlan = ProductionPlan::query()->where('line_id', $machine->line_id)
+                    ->where('machine_id', $machine->code)
                     ->where('product_id', $info->product_id)
-                    ->whereDate('start_time', date('Y-m-d'))->sum('quantity');
+                    ->whereDate('ngay_sx', date('Y-m-d'))->sum('sl_giao_sx');
 
                 $sumInfoActure = InfoCongDoan::query()->where('line_id', $machine->line_id)
                     ->where('machine_code', $machine->code)
@@ -293,10 +294,10 @@ class Phase2DBApiController extends Controller
                 }
 
                 // Fix DB
-                $sumLotPlan = (int)LotPlan::query()->where('line_id', $machine->line_id)
-                    ->where('machine_code', $machine->code)
+                $sumLotPlan = (int)ProductionPlan::query()->where('line_id', $machine->line_id)
+                    ->where('machine_id', $machine->code)
                     ->where('product_id', $info->product_id)
-                    ->whereDate('start_time', date('Y-m-d'))->sum('quantity');
+                    ->whereDate('ngay_sx', date('Y-m-d'))->sum('sl_giao_sx');
 
                 $sumInfoActure = (int)InfoCongDoan::query()->where('line_id', $machine->line_id)
                     ->where('machine_code', $machine->code)
