@@ -1591,26 +1591,30 @@ class Phase2UIApiController extends Controller
                 });
             $data = [];
             foreach ($groupedQcHistories as $line_id => $qcHistories) {
+                $groupByMachineAndProduct = $qcHistories->groupBy(function ($qcHistory) {
+                    return ($qcHistory->infoCongDoan->machine_code ?? "") . ($qcHistory->infoCongDoan->product_id ?? "");
+                });
+                $checked_counter = count($groupByMachineAndProduct);
                 $line = Line::find($line_id);
                 if (!$line) continue;
-                $sum_ok = 0;
                 $sum_ng = 0;
-                foreach ($qcHistories as $qcHistory) {
-                    $final_result = $qcHistory->testCriteriaHistories->pluck('result')->toArray();
-                    if (count($final_result) >= 3) {
-                        if (in_array('NG', $final_result)) {
-                            $sum_ng += 1;
-                        } else {
-                            $sum_ok += 1;
+                foreach ($groupByMachineAndProduct as $machineProduct => $detailQcHistories) {
+                    foreach ($detailQcHistories as $qcHistory) {
+                        $final_result = $qcHistory->testCriteriaHistories->pluck('result')->toArray();
+                        if (count($final_result) >= 3) {
+                            if (in_array('NG', $final_result)) {
+                                $sum_ng += 1;
+                                break;
+                            }
                         }
                     }
                 }
-
+                $sum_ok = $checked_counter - $sum_ng;
                 $data[$line_id]['cong_doan'] = $line->name;
-                $data[$line_id]['sum_lot_kt'] = count($qcHistories);
+                $data[$line_id]['sum_lot_kt'] = $checked_counter;
                 $data[$line_id]['sum_lot_ok'] = $sum_ok;
                 $data[$line_id]['sum_lot_ng'] = $sum_ng;
-                $data[$line_id]['sum_ty_le_ng'] = count($qcHistories) ? number_format($sum_ng / count($qcHistories) * 100, 2) : 0;
+                $data[$line_id]['sum_ty_le_ng'] = $checked_counter ? number_format($sum_ng / $checked_counter * 100, 2) : 0;
                 $data[$line_id]['loi_phat_sinh'] = '';
             }
             $sheet_array[$key]['data'] = $data;
@@ -2140,7 +2144,7 @@ class Phase2UIApiController extends Controller
         // Sắp xếp theo thứ tự giảm dần (DESC) để tính toán sản lượng
         return Spec::where('product_id', $productId)
             ->where('slug', 'hanh-trinh-san-xuat')
-            ->where('line_id','<>',29)
+            ->where('line_id', '<>', 29)
             ->whereRaw('value REGEXP "^[0-9]+$"')
             ->orderBy('value', 'desc')
             ->get();
@@ -2342,7 +2346,7 @@ class Phase2UIApiController extends Controller
             ->orderBy('priority')
             ->pluck('priority', 'machine_id')
             ->toArray();
-        if(count($machinePriorityOrder) == 0){
+        if (count($machinePriorityOrder) == 0) {
             $machineList = Machine::where('line_id', $lineId)->get()->toArray();
             foreach ($machineList as $key => $value) {
                 $machinePriorityOrder[$value->code]['priority'] = 1;
@@ -2728,10 +2732,10 @@ class Phase2UIApiController extends Controller
         if ($orderedSteps->count() <= 0) {
             return null;
         }
-        foreach($orderedSteps as $key=> $step){
-            if($key == 0 && $step->line_id == 24){
+        foreach ($orderedSteps as $key => $step) {
+            if ($key == 0 && $step->line_id == 24) {
                 $step->product_id = $materialId;
-            }else{
+            } else {
                 $step->product_id = $productId;
             }
         }
@@ -2827,8 +2831,8 @@ class Phase2UIApiController extends Controller
                         if (
                             isset($lots[$prevLineId][$prevMachineCount - 1]) &&
                             isset($lots[$prevLineId][$prevMachineCount - 1][$transportIndex]) &&
-                            isset($lots[$prevLineId][$prevMachineCount - 1][$transportIndex]['endTime'])&&
-                            !isset($lineInventory[$prevLineId]) 
+                            isset($lots[$prevLineId][$prevMachineCount - 1][$transportIndex]['endTime']) &&
+                            !isset($lineInventory[$prevLineId])
                         ) {
                             $prevEndTime = $lots[$prevLineId][$prevMachineCount - 1][$transportIndex]['endTime'];
                             $startTime   = $prevEndTime->copy()->addMinutes($transportTime);
@@ -2982,7 +2986,8 @@ class Phase2UIApiController extends Controller
                     'machine_code' => $machine->code,
                     'available_at' => $stepEndTimes[$lineId],
                 ];
-                if (!isset($machine_available_list[$machine->code]) ||
+                if (
+                    !isset($machine_available_list[$machine->code]) ||
                     $stepEndTimes[$lineId]->greaterThan($machine_available_list[$machine->code])
                 ) {
                     $machine_available_list[$machine->code] = $stepEndTimes[$lineId]->format('Y-m-d H:i:s');
@@ -3252,12 +3257,12 @@ class Phase2UIApiController extends Controller
                 $machine = Machine::where('code', preg_replace('/\s+/', '', $row['H']))->first();
                 if (!$machine) throw new Exception("Không tìm thấy máy " . $row['H']);
 
-                if($request->user()->username !== 'admin'){
-                    if($machine->line_id != 29){
+                if ($request->user()->username !== 'admin') {
+                    if ($machine->line_id != 29) {
                         return $this->failure('', 'Không thể upload kế hoạch ngoài công đoạn chọn');
                     }
                 }
-                
+
                 $line = Line::find($machine->line_id);
                 if (!$line) throw new Exception("Không tìm thấy công đoạn");
 
@@ -4003,11 +4008,12 @@ class Phase2UIApiController extends Controller
         return 'done';
     }
 
-    public function updateLineSelectInfo(Request $request){
+    public function updateLineSelectInfo(Request $request)
+    {
         $infos = InfoCongDoan::with('assignments')->where('line_id', 29)->get();
-        foreach($infos as $info){
+        foreach ($infos as $info) {
             $assignment = count($info->assignments) ? $info->assignments[0] : null;
-            if(isset($assignment->actual_quantity)){
+            if (isset($assignment->actual_quantity)) {
                 $info->update(['sl_dau_ra_hang_loat' => $assignment->actual_quantity]);
             }
         }
