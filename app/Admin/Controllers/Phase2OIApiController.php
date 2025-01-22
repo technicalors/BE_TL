@@ -179,7 +179,9 @@ class Phase2OIApiController extends Controller
         if (!empty($request->line_id)) {
             $lot_plan_query->where('line_id', $request->line_id);
         }
-        $lot_plans = $lot_plan_query->get();
+        $lot_plans = $lot_plan_query->whereHas('plan', function ($q) {
+            $q->whereIn('status_plan', [0, 1]);
+        })->get();
 
         $data =  [
             "tong_sl_trong_ngay_kh" => $lot_plans->sum('quantity'),
