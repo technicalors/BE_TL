@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Validator;
 
@@ -12,7 +13,8 @@ class Template extends Model
     use HasFactory;
     protected $table = "templates";
     protected $fillable = [
-        'material_id', 'quantity',
+        'material_id', 
+        'quantity',
         'roll_quantity',
         'manufacture_date',
         'machine_number',
@@ -42,5 +44,10 @@ class Template extends Model
     public function roll(): HasOne
     {
         return $this->hasOne(RollMaterial::class, 'template_id', 'id');
+    }
+
+    public function material(): BelongsTo
+    {
+        return $this->belongsTo(Material::class, 'material_id', 'id');
     }
 }
