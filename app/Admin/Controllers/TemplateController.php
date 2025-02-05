@@ -39,7 +39,7 @@ class TemplateController extends Controller
         }
         $result = $query->get();
         foreach ($result as $key => $value) {
-            $value->material_name = $value->material->name;
+            $value->material_name = $value->material->name ?? "";
         }
         return $this->success(['data' => $result, 'total' => $total]);
     }
