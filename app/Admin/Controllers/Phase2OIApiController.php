@@ -453,9 +453,10 @@ class Phase2OIApiController extends Controller
             ->filter(function ($value, $lineId) use ($requestValue) {
                 return $value < $requestValue;
             })->keys();
+        $orderByString = "'" . implode("','", $filteredLineIds->toArray()) . "'";
         $previousLineLot = InfoCongDoan::where('lot_id', $request->scanned_lot)
             ->whereIn('line_id', $filteredLineIds)->where('status', InfoCongDoan::STATUS_COMPLETED)
-            ->orderByRaw('FIELD(line_id, ' . implode(',', $filteredLineIds->toArray()) . ')')
+            ->orderByRaw("FIELD(line_id, $orderByString)")
             ->get()
             ->last();
         if (count($filteredLineIds) > 0) {
