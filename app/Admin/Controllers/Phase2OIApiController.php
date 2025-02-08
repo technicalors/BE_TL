@@ -1546,35 +1546,36 @@ class Phase2OIApiController extends Controller
             return null;
         }
         if ($test["phan_dinh"] = 'Nhập số') {
-            if (str_contains($spec->value, $plusOrMinus)) {
-                $arr = $this->extractNumbers($spec->value);
+            $specValue = trim(str_replace("\n", " ", $spec->value));
+            if (str_contains($specValue, $plusOrMinus)) {
+                $arr = $this->extractNumbers($specValue);
                 if (empty($arr)) {
                     return $test;
                 }
                 $test["input"] = true;
                 $test["max"] = $arr['before'] + $arr['after'];
                 $test["min"] = $arr['before'] - $arr['after'];
-                $test['note'] = $spec->value;
+                $test['note'] = $specValue;
                 return $test;
-            } else if (str_contains($spec->value, $approximate)) {
-                $arr = $this->extractNumbers($spec->value);
+            } else if (str_contains($specValue, $approximate)) {
+                $arr = $this->extractNumbers($specValue);
                 if (empty($arr)) {
                     return $test;
                 }
                 $test["input"] = true;
                 $test["max"] = $arr['before'];
                 $test["min"] = $arr['after'];
-                $test['note'] = $spec->value;
+                $test['note'] = $specValue;
                 return $test;
-            } else if (str_contains($spec->value, $fromTo)) {
-                $arr = $this->extractNumbers($spec->value);
+            } else if (str_contains($specValue, $fromTo)) {
+                $arr = $this->extractNumbers($specValue);
                 if (empty($arr)) {
                     return $test;
                 }
                 $test["input"] = true;
                 $test["max"] = $arr['before'];
                 $test["min"] = $arr['after'];
-                $test['note'] = $spec->value;
+                $test['note'] = $specValue;
                 return $test;
             }
         }
@@ -1584,7 +1585,6 @@ class Phase2OIApiController extends Controller
 
     function extractNumbers($string)
     {
-        $string = trim(str_replace("\n", " ", $string));
         // Tìm số trước và sau các ký tự ±, -, ~
         preg_match('/([\d\.]+)\s*[±\-~]\s*([\d\.]+)/', $string, $matches);
         if (empty($matches) || empty($matches[1]) || empty($matches[2]) || !is_numeric($matches[1]) || !is_numeric($matches[2])) {
