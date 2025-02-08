@@ -11,6 +11,7 @@ class Spec extends Model
     use \Awobaz\Compoships\Compoships;
     protected $table = "spec";
     protected $fillable = [
+        'id',
         'product_id',
         'line_id',
         'slug',
