@@ -1547,7 +1547,7 @@ class Phase2OIApiController extends Controller
         }
         if ($test["phan_dinh"] = 'Nhập số') {
             $specValue = trim(str_replace("\n", " ", $spec->value));
-            if (str_contains($specValue, $plusOrMinus)) {
+            if (strpos($specValue, $plusOrMinus)) {
                 $arr = $this->extractNumbers($specValue);
                 if (empty($arr)) {
                     return $test;
