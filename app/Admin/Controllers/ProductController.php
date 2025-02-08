@@ -239,6 +239,8 @@ class ProductController extends Controller
         return back();
     }
 
+    private $spec_counter = 0;
+
     private function importSpec($currRow, $titleRow1, $titleRow2, $product)
     {
         $title = [];
@@ -299,10 +301,12 @@ class ProductController extends Controller
                     $input['product_id'] = $product->id;
                     $input['slug'] = Str::slug($input['name']);
                     $input['line_id'] = $id;
+                    $input['id'] = $this->spec_counter + 1;
                     $spec_data[] = $input;
                     if ($input['slug'] === 'so-bat' && $input['value']) {
                         $product->update(['so_bat' => $input['value']]);
                     }
+                    $this->spec_counter++;
                 }
             }
         }

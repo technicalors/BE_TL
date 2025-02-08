@@ -13,7 +13,8 @@ class MachineShift extends Model
         $fillable = [
             'machine_id',
             'shift_id',
-            'date'
+            'date',
+            'ordering',
         ];
 
     public function shift()
@@ -22,6 +23,6 @@ class MachineShift extends Model
     }
     public function shiftBreak()
     {
-        return $this->belongsTo(ShiftBreak::class, 'shift_id');
+        return $this->hasMany(ShiftBreak::class, 'shift_id', 'shift_id');
     }
 }
