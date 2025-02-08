@@ -1587,7 +1587,7 @@ class Phase2OIApiController extends Controller
     function extractNumbers($string)
     {
         // Tìm số trước và sau các ký tự ±, -, ~
-        preg_match('/([\d\.]+)\s*[±\-~]\s*([\d\.]+)/', $string, $matches);
+        preg_match('/([\d\.]+)\s*[±\-\~]\s*([\d\.]+)/u', $string, $matches);
         if (empty($matches) || empty($matches[1]) || empty($matches[2]) || !is_numeric($matches[1]) || !is_numeric($matches[2])) {
             return null;
         }
