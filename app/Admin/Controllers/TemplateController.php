@@ -38,6 +38,9 @@ class TemplateController extends Controller
             $query->offset((($request->page - 1) ?? 0) * $request->pageSize)->limit($request->pageSize);
         }
         $result = $query->get();
+        foreach ($result as $key => $value) {
+            $value->material_name = $value->material->name ?? "";
+        }
         return $this->success(['data' => $result, 'total' => $total]);
     }
 
