@@ -1551,8 +1551,8 @@ class Phase2OIApiController extends Controller
                     return $test;
                 }
                 $test["input"] = true;
-                $test["max"] = $arr['before'] + $arr['after'];
-                $test["min"] = $arr['before'] - $arr['after'];
+                $test["max"] = (string)($arr['before'] + $arr['after']);
+                $test["min"] = (string)($arr['before'] - $arr['after']);
                 $test['note'] = $spec->value;
                 return $test;
             } else if (str_contains($spec->value, $approximate)) {
