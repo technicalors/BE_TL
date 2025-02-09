@@ -1556,8 +1556,8 @@ class Phase2OIApiController extends Controller
                     return $test;
                 }
                 $test["input"] = true;
-                $test["min"] = (string)($arr['before'] + $arr['after']);
-                $test["max"] = (string)($arr['before'] - $arr['after']);
+                $test["max"] = $arr['before'] + $arr['after'];
+                $test["min"] = $arr['before'] - $arr['after'];
                 $test['note'] = $spec->value;
                 return $test;
             } else if (str_contains($specValue, $approximate)) {
@@ -1566,8 +1566,8 @@ class Phase2OIApiController extends Controller
                     return $test;
                 }
                 $test["input"] = true;
-                $test["max"] = $arr['before'];
-                $test["min"] = $arr['after'];
+                $test["min"] = $arr['before'];
+                $test["max"] = $arr['after'];
                 $test['note'] = $specValue;
                 return $test;
             } else if (str_contains($specValue, $fromTo)) {
@@ -1576,8 +1576,8 @@ class Phase2OIApiController extends Controller
                     return $test;
                 }
                 $test["input"] = true;
-                $test["max"] = $arr['before'];
-                $test["min"] = $arr['after'];
+                $test["min"] = $arr['before'];
+                $test["max"] = $arr['after'];
                 $test['note'] = $specValue;
                 return $test;
             }
