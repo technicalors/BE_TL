@@ -1547,15 +1547,17 @@ class Phase2OIApiController extends Controller
         }
         if ($test["phan_dinh"] = 'Nhập số') {
             $specValue = trim(str_replace("\n", " ", $spec->value));
+            TODO: {
+                // Nham max voi min
+            }
             if (str_contains($specValue, $plusOrMinus)) {
-                $test['spec'] = $specValue;
                 $arr = $this->extractNumbers($specValue);
                 if (empty($arr)) {
                     return $test;
                 }
                 $test["input"] = true;
-                $test["max"] = (string)($arr['before'] + $arr['after']);
-                $test["min"] = (string)($arr['before'] - $arr['after']);
+                $test["min"] = (string)($arr['before'] + $arr['after']);
+                $test["max"] = (string)($arr['before'] - $arr['after']);
                 $test['note'] = $spec->value;
                 return $test;
             } else if (str_contains($specValue, $approximate)) {
