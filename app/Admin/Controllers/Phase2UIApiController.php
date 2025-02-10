@@ -2428,7 +2428,7 @@ class Phase2UIApiController extends Controller
 
     function getMachineLoadFactors($machineId, $date, $machineLoadFactors = [])
     {
-        return collect($machineLoadFactors)->where('machine_code', $machineId)
+        return collect(array_values($machineLoadFactors))->where('machine_code', $machineId)
             ->where('date', $date)
             ->first();
     }
@@ -2581,7 +2581,7 @@ class Phase2UIApiController extends Controller
         $sortedByProductId = collect($prioritizedOrders)->groupBy('product_id')->flatten(1);
         foreach ($sortedByProductId as $index => $order) {
             try {
-                $result = $this->processProductionPlan($order, $index, $machine_available_list);
+                $result = $this->processProductionPlanV2($order, $index, $machine_available_list, $machine_load_factors);
                 if ($result) {
                     $data[] = $result;
                 }
@@ -3366,6 +3366,7 @@ class Phase2UIApiController extends Controller
                             isset($lots[$prevLineId][$prevMachineCount - 1][$transportIndex]) &&
                             isset($lots[$prevLineId][$prevMachineCount - 1][$transportIndex]['endTime'])
                         ) {
+                            // Log::debug([$prevLineId, $prevMachineCount - 1, $transportIndex, $lots]);
                             $prevEndTime = $lots[$prevLineId][$prevMachineCount - 1][$transportIndex]['endTime'];
                             $startTime   = $prevEndTime->copy()->addMinutes($transportTime);
                         }
@@ -3391,7 +3392,14 @@ class Phase2UIApiController extends Controller
             foreach ($machines as $machineIndex => $machine) {
                 //Khởi tạo thời gian bắt đầu/kết thúc cho kế hoạch
                 $planStartTime = $startTime;
-                $planEndTime = $startTime;
+            
+                list($planStartTime, $planEndTime) = $this->calculateProductionBatchTime(
+                    $planStartTime,
+                    $quantityPerMachine,
+                    $efficiency,
+                    $machine->code,
+                    $machine_load_factors
+                );
 
                 // 9.4. Xây dựng danh sách các lots chi tiết
                 $lot_in_plan = [];
@@ -3401,14 +3409,15 @@ class Phase2UIApiController extends Controller
                     'line_id' => $lineId
                 ])->count() + $lotIndexOffset;
 
+                $lotEndTime = $planStartTime;
+
                 for ($lotIndex = 1; $lotIndex <= $numLots; $lotIndex++) {
                     $countLot++;
                     // Tạo lot_id (vd: LOSX123.L.0001)
                     $lotId = $losx_id . '.L.' . str_pad($countLot, 4, '0', STR_PAD_LEFT);
 
                     // Tính thời gian start - end cho lot
-                    $lotStartTime = ($lotIndex == 1) ? $startTime : $lots[$lineId][$machineIndex][$lotIndex - 2]['endTime'];
-                    Log::debug("$machine->code: Lot index: $lotIndex, has start time: $lotStartTime");
+                    $lotStartTime = ($lotIndex == 1) ? $planStartTime : $lotEndTime;
 
                     // Ở đây logic cũ có chỗ chia “quantity % lotSize” cho lot đầu tiên:
                     // - T tuỳ chỉnh lại thành quantityPerLot = $lotSize, trừ trường hợp lot đầu tiên
@@ -3418,18 +3427,19 @@ class Phase2UIApiController extends Controller
                     //Tính thời gian sản xuất cho 1 lot của máy theo phút
                     $lotTime = ($quantityPerLot / $efficiency) * 60;
                     // Điều chỉnh thời gian theo ca
-                    list($lotStartTime, $lotEndTime) = $this->adjustTimeWithinShiftV2(
-                        $lotStartTime,
-                        $lotTime,
-                        $machine->code,
-                        $shiftPrepTime,
-                        $machine_load_factors
-                    );
+                    // list($lotStartTime, $lotEndTime) = $this->adjustTimeWithinShiftV2(
+                    //     $lotStartTime,
+                    //     $lotTime,
+                    //     $machine->code,
+                    //     $shiftPrepTime,
+                    //     $machine_load_factors
+                    // );
+                    $lotEndTime = $lotStartTime->copy()->addMinutes($lotTime);
 
-                    // Kiểm tra thời gian kết thúc vượt deadline
-                    if ($order->delivery_date && $lotEndTime->greaterThan(Carbon::parse($order->delivery_date))) {
-                        throw new Exception("Đơn hàng " . $order->id . " vượt quá thời gian giao hàng", 1);
-                    }
+                    // // Kiểm tra thời gian kết thúc vượt deadline
+                    // if ($order->delivery_date && $lotEndTime->greaterThan(Carbon::parse($order->delivery_date))) {
+                    //     throw new Exception("Đơn hàng " . $order->id . " vượt quá thời gian giao hàng", 1);
+                    // }
 
                     // Tạo dữ liệu lot
                     $lotPlanInput = [
@@ -3452,6 +3462,7 @@ class Phase2UIApiController extends Controller
                         'khach_hang'       => $order->customer_id,
                         'thoi_gian_bat_dau' => $lotStartTime,
                         'thoi_gian_ket_thuc' => $lotEndTime,
+                        'efficiency'       => $efficiency,
                     ];
 
                     // Thêm lot vào danh sách
@@ -3466,39 +3477,8 @@ class Phase2UIApiController extends Controller
                         'endTime'   => $lotEndTime,
                     ];
 
-                    //Gán thời gian kết thúc của công đoạn
-                    $planEndTime = $lotEndTime;
-
-                    $daysDifference = $lotStartTime->diffInDays($lotEndTime);
-                    // Lặp qua từng ngày và xử lý logic
-                    for ($i = 0; $i <= $daysDifference; $i++) {
-                        $date = $lotStartTime->copy()->addDays($i);
-                        // 9.5. Tính hệ số tải
-                        //Tính toán thời gian làm việc của máy đã phân ca
-                        $machineShifts = $this->getMachineProductionShifts($machine->code, $date->copy()->format('Y-m-d'));
-                        if (count($machineShifts) <= 0) {
-                            //Nếu chưa phân ca thì báo lỗi
-                            throw new Exception("Không tìm thấy ca làm việc cho máy " . $machine->code . " ngày " . $date->copy()->format('d/m/Y'), 1);
-                        }
-                        //Tạo key cho mảng tạm machine_load_factors
-                        $factor_key = $machine->code . '_' . $date->copy()->format('Y-m-d');
-                        if (isset($machine_load_factors[$factor_key])) { //Nếu mảng tạm có tồn tại phần tử có cùng mã máy, mã sp, thời gian thì cộng dồn số lượng và thời gian làm việc
-                            $machine_load_factors[$factor_key]['loaded_quantity'] += $quantityPerLot;
-                            $machine_load_factors[$factor_key]['work_hours'] = $machine_load_factors[$factor_key]['loaded_quantity'] / $efficiency;
-                        } else { //Nếu chưa tồn tại trong mảng tạm thì gán/cộng dồn giá trị cho bản ghi có cùng mã máy, mã sp, thời gian
-                            $machine_load_factors[$factor_key] = [
-                                'machine_code' => $machine->code,
-                                'date' => $date->copy()->format('Y-m-d'),
-                                'fixed_productivity_per_hour' => $efficiency,
-                                'loaded_quantity' => $quantityPerLot,
-                                'work_hours' => $quantityPerLot / $efficiency,
-                                'fixed_hours' => $machineShifts->sum('duration_minutes') / 60,
-                            ];
-                            if ($machine_load_factors[$factor_key]['work_hours'] > $machine_load_factors[$factor_key]['fixed_hours']) {
-                                throw new Exception("Máy " . $machine->code . " đã vượt quá thời gian làm việc cố định ngày " . $date->copy()->format('d/m/Y'), 1);
-                            }
-                        }
-                    }
+                    // //Gán thời gian kết thúc của công đoạn
+                    // $planEndTime = $lotEndTime;
                 }
 
                 $planInput = [
@@ -3553,7 +3533,7 @@ class Phase2UIApiController extends Controller
         ];
     }
 
-    public function adjustTimeWithinShiftV2($startTime, $duration, $machineId, $shiftPreparationTime, $machineLoadFactors = [])
+    public function adjustTimeWithinShiftV2($startTime, $productionDuration, $machineId, $shiftPreparationTime, $machine_load_factors = [])
     {
         // Chuyển đổi $startTime sang đối tượng Carbon với múi giờ 'Asia/Bangkok' nếu chưa phải đối tượng Carbon
         if (!$startTime instanceof Carbon) {
@@ -3563,68 +3543,192 @@ class Phase2UIApiController extends Controller
         }
 
         // Khởi tạo biến xử lý
-        $currentTime = $startTime->copy(); // Thời gian hiện tại đang xử lý
-        $productionDuration = $duration; // Thời gian còn lại cần xử lý
+        $endTime = $startTime->copy(); // Thời gian hiện tại đang xử lý
         $maxDays = 30; // Giới hạn số ngày tối đa để tìm ca làm việc (tránh vòng lặp vô hạn)
         $daysProcessed = 0; // Số ngày đã duyệt
 
+        //Tính startTIme
+        while ($daysProcessed < $maxDays) {
+            $dateString = $startTime->copy()->startOfDay()->toDateString(); // Lấy ngày hiện tại (bỏ phần giờ phút)
+            $shifts = $this->getMachineProductionShiftsV2($machineId, $dateString);
+            // Nếu không có ca làm việc, chuyển sang ngày tiếp theo
+            if (!count($shifts)) {
+                $startTime->addDay()->startOfDay();
+                $daysProcessed++;
+                continue;
+            }
+            $machineLoadFactors = $this->getMachineLoadFactors($machineId, $dateString, $machine_load_factors);
+            $productionShiftStart = $shifts['start'];
+            $productionShiftEnd = $shifts['end'];
+            $totalWorkMinutes = ($machineLoadFactors->work_hours ?? 0) * 60;
+            if (!$productionShiftStart->copy()->addMinutes($totalWorkMinutes)->greaterThan($productionShiftEnd)) {
+                $startTime->addDay()->startOfDay();
+                $daysProcessed++;
+                continue;
+            }
+            $startTime = $productionShiftStart->copy()->addMinutes($totalWorkMinutes);
+            break;
+        }
+        $daysProcessed = 0;
+        $endTime = $startTime->copy();
         // Lặp cho đến khi thời gian còn lại được xử lý hoặc đạt giới hạn số ngày
         while ($productionDuration > 0 && $daysProcessed < $maxDays) {
-            $currentDate = $currentTime->copy()->startOfDay(); // Lấy ngày hiện tại (bỏ phần giờ phút)
-            $dateString = $currentDate->toDateString(); // Chuỗi ngày dạng YYYY-MM-DD
+            $endTime->addMinutes($productionDuration);
 
             // Lấy danh sách ca làm việc của máy vào ngày hiện tại
-            // $productionShifts = $this->getMachineProductionShifts($machineId, $dateString);
             $shifts = $this->getMachineProductionShiftsV2($machineId, $dateString);
 
             // Nếu không có ca làm việc, chuyển sang ngày tiếp theo
             if (!count($shifts)) {
-                $currentTime->addDay()->startOfDay();
+                $endTime->addDay()->startOfDay();
                 $daysProcessed++;
                 continue;
             }
-
-            // Lấy danh sách hệ số tải của máy vào ngày hiện tại
-            $machineLoadFactors = $this->getMachineLoadFactors($machineId, $dateString, $machineLoadFactors);
-
-            $totalWorkMinutes = ($machineLoadFactors->work_hours ?? 0) * 60;
 
             // Xác định thời gian bắt đầu và kết thúc của ca làm việc
             $productionShiftStart = $shifts['start'];
             $productionShiftEnd = $shifts['end'];
 
-            // $currentTime = $productionShiftStart->copy();
-
-            // Nếu $currentTime nhỏ hơn $shiftStart và cùng ngày, dịch chuyển nó đến đầu ca
-            if ($currentTime->lessThan($productionShiftStart) && $currentTime->day == $productionShiftStart->day && !$currentTime->equalTo($startTime)) {
-                $currentTime = $productionShiftStart->copy()->addMinutes($shiftPreparationTime); // Cộng thêm thời gian chuẩn bị nếu không bắt đầu ngay
+            // Nếu $endTime nhỏ hơn $shiftStart và cùng ngày, dịch chuyển nó đến đầu ca
+            if ($endTime->lessThan($productionShiftStart) && $endTime->day == $productionShiftStart->day) {
+                $endTime = $productionShiftStart->copy()->addMinutes($shiftPreparationTime); // Cộng thêm thời gian chuẩn bị nếu không bắt đầu ngay
             }
 
-            // Nếu $currentTime đang nằm trong ca làm việc hoặc đúng thời gian bắt đầu ca
-            if ($currentTime->between($productionShiftStart, $productionShiftEnd)) {
-                $productionTimeWithinShift = $productionShiftEnd->diffInMinutes($currentTime); // Tính số phút còn lại trong ca
+            // Nếu $endTime đang nằm trong ca làm việc hoặc đúng thời gian bắt đầu ca
+            if ($endTime->between($productionShiftStart, $productionShiftEnd)) {
+                $productionTimeWithinShift = $productionShiftEnd->diffInMinutes($endTime, true); // Tính số phút còn lại trong ca
 
                 // Nếu đủ thời gian để hoàn thành trong ca này
-                if ($productionTimeWithinShift >= $productionDuration) {
-                    return [$startTime, $currentTime->copy()->addMinutes($productionDuration)]; // Trả về thời gian bắt đầu & kết thúc
+                if ($productionTimeWithinShift >= 0) {
+                    return [$startTime, $endTime]; // Trả về thời gian bắt đầu & kết thúc
                 } else {
                     // Nếu không đủ, cập nhật thời gian còn lại và chuyển sang ca tiếp theo
-                    $currentTime = $productionShiftEnd->copy();
                     $productionDuration -= $productionTimeWithinShift;
+                    $endTime->addDay()->startOfDay();
+                    $daysProcessed++;
                     continue;
                 }
-            } elseif ($currentTime->greaterThanOrEqualTo($productionShiftEnd)) {
-                // Nếu $currentTime đã vượt qua thời gian kết thúc ca, bỏ qua ca này
+            } elseif ($endTime->greaterThanOrEqualTo($productionShiftEnd)) {
+                // Nếu $endTime đã vượt qua thời gian kết thúc ca, bỏ qua ca này
+                $endTime->addDay()->startOfDay();
+                $daysProcessed++;
                 continue;
             }
 
             // Nếu không tìm được ca phù hợp, chuyển sang ngày tiếp theo
-            $currentTime->addDay()->startOfDay();
+            $endTime->addDay()->startOfDay();
             $daysProcessed++;
         }
 
         // Trả về thời gian bắt đầu và thời gian kết thúc nếu không tìm được khoảng ca phù hợp
-        return [$startTime, $currentTime];
+        return [$startTime, $endTime];
+    }
+
+    public function calculateProductionBatchTime($startTime, $quantityPerMachine, $efficiency, $machineId, &$machine_load_factors = [])
+    {
+        Log::debug('before: ' . $startTime->toDateString());
+        // Chuyển đổi $startTime sang đối tượng Carbon với múi giờ 'Asia/Bangkok' nếu chưa phải đối tượng Carbon
+        if (!$startTime instanceof Carbon) {
+            $startTime = Carbon::parse($startTime, 'Asia/Bangkok');
+        } else {
+            $startTime->setTimezone('Asia/Bangkok');
+        }
+
+        $productionDuration = ($quantityPerMachine / $efficiency) * 60;
+
+        // Khởi tạo biến xử lý
+        $maxDays = 30; // Giới hạn số ngày tối đa để tìm ca làm việc (tránh vòng lặp vô hạn)
+        $daysProcessed = 0; // Số ngày đã duyệt
+
+        //Tính startTIme
+        while ($daysProcessed < $maxDays) {
+            $dateString = $startTime->copy()->startOfDay()->toDateString(); // Lấy ngày hiện tại (bỏ phần giờ phút)
+            $shifts = $this->getMachineProductionShiftsV2($machineId, $dateString);
+            // Nếu không có ca làm việc, chuyển sang ngày tiếp theo
+            if (!count($shifts)) {
+                $startTime->addDay()->startOfDay();
+                $daysProcessed++;
+                continue;
+            }
+            $machineLoadFactors = $this->getMachineLoadFactors($machineId, $dateString, $machine_load_factors);
+            Log::debug('machine_load_factors: ', $machineLoadFactors);
+            $productionShiftStart = $shifts['start'];
+            $productionShiftEnd = $shifts['end'];
+            $totalWorkMinutes = ($machineLoadFactors->work_hours ?? 0) * 60;
+            if ($productionShiftStart->copy()->addMinutes($totalWorkMinutes)->greaterThan($productionShiftEnd)) {
+                $startTime->addDay()->startOfDay();
+                $daysProcessed++;
+                continue;
+            }
+            $startTime = $productionShiftStart->copy()->addMinutes($totalWorkMinutes);
+            break;
+        }
+
+        //Tính toán thời gian làm việc của máy đã phân ca
+        $daysProcessed = 0;
+        $endTime = $startTime->copy();
+        // Lặp cho đến khi thời gian còn lại được xử lý hoặc đạt giới hạn số ngày
+        while ($productionDuration > 0 && $daysProcessed < $maxDays) {
+            $dateString = $endTime->copy()->startOfDay()->toDateString(); // Lấy ngày hiện tại (bỏ phần giờ phút)
+            $shifts = $this->getMachineProductionShiftsV2($machineId, $dateString);
+            // Nếu không có ca làm việc, chuyển sang ngày tiếp theo
+            if (!count($shifts)) {
+                $endTime->addDay()->startOfDay();
+                $daysProcessed++;
+                continue;
+            }
+
+            $endTime->addMinutes($productionDuration);
+
+            // Xác định thời gian bắt đầu và kết thúc của ca làm việc
+            $productionShiftStart = $shifts['start'];
+            $productionShiftEnd = $shifts['end'];
+
+            // Nếu $endTime đang nằm trong ca làm việc hoặc đúng thời gian bắt đầu ca
+            if ($endTime->between($productionShiftStart, $productionShiftEnd)) {
+                $productionTimeWithinShift = $productionShiftEnd->diffInMinutes($endTime, true); // Tính số phút còn lại trong ca
+
+                // Nếu đủ thời gian để hoàn thành trong ca này
+                if ($productionTimeWithinShift >= 0) {
+                    //Tạo key cho mảng tạm machine_load_factors
+                    $factor_key = $machineId . '_' . $dateString;
+                    if (isset($machine_load_factors[$factor_key])) { //Nếu mảng tạm có tồn tại phần tử có cùng mã máy, mã sp, thời gian thì cộng dồn số lượng và thời gian làm việc
+                        $machine_load_factors[$factor_key]['work_hours'] += $endTime->diffInMinutes($productionShiftStart) / 60;
+                    } else { //Nếu chưa tồn tại trong mảng tạm thì gán/cộng dồn giá trị cho bản ghi có cùng mã máy, mã sp, thời gian
+                        $machine_load_factors[$factor_key] = [
+                            'machine_code' => $machineId,
+                            'date' => $dateString,
+                            'fixed_productivity_per_hour' => $efficiency,
+                            'work_hours' => $endTime->diffInMinutes($productionShiftStart) / 60,
+                            'fixed_hours' => $productionShiftEnd->diffInMinutes($productionShiftStart) / 60,
+                        ];
+                        if ($machine_load_factors[$factor_key]['work_hours'] > $machine_load_factors[$factor_key]['fixed_hours']) {
+                            throw new Exception("Máy " . $machineId . " đã vượt quá thời gian làm việc cố định ngày " . $dateString, 1);
+                        }
+                    }
+                    Log::debug(['after: ', [$startTime, $endTime]]);
+                    return [$startTime, $endTime]; // Trả về thời gian bắt đầu & kết thúc
+                } else {
+                    // Nếu không đủ, cập nhật thời gian còn lại và chuyển sang ca tiếp theo
+                    $productionDuration -= $productionTimeWithinShift;
+                    $endTime->addDay()->startOfDay();
+                    $daysProcessed++;
+                    continue;
+                }
+            } elseif ($endTime->greaterThanOrEqualTo($productionShiftEnd)) {
+                // Nếu $endTime đã vượt qua thời gian kết thúc ca, bỏ qua ca này
+                $endTime->addDay()->startOfDay();
+                $daysProcessed++;
+                continue;
+            }
+
+            // Nếu không tìm được ca phù hợp, chuyển sang ngày tiếp theo
+            $endTime->addDay()->startOfDay();
+            $daysProcessed++;
+        }
+
+        // Trả về thời gian bắt đầu và thời gian kết thúc nếu không tìm được khoảng ca phù hợp
+        return [$startTime, $endTime];
     }
 
     function getMachineProductionShiftsV2($machineId, $startDate)
@@ -3704,7 +3808,6 @@ class Phase2UIApiController extends Controller
             foreach ($machine_load_factors as $load_factor) {
                 MachineLoadFactor::updateOrCreate([
                     'machine_code' => $load_factor['machine_code'],
-                    'product_id' => $load_factor['product_id'],
                     'date' => $load_factor['date'],
                 ], $load_factor);
             }
