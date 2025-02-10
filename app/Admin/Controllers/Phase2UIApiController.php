@@ -3650,6 +3650,7 @@ class Phase2UIApiController extends Controller
                 $daysProcessed++;
                 continue;
             }
+            Log::debug($shift);
             $machineLoadFactors = $this->getMachineLoadFactors($machineId, $dateString, $machine_load_factors);
             Log::debug('machine_load_factors: ', $machineLoadFactors);
             $productionShiftStart = $shifts['start'];
