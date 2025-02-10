@@ -1594,13 +1594,13 @@ class Phase2UIApiController extends Controller
             $data = [];
             foreach ($groupedQcHistories as $line_id => $qcHistories) {
                 $groupByMachineAndProduct = $qcHistories->groupBy(function ($qcHistory) {
-                    return ($qcHistory->infoCongDoan->machine_code ?? "") . ($qcHistory->infoCongDoan->product_id ?? "");
+                    return ($qcHistory->infoCongDoan->machine_code ?? "") . ($qcHistory->infoCongDoan->product_id ?? "") . date('Y-m-d', strtotime($qcHistory->scanned_time));
                 });
                 $checked_counter = count($groupByMachineAndProduct);
                 $line = Line::find($line_id);
                 if (!$line) continue;
                 $sum_ng = 0;
-                foreach ($groupByMachineAndProduct as $machineProduct => $detailQcHistories) {
+                foreach ($groupByMachineAndProduct as $machineProductDate => $detailQcHistories) {
                     foreach ($detailQcHistories as $qcHistory) {
                         $final_result = $qcHistory->testCriteriaHistories->pluck('result')->toArray();
                         if (count($final_result) >= 3) {
@@ -2582,7 +2582,7 @@ class Phase2UIApiController extends Controller
         $sortedByProductId = collect($prioritizedOrders)->groupBy('product_id')->flatten(1);
         foreach ($sortedByProductId as $index => $order) {
             try {
-                $result = $this->processProductionPlanV2($order, $index, $machine_available_list, $machine_load_factors);
+                $result = $this->processProductionPlan($order, $index, $machine_available_list);
                 if ($result) {
                     $data[] = $result;
                 }
