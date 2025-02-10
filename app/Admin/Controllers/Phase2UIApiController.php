@@ -2428,9 +2428,10 @@ class Phase2UIApiController extends Controller
 
     function getMachineLoadFactors($machineId, $date, $machineLoadFactors = [])
     {
-        return collect(array_values($machineLoadFactors))->where('machine_code', $machineId)
+        $machine_load_factor = collect(array_values($machineLoadFactors))->where('machine_code', $machineId)
             ->where('date', $date)
             ->first();
+        return $machine_load_factor ? $machine_load_factor['work_hours'] : 0;
     }
 
     public function adjustTimeWithinShift($startTime, $duration, $machineId, $shiftPreparationTime)
@@ -3366,7 +3367,6 @@ class Phase2UIApiController extends Controller
                             isset($lots[$prevLineId][$prevMachineCount - 1][$transportIndex]) &&
                             isset($lots[$prevLineId][$prevMachineCount - 1][$transportIndex]['endTime'])
                         ) {
-                            // Log::debug([$prevLineId, $prevMachineCount - 1, $transportIndex, $lots]);
                             $prevEndTime = $lots[$prevLineId][$prevMachineCount - 1][$transportIndex]['endTime'];
                             $startTime   = $prevEndTime->copy()->addMinutes($transportTime);
                         }
@@ -3626,7 +3626,6 @@ class Phase2UIApiController extends Controller
 
     public function calculateProductionBatchTime($startTime, $quantityPerMachine, $efficiency, $machineId, &$machine_load_factors = [])
     {
-        Log::debug('before: ' . $startTime->toDateString());
         // Chuyển đổi $startTime sang đối tượng Carbon với múi giờ 'Asia/Bangkok' nếu chưa phải đối tượng Carbon
         if (!$startTime instanceof Carbon) {
             $startTime = Carbon::parse($startTime, 'Asia/Bangkok');
@@ -3650,12 +3649,10 @@ class Phase2UIApiController extends Controller
                 $daysProcessed++;
                 continue;
             }
-            Log::debug($shift);
-            $machineLoadFactors = $this->getMachineLoadFactors($machineId, $dateString, $machine_load_factors);
-            Log::debug('machine_load_factors: ', $machineLoadFactors);
+            $machineLoadFactor = $this->getMachineLoadFactors($machineId, $dateString, $machine_load_factors);
             $productionShiftStart = $shifts['start'];
             $productionShiftEnd = $shifts['end'];
-            $totalWorkMinutes = ($machineLoadFactors->work_hours ?? 0) * 60;
+            $totalWorkMinutes = ($machineLoadFactor ?? 0) * 60;
             if ($productionShiftStart->copy()->addMinutes($totalWorkMinutes)->greaterThan($productionShiftEnd)) {
                 $startTime->addDay()->startOfDay();
                 $daysProcessed++;
@@ -3678,17 +3675,21 @@ class Phase2UIApiController extends Controller
                 $daysProcessed++;
                 continue;
             }
+            $productionShiftStart = $shifts['start'];
+            $productionShiftEnd = $shifts['end'];
+
+            if($endTime->lessThan($productionShiftStart)){
+                $endTime = $productionShiftStart->copy();
+            }
 
             $endTime->addMinutes($productionDuration);
 
             // Xác định thời gian bắt đầu và kết thúc của ca làm việc
-            $productionShiftStart = $shifts['start'];
-            $productionShiftEnd = $shifts['end'];
-
+            
+            Log::debug('machine: '. $machineId . "-" . $endTime->toDateTimeString());
             // Nếu $endTime đang nằm trong ca làm việc hoặc đúng thời gian bắt đầu ca
             if ($endTime->between($productionShiftStart, $productionShiftEnd)) {
                 $productionTimeWithinShift = $productionShiftEnd->diffInMinutes($endTime, true); // Tính số phút còn lại trong ca
-
                 // Nếu đủ thời gian để hoàn thành trong ca này
                 if ($productionTimeWithinShift >= 0) {
                     //Tạo key cho mảng tạm machine_load_factors
@@ -3707,11 +3708,10 @@ class Phase2UIApiController extends Controller
                             throw new Exception("Máy " . $machineId . " đã vượt quá thời gian làm việc cố định ngày " . $dateString, 1);
                         }
                     }
-                    Log::debug(['after: ', [$startTime, $endTime]]);
                     return [$startTime, $endTime]; // Trả về thời gian bắt đầu & kết thúc
                 } else {
                     // Nếu không đủ, cập nhật thời gian còn lại và chuyển sang ca tiếp theo
-                    $productionDuration -= $productionTimeWithinShift;
+                    $productionDuration -= abs($productionTimeWithinShift);
                     $endTime->addDay()->startOfDay();
                     $daysProcessed++;
                     continue;
