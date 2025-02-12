@@ -188,7 +188,8 @@ class Phase2DBApiController extends Controller
                 $sumLotPlan = ProductionPlan::query()->where('line_id', $machine->line_id)
                     ->where('machine_id', $machine->code)
                     ->where('product_id', $info->product_id)
-                    ->whereDate('ngay_sx', date('Y-m-d'))->sum('sl_giao_sx');
+                    ->whereDate('thoi_gian_bat_dau','<=', date('Y-m-d'))
+                    ->whereDate('thoi_gian_ket_thuc','>=', date('Y-m-d'))->sum('sl_giao_sx');
 
                 $sumInfoActure = InfoCongDoan::query()->where('line_id', $machine->line_id)
                     ->where('machine_code', $machine->code)
