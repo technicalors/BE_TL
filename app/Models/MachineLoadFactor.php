@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class MachineLoadFactor extends Model
 {
     use HasFactory;
-    protected $fillable = ['machine_code', 'date', 'fixed_productivity_per_hour', 'loaded_quantity', 'work_hours', 'fixed_hours'];
+    protected $fillable = ['machine_code', 'date', 'fixed_productivity_per_hour', 'loaded_quantity', 'work_hours', 'fixed_hours', 'shift_id'];
 
     public function product(){
         return $this->belongsTo(Product::class);
