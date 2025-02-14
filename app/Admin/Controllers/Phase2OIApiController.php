@@ -885,36 +885,36 @@ class Phase2OIApiController extends Controller
         if (!$lot_plan) {
             return $this->failure([], 'Không tìm thấy lot');
         }
-        $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $lot_plan->product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
-        $requestValue = $hanh_trinh_san_xuat[$request->line_id] ?? 0;
-        // Lọc các line_id có value nhỏ hơn requestValue
-        $filteredLineIds = collect($hanh_trinh_san_xuat)
-            ->filter(function ($value, $lineId) use ($requestValue) {
-                return $value < $requestValue;
-            })->keys();
-        $orderByString = "'" . implode("','", $filteredLineIds->toArray()) . "'";
-        $previousLineLot = InfoCongDoan::where('lot_id', $request->scanned_lot)
-            ->whereIn('line_id', $filteredLineIds)->where('status', InfoCongDoan::STATUS_COMPLETED)
-            ->orderByRaw("FIELD(line_id, $orderByString)")
-            ->get()
-            ->last();
-        if (count($filteredLineIds) > 0) {
-            if (!$previousLineLot) {
-                return $this->failure([], 'Không tìm thấy lot đã chạy trước đó');
-            }
-            if ($previousLineLot->line_id == 24) {
-                $bomProducts = Bom::where(function ($subQuery) use ($previousLineLot) {
-                    $subQuery->where('material_id', $previousLineLot->product_id)->orWhere('product_id', $previousLineLot->product_id);
-                })->pluck('product_id')->toArray();
-                if (!in_array($lot_plan->product_id, $bomProducts)) {
-                    return $this->failure($previousLineLot, 'Không khớp mã sản phẩm');
-                }
-            } else {
-                if ($previousLineLot->product_id !== $lot_plan->product_id) {
-                    return $this->failure([$previousLineLot,$lot_plan], 'Không khớp mã sản phẩm');
-                }
-            }
-        }
+        // $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $lot_plan->product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
+        // $requestValue = $hanh_trinh_san_xuat[$request->line_id] ?? 0;
+        // // Lọc các line_id có value nhỏ hơn requestValue
+        // $filteredLineIds = collect($hanh_trinh_san_xuat)
+        //     ->filter(function ($value, $lineId) use ($requestValue) {
+        //         return $value < $requestValue;
+        //     })->keys();
+        // $orderByString = "'" . implode("','", $filteredLineIds->toArray()) . "'";
+        // $previousLineLot = InfoCongDoan::where('lot_id', $request->scanned_lot)
+        //     ->whereIn('line_id', $filteredLineIds)->where('status', InfoCongDoan::STATUS_COMPLETED)
+        //     ->orderByRaw("FIELD(line_id, $orderByString)")
+        //     ->get()
+        //     ->last();
+        // if (count($filteredLineIds) > 0) {
+        //     if (!$previousLineLot) {
+        //         return $this->failure([], 'Không tìm thấy lot đã chạy trước đó');
+        //     }
+        //     if ($previousLineLot->line_id == 24) {
+        //         $bomProducts = Bom::where(function ($subQuery) use ($previousLineLot) {
+        //             $subQuery->where('material_id', $previousLineLot->product_id)->orWhere('product_id', $previousLineLot->product_id);
+        //         })->pluck('product_id')->toArray();
+        //         if (!in_array($lot_plan->product_id, $bomProducts)) {
+        //             return $this->failure($previousLineLot, 'Không khớp mã sản phẩm');
+        //         }
+        //     } else {
+        //         if ($previousLineLot->product_id !== $lot_plan->product_id) {
+        //             return $this->failure([$previousLineLot,$lot_plan], 'Không khớp mã sản phẩm');
+        //         }
+        //     }
+        // }
         $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $line->id)->where('status', 1)->first();
         if ($infoCongDoan) {
             return $this->failure([], "Đã quét lot này");
