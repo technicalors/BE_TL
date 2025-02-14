@@ -366,7 +366,7 @@ class Phase2OIApiController extends Controller
             return $this->failure([], "Không tìm thấy cuộn");
         }
         if (!$roll->warehouse_inventory || $roll->warehouse_inventory->quantity <= 0) {
-            return $this->failure([], "Cuộn không còn tồn");
+            return $this->failure([], "Cuộn đã quét rồi");
         }
         if (!$roll->material) {
             return $this->failure([], "Không tìm thấy NVL: ". ($roll->material_id ?? ""));
