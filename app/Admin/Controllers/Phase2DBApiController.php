@@ -188,7 +188,9 @@ class Phase2DBApiController extends Controller
                 $sumLotPlan = ProductionPlan::query()->where('line_id', $machine->line_id)
                     ->where('machine_id', $machine->code)
                     ->where('product_id', $info->product_id)
-                    ->whereDate('ngay_sx', date('Y-m-d'))->sum('sl_giao_sx');
+                    ->whereDate('thoi_gian_bat_dau','<=', date('Y-m-d'))
+                    ->whereDate('thoi_gian_ket_thuc','>=', date('Y-m-d'))->sum('sl_giao_sx');
+
                 $sumInfoActure = InfoCongDoan::query()->where('line_id', $machine->line_id)
                     ->where('machine_code', $machine->code)
                     ->where('product_id', $info->product_id)
@@ -238,7 +240,7 @@ class Phase2DBApiController extends Controller
                     "status" => $status,
                     "time" => $info->updated_at,
                 ];
-                $tm['ti_le_ht'] = (int) (100 * (($tm['sl_dau_ra_kh']) > 0 ? number_format(($tm['sl_thuc_te'] / ($tm['sl_dau_ra_kh']) ?? 1), 2) : 0));
+                $tm['ti_le_ht'] = (int) (100 * (($tm['sl_dau_ra_kh']) > 1 ? number_format(($tm['sl_thuc_te'] / ($tm['sl_dau_ra_kh'])), 2) : 0));
                 if ($tm['ti_le_ht'] > 100) {
                     $tm['ti_le_ht'] = 100;
                 }
