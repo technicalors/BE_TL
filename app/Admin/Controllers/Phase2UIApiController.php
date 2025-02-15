@@ -2547,7 +2547,7 @@ class Phase2UIApiController extends Controller
         $data = [];
         $machine_available_list = [];
         $machine_load_factors = MachineLoadFactor::where('date', '>=', date('Y-m-d'))->get()->mapWithKeys(function ($machine) {
-            return [$machine->machine_code . "_" . $machine->date => $machine];
+            return [$machine->machine_code . "_" . $machine->date . "_" . $machine->shift_id => $machine];
         })->toArray();
         $orders = ProductOrder::with(['product.materials', 'customer'])
             ->whereIn('id', $orderIds)
@@ -2574,7 +2574,7 @@ class Phase2UIApiController extends Controller
         $sortedByProductId = collect($prioritizedOrders)->groupBy('product_id')->flatten(1);
         foreach ($sortedByProductId as $index => $order) {
             try {
-                $result = $this->processProductionPlan($order, $index, $machine_available_list);
+                $result = $this->processProductionPlan($order, $index, $machine_available_list, $machine_load_factors);
                 if ($result) {
                     $data[] = $result;
                 }
@@ -3328,7 +3328,7 @@ class Phase2UIApiController extends Controller
             // 9.1. Tính $startTime cho công đoạn đầu tiên hay tiếp theo
             if (!$startTime) {
                 // Công đoạn đầu tiên => bắt đầu từ 7h30 sáng ngày hôm sau
-                $startTime = Carbon::now()->addDay()->setTime(7, 30, 0);
+                $startTime = Carbon::now()->addDay()->startOfDay();
             } else {
                 // Điều chỉnh rollsPerTransport nếu cần
                 $rollsPerTransport = $this->adjustRollsPerTransport(
@@ -3351,7 +3351,7 @@ class Phase2UIApiController extends Controller
                     ) {
                         $prevMachineCount = $machine_in_line[$prevLineId];
                         $transportIndex   = ($rollsPerTransport / $prevMachineCount) - 1;
-
+                        // Log::debug([$prevLineId, $prevMachineCount, $transportIndex, $rollsPerTransport]);
                         // Kiểm tra phần tử lots cũ
                         if (
                             (!isset($lineInventory[$prevLineId]) || $lineInventory[$prevLineId] <= 0) &&
@@ -3385,7 +3385,7 @@ class Phase2UIApiController extends Controller
                 //Khởi tạo thời gian bắt đầu/kết thúc cho kế hoạch
                 $planStartTime = $startTime;
             
-                list($planStartTime, $planEndTime) = $this->calculateProductionBatchTime(
+                list($planStartTime, $planEndTime, $shiftId) = $this->calculateProductionBatchTime(
                     $planStartTime,
                     $quantityPerMachine,
                     $efficiency,
@@ -3495,10 +3495,12 @@ class Phase2UIApiController extends Controller
                     'thoi_gian_bat_dau' => $planStartTime,
                     'thoi_gian_ket_thuc' => $planEndTime,
                     'sl_giao_sx'        => $quantityPerMachine,
+                    'shift_id' => $shiftId,
                 ];
 
                 // Cập nhật plan
                 $planInput['lots']            = $lot_in_plan;
+                $planInput['children']            = $lot_in_plan;
                 $plans[] = $planInput;
 
                 $lotIndexOffset += $numLots;
@@ -3631,97 +3633,71 @@ class Phase2UIApiController extends Controller
         $maxDays = 30; // Giới hạn số ngày tối đa để tìm ca làm việc (tránh vòng lặp vô hạn)
         $daysProcessed = 0; // Số ngày đã duyệt
 
-        //Tính startTIme
-        while ($daysProcessed < $maxDays) {
-            $dateString = $startTime->copy()->startOfDay()->toDateString(); // Lấy ngày hiện tại (bỏ phần giờ phút)
-            $shifts = $this->getMachineProductionShiftsV2($machineId, $dateString);
-            // Nếu không có ca làm việc, chuyển sang ngày tiếp theo
-            if (!count($shifts)) {
-                $startTime->addDay()->startOfDay();
-                $daysProcessed++;
-                continue;
-            }
-            $machineLoadFactor = $this->getMachineLoadFactors($machineId, $dateString, $machine_load_factors);
-            $productionShiftStart = $shifts['start'];
-            $productionShiftEnd = $shifts['end'];
-            $totalWorkMinutes = ($machineLoadFactor ?? 0) * 60;
-            if ($productionShiftStart->copy()->addMinutes($totalWorkMinutes)->greaterThan($productionShiftEnd)) {
-                $startTime->addDay()->startOfDay();
-                $daysProcessed++;
-                continue;
-            }
-            $startTime = $productionShiftStart->copy()->addMinutes($totalWorkMinutes);
-            break;
-        }
-
         //Tính toán thời gian làm việc của máy đã phân ca
         $daysProcessed = 0;
         $endTime = $startTime->copy();
-        // Lặp cho đến khi thời gian còn lại được xử lý hoặc đạt giới hạn số ngày
+        $planShift = null;
         while ($productionDuration > 0 && $daysProcessed < $maxDays) {
             $dateString = $endTime->copy()->startOfDay()->toDateString(); // Lấy ngày hiện tại (bỏ phần giờ phút)
             $shifts = $this->getMachineProductionShiftsV2($machineId, $dateString);
+            
             // Nếu không có ca làm việc, chuyển sang ngày tiếp theo
             if (!count($shifts)) {
                 $endTime->addDay()->startOfDay();
                 $daysProcessed++;
                 continue;
             }
-            $productionShiftStart = $shifts['start'];
-            $productionShiftEnd = $shifts['end'];
-
-            if($endTime->lessThan($productionShiftStart)){
-                $endTime = $productionShiftStart->copy();
-            }
-
-            $endTime->addMinutes($productionDuration);
-
-            // Xác định thời gian bắt đầu và kết thúc của ca làm việc
-            
-            Log::debug('machine: '. $machineId . "-" . $endTime->toDateTimeString());
-            // Nếu $endTime đang nằm trong ca làm việc hoặc đúng thời gian bắt đầu ca
-            if ($endTime->between($productionShiftStart, $productionShiftEnd)) {
-                $productionTimeWithinShift = $productionShiftEnd->diffInMinutes($endTime, true); // Tính số phút còn lại trong ca
-                // Nếu đủ thời gian để hoàn thành trong ca này
-                if ($productionTimeWithinShift >= 0) {
-                    //Tạo key cho mảng tạm machine_load_factors
-                    $factor_key = $machineId . '_' . $dateString;
-                    if (isset($machine_load_factors[$factor_key])) { //Nếu mảng tạm có tồn tại phần tử có cùng mã máy, mã sp, thời gian thì cộng dồn số lượng và thời gian làm việc
-                        $machine_load_factors[$factor_key]['work_hours'] += $endTime->diffInMinutes($productionShiftStart) / 60;
-                    } else { //Nếu chưa tồn tại trong mảng tạm thì gán/cộng dồn giá trị cho bản ghi có cùng mã máy, mã sp, thời gian
-                        $machine_load_factors[$factor_key] = [
-                            'machine_code' => $machineId,
-                            'date' => $dateString,
-                            'fixed_productivity_per_hour' => $efficiency,
-                            'work_hours' => $endTime->diffInMinutes($productionShiftStart) / 60,
-                            'fixed_hours' => $productionShiftEnd->diffInMinutes($productionShiftStart) / 60,
-                        ];
-                        if ($machine_load_factors[$factor_key]['work_hours'] > $machine_load_factors[$factor_key]['fixed_hours']) {
-                            throw new Exception("Máy " . $machineId . " đã vượt quá thời gian làm việc cố định ngày " . $dateString, 1);
-                        }
-                    }
-                    return [$startTime, $endTime]; // Trả về thời gian bắt đầu & kết thúc
-                } else {
-                    // Nếu không đủ, cập nhật thời gian còn lại và chuyển sang ca tiếp theo
-                    $productionDuration -= abs($productionTimeWithinShift);
-                    $endTime->addDay()->startOfDay();
-                    $daysProcessed++;
+            $date = $dateString;
+            foreach ($shifts as $key => $shift) {
+                $productionShiftStart = Carbon::createFromFormat('Y-m-d H:i:s', $date . " " . $shift->shift->start_time);
+                $productionShiftEnd = Carbon::createFromFormat('Y-m-d H:i:s', $date . " " . $shift->shift->end_time);
+                
+                if($productionShiftEnd->lessThan($productionShiftStart)){
+                    $productionShiftEnd->addDay();
+                }
+                
+                //Lấy hệ số tải của máy theo ca
+                $factor_key = $machineId . '_' . $dateString . '_' . $shift->shift_id;
+                if(!isset($machine_load_factors[$factor_key])){
+                    $machine_load_factors[$factor_key] = [
+                        'machine_code' => $machineId,
+                        'date' => $dateString,
+                        'fixed_productivity_per_hour' => $efficiency,
+                        'work_hours' => 0,
+                        'fixed_hours' => $productionShiftEnd->diffInMinutes($productionShiftStart) / 60,
+                        'shift_id' => $shift->shift_id
+                    ];
+                }
+                if($productionShiftEnd->lessThan($productionShiftStart->copy()->addMinutes(($machine_load_factors[$factor_key]['work_hours'] ?? 0) * 60))){
+                    //Nếu thời gian bắt đầu + thời gian kết thúc lớn hơn thời gian kết thúc chuyển sang ca tiếp theo
                     continue;
                 }
-            } elseif ($endTime->greaterThanOrEqualTo($productionShiftEnd)) {
-                // Nếu $endTime đã vượt qua thời gian kết thúc ca, bỏ qua ca này
-                $endTime->addDay()->startOfDay();
-                $daysProcessed++;
-                continue;
+                if(!$planShift){
+                    $planShift = $shifts[0]->shift_id;
+                    $startTime = $productionShiftStart->copy();
+                }
+                $remainShiftDuration = $productionShiftEnd->diffInMinutes($productionShiftStart->copy()->addMinutes($machine_load_factors[$factor_key]['work_hours'] * 60));
+                Log::debug('Machine: '.$machineId);
+                Log::debug($machine_load_factors[$factor_key]);
+                Log::debug([$productionDuration, $remainShiftDuration]);
+                Log::debug([$productionShiftStart->toDateTimeString(), $productionShiftEnd->toDateTimeString()]);
+                if($productionDuration <= $remainShiftDuration){
+                    $machine_load_factors[$factor_key]['work_hours'] = ($machine_load_factors[$factor_key]['work_hours'] ?? 0) + ($productionDuration / 60);
+                    $productionDuration = 0;
+                    $endTime = $productionShiftStart->copy()->addMinutes($machine_load_factors[$factor_key]['work_hours'] * 60);
+                    Log::debug(['break', $startTime->toDateTimeString(), $endTime->toDateTimeString()]);
+                    return [$startTime, $endTime, $planShift]; 
+                }else{
+                    $machine_load_factors[$factor_key]['work_hours'] = ($machine_load_factors[$factor_key]['work_hours'] ?? 0) + ($remainShiftDuration / 60);
+                    $productionDuration -= $remainShiftDuration;
+                    $endTime = $productionShiftStart->copy()->addMinutes($machine_load_factors[$factor_key]['work_hours'] * 60);
+                }
+                Log::debug([$startTime->toDateTimeString(), $endTime->toDateTimeString()]);
             }
-
-            // Nếu không tìm được ca phù hợp, chuyển sang ngày tiếp theo
-            $endTime->addDay()->startOfDay();
             $daysProcessed++;
         }
-
         // Trả về thời gian bắt đầu và thời gian kết thúc nếu không tìm được khoảng ca phù hợp
-        return [$startTime, $endTime];
+        return [$startTime, $endTime, $planShift];
     }
 
     function getMachineProductionShiftsV2($machineId, $startDate)
@@ -3732,36 +3708,38 @@ class Phase2UIApiController extends Controller
             // Lấy tất cả các shift_id của máy trong ngày
             $machineShifts = MachineShift::where('machine_id', $machineId)
                 ->where('date', $startDate)
-                ->with(['shiftBreak'=>function($query){
-                    $query->where('type_break', 'Sản xuất')->orderBy('ordering');
-                }])
+                ->has('shift')
+                ->with(['shift'])
                 ->get();
 
             if ($machineShifts->isEmpty()) {
                 return [];
             }
 
-            $shiftBreaks = $machineShifts->flatMap->shiftBreak;
+            return $machineShifts;
 
-            if ($shiftBreaks->isEmpty()) {
-                return [];
-            }
+            // $shiftBreaks = $machineShifts->flatMap->shiftBreak;
 
-            // Lấy thời gian bắt đầu sớm nhất
-            $startTime = $shiftBreaks->first()->start_time;
-            $start = Carbon::createFromFormat('Y-m-d H:i:s', "$startDate $startTime");
+            // if ($shiftBreaks->isEmpty()) {
+            //     return [];
+            // }
 
-            // Tính tổng thời gian sản xuất trong các ca được chọn
-            $endTime = $shiftBreaks->last()->end_time;
-            $end = Carbon::createFromFormat('Y-m-d H:i:s', "$startDate $endTime");
-            if($endTime <= $startTime){
-                $end->addDay();
-            }
+            // // Lấy thời gian bắt đầu sớm nhất
+            // $startTime = $shiftBreaks->first()->start_time;
+            // $start = Carbon::createFromFormat('Y-m-d H:i:s', "$startDate $startTime");
 
-            return [
-                'start' => $start,
-                'end'   => $end,
-            ];
+            // // Tính tổng thời gian sản xuất trong các ca được chọn
+            // $endTime = $shiftBreaks->last()->end_time;
+            // $end = Carbon::createFromFormat('Y-m-d H:i:s', "$startDate $endTime");
+            // if($endTime <= $startTime){
+            //     $end->addDay();
+            // }
+
+            // return [
+            //     'start' => $start,
+            //     'end'   => $end,
+            //     'shift_quantity' => count($machineShifts)
+            // ];
         });
     }
 

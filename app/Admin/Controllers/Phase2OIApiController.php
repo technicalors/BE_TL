@@ -359,39 +359,36 @@ class Phase2OIApiController extends Controller
         if ($tracking->lot_id) {
             return $this->failure([], "Máy này đang sản xuất");
         }
-
+        $roll = RollMaterial::with(['material.products', 'warehouse_inventory'])->find($request->roll_id);
+        // return $roll;
+        // $material = Material::with('bom.product')->find($request->material_id);
+        if (!$roll) {
+            return $this->failure([], "Không tìm thấy cuộn");
+        }
+        if (!$roll->warehouse_inventory || $roll->warehouse_inventory->quantity <= 0) {
+            return $this->failure([], "Cuộn đã quét rồi");
+        }
+        if (!$roll->material) {
+            return $this->failure([], "Không tìm thấy NVL: ". ($roll->material_id ?? ""));
+        }
+        $product_ids = $roll->material->products->pluck('id')->toArray() ?? [];
+        if (count($product_ids) === 0) {
+            return $this->failure([], "Không tìm thấy sản phẩm");
+        }
+        $lot_plan = LotPlan::where('lot_id', $request->lot_id)->where('line_id', $machine->line_id)->where('machine_code', $machine->code)->first();
+        if (!in_array($lot_plan->product_id, $product_ids)) {
+            return $this->failure([], "Mã cuộn không phù hợp");
+        }
+        // }
+        if (empty($lot_plan) || $lot_plan->infoCongDoan) {
+            return $this->failure([], "Không tìm thấy lot cần chạy");
+        }
         try {
             DB::beginTransaction();
-            $roll = RollMaterial::with(['material.products', 'warehouse_inventory'])->find($request->roll_id);
-            // return $roll;
-            // $material = Material::with('bom.product')->find($request->material_id);
-            if (!$roll) {
-                return $this->failure([], "Không tìm thấy cuộn");
-            }
-            if (!$roll->warehouse_inventory || $roll->warehouse_inventory->quantity <= 0) {
-                return $this->failure([], "Cuộn không còn tồn");
-            }
-            if (!$roll->material) {
-                return $this->failure([], "Không tìm thấy NVL: ". ($roll->material_id ?? ""));
-            }
-            if (!$roll->material) {
-                return $this->failure([], "Không tìm thấy NVL: ". ($roll->material_id ?? ""));
-            }
-            $product_ids = $roll->material->products->pluck('id')->toArray() ?? [];
-            if (count($product_ids) === 0) {
-                return $this->failure([], "Không tìm thấy sản phẩm");
-            }
-            $lot_plan = LotPlan::where('lot_id', $request->lot_id)->where('line_id', $machine->line_id)->where('machine_code', $machine->code)->first();
-            if (!in_array($lot_plan->product_id, $product_ids)) {
-                return $this->failure([], "Mã cuộn không phù hợp");
-            }
-            // }
-            if (empty($lot_plan) || $lot_plan->infoCongDoan) {
-                return $this->failure([], "Không tìm thấy lot cần chạy");
-            }
             if ($lot_plan->plan && $lot_plan->plan->status_plan == ProductionPlan::STATUS_PENDING) {
                 $lot_plan->plan->update(['status_plan' => ProductionPlan::STATUS_IN_PROGRESS]);
             }
+            $roll->warehouse_inventory->update(['quantity' => 0]);
             MachineStatus::reset($machine->code);
             InfoCongDoan::firstOrCreate(
                 ['lot_id' => $lot_plan->lot_id, 'lot_plan_id' => $lot_plan->id, 'line_id' => $machine->line_id, 'machine_code' => $machine->code],
@@ -884,11 +881,44 @@ class Phase2OIApiController extends Controller
         if ($check) {
             return $this->failure([], "Chưa hoàn thành lot trước đó");
         }
+        $lot_plan = LotPlan::where('lot_id', $request->lot_id)->whereDate('start_time', date('Y-m-d'))->where('machine_code', $machine->code)->where('line_id', $machine->line->id)->first();
+        if (!$lot_plan) {
+            return $this->failure([], 'Không tìm thấy lot');
+        }
+        // $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $lot_plan->product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
+        // $requestValue = $hanh_trinh_san_xuat[$request->line_id] ?? 0;
+        // // Lọc các line_id có value nhỏ hơn requestValue
+        // $filteredLineIds = collect($hanh_trinh_san_xuat)
+        //     ->filter(function ($value, $lineId) use ($requestValue) {
+        //         return $value < $requestValue;
+        //     })->keys();
+        // $orderByString = "'" . implode("','", $filteredLineIds->toArray()) . "'";
+        // $previousLineLot = InfoCongDoan::where('lot_id', $request->scanned_lot)
+        //     ->whereIn('line_id', $filteredLineIds)->where('status', InfoCongDoan::STATUS_COMPLETED)
+        //     ->orderByRaw("FIELD(line_id, $orderByString)")
+        //     ->get()
+        //     ->last();
+        // if (count($filteredLineIds) > 0) {
+        //     if (!$previousLineLot) {
+        //         return $this->failure([], 'Không tìm thấy lot đã chạy trước đó');
+        //     }
+        //     if ($previousLineLot->line_id == 24) {
+        //         $bomProducts = Bom::where(function ($subQuery) use ($previousLineLot) {
+        //             $subQuery->where('material_id', $previousLineLot->product_id)->orWhere('product_id', $previousLineLot->product_id);
+        //         })->pluck('product_id')->toArray();
+        //         if (!in_array($lot_plan->product_id, $bomProducts)) {
+        //             return $this->failure($previousLineLot, 'Không khớp mã sản phẩm');
+        //         }
+        //     } else {
+        //         if ($previousLineLot->product_id !== $lot_plan->product_id) {
+        //             return $this->failure([$previousLineLot,$lot_plan], 'Không khớp mã sản phẩm');
+        //         }
+        //     }
+        // }
         $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $line->id)->where('status', 1)->first();
         if ($infoCongDoan) {
             return $this->failure([], "Đã quét lot này");
         }
-        $lot_plan = LotPlan::where('lot_id', $request->lot_id)->whereDate('start_time', date('Y-m-d'))->where('line_id', $line->id)->where('machine_code', $machine->code)->first();
         try {
             DB::beginTransaction();
             InfoCongDoan::firstOrCreate(
