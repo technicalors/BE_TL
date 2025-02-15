@@ -11,6 +11,7 @@ use App\Models\LineInventories;
 use App\Models\Lot;
 use App\Models\MachinePriorityOrder;
 use App\Models\NumberMachineOrder;
+use App\Models\ProductionOrderHistory;
 use App\Models\ProductOrder;
 use App\Models\Spec;
 use App\Traits\API;
@@ -28,8 +29,8 @@ class ProductOrderController extends Controller
     public function index(Request $request)
     {
         $query = ProductOrder::where('quantity', '>', 0)
-        ->orderBy('product_id')
-        ->orderBy('created_at', 'DESC');
+            ->orderBy('product_id')
+            ->orderBy('created_at', 'DESC');
         if (isset($request->start_date) && isset($request->end_date)) {
             $query->whereDate('order_date', '>=', date('Y-m-d', strtotime($request->start_date)))
                 ->whereDate('order_date', '<=', date('Y-m-d', strtotime($request->end_date)));
@@ -52,19 +53,19 @@ class ProductOrderController extends Controller
         }
         $result = $query->with('product.materials.warehouse_inventories', 'customer', 'material', 'numberProductOrder')->get();
         $lines = Line::where("display", "1")
-        ->where('factory_id', 2)
-        ->where('id', '!=', 29)
-        ->orderBy('ordering', 'ASC')
-        ->get();
+            ->where('factory_id', 2)
+            ->where('id', '!=', 29)
+            ->orderBy('ordering', 'ASC')
+            ->get();
         $except = ['kho-thanh-pham', 'oqc', 'iqc', 'kho-thanh-pham', 'kho-bao-on', 'u'];
         foreach ($result as $value) {
-            if(!$value->product){
+            if (!$value->product) {
                 continue;
             }
             $sl_may = [];
             $numberProductOrder = $value->numberProductOrder;
             foreach ($lines as $key => $line) {
-                if(in_array(Str::slug($line->name), $except)) continue;
+                if (in_array(Str::slug($line->name), $except)) continue;
                 $sl_may[$key]['name'] = $line->name;
                 $sl_may[$key]['line_id'] = $line->id;
                 $sl_may[$key]['value'] = $numberProductOrder->first(function ($item) use ($line) {
@@ -75,7 +76,7 @@ class ProductOrderController extends Controller
             $san_luong = LineInventories::with('line')->where('product_id', $value->product_id)->get()->groupBy('line_id');
             $sl_ton = 0;
             foreach ($lines as $key => $line) {
-                if(in_array(Str::slug($line->name), $except)) continue;
+                if (in_array(Str::slug($line->name), $except)) continue;
                 $ton[$key]['name'] = $line->name ?? '';
                 $ton[$key]['line_id'] = $line->id;
                 $sl = isset($san_luong[$line->id]) ? $san_luong[$line->id]->sum('quantity') : 0;
@@ -88,7 +89,7 @@ class ProductOrderController extends Controller
             $value->ton = array_values($ton);
             $inventory = Inventory::where('product_id', $value->product_id)->first();
             $value->sl_ton = $inventory->sl_ton ?? 0;
-            $value->ton_kho_nvl = $value->product->materials->sum(function($material){
+            $value->ton_kho_nvl = $value->product->materials->sum(function ($material) {
                 return $material->warehouse_inventories->sum('quantity') ?? 0;
             });
         }
@@ -224,10 +225,10 @@ class ProductOrderController extends Controller
                 ]);
             }
             foreach (($request->ton ?? []) as $key => $value) {
-                LineInventories::updateOrCreate(['line_id'=>$value['line_id'], 'product_id'=>$productOrder->product_id], ['quantity'=>$value['value']]);
+                LineInventories::updateOrCreate(['line_id' => $value['line_id'], 'product_id' => $productOrder->product_id], ['quantity' => $value['value']]);
             }
-            if(isset($request->sl_ton)){
-                Inventory::updateOrCreate(['product_id'=>$productOrder->product_id], ['sl_ton'=>$request->sl_ton]);
+            if (isset($request->sl_ton)) {
+                Inventory::updateOrCreate(['product_id' => $productOrder->product_id], ['sl_ton' => $request->sl_ton]);
             }
             DB::commit();
         } catch (\Throwable $th) {
@@ -277,5 +278,34 @@ class ProductOrderController extends Controller
             'type' => $fileType,
             'data' => $fileBase64Uri,
         ]);
+    }
+
+    public function updateConfirmDate(Request $request)
+    {
+        try {
+            DB::beginTransaction();
+            $input = $request->all();
+            $productOrder = ProductOrder::find($input['id']);
+            $input['status'] = ProductOrder::STATUS_IN_PROGRESS;
+            $productionSteps = Phase2UIApiController::getProductionSteps($productOrder->product_id);
+            $quantity = $productOrder->quantity;
+            foreach ($productionSteps as $productionStep) {
+                $calculatedQuantity = Phase2UIApiController::calculateProductionOutput($productOrder->product_id, $productionStep->line_id, $quantity);
+                $quantity = $calculatedQuantity;
+                ProductionOrderHistory::where('production_order_id', $input['id'])->where('line_id', $productionStep->line_id)->delete();
+                $inp['production_order_id'] = $input['id'];
+                $inp['line_id'] = $productionStep->line_id;
+                $inp['order_quantity'] = $quantity;
+                $inp['actual_quantity'] = 0;
+                ProductionOrderHistory::create($inp);
+            }
+            $productOrder->update($input);
+            
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return $this->failure('', $th->getMessage());
+        }
+        return $this->success('', 'Cập nhật thành công');
     }
 }

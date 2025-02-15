@@ -2139,13 +2139,13 @@ class Phase2UIApiController extends Controller
     }
 
     //=========================AUTO PLAN================================//
-    public function getProductionSteps($productId)
+    public static function getProductionSteps($productId)
     {
         // Bước 1: Truy vấn để lấy các công đoạn từ bảng spec theo product_id và slug 'hanh-trinh-san-xuat'
         // Sắp xếp theo thứ tự giảm dần (DESC) để tính toán sản lượng
         return Spec::where('product_id', $productId)
             ->where('slug', 'hanh-trinh-san-xuat')
-            ->where('line_id', '<>', 29)
+            // ->where('line_id', '<>', 29)
             ->whereRaw('value REGEXP "^[0-9]+$"')
             ->orderBy('value', 'desc')
             ->get();
@@ -2172,7 +2172,7 @@ class Phase2UIApiController extends Controller
         return (array)$inputWaste;
     }
 
-    function calculateProductionOutput($productId, $lineId, $quantity)
+    public static function calculateProductionOutput($productId, $lineId, $quantity)
     {
         $productionWaste = Spec::where('line_id', $lineId)
             ->where('product_id', $productId)
@@ -2183,14 +2183,6 @@ class Phase2UIApiController extends Controller
             ->where('product_id', $productId)
             ->where('slug', 'hao-phi-vao-hang-cac-cong-doan')
             ->first();
-
-        $line_inventory = LineInventories::where('line_id', $lineId)->where('product_id', $productId)->first();
-        $remain = $quantity - ($line_inventory->quantity ?? 0);
-        if ($remain > 0) {
-            $quantity = $remain;
-        } else {
-            return 0;
-        }
         if ($productionWaste) {
             $quantity += $quantity * ($productionWaste->value / 100);
         }
