@@ -12,6 +12,7 @@ use App\Models\Lot;
 use App\Models\MachinePriorityOrder;
 use App\Models\NumberMachineOrder;
 use App\Models\ProductionOrderHistory;
+use App\Models\ProductionOrderPriority;
 use App\Models\ProductOrder;
 use App\Models\Spec;
 use App\Traits\API;
@@ -299,8 +300,18 @@ class ProductOrderController extends Controller
                 $inp['actual_quantity'] = 0;
                 ProductionOrderHistory::create($inp);
             }
+            $maxPriority = ProductionOrderPriority::max('priority');
+            $newPriority = ($maxPriority !== null) ? $maxPriority + 1 : 1;
+            ProductionOrderPriority::firstOrCreate(
+                ['production_order_id' => $input['id']],
+                [
+                    'production_order_id' => $input['id'],
+                    'confirm_date'        => $productOrder->confirm_date,
+                    'product_id'          => $productOrder->product_id,
+                    'priority'            => $newPriority,
+                ]
+            );
             $productOrder->update($input);
-            
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();

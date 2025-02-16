@@ -28,6 +28,7 @@ use App\Models\MachinePriorityOrder;
 use App\Models\MachineShift;
 use App\Models\NumberMachineOrder;
 use App\Models\Product;
+use App\Models\ProductionOrderPriority;
 use App\Models\ProductionPlan;
 use App\Models\ProductOrder;
 use App\Models\QCHistory;
@@ -3960,6 +3961,21 @@ class Phase2UIApiController extends Controller
         ];
 
         return ProductionPlan::create($planInput);
+    }
+
+    public function storeProductionPlanAuto(Request $request){
+        $productionOrderPriorities = ProductionOrderPriority::with('productionOrder','productionOrderHistory')->orderBy('priority', 'asc')->get();
+        foreach ($productionOrderPriorities as $productionOrderPriority) {
+            $sortedHistories = $productionOrderPriority->productionOrderHistory->sortByDesc('updated_at');
+            foreach($sortedHistories as $key=>$history){
+                $machinePriorityOrders = MachinePriorityOrder::where('line_id', $history->line_id)->where('product_id',$productionOrderPriority->product_id)
+                ->orderBy('priority', 'asc')->first();
+                $efficiency = $this->getEfficiency($productionOrderPriority->product_id, $history->line_id);
+                $timeSetup = $this->getSetupTime($productionOrderPriority->product_id, $history->line_id);
+                $machineShifts = $this->getMachineProductionShiftsV2($machinePriorityOrders->machine_id, date('Y-m-d', strtotime('+1 day')));
+            }
+        }
+
     }
 
     private function mapInputData($row, $lineId)

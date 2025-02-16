@@ -53,6 +53,7 @@ class ProductionPlan extends Model
         'sl_tong_don_hang',
         'material_id',
         'status_plan',
+        'production_order_id',
     ];
     public function setThoiGianBatDauAttribute($value)
     {
