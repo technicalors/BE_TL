@@ -53,15 +53,38 @@ class ProductionPlan extends Model
         'sl_tong_don_hang',
         'material_id',
         'status_plan',
+        'uid'
     ];
-    public function setThoiGianBatDauAttribute($value)
+    public static function boot()
     {
-        $this->attributes['thoi_gian_bat_dau'] = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh');
+        parent::boot();
+
+        static::creating(function ($model) {
+            $model->uid = $this->generateUniqueId($model->lo_sx, $model->machine_id);
+        });
     }
-    public function setThoiGianKetThucAttribute($value)
+
+    public static function generateUniqueId($lo_sx, $machine_id)
     {
-        $this->attributes['thoi_gian_ket_thuc'] = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh');
+        $latestPlan = ProductionPlan::where('lo_sx', $lo_sx)->where('machine_id', $machine_id)->get()->latest();
+        $prefix = $lo_sx . '.' . $machine_id . '.L.';
+        try {
+            $index = $latestPlan ? (int) end(explode('.', $latestPlan->uid)) : 0;
+        } catch (\Throwable $th) {
+            $index = 0;
+        }
+        $newSequence = str_pad($index + 1, 4, '0', STR_PAD_LEFT);
+
+        return $prefix . $newSequence;
     }
+    // public function setThoiGianBatDauAttribute($value)
+    // {
+    //     $this->attributes['thoi_gian_bat_dau'] = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh');
+    // }
+    // public function setThoiGianKetThucAttribute($value)
+    // {
+    //     $this->attributes['thoi_gian_ket_thuc'] = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh');
+    // }
     public function machine()
     {
         return $this->belongsTo(Machine::class);
@@ -86,5 +109,9 @@ class ProductionPlan extends Model
     public function lotPlan()
     {
         return $this->hasMany(LotPlan::class, 'production_plan_id');
+    }
+
+    public function infoCongDoan(){
+        return $this->hasOne(InfoCongDoan::class, 'plan_uid', 'uid');
     }
 }

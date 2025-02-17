@@ -25,6 +25,7 @@ use App\Admin\Controllers\Phase2DBApiController;
 use App\Admin\Controllers\Phase2OIApiController;
 use App\Admin\Controllers\Phase2UIApiController;
 use App\Admin\Controllers\ParameterController;
+use App\Admin\Controllers\ProductionJourneyController;
 use App\Admin\Controllers\ProductOrderController;
 use App\Http\Controllers\ShiftBreakController;
 use App\Admin\Controllers\StampController;
@@ -653,6 +654,12 @@ Route::group([
     $router->post('print-tem-selection-line', [Phase2OIApiController::class, 'printTemSelectionLine']);
     $router->post('update-output-production', [Phase2OIApiController::class,'updateOutputProduction']);
 
+    //Test new api
+    // $router->get('lot-production-list', [Phase2OIApiController::class, 'oiProductionList']);
+    // $router->post('scan-material', [Phase2OIApiController::class, 'scanForFirstLine']);
+    // $router->post('scan-manufacture', [Phase2OIApiController::class, 'scanForProductionLine']);
+    // $router->post('end-of-production', [Phase2OIApiController::class, 'finishProductionLine']);
+
     //Chất lượng
     $router->get('qc-overall', [Phase2OIApiController::class, 'getQCOverall']);
     $router->get('lot-qc-list', [Phase2OIApiController::class, 'getLotQCList']);
@@ -754,6 +761,9 @@ Route::group([
 
     Route::apiResource('machine-priority-orders', MachinePriorityOrderController::class);
     Route::post('machine-priority-orders/delete', [MachinePriorityOrderController::class, 'deleteManyMachinePriorityOrders']);
+
+    Route::apiResource('production-journey', ProductionJourneyController::class);
+    Route::post('product-journey/delete', [ProductionJourneyController::class, 'deleteManyMachinePriorityOrders']);
 
     Route::apiResource('excel-headers', ExcelHeaderController::class);
     Route::post('excel-headers/import', [ExcelHeaderController::class, 'import']);
