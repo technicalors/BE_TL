@@ -50,6 +50,7 @@ class InfoCongDoan extends Model
         'sl_khi_bam_may',
         'sl_dau_ra_ket_thuc',
         'sl_dau_vao_bam_may',
+        'plan_uid'
     ];
 
     static function validateStore($input)
@@ -108,9 +109,13 @@ class InfoCongDoan extends Model
     {
         return $this->belongsTo(Line::class);
     }
+    // public function plan()
+    // {
+    //     return $this->hasOne(ProductionPlan::class, ['lo_sx', 'line_id'], ['lo_sx', 'line_id']);
+    // }
     public function plan()
     {
-        return $this->hasOne(ProductionPlan::class, ['lo_sx', 'line_id'], ['lo_sx', 'line_id']);
+        return $this->belongsTo(ProductionPlan::class, 'plan_uid', 'uid');
     }
     public function log()
     {

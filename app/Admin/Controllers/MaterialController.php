@@ -24,6 +24,11 @@ class MaterialController extends Controller
         if (isset($request->name)) {
             $query->where('name', 'like', "%$request->name%");
         }
+        if (isset($request->product_id)) {
+            $query->whereHas('products', function($q) use($request) {
+                $q->where('products.id', $request->product_id);
+            });
+        }
         $total = $query->count();
         if (isset($request->page) && isset($request->pageSize)) {
             // return $request->page - 1;

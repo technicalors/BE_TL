@@ -25,6 +25,7 @@ use App\Admin\Controllers\Phase2DBApiController;
 use App\Admin\Controllers\Phase2OIApiController;
 use App\Admin\Controllers\Phase2UIApiController;
 use App\Admin\Controllers\ParameterController;
+use App\Admin\Controllers\ProductionJourneyController;
 use App\Admin\Controllers\ProductOrderController;
 use App\Http\Controllers\ShiftBreakController;
 use App\Admin\Controllers\StampController;
@@ -758,6 +759,9 @@ Route::group([
     Route::apiResource('machine-priority-orders', MachinePriorityOrderController::class);
     Route::post('machine-priority-orders/delete', [MachinePriorityOrderController::class, 'deleteManyMachinePriorityOrders']);
 
+    Route::apiResource('production-journey', ProductionJourneyController::class);
+    Route::post('product-journey/delete', [ProductionJourneyController::class, 'deleteManyMachinePriorityOrders']);
+
     Route::apiResource('excel-headers', ExcelHeaderController::class);
     Route::post('excel-headers/import', [ExcelHeaderController::class, 'import']);
     Route::post('excel-headers/export', [ExcelHeaderController::class, 'export']);
@@ -782,4 +786,16 @@ Route::group([
 
     Route::apiResource('shift-breaks', ShiftBreakController::class);
     Route::apiResource('line-inventory', LineInventoryController::class);
+});
+
+//OI
+Route::group([
+    'prefix'        => "/api/p2/v2/oi",
+    'middleware'    => "auth:sanctum",
+], function (Router $router) {
+    //Test new api
+    $router->get('lot-production-list', [Phase2OIApiController::class, 'oiProductionList']);
+    $router->post('scan-material', [Phase2OIApiController::class, 'scanForFirstLine']);
+    $router->post('scan-manufacture', [Phase2OIApiController::class, 'scanForProductionLine']);
+    $router->post('end-of-production', [Phase2OIApiController::class, 'finishProductionLine']);
 });
