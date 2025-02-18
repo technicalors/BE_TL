@@ -744,6 +744,7 @@ Route::group([
     Route::get('update-finished-product-inventory', [ApiUIController::class, 'updateFinishedProductInventory']);
 
     Route::post('production_plan/store', [Phase2UIApiController::class, 'storeProductionPlanAuto']);
+    Route::post('production_plan/approve', [Phase2UIApiController::class, 'approveProductionPlanAuto']);
 });
 
 //UI
