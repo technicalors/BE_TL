@@ -26,6 +26,7 @@ use App\Admin\Controllers\Phase2OIApiController;
 use App\Admin\Controllers\Phase2UIApiController;
 use App\Admin\Controllers\ParameterController;
 use App\Admin\Controllers\ProductionJourneyController;
+use App\Admin\Controllers\ProductionOrderPriorityController;
 use App\Admin\Controllers\ProductOrderController;
 use App\Http\Controllers\ShiftBreakController;
 use App\Admin\Controllers\StampController;
@@ -746,9 +747,10 @@ Route::group([
 
     Route::post('production_plan/store', [Phase2UIApiController::class, 'storeProductionPlanAuto']);
     Route::post('production_plan/approve', [Phase2UIApiController::class, 'approveProductionPlanAuto']);
+    Route::apiResource('production-order-priorities', ProductionOrderPriorityController::class);
 });
 
-//UI
+//Masterdata
 Route::group([
     'prefix'        => "/api/p2/ui/master-data",
     'middleware'    => "auth:sanctum",
