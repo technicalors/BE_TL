@@ -306,7 +306,7 @@ class ProductOrderController extends Controller
                 ['production_order_id' => $input['id']],
                 [
                     'production_order_id' => $input['id'],
-                    'confirm_date'        => $productOrder->confirm_date,
+                    'confirm_date'        => $input['confirm_date'],
                     'product_id'          => $productOrder->product_id,
                     'priority'            => $newPriority,
                 ]
@@ -318,5 +318,15 @@ class ProductOrderController extends Controller
             return $this->failure('', $th->getMessage());
         }
         return $this->success('', 'Cập nhật thành công');
+    }
+    public function getProductOrderPriority(Request $request)
+    {
+        $query = ProductionOrderPriority::orderBy('priority', 'ASC');
+        if (isset($request->product_id)) {
+            $query->where('product_id', $request->product_id);
+        }
+        $result = $query->with('productionOrder.product','productionOrder.customer','productionOrderHistory')->get();
+        return $this->success($result);
+
     }
 }
