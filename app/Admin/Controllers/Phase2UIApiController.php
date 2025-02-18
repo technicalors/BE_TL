@@ -2,6 +2,7 @@
 
 namespace App\Admin\Controllers;
 
+use App\Exports\ProductionPlan\ProductionPlanExport;
 use App\Helpers\ExcelStyleHelper;
 use App\Helpers\QueryHelper;
 use App\Http\Controllers\Controller;
@@ -39,6 +40,8 @@ use App\Models\TestCriteriaHistory;
 use App\Traits\API;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use DateTime;
+use DateTimeZone;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -2412,8 +2415,7 @@ class Phase2UIApiController extends Controller
             // Lấy tất cả các shift_breaks có type_break là 'Sản xuất' cho các shift_id
             return DB::table('shift_breaks')
                 ->whereIn('shift_id', $shiftIds)
-                ->where('type_break', 'Sản xuất')
-                ->select('shift_id', 'start_time', 'end_time', 'duration_minutes')
+                ->select('shift_id', 'start_time', 'end_time', 'duration_minutes', 'type_break')
                 ->orderBy('id')
                 ->get();
         });
@@ -3385,7 +3387,7 @@ class Phase2UIApiController extends Controller
             foreach ($machines as $machineIndex => $machine) {
                 //Khởi tạo thời gian bắt đầu/kết thúc cho kế hoạch
                 $planStartTime = $startTime;
-            
+
                 list($planStartTime, $planEndTime, $shiftId) = $this->calculateProductionBatchTime(
                     $planStartTime,
                     $quantityPerMachine,
@@ -3641,7 +3643,7 @@ class Phase2UIApiController extends Controller
         while ($productionDuration > 0 && $daysProcessed < $maxDays) {
             $dateString = $endTime->copy()->startOfDay()->toDateString(); // Lấy ngày hiện tại (bỏ phần giờ phút)
             $shifts = $this->getMachineProductionShiftsV2($machineId, $dateString);
-            
+
             // Nếu không có ca làm việc, chuyển sang ngày tiếp theo
             if (!count($shifts)) {
                 $endTime->addDay()->startOfDay();
@@ -3652,14 +3654,14 @@ class Phase2UIApiController extends Controller
             foreach ($shifts as $key => $shift) {
                 $productionShiftStart = Carbon::createFromFormat('Y-m-d H:i:s', $date . " " . $shift->shift->start_time);
                 $productionShiftEnd = Carbon::createFromFormat('Y-m-d H:i:s', $date . " " . $shift->shift->end_time);
-                
-                if($productionShiftEnd->lessThan($productionShiftStart)){
+
+                if ($productionShiftEnd->lessThan($productionShiftStart)) {
                     $productionShiftEnd->addDay();
                 }
-                
+
                 //Lấy hệ số tải của máy theo ca
                 $factor_key = $machineId . '_' . $dateString . '_' . $shift->shift_id;
-                if(!isset($machine_load_factors[$factor_key])){
+                if (!isset($machine_load_factors[$factor_key])) {
                     $machine_load_factors[$factor_key] = [
                         'machine_code' => $machineId,
                         'date' => $dateString,
@@ -3669,26 +3671,26 @@ class Phase2UIApiController extends Controller
                         'shift_id' => $shift->shift_id
                     ];
                 }
-                if($productionShiftEnd->lessThan($productionShiftStart->copy()->addMinutes(($machine_load_factors[$factor_key]['work_hours'] ?? 0) * 60))){
+                if ($productionShiftEnd->lessThan($productionShiftStart->copy()->addMinutes(($machine_load_factors[$factor_key]['work_hours'] ?? 0) * 60))) {
                     //Nếu thời gian bắt đầu + thời gian kết thúc lớn hơn thời gian kết thúc chuyển sang ca tiếp theo
                     continue;
                 }
-                if(!$planShift){
+                if (!$planShift) {
                     $planShift = $shifts[0]->shift_id;
                     $startTime = $productionShiftStart->copy();
                 }
                 $remainShiftDuration = $productionShiftEnd->diffInMinutes($productionShiftStart->copy()->addMinutes($machine_load_factors[$factor_key]['work_hours'] * 60));
-                Log::debug('Machine: '.$machineId);
+                Log::debug('Machine: ' . $machineId);
                 Log::debug($machine_load_factors[$factor_key]);
                 Log::debug([$productionDuration, $remainShiftDuration]);
                 Log::debug([$productionShiftStart->toDateTimeString(), $productionShiftEnd->toDateTimeString()]);
-                if($productionDuration <= $remainShiftDuration){
+                if ($productionDuration <= $remainShiftDuration) {
                     $machine_load_factors[$factor_key]['work_hours'] = ($machine_load_factors[$factor_key]['work_hours'] ?? 0) + ($productionDuration / 60);
                     $productionDuration = 0;
                     $endTime = $productionShiftStart->copy()->addMinutes($machine_load_factors[$factor_key]['work_hours'] * 60);
                     Log::debug(['break', $startTime->toDateTimeString(), $endTime->toDateTimeString()]);
-                    return [$startTime, $endTime, $planShift]; 
-                }else{
+                    return [$startTime, $endTime, $planShift];
+                } else {
                     $machine_load_factors[$factor_key]['work_hours'] = ($machine_load_factors[$factor_key]['work_hours'] ?? 0) + ($remainShiftDuration / 60);
                     $productionDuration -= $remainShiftDuration;
                     $endTime = $productionShiftStart->copy()->addMinutes($machine_load_factors[$factor_key]['work_hours'] * 60);
@@ -3963,19 +3965,197 @@ class Phase2UIApiController extends Controller
         return ProductionPlan::create($planInput);
     }
 
-    public function storeProductionPlanAuto(Request $request){
-        $productionOrderPriorities = ProductionOrderPriority::with('productionOrder','productionOrderHistory')->orderBy('priority', 'asc')->get();
-        foreach ($productionOrderPriorities as $productionOrderPriority) {
-            $sortedHistories = $productionOrderPriority->productionOrderHistory->sortByDesc('updated_at');
-            foreach($sortedHistories as $key=>$history){
-                $machinePriorityOrders = MachinePriorityOrder::where('line_id', $history->line_id)->where('product_id',$productionOrderPriority->product_id)
-                ->orderBy('priority', 'asc')->first();
-                $efficiency = $this->getEfficiency($productionOrderPriority->product_id, $history->line_id);
-                $timeSetup = $this->getSetupTime($productionOrderPriority->product_id, $history->line_id);
-                $machineShifts = $this->getMachineProductionShiftsV2($machinePriorityOrders->machine_id, date('Y-m-d', strtotime('+1 day')));
+    public function adjustShift($shiftStart, $shiftEnd, $shiftBreaks)
+    {
+        // Thiết lập múi giờ mong muốn
+        $timezone = new DateTimeZone('Asia/Ho_Chi_Minh');
+
+        // Chuyển đổi thời gian ca làm việc sang đối tượng DateTime
+        $start = new DateTime($shiftStart, $timezone);
+        $end   = new DateTime($shiftEnd, $timezone);
+        // Tính số phút của ca làm việc ban đầu
+        $productionMinutes = ($end->getTimestamp() - $start->getTimestamp()) / 60;
+        $totalBreakMinutes = 0;
+        $date = $start->format('Y-m-d');
+        // Duyệt qua các khoảng break
+        foreach ($shiftBreaks as $break) {
+            if (isset($break->type_break) && $break->type_break == 'Nghỉ') {
+                $breakStartStr = $date . ' ' . $break->start_time;
+                $breakEndStr = $date . ' ' . $break->end_time;
+
+                $breakStart = new DateTime($breakStartStr, $timezone);
+                $breakEnd   = new DateTime($breakEndStr, $timezone);
+                // Nếu khoảng break nằm hoàn toàn ngoài ca thì bỏ qua
+                if ($breakEnd <= $start || $breakStart >= $end) {
+                    continue;
+                }
+
+                // Tính khoảng nghỉ hiệu quả nằm trong ca
+                $effectiveBreakStart = $breakStart > $start ? $breakStart : $start;
+                $effectiveBreakEnd   = $breakEnd < $end ? $breakEnd : $end;
+                $duration = ($effectiveBreakEnd->getTimestamp() - $effectiveBreakStart->getTimestamp()) / 60;
+
+                $totalBreakMinutes += $duration;
             }
         }
 
+        // Điều chỉnh thời gian kết thúc ca bằng cách cộng thêm số phút nghỉ
+        $adjustedEndTimestamp = $end->getTimestamp() + $totalBreakMinutes * 60;
+        $adjustedEnd = new DateTime();
+        $adjustedEnd->setTimestamp($adjustedEndTimestamp);
+        $adjustedEnd->setTimezone($timezone);
+
+        return [
+            'start_time'     => $start->format('Y-m-d H:i:s'),
+            'end_time'       => $adjustedEnd->format('Y-m-d H:i:s'),
+            // production_time tính theo ca ban đầu (không cộng thêm break)
+            'production_time' => gmdate("H:i", $productionMinutes * 60),
+            'break_time'      => gmdate("H:i", $totalBreakMinutes * 60),
+        ];
+    }
+
+    public function getPrioritizedMachine($line_id, $product_id, $machine_load_factors)
+    {
+        // Lấy tất cả các máy theo line_id và product_id theo thứ tự ưu tiên ban đầu
+        $machinePriorityOrders = MachinePriorityOrder::where('line_id', $line_id)
+            ->where('product_id', $product_id)
+            ->orderBy('priority', 'asc')
+            ->get();
+
+        $unusedMachines = [];
+        $usedMachines = [];
+
+        foreach ($machinePriorityOrders as $machinePriorityOrder) {
+            // Nếu máy chưa có trong machine_load_factors, đưa vào danh sách máy chưa sử dụng
+            if (!array_key_exists($machinePriorityOrder->machine_id, $machine_load_factors)) {
+                $unusedMachines[] = $machinePriorityOrder;
+            } else {
+                $usedMachines[] = $machinePriorityOrder;
+            }
+        }
+
+        // Ưu tiên máy chưa được sử dụng
+        if (!empty($unusedMachines)) {
+            return $unusedMachines[0];
+        }
+
+        // Nếu tất cả các máy đều đã được sử dụng, chọn máy có work_hours nhỏ nhất
+        if (!empty($usedMachines)) {
+            usort($usedMachines, function ($a, $b) use ($machine_load_factors) {
+                return $machine_load_factors[$a->machine_id]['work_hours'] <=> $machine_load_factors[$b->machine_id]['work_hours'];
+            });
+            return $usedMachines[0];
+        }
+
+        return null;
+    }
+
+    public function storeProductionPlanAuto(Request $request)
+    {
+        $productionOrderPriorities = ProductionOrderPriority::with('productionOrder', 'productionOrderHistory')->orderBy('priority', 'asc')->get();
+        $productionPlans = [];
+        $machine_load_factors = [];
+        foreach ($productionOrderPriorities as $productionOrderPriority) {
+            $sortedHistories = $productionOrderPriority->productionOrderHistory->sortByDesc('updated_at');
+            foreach ($sortedHistories as $key => $history) {
+                $machinePriorityOrder = $this->getPrioritizedMachine($history->line_id, $productionOrderPriority->product_id, $machine_load_factors);
+                $efficiency = $this->getEfficiency($productionOrderPriority->product_id, $history->line_id);
+                if ($history->line_id == 29) {
+                    continue;
+                }
+                $machineShifts = $this->getMachineProductionShifts($machinePriorityOrder->machine_id, date('Y-m-d', strtotime('+1 day')));
+                $setupTime = $this->getSetupTime($productionOrderPriority->product_id, $history->line_id);
+
+                if (isset($machine_load_factors[$machinePriorityOrder->machine_id])) {
+                    $totalTime = $machine_load_factors[$machinePriorityOrder->machine_id]['fixed_hours'] - $machine_load_factors[$machinePriorityOrder->machine_id]['work_hours'];
+                    $start_time = $machine_load_factors[$machinePriorityOrder->machine_id]['available_at'];
+                    if($machine_load_factors[$machinePriorityOrder->machine_id]['product_id'] == $productionOrderPriority->product_id){
+                        $setupTime = 0;
+                    }
+                } else {
+                    $totalTime = $machineShifts->where('type_break', 'Sản xuất')->sum('duration_minutes');
+                    $start_time = date('Y-m-d ' . $machineShifts->first()->start_time, strtotime('+1 day'));
+                }
+                if ($totalTime <= 0 || $totalTime <= $setupTime) {
+                    continue;
+                }
+
+                $remainQuantityOrder = $history->order_quantity - $history->actual_quantity;
+                $productionTime = ceil(($remainQuantityOrder / $efficiency) * 60) + $setupTime;
+
+                if ($productionTime > $totalTime) {
+                    $productionTime = $totalTime;
+                    $productionQuanty = ceil(($totalTime - $setupTime) * ($efficiency / 60));
+                } else {
+
+                    $productionQuanty = $remainQuantityOrder;
+                }
+                $end_time = date('Y-m-d H:i:s', strtotime('+' . $productionTime . ' minutes', strtotime($start_time)));
+                $times = $this->adjustShift($start_time, $end_time, $machineShifts);
+
+                $start_time = $times['start_time'];
+                $end_time = $times['end_time'];
+
+                $productionPlans[] = [
+                    'product_order_id' => $productionOrderPriority->production_order_id,
+                    'ngay_dat_hang' => $history->productionOrder->order_date,
+                    'cong_doan_sx' => $history->line->name,
+                    'line_id' => $history->line_id,
+                    'ca_sx' => 1,
+                    'ngay_sx' => date('Y-m-d', strtotime('+1 day')),
+                    'ngay_giao_hang' => $history->productionOrder->delivery_date,
+                    'machine_id' => $machinePriorityOrder->machine_id,
+                    'product_id' => $productionOrderPriority->product_id,
+                    'product_name' => $productionOrderPriority->product->name,
+                    'khach_hang' => $productionOrderPriority->productionOrder->customer->name,
+                    'so_bat' => 0,
+                    'sl_nvl' => 0,
+                    'sl_tong_don_hang' => $history->order_quantity,
+                    'sl_giao_sx' => $productionQuanty,
+                    'sl_thanh_pham' => 0,
+                    'thu_tu_uu_tien' => $machinePriorityOrder->priority,
+                    'note' => '',
+                    'UPH' => $efficiency,
+                    'nhan_luc' => 1,
+                    'tong_tg_thuc_hien' => $totalTime,
+                    'kho_giay' => '',
+                    'toc_do' => 0,
+                    'thoi_gian_chinh_may' => $setupTime,
+                    'thoi_gian_thuc_hien' => $totalTime - $setupTime,
+                    'thoi_gian_bat_dau' => $start_time,
+                    'thoi_gian_ket_thuc' => $end_time,
+                    'status' => InfoCongDoan::STATUS_PLANNED
+                ];
+                $machine_load_factors[$machinePriorityOrder->machine_id] = [
+                    'date' => date('Y-m-d', strtotime('+1 day')),
+                    'fixed_productivity_per_hour' => $efficiency,
+                    'work_hours' => $productionTime,
+                    'fixed_hours' => $totalTime,
+                    'shift_id' => 1,
+                    'available_at' => $end_time,
+                    'product_id' => $productionOrderPriority->product_id,
+                ];
+            }
+        }
+        return $this->success($productionPlans, 'Tạo kế hoạch thành công');
+    }
+
+    public function approveProductionPlanAuto(Request $request){
+        $productionPlans = $request->productionPlanData;
+        DB::beginTransaction();
+        try {
+            foreach ($productionPlans as $plan) {
+                $lo_sx = Losx::firstOrCreate(['product_order_id' => $plan['product_order_id']]);
+                $plan['lo_sx'] = $lo_sx->id;
+                $plan['production_order_id'] = $plan['product_order_id'];
+                ProductionPlan::create($plan);
+            }
+            DB::commit();
+        }catch(\Exception $ex){
+            DB::rollBack();
+            return $this->failure($ex->getMessage(), 'Lỗi tạo kế hoạch');
+        }
+        return $this->success('', 'Duyệt kế hoạch thành công');
     }
 
     private function mapInputData($row, $lineId)
