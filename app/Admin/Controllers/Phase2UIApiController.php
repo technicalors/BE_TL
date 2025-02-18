@@ -4014,7 +4014,7 @@ class Phase2UIApiController extends Controller
         ];
     }
 
-    public function getPrioritizedMachine($line_id, $product_id, $machine_load_factors)
+    protected function getPrioritizedMachine($line_id, $product_id, $machine_load_factors, $maxProductionMinutes)
     {
         // Lấy tất cả các máy theo line_id và product_id theo thứ tự ưu tiên ban đầu
         $machinePriorityOrders = MachinePriorityOrder::where('line_id', $line_id)
@@ -4022,31 +4022,38 @@ class Phase2UIApiController extends Controller
             ->orderBy('priority', 'asc')
             ->get();
 
-        $unusedMachines = [];
-        $usedMachines = [];
+        $acceptableMachines = [];      // Những máy đáp ứng điều kiện (chưa sử dụng hoặc có đủ chỗ cho maxProductionMinutes)
+        $nonAcceptableMachines = [];   // Những máy đã sử dụng nhưng không đáp ứng điều kiện
 
         foreach ($machinePriorityOrders as $machinePriorityOrder) {
-            // Nếu máy chưa có trong machine_load_factors, đưa vào danh sách máy chưa sử dụng
+            // Nếu máy chưa có trong machine_load_factors, nghĩa là chưa được sử dụng => chấp nhận
             if (!array_key_exists($machinePriorityOrder->machine_id, $machine_load_factors)) {
-                $unusedMachines[] = $machinePriorityOrder;
+                $acceptableMachines[] = $machinePriorityOrder;
             } else {
-                $usedMachines[] = $machinePriorityOrder;
+                // Máy đã sử dụng, kiểm tra điều kiện: work_hours hiện tại + maxProductionMinutes <= fixed_hours
+                $data = $machine_load_factors[$machinePriorityOrder->machine_id];
+                if (($data['work_hours'] + $maxProductionMinutes) <= $data['fixed_hours']) {
+                    $acceptableMachines[] = $machinePriorityOrder;
+                } else {
+                    $nonAcceptableMachines[] = $machinePriorityOrder;
+                }
             }
         }
 
-        // Ưu tiên máy chưa được sử dụng
-        if (!empty($unusedMachines)) {
-            return $unusedMachines[0];
+        // Nếu có máy đáp ứng điều kiện, trả về máy đầu tiên theo thứ tự ưu tiên
+        if (!empty($acceptableMachines)) {
+            return $acceptableMachines[0];
         }
 
-        // Nếu tất cả các máy đều đã được sử dụng, chọn máy có work_hours nhỏ nhất
-        if (!empty($usedMachines)) {
-            usort($usedMachines, function ($a, $b) use ($machine_load_factors) {
+        // Nếu không có máy nào đáp ứng, chọn trong số máy đã sử dụng (nonAcceptableMachines) máy có work_hours nhỏ nhất
+        if (!empty($nonAcceptableMachines)) {
+            usort($nonAcceptableMachines, function ($a, $b) use ($machine_load_factors) {
                 return $machine_load_factors[$a->machine_id]['work_hours'] <=> $machine_load_factors[$b->machine_id]['work_hours'];
             });
-            return $usedMachines[0];
+            return $nonAcceptableMachines[0];
         }
 
+        // Nếu không tìm thấy máy nào, trả về null (hoặc xử lý theo nghiệp vụ)
         return null;
     }
 
@@ -4058,21 +4065,24 @@ class Phase2UIApiController extends Controller
         foreach ($productionOrderPriorities as $productionOrderPriority) {
             $sortedHistories = $productionOrderPriority->productionOrderHistory->sortByDesc('updated_at');
             foreach ($sortedHistories as $key => $history) {
-                $machinePriorityOrder = $this->getPrioritizedMachine($history->line_id, $productionOrderPriority->product_id, $machine_load_factors);
+                $setupTime = $this->getSetupTime($productionOrderPriority->product_id, $history->line_id);
+                $remainQuantityOrder = $history->order_quantity - $history->actual_quantity;
                 $efficiency = $this->getEfficiency($productionOrderPriority->product_id, $history->line_id);
+                $productionTime = ceil(($remainQuantityOrder / $efficiency) * 60) + $setupTime;
+
+                $machinePriorityOrder = $this->getPrioritizedMachine($history->line_id, $productionOrderPriority->product_id, $machine_load_factors, $productionTime);
                 if (empty($machinePriorityOrder) || $history->line_id == 29) {
                     continue;
                 }
                 $machineShifts = $this->getMachineProductionShifts($machinePriorityOrder->machine_id, date('Y-m-d', strtotime('+1 day')));
-                if(count($machineShifts) <= 0){
+                if (count($machineShifts) <= 0) {
                     throw new Exception("Máy " . $machinePriorityOrder->machine_id . " chưa được phân ca ngày " . date('d-m-Y', strtotime('+1 day')), 1);
                 }
-                $setupTime = $this->getSetupTime($productionOrderPriority->product_id, $history->line_id);
 
                 if (isset($machine_load_factors[$machinePriorityOrder->machine_id])) {
                     $totalTime = $machine_load_factors[$machinePriorityOrder->machine_id]['fixed_hours'] - $machine_load_factors[$machinePriorityOrder->machine_id]['work_hours'];
                     $start_time = $machine_load_factors[$machinePriorityOrder->machine_id]['available_at'];
-                    if($machine_load_factors[$machinePriorityOrder->machine_id]['product_id'] == $productionOrderPriority->product_id){
+                    if ($machine_load_factors[$machinePriorityOrder->machine_id]['product_id'] == $productionOrderPriority->product_id) {
                         $setupTime = 0;
                     }
                 } else {
@@ -4082,9 +4092,6 @@ class Phase2UIApiController extends Controller
                 if ($totalTime <= 0 || $totalTime <= $setupTime) {
                     continue;
                 }
-
-                $remainQuantityOrder = $history->order_quantity - $history->actual_quantity;
-                $productionTime = ceil(($remainQuantityOrder / $efficiency) * 60) + $setupTime;
 
                 if ($productionTime > $totalTime) {
                     $productionTime = $totalTime;
@@ -4099,9 +4106,9 @@ class Phase2UIApiController extends Controller
                 $start_time = $times['start_time'];
                 $end_time = $times['end_time'];
                 $product_id = $productionOrderPriority->product_id;
-                if($history->line_id == 24){
-                    $bom = Bom::where('product_id', $productionOrderPriority->product_id)->where('priority',1)->first();
-                    if($bom){
+                if ($history->line_id == 24) {
+                    $bom = Bom::where('product_id', $productionOrderPriority->product_id)->where('priority', 1)->first();
+                    if ($bom) {
                         $product_id = $bom->material_id;
                     }
                 }
@@ -4150,7 +4157,8 @@ class Phase2UIApiController extends Controller
         return $this->success($productionPlans, 'Tạo kế hoạch thành công');
     }
 
-    public function approveProductionPlanAuto(Request $request){
+    public function approveProductionPlanAuto(Request $request)
+    {
         $productionPlans = $request->productionPlanData;
         DB::beginTransaction();
         try {
@@ -4161,7 +4169,7 @@ class Phase2UIApiController extends Controller
                 ProductionPlan::create($plan);
             }
             DB::commit();
-        }catch(\Exception $ex){
+        } catch (\Exception $ex) {
             DB::rollBack();
             return $this->failure($ex->getMessage(), 'Lỗi tạo kế hoạch');
         }
