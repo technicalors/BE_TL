@@ -4098,7 +4098,14 @@ class Phase2UIApiController extends Controller
 
                 $start_time = $times['start_time'];
                 $end_time = $times['end_time'];
-
+                $product_id = $productionOrderPriority->product_id;
+                if($history->line_id == 24){
+                    $bom = Bom::where('product_id', $productionOrderPriority->product_id)->where('priority',1)->first();
+                    if($bom){
+                        $product_id = $bom->material_id;
+                    }
+                }
+                $product = Product::find($product_id);
                 $productionPlans[] = [
                     'product_order_id' => $productionOrderPriority->production_order_id,
                     'ngay_dat_hang' => $history->productionOrder->order_date,
@@ -4108,8 +4115,8 @@ class Phase2UIApiController extends Controller
                     'ngay_sx' => date('Y-m-d', strtotime('+1 day')),
                     'ngay_giao_hang' => $history->productionOrder->delivery_date,
                     'machine_id' => $machinePriorityOrder->machine_id,
-                    'product_id' => $productionOrderPriority->product_id,
-                    'product_name' => $productionOrderPriority->product->name,
+                    'product_id' => $product_id,
+                    'product_name' => $product->name,
                     'khach_hang' => $productionOrderPriority->productionOrder->customer->name,
                     'so_bat' => 0,
                     'sl_nvl' => 0,
@@ -4136,7 +4143,7 @@ class Phase2UIApiController extends Controller
                     'fixed_hours' => $totalTime,
                     'shift_id' => 1,
                     'available_at' => $end_time,
-                    'product_id' => $productionOrderPriority->product_id,
+                    'product_id' => $product_id,
                 ];
             }
         }

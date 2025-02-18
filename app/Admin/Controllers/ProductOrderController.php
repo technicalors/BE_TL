@@ -84,8 +84,7 @@ class ProductOrderController extends Controller
                 $ton[$key]['value'] = $sl;
                 $sl_ton += $sl;
             }
-            $value->order_date = $value->order_date ? date('d/m/Y', strtotime($value->order_date)) : null;
-            $value->delivery_date = $value->delivery_date ? date('d/m/Y', strtotime($value->delivery_date)) : null;
+            $value->order_date = $value->order_date ? date('d-m-Y', strtotime($value->order_date)) : null;
             $value->sl_may = $sl_may;
             $value->ton = array_values($ton);
             $inventory = Inventory::where('product_id', $value->product_id)->first();
@@ -311,6 +310,15 @@ class ProductOrderController extends Controller
                     'priority'            => $newPriority,
                 ]
             );
+            $records = ProductionOrderPriority::orderBy(DB::raw('DATE(confirm_date)'), 'asc')
+                ->orderBy('product_id', 'asc')
+                ->get();
+
+            $priority = 1;
+            foreach ($records as $record) {
+                $record->update(['priority' => $priority]);
+                $priority++;
+            }
             $productOrder->update($input);
             DB::commit();
         } catch (\Throwable $th) {
@@ -325,8 +333,7 @@ class ProductOrderController extends Controller
         if (isset($request->product_id)) {
             $query->where('product_id', $request->product_id);
         }
-        $result = $query->with('productionOrder.product','productionOrder.customer','productionOrderHistory')->get();
+        $result = $query->with('productionOrder.product', 'productionOrder.customer', 'productionOrderHistory')->get();
         return $this->success($result);
-
     }
 }
