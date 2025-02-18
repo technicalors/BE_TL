@@ -115,7 +115,7 @@ class InfoCongDoan extends Model
     // }
     public function plan()
     {
-        return $this->belongsTo(ProductionPlan::class, 'plan_id', 'uid');
+        return $this->belongsTo(ProductionPlan::class, 'plan_uid', 'uid');
     }
     public function log()
     {

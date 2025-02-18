@@ -306,7 +306,7 @@ class ProductOrderController extends Controller
                 ['production_order_id' => $input['id']],
                 [
                     'production_order_id' => $input['id'],
-                    'confirm_date'        => $productOrder->confirm_date,
+                    'confirm_date'        => $input['confirm_date'],
                     'product_id'          => $productOrder->product_id,
                     'priority'            => $newPriority,
                 ]

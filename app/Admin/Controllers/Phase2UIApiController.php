@@ -4060,10 +4060,13 @@ class Phase2UIApiController extends Controller
             foreach ($sortedHistories as $key => $history) {
                 $machinePriorityOrder = $this->getPrioritizedMachine($history->line_id, $productionOrderPriority->product_id, $machine_load_factors);
                 $efficiency = $this->getEfficiency($productionOrderPriority->product_id, $history->line_id);
-                if ($history->line_id == 29) {
+                if (empty($machinePriorityOrder) || $history->line_id == 29) {
                     continue;
                 }
                 $machineShifts = $this->getMachineProductionShifts($machinePriorityOrder->machine_id, date('Y-m-d', strtotime('+1 day')));
+                if(count($machineShifts) <= 0){
+                    throw new Exception("Máy " . $machinePriorityOrder->machine_id . " chưa được phân ca ngày " . date('d-m-Y', strtotime('+1 day')), 1);
+                }
                 $setupTime = $this->getSetupTime($productionOrderPriority->product_id, $history->line_id);
 
                 if (isset($machine_load_factors[$machinePriorityOrder->machine_id])) {

@@ -238,7 +238,4 @@ class ProductionPlanController extends AdminController
         admin_success('Tải lên thành công', 'success');
         return back();
     }
-
-
-    //====================New ProductionPLan Controller
 }

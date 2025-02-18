@@ -61,14 +61,14 @@ class ProductionPlan extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            $model->uid = $this->generateUniqueId($model->lo_sx, $model->machine_id);
+            $model->uid = ProductionPlan::generateUniqueId($model->lo_sx, $model->line_id);
         });
     }
 
-    public static function generateUniqueId($lo_sx, $machine_id)
+    public static function generateUniqueId($lo_sx, $line_id)
     {
-        $latestPlan = ProductionPlan::where('lo_sx', $lo_sx)->where('machine_id', $machine_id)->get()->latest();
-        $prefix = $lo_sx . '.' . $machine_id . '.L.';
+        $latestPlan = ProductionPlan::where('lo_sx', $lo_sx)->where('line_id', $line_id)->latest();
+        $prefix = $lo_sx . '.' . $line_id . '.L.';
         try {
             $index = $latestPlan ? (int) end(explode('.', $latestPlan->uid)) : 0;
         } catch (\Throwable $th) {
