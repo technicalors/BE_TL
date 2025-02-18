@@ -12,12 +12,18 @@ class ProductOrder extends Model
 {
     use HasFactory;
     protected $table = "product_orders";
-    protected $fillable = ['id', 'order_number', 'customer_id', 'product_id', 'product_name', 'order_date', 'delivery_date', 'quantity', 'note', 'material_id', 'sl_giao_sx', 'fc_quantity', 'sl_da_giao', 'user_id'];
+    protected $fillable = ['id', 'order_number', 'customer_id', 'product_id', 'product_name', 'order_date', 
+    'delivery_date', 'quantity', 'note', 'material_id', 'sl_giao_sx', 'fc_quantity', 'sl_da_giao', 'user_id',
+    'confirm_date','status'];
     public $incrementing = false;
     protected $keyType = 'string';
     protected $casts = [
         'product_id' => 'string',
     ];
+
+    const STATUS_PENDING = 0;
+    const STATUS_IN_PROGRESS = 1;
+    const STATUS_COMPLETED = 2;
 
     static function validate($input, $id = null)
     {

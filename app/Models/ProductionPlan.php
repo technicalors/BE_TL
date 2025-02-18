@@ -53,7 +53,8 @@ class ProductionPlan extends Model
         'sl_tong_don_hang',
         'material_id',
         'status_plan',
-        'uid'
+        'uid',
+        'production_order_id',
     ];
     public static function boot()
     {

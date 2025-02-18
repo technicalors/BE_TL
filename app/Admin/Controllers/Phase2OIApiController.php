@@ -741,23 +741,23 @@ class Phase2OIApiController extends Controller
         $roll = RollMaterial::with(['material.products', 'warehouse_inventory'])->find($request->roll_id);
         // return $roll;
         // $material = Material::with('bom.product')->find($request->material_id);
-        if (!$roll) {
-            return $this->failure([], "Không tìm thấy cuộn");
-        }
-        if (!$roll->warehouse_inventory || $roll->warehouse_inventory->quantity <= 0) {
-            return $this->failure([], "Cuộn đã quét rồi");
-        }
-        if (!$roll->material) {
-            return $this->failure([], "Không tìm thấy NVL: ". ($roll->material_id ?? ""));
-        }
-        $product_ids = $roll->material->products->pluck('id')->toArray() ?? [];
-        if (count($product_ids) === 0) {
-            return $this->failure([], "Không tìm thấy sản phẩm");
-        }
+        // if (!$roll) {
+        //     return $this->failure([], "Không tìm thấy cuộn");
+        // }
+        // if (!$roll->warehouse_inventory || $roll->warehouse_inventory->quantity <= 0) {
+        //     return $this->failure([], "Cuộn đã quét rồi");
+        // }
+        // if (!$roll->material) {
+        //     return $this->failure([], "Không tìm thấy NVL: ". ($roll->material_id ?? ""));
+        // }
+        // $product_ids = $roll->material->products->pluck('id')->toArray() ?? [];
+        // if (count($product_ids) === 0) {
+        //     return $this->failure([], "Không tìm thấy sản phẩm");
+        // }
         $lot_plan = LotPlan::where('lot_id', $request->lot_id)->where('line_id', $machine->line_id)->where('machine_code', $machine->code)->first();
-        if (!in_array($lot_plan->product_id, $product_ids)) {
-            return $this->failure([], "Mã cuộn không phù hợp");
-        }
+        // if (!in_array($lot_plan->product_id, $product_ids)) {
+        //     return $this->failure([], "Mã cuộn không phù hợp");
+        // }
         // }
         if (empty($lot_plan) || $lot_plan->infoCongDoan) {
             return $this->failure([], "Không tìm thấy lot cần chạy");
@@ -767,7 +767,7 @@ class Phase2OIApiController extends Controller
             if ($lot_plan->plan && $lot_plan->plan->status_plan == ProductionPlan::STATUS_PENDING) {
                 $lot_plan->plan->update(['status_plan' => ProductionPlan::STATUS_IN_PROGRESS]);
             }
-            $roll->warehouse_inventory->update(['quantity' => 0]);
+            // $roll->warehouse_inventory->update(['quantity' => 0]);
             MachineStatus::reset($machine->code);
             InfoCongDoan::firstOrCreate(
                 ['lot_id' => $lot_plan->lot_id, 'lot_plan_id' => $lot_plan->id, 'line_id' => $machine->line_id, 'machine_code' => $machine->code],

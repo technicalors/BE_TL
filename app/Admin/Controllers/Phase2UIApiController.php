@@ -28,6 +28,7 @@ use App\Models\MachinePriorityOrder;
 use App\Models\MachineShift;
 use App\Models\NumberMachineOrder;
 use App\Models\Product;
+use App\Models\ProductionOrderPriority;
 use App\Models\ProductionPlan;
 use App\Models\ProductOrder;
 use App\Models\QCHistory;
@@ -2139,13 +2140,13 @@ class Phase2UIApiController extends Controller
     }
 
     //=========================AUTO PLAN================================//
-    public function getProductionSteps($productId)
+    public static function getProductionSteps($productId)
     {
         // Bước 1: Truy vấn để lấy các công đoạn từ bảng spec theo product_id và slug 'hanh-trinh-san-xuat'
         // Sắp xếp theo thứ tự giảm dần (DESC) để tính toán sản lượng
         return Spec::where('product_id', $productId)
             ->where('slug', 'hanh-trinh-san-xuat')
-            ->where('line_id', '<>', 29)
+            // ->where('line_id', '<>', 29)
             ->whereRaw('value REGEXP "^[0-9]+$"')
             ->orderBy('value', 'desc')
             ->get();
@@ -2172,7 +2173,7 @@ class Phase2UIApiController extends Controller
         return (array)$inputWaste;
     }
 
-    function calculateProductionOutput($productId, $lineId, $quantity)
+    public static function calculateProductionOutput($productId, $lineId, $quantity)
     {
         $productionWaste = Spec::where('line_id', $lineId)
             ->where('product_id', $productId)
@@ -2183,14 +2184,6 @@ class Phase2UIApiController extends Controller
             ->where('product_id', $productId)
             ->where('slug', 'hao-phi-vao-hang-cac-cong-doan')
             ->first();
-
-        $line_inventory = LineInventories::where('line_id', $lineId)->where('product_id', $productId)->first();
-        $remain = $quantity - ($line_inventory->quantity ?? 0);
-        if ($remain > 0) {
-            $quantity = $remain;
-        } else {
-            return 0;
-        }
         if ($productionWaste) {
             $quantity += $quantity * ($productionWaste->value / 100);
         }
@@ -3968,6 +3961,21 @@ class Phase2UIApiController extends Controller
         ];
 
         return ProductionPlan::create($planInput);
+    }
+
+    public function storeProductionPlanAuto(Request $request){
+        $productionOrderPriorities = ProductionOrderPriority::with('productionOrder','productionOrderHistory')->orderBy('priority', 'asc')->get();
+        foreach ($productionOrderPriorities as $productionOrderPriority) {
+            $sortedHistories = $productionOrderPriority->productionOrderHistory->sortByDesc('updated_at');
+            foreach($sortedHistories as $key=>$history){
+                $machinePriorityOrders = MachinePriorityOrder::where('line_id', $history->line_id)->where('product_id',$productionOrderPriority->product_id)
+                ->orderBy('priority', 'asc')->first();
+                $efficiency = $this->getEfficiency($productionOrderPriority->product_id, $history->line_id);
+                $timeSetup = $this->getSetupTime($productionOrderPriority->product_id, $history->line_id);
+                $machineShifts = $this->getMachineProductionShiftsV2($machinePriorityOrders->machine_id, date('Y-m-d', strtotime('+1 day')));
+            }
+        }
+
     }
 
     private function mapInputData($row, $lineId)

@@ -749,6 +749,8 @@ Route::group([
     Route::post('warehouse-export-plans-import', [WarehouseExportPlanController::class, 'import']);
 
     Route::get('update-finished-product-inventory', [ApiUIController::class, 'updateFinishedProductInventory']);
+
+    Route::post('production_plan/store', [Phase2UIApiController::class, 'storeProductionPlanAuto']);
 });
 
 //UI
@@ -779,6 +781,7 @@ Route::group([
     Route::post('product-orders/delete', [ProductOrderController::class, 'deleteMultiple']);
     Route::post('product-orders/update-number-machine', [ProductOrderController::class, 'updateNumberMachine']);
     Route::get('product-orders-export', [ProductOrderController::class, 'export']);
+    Route::post('product-orders/update-confirm-date', [ProductOrderController::class, 'updateConfirmDate']);
     Route::apiResource('shifts', ShiftController::class);
     Route::get('machine-shift', [MachineShiftController::class, 'index']);
     Route::post('machine-shift', [MachineShiftController::class, 'store']);
