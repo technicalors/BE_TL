@@ -23,7 +23,7 @@ class ProductionOrderPriority extends Model
 
     public function productionOrderHistory()
     {
-        return $this->hasMany(ProductionOrderHistory::class, 'production_order_id','production_order_id');
+        return $this->hasMany(ProductionOrderHistory::class, 'production_order_id','production_order_id')->orderBy('id', 'DESC');
     }
 
     public static function removeItemAndReorderList($production_order_id){

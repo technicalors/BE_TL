@@ -345,7 +345,6 @@ class Phase2OIApiController extends Controller
         $infos = $info_query->get();
         foreach ($infos as $key => $info) {
             $plan = $info->plan;
-            $plan->lot_id = $plan->uid;
             $info->ten_sp = $info->product->name ?? "";
             $info->ma_hang = $info->product_id;
             $info->thoi_gian_bat_dau_kh = Carbon::parse($plan->thoi_gian_bat_dau)->format('d/m/Y H:i:s');
@@ -360,9 +359,22 @@ class Phase2OIApiController extends Controller
             $info->sl_tem_vang = $info->sl_tem_vang ?? 0;
             $info->sl_ng = $info->sl_ng ?? 0;
             $info->sl_dau_ra_ok = $info->sl_dau_ra_hang_loat - $info->sl_ng;
-            $info->ti_le_ht = $info->sl_giao_sx > 0 ? round($info->sl_dau_ra_ok / $info->sl_giao_sx * 100)  : 0;
+            $info->ti_le_ht = $plan && $plan->sl_giao_sx > 0 ? round($info->sl_dau_ra_ok / $plan->sl_giao_sx * 100) : 0;
             $info->is_qc = (!is_null($info->qcHistory)) ? $info->qcHistory->eligible_to_end : 0;
             $info->is_assign = count($info->assignments ?? []) > 0 ? 1 : 0;
+            $info->uph_an_dinh = $plan->UPH ?? 0;
+            $info->uph_thuc_te = 0;
+
+            $hao_phi_sx = $info->spec->first(function ($record) {
+                return $record->name == 'Hao phí sản xuất các công đoạn (%)';
+            }) ?? null;
+            $info->hao_phi_cong_doan = ($hao_phi_sx->value ?? 0) . '%';
+            $hao_phi_vao_hang = $info->spec->first(function ($record) {
+                return $record->name == 'Hao phí vào hàng các công đoạn';
+            }) ?? null;
+            $hao_phi = ($info->sl_ng - (int)($hao_phi_vao_hang->value ?? 0));
+            $info->hao_phi = ($info->sl_dau_vao_hang_loat ? round(($hao_phi / $info->sl_dau_vao_hang_loat) * 100) : 0) . '%';
+
         }
         return $this->success($infos);
     }
@@ -479,11 +491,21 @@ class Phase2OIApiController extends Controller
                 return $this->failure([], "Máy này đang sản xuất lot khác");
             }
         }
-        $plan = ProductionPlan::where('uid', $request->lot_id)->where('machine_id', $machine->code)->where('line_id', $machine->line->id)->first();
+        $scannedLot = Lot::find($request->scanned_lot);
+        if(!$scannedLot){
+            return $this->failure('', 'Không tìm thấy lot');
+        }
+        $plan = ProductionPlan::where('line_id', $machine->line_id)
+        ->where('machine_id', $machine->code)
+        ->where('status_plan', 0)
+        ->where('product_id', $scannedLot->product_id)
+        ->whereDate('thoi_gian_bat_dau', '>=', date('Y-m-d'))
+        ->orderBy('thoi_gian_bat_dau')
+        ->first();
         if (!$plan) {
             return $this->failure([], 'Không tìm thấy KHSX');
         }
-        $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $plan->product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
+        $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $scannedLot->product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
         $requestValue = $hanh_trinh_san_xuat[$request->line_id] ?? 0;
         // Lọc các line_id có value nhỏ hơn requestValue
         $filteredLineIds = collect($hanh_trinh_san_xuat)
@@ -513,19 +535,21 @@ class Phase2OIApiController extends Controller
                 }
             }
         }
-        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $machine->line_id)->first();
-        if ($infoCongDoan) {
-            return $this->failure([], "Đã quét lot này");
-        }
         try {
             DB::beginTransaction();
             MachineStatus::reset($machine->code);
             if ($plan->status_plan == ProductionPlan::STATUS_PENDING) {
                 $plan->update(['status_plan' => ProductionPlan::STATUS_IN_PROGRESS]);
             }
-            $infoCongDoan = InfoCongDoan::firstOrCreate(
-                ['lot_id' => $request->lot_id, 'plan_uid' => $plan->uid, 'line_id' => $machine->line_id, 'machine_code' => $machine->code],
+            $existedInfo = InfoCongDoan::where(['lot_id' => $plan->uid, 'line_id' => $machine->line_id, 'machine_code' => $machine->code])->first();
+            if($existedInfo){
+                return $this->failure('', 'Đã quét lot này');
+            }
+            $infoCongDoan = InfoCongDoan::create(
                 [
+                    'lot_id' => $plan->uid, 
+                    'line_id' => $machine->line_id, 
+                    'machine_code' => $machine->code,
                     'input_lot_id' => $request->scanned_lot,
                     'lo_sx' => $plan->lo_sx,
                     'product_id' => $plan->product_id,
@@ -533,12 +557,12 @@ class Phase2OIApiController extends Controller
                     'status' => InfoCongDoan::STATUS_INPROGRESS,
                     'user_id' => $request->user()->id,
                     'sl_kh' => $plan->sl_giao_sx,
+                    'plan_uid' => $plan->uid
                 ]
             );
-            $lot = Lot::where('id', $request->scanned_lot)->first();
-            if ($lot) {
-                $line_inventory = LineInventories::where('product_id', $lot->product_id)->where('line_id', $lot->final_line_id)->first();
-                $sl_dat = $lot->so_luong;
+            if ($scannedLot) {
+                $line_inventory = LineInventories::where('product_id', $scannedLot->product_id)->where('line_id', $scannedLot->final_line_id)->first();
+                $sl_dat = $scannedLot->so_luong;
                 if ($line_inventory) {
                     $line_inventory->update(['quantity' => $line_inventory->quantity - $sl_dat]);
                 } else {
@@ -547,7 +571,7 @@ class Phase2OIApiController extends Controller
             }
             if (isset($tracking)) {
                 $tracking->update([
-                    'lot_id' => $request->lot_id,
+                    'lot_id' => $infoCongDoan->lot_id,
                     'input' => 0,
                     'output' => 0
                 ]);
