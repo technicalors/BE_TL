@@ -109,4 +109,12 @@ class ProductionOrderPriorityController extends Controller
         }
         return $this->success('', 'Đã cập nhật');
     }
+    public function complete(Request $request)
+    {
+        $production_order_id = $request->production_order_id;
+        ProductionOrderPriority::where('production_order_id', $production_order_id)->delete();
+        ProductionOrderHistory::where('production_order_id', $production_order_id)->delete();
+        ProductOrder::find($production_order_id)->update(['status' => 2]);
+        return $this->success('', 'Hoàn thành thành công');
+    }
 }
