@@ -1949,11 +1949,13 @@ class Phase2OIApiController extends Controller
         if ($test["phan_dinh"] = 'Nhập số') {
             try {
                 $extractValues = $this->detect_format($spec->value);
-                foreach($extractValues as $key => $value) {
-                    $test[$key] = $value;
+                if($extractValues){
+                    foreach($extractValues as $key => $value) {
+                        $test[$key] = $value;
+                    }
+                    $test['note'] = $spec->value;
+                    $test["input"] = true;
                 }
-                $test['note'] = $spec->value;
-                $test["input"] = true;
             } catch (\Throwable $th) {
                 //throw $th;
             }
@@ -2011,7 +2013,6 @@ class Phase2OIApiController extends Controller
         $input = trim(preg_replace("/.*?:\s*/", "", $input));
     
         if (preg_match($pattern1, $input, $matches)) {
-            Log::debug($matches);
             $value1 = (float)$matches[1] + (float)$matches[3];
             $value2 = (float)$matches[1] + (float)$matches[5];
             if($value1 > $value2) {
@@ -2045,7 +2046,7 @@ class Phase2OIApiController extends Controller
                 "max" => (float)$matches[3]
             ];
         } else {
-            return ["type" => "Unknown format"];
+            return null;
         }
     }
 
