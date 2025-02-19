@@ -53,31 +53,8 @@ class ProductionPlan extends Model
         'sl_tong_don_hang',
         'material_id',
         'status_plan',
-        'uid',
         'production_order_id',
     ];
-    public static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($model) {
-            $model->uid = ProductionPlan::generateUniqueId($model->lo_sx, $model->line_id);
-        });
-    }
-
-    public static function generateUniqueId($lo_sx, $line_id)
-    {
-        $latestPlan = ProductionPlan::where('lo_sx', $lo_sx)->where('line_id', $line_id)->latest();
-        $prefix = $lo_sx . '.' . $line_id . '.L.';
-        try {
-            $index = $latestPlan ? (int) end(explode('.', $latestPlan->uid)) : 0;
-        } catch (\Throwable $th) {
-            $index = 0;
-        }
-        $newSequence = str_pad($index + 1, 4, '0', STR_PAD_LEFT);
-
-        return $prefix . $newSequence;
-    }
     // public function setThoiGianBatDauAttribute($value)
     // {
     //     $this->attributes['thoi_gian_bat_dau'] = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh');

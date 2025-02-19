@@ -92,6 +92,23 @@ class ProductionOrderPriorityController extends Controller
         return $this->success('', 'Xoá thành công');
     }
 
+    public function reorder(Request $request)
+    {
+        $input = $request->all();
+        try {
+            DB::beginTransaction();
+            $records = ProductionOrderPriority::all();
+            foreach($records as $value){
+                $target = $input[$value->production_order_id];
+                $value->priority = $target;
+                $value->save();
+            }
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+        }
+        return $this->success('', 'Đã cập nhật');
+    }
     public function complete(Request $request)
     {
         $production_order_id = $request->production_order_id;
@@ -99,14 +116,5 @@ class ProductionOrderPriorityController extends Controller
         ProductionOrderHistory::where('production_order_id', $production_order_id)->delete();
         ProductOrder::find($production_order_id)->update(['status' => 2]);
         return $this->success('', 'Hoàn thành thành công');
-    }
-
-    public function reorder(Request $request)
-    {
-        $input = $request->all();
-        foreach ($input as $key => $value) {
-            ProductionOrderPriority::where('production_order_id', $key)->update(['priority' => $value]);
-        }
-        return $this->success('', 'Sắp xếp thành công');
     }
 }

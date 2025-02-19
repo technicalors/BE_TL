@@ -753,6 +753,7 @@ Route::group([
     Route::post('production-order-priorities/complete', [ProductionOrderPriorityController::class, 'complete']);
     Route::post('production-order-priorities/reorder', [ProductionOrderPriorityController::class, 'reorder']);
     Route::post('production-order-history/update', [ProductionOrderHistoryController::class,'update']);
+    Route::post('production-order-priorities/reorder', [ProductionOrderPriorityController::class, 'reorder']);
 });
 
 //Masterdata

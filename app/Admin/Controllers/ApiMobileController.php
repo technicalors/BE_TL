@@ -3794,7 +3794,7 @@ class ApiMobileController extends AdminController
             //   return $model->getDirty();
             // }
             $newStartTime = Carbon::parse($input['thoi_gian_bat_dau']);
-
+            $newEndTime = Carbon::parse($input['thoi_gian_ket_thuc']);
 
             $lotPlans = $model->lotPlan()->orderBy('start_time')->get();
             foreach ($lotPlans as $key => $lot_plan) {

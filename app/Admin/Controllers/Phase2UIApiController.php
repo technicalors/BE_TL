@@ -1449,10 +1449,11 @@ class Phase2UIApiController extends Controller
                 $sheet->setCellValue([1, $row_index], $so_chi_tieu);
                 foreach ($testCriteria as $index => $testCriterion) {
                     $slug_hang_muc = Str::slug($testCriterion->hang_muc);
-                    $spec = Spec::where("line_id", $line->id)->where('slug', $slug_hang_muc)->whereNotNull('name')->where("product_id", $product->id)->whereNotNull('value')->first();
+                    $lines = array_merge(explode(',', $testCriterion->reference), [$line->id]);
+                    $spec = Spec::whereIn("line_id", $lines)->where('slug', $slug_hang_muc)->whereNotNull('name')->where("product_id", $product->id)->whereNotNull('value')->first();
                     // Ghi dữ liệu cột "Hạng mục kiểm tra" và "Tiêu chuẩn"
                     $sheet->setCellValue([2, $row_index], $testCriterion->hang_muc);
-                    $sheet->setCellValue([3, $row_index], $spec->value ?? $testCriterion->tieu_chuan ?? null);
+                    $sheet->setCellValue([3, $row_index], $spec->value ?? null);
                     // Xử lý dữ liệu đã kiểm tra
                     if (!isset($transformData[$testCriterion->id])) {
                         foreach ($infos as $info) {
