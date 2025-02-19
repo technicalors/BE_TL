@@ -11,6 +11,7 @@ use App\Models\LineInventories;
 use App\Models\Lot;
 use App\Models\MachinePriorityOrder;
 use App\Models\NumberMachineOrder;
+use App\Models\Product;
 use App\Models\ProductionOrderHistory;
 use App\Models\ProductionOrderPriority;
 use App\Models\ProductOrder;
@@ -30,10 +31,6 @@ class ProductionOrderPriorityController extends Controller
     public function index(Request $request)
     {
         $query = ProductionOrderPriority::orderBy('priority');
-        if (isset($request->start_date) && isset($request->end_date)) {
-            $query->whereDate('confirm_date', '>=', date('Y-m-d', strtotime($request->start_date)))
-                ->whereDate('confirm_date', '<=', date('Y-m-d', strtotime($request->end_date)));
-        }
         $total = $query->count();
         $result = $query->with(['productionOrderHistory.line', 'productionOrder', 'product'])->get();
         foreach ($result as $value) {
@@ -93,5 +90,23 @@ class ProductionOrderPriorityController extends Controller
             DB::rollBack();
         }
         return $this->success('', 'Xoá thành công');
+    }
+
+    public function complete(Request $request)
+    {
+        $production_order_id = $request->production_order_id;
+        ProductionOrderPriority::where('production_order_id', $production_order_id)->delete();
+        ProductionOrderHistory::where('production_order_id', $production_order_id)->delete();
+        ProductOrder::find($production_order_id)->update(['status' => 2]);
+        return $this->success('', 'Hoàn thành thành công');
+    }
+
+    public function reorder(Request $request)
+    {
+        $input = $request->all();
+        foreach ($input as $key => $value) {
+            ProductionOrderPriority::where('production_order_id', $key)->update(['priority' => $value]);
+        }
+        return $this->success('', 'Sắp xếp thành công');
     }
 }

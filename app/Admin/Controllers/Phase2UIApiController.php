@@ -4067,6 +4067,9 @@ class Phase2UIApiController extends Controller
             foreach ($sortedHistories as $key => $history) {
                 $setupTime = $this->getSetupTime($productionOrderPriority->product_id, $history->line_id);
                 $remainQuantityOrder = $history->order_quantity - $history->actual_quantity;
+                if($remainQuantityOrder <= 0) {
+                    continue;
+                }
                 $efficiency = $this->getEfficiency($productionOrderPriority->product_id, $history->line_id);
                 $productionTime = ceil(($remainQuantityOrder / $efficiency) * 60) + $setupTime;
 

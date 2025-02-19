@@ -26,6 +26,7 @@ use App\Admin\Controllers\Phase2OIApiController;
 use App\Admin\Controllers\Phase2UIApiController;
 use App\Admin\Controllers\ParameterController;
 use App\Admin\Controllers\ProductionJourneyController;
+use App\Admin\Controllers\ProductionOrderHistoryController;
 use App\Admin\Controllers\ProductionOrderPriorityController;
 use App\Admin\Controllers\ProductOrderController;
 use App\Http\Controllers\ShiftBreakController;
@@ -41,6 +42,7 @@ use Encore\Admin\Facades\Admin;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
 use App\Models\LotPlan;
+use App\Models\ProductionOrderHistory;
 
 Admin::routes();
 
@@ -748,6 +750,9 @@ Route::group([
     Route::post('production_plan/store', [Phase2UIApiController::class, 'storeProductionPlanAuto']);
     Route::post('production_plan/approve', [Phase2UIApiController::class, 'approveProductionPlanAuto']);
     Route::apiResource('production-order-priorities', ProductionOrderPriorityController::class);
+    Route::post('production-order-priorities/complete', [ProductionOrderPriorityController::class, 'complete']);
+    Route::post('production-order-priorities/reorder', [ProductionOrderPriorityController::class, 'reorder']);
+    Route::post('production-order-history/update', [ProductionOrderHistoryController::class,'update']);
 });
 
 //Masterdata
