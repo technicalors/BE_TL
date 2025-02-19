@@ -8,17 +8,18 @@ use App\Models\Material;
 use App\Models\MachinePriorityOrder;
 use App\Models\MachineProductionMode;
 use App\Models\ProductionJourney;
+use App\Models\QCCriteria;
 use App\Traits\API;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Maatwebsite\Excel\Facades\Excel;
 
-class MachineProductionModeController extends Controller
+class QCCriteriaController extends Controller
 {
     use API;
     public function index(Request $request)
     {   
-        $query = MachineProductionMode::orderBy('product_id')->orderBy('machine_id');
+        $query = QCCriteria::orderBy('product_id')->orderBy('line_id');
         if(!empty($request->line_id)){
             $query->whereIn('line_id', $request->line_id ?? []);
         }

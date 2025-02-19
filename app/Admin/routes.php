@@ -13,6 +13,7 @@ use App\Admin\Controllers\LineInventoryController;
 use App\Admin\Controllers\LotPlanController;
 use App\Admin\Controllers\MachineController;
 use App\Admin\Controllers\MachinePriorityOrderController;
+use App\Admin\Controllers\MachineProductionModeController;
 use App\Admin\Controllers\RoleController;
 use App\Admin\Controllers\MaintenanceCategoryController;
 use App\Admin\Controllers\MaintenanceItemController;
@@ -29,6 +30,7 @@ use App\Admin\Controllers\ProductionJourneyController;
 use App\Admin\Controllers\ProductionOrderHistoryController;
 use App\Admin\Controllers\ProductionOrderPriorityController;
 use App\Admin\Controllers\ProductOrderController;
+use App\Admin\Controllers\QCCriteriaController;
 use App\Http\Controllers\ShiftBreakController;
 use App\Admin\Controllers\StampController;
 use App\Http\Controllers\FcPlantController;
@@ -770,7 +772,9 @@ Route::group([
     Route::apiResource('production-journey', ProductionJourneyController::class);
     Route::post('product-journey/delete', [ProductionJourneyController::class, 'deleteManyMachinePriorityOrders']);
 
-    Route::apiResource('machine-production-mode', ProductionJourneyController::class);
+    Route::apiResource('machine-production-mode', MachineProductionModeController::class);
+
+    Route::apiResource('qc-criteria', QCCriteriaController::class);
 
     Route::apiResource('excel-headers', ExcelHeaderController::class);
     Route::post('excel-headers/import', [ExcelHeaderController::class, 'import']);

@@ -46,21 +46,17 @@ class ProductionJourneyController extends Controller
     public function store(Request $request)
     {
         $input = $request->all();
-        $validated = MachinePriorityOrder::validate($input);
-        if ($validated->fails()) {
-            return $this->failure('', $validated->errors()->first());
-        }
-        $machinePriorityOrder = MachinePriorityOrder::create($input);
+        $machinePriorityOrder = ProductionJourney::create($input);
 
         return $this->success($machinePriorityOrder);
     }
 
     public function show($id)
     {
-        $machinePriorityOrder = MachinePriorityOrder::find($id);
+        $machinePriorityOrder = ProductionJourney::find($id);
 
         if (!$machinePriorityOrder) {
-            return $this->success('', 'MachinePriorityOrder not found');
+            return $this->success('', 'ProductionJourney not found');
         }
 
         return $this->success($machinePriorityOrder);
@@ -68,49 +64,30 @@ class ProductionJourneyController extends Controller
 
     public function update(Request $request, $id)
     {
-        $machinePriorityOrder = MachinePriorityOrder::find($id);
+        $machinePriorityOrder = ProductionJourney::find($id);
         if (!$machinePriorityOrder) {
-            return $this->failure('', 'MachinePriorityOrder not found');
+            return $this->failure('', 'ProductionJourney not found');
         }
         $input = $request->all();
-        $validated = MachinePriorityOrder::validate($input);
-        if ($validated->fails()) {
-            return $this->failure('', $validated->errors()->first());
-        }
         $machinePriorityOrder->update($request->all());
         return $this->success($machinePriorityOrder);
     }
 
     public function destroy($id)
     {
-        $machinePriorityOrder = MachinePriorityOrder::find($id);
+        $machinePriorityOrder = ProductionJourney::find($id);
 
         if (!$machinePriorityOrder) {
-            return $this->failure('', 'MachinePriorityOrder not found');
+            return $this->failure('', 'ProductionJourney not found');
         }
 
         $machinePriorityOrder->delete();
 
-        return $this->success('','MachinePriorityOrder deleted');
+        return $this->success('','ProductionJourney deleted');
     }
 
     public function deleteManyMachinePriorityOrders(Request $request){
-        $machinePriorityOrder = MachinePriorityOrder::whereIn('id', $request->ids)->delete();
-        return $this->success('','MachinePriorityOrder deleted'); 
-    }
-
-    public function import(Request $request)
-    {
-        $request->validate([
-            'file' => 'required|mimes:xlsx,xls,csv',
-        ]);
-
-        try {
-            Excel::import(new StampsImport, $request->file('file'));
-
-            return $this->success('', 'Import successful');
-        } catch (\Exception $e) {
-            return $this->failure($e, 'Import failed');
-        }
+        $machinePriorityOrder = ProductionJourney::whereIn('id', $request->ids)->delete();
+        return $this->success('','ProductionJourney deleted'); 
     }
 }

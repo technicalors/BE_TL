@@ -7,9 +7,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Validator;
 
-class MachineProductionMode extends Model
+class QCCriteria extends Model
 {
     use HasFactory;
-    protected $table = 'machine_production_modes';
-    protected $fillable = ['product_id','machine_id','parameter_name', 'standard_value'];
+    protected $table = 'qc_criteria';
+    protected $fillable = ['product_id','line_id','criteria_name', 'criteria_value'];
 }
