@@ -334,8 +334,8 @@ class Phase2OIApiController extends Controller
     public function oiProductionList(Request $request){
         $line_id = $request->line_id;
         $machine_code = $request->machine_code;
-        $date  = date('Y-m-d');
-        $info_query = InfoCongDoan::whereDate('created_at', $date);
+        $date  = date('Y-m-d', strtotime('3 days ago'));
+        $info_query = InfoCongDoan::whereNotNull('plan_id')->orderBy('status')->whereDate('created_at', '>=', $date);
         if (!empty($request->line_id)) {
             $info_query->where('line_id', $line_id);
         }
@@ -424,7 +424,7 @@ class Phase2OIApiController extends Controller
         }
         $plan = ProductionPlan::where('line_id', $machine->line_id)
         ->where('machine_id', $machine->code)
-        ->where('status_plan', 0)
+        ->where('status_plan', '!=', ProductionPlan::STATUS_COMPLETED)
         ->whereDate('thoi_gian_bat_dau', '>=', date('Y-m-d'))
         ->orderBy('thoi_gian_bat_dau')
         ->first();
@@ -434,18 +434,15 @@ class Phase2OIApiController extends Controller
         if (!in_array($plan->product_id, $product_ids)) {
             return $this->failure([], "Mã cuộn không phù hợp");
         }
-        if (empty($plan) || $plan->infoCongDoan) {
-            return $this->failure([], "Không tìm thấy lot cần chạy");
-        }
         try {
             DB::beginTransaction();
             if ($plan->status_plan == ProductionPlan::STATUS_PENDING) {
                 $plan->update(['status_plan' => ProductionPlan::STATUS_IN_PROGRESS]);
             }
-            $roll->warehouse_inventory->update(['quantity' => 0]);
+            // $roll->warehouse_inventory->update(['quantity' => 0]);
             MachineStatus::reset($machine->code);
             $info = InfoCongDoan::firstOrCreate(
-                ['lot_id' => $plan->uid, 'plan_uid' => $plan->uid, 'line_id' => $machine->line_id, 'machine_code' => $machine->code],
+                ['lot_id' => InfoCongDoan::generateUniqueId($plan->lo_sx, $plan->line_id), 'plan_id' => $plan->id, 'line_id' => $machine->line_id, 'machine_code' => $machine->code],
                 [
                     'input_lot_id' => $request->roll_id,
                     'lo_sx' => $plan->lo_sx,
@@ -454,6 +451,7 @@ class Phase2OIApiController extends Controller
                     'status' => InfoCongDoan::STATUS_INPROGRESS,
                     'user_id' => $request->user()->id,
                     'sl_kh' => $plan->sl_giao_sx,
+                    'plan_id' => $plan->id
                 ]
             );
             $tracking->update([
@@ -468,6 +466,7 @@ class Phase2OIApiController extends Controller
         }
         return $this->success([], "Bắt đầu sản xuất");
     }
+
     public function scanForProductionLine(Request $request)
     {
         $machine = Machine::where('code', $request->machine_code)->first();
@@ -497,7 +496,7 @@ class Phase2OIApiController extends Controller
         }
         $plan = ProductionPlan::where('line_id', $machine->line_id)
         ->where('machine_id', $machine->code)
-        ->where('status_plan', 0)
+        ->where('status_plan', '!=', ProductionPlan::STATUS_COMPLETED)
         ->where('product_id', $scannedLot->product_id)
         ->whereDate('thoi_gian_bat_dau', '>=', date('Y-m-d'))
         ->orderBy('thoi_gian_bat_dau')
@@ -541,25 +540,19 @@ class Phase2OIApiController extends Controller
             if ($plan->status_plan == ProductionPlan::STATUS_PENDING) {
                 $plan->update(['status_plan' => ProductionPlan::STATUS_IN_PROGRESS]);
             }
-            $existedInfo = InfoCongDoan::where(['lot_id' => $plan->uid, 'line_id' => $machine->line_id, 'machine_code' => $machine->code])->first();
-            if($existedInfo){
-                return $this->failure('', 'Đã quét lot này');
-            }
-            $infoCongDoan = InfoCongDoan::create(
-                [
-                    'lot_id' => $plan->uid, 
-                    'line_id' => $machine->line_id, 
-                    'machine_code' => $machine->code,
-                    'input_lot_id' => $request->scanned_lot,
-                    'lo_sx' => $plan->lo_sx,
-                    'product_id' => $plan->product_id,
-                    'thoi_gian_bat_dau' => Carbon::now(),
-                    'status' => InfoCongDoan::STATUS_INPROGRESS,
-                    'user_id' => $request->user()->id,
-                    'sl_kh' => $plan->sl_giao_sx,
-                    'plan_uid' => $plan->uid
-                ]
-            );
+            $infoCongDoan = InfoCongDoan::create([
+                'lot_id' => InfoCongDoan::generateUniqueId($plan->lo_sx, $machine->line_id),
+                'line_id' => $machine->line_id, 
+                'machine_code' => $machine->code,
+                'input_lot_id' => $request->scanned_lot,
+                'lo_sx' => $plan->lo_sx,
+                'product_id' => $plan->product_id,
+                'thoi_gian_bat_dau' => Carbon::now(),
+                'status' => InfoCongDoan::STATUS_INPROGRESS,
+                'user_id' => $request->user()->id,
+                'sl_kh' => $plan->sl_giao_sx,
+                'plan_id' => $plan->id
+            ]);
             if ($scannedLot) {
                 $line_inventory = LineInventories::where('product_id', $scannedLot->product_id)->where('line_id', $scannedLot->final_line_id)->first();
                 $sl_dat = $scannedLot->so_luong;
@@ -668,63 +661,20 @@ class Phase2OIApiController extends Controller
                     LineInventories::create(['quantity' => $sl_dat, 'line_id' => $infoCongDoan->line_id, 'product_id' => $infoCongDoan->product_id]);
                 }
                 //Update ProductionOrderHistory and ProductionOrderPriority
-                $productionOrderHistory = ProductionOrderHistory::where('line_id', $infoCongDoan->line_id)->where('production_order_id', $infoCongDoan->plan->production_order_id ?? null)->first();
-                if($productionOrderHistory){
-                    $productionOrderHistory->update(['actual_quantity'=>$productionOrderHistory->actual_quantity + $sl_dat]);
-                    $productionOrderHistories = ProductionOrderHistory::where('production_order_id', $infoCongDoan->plan->production_order_id ?? null)->whereColumn('order_quantity', '>', 'actual_quantity')->get();
-                    if(count($productionOrderHistories) <= 0){
-                        ProductionOrderPriority::removeItemAndReorderList($infoCongDoan->plan->production_order_id);
+                $infos = InfoCongDoan::where('plan_id', $infoCongDoan->plan_id)->get();
+                $producedQuantity = $infos->sum('sl_dau_ra_hang_loat') - $infos->sum('sl_ng');
+                if($producedQuantity >= $infoCongDoan->plan->sl_giao_sx){
+                    $infoCongDoan->plan->update(['status_plan'=>ProductionPlan::STATUS_COMPLETED]);
+                    $productionOrderHistory = ProductionOrderHistory::where('line_id', $infoCongDoan->line_id)->where('production_order_id', $infoCongDoan->plan->production_order_id ?? null)->first();
+                    if($productionOrderHistory){
+                        $productionOrderHistory->update(['actual_quantity'=>$productionOrderHistory->actual_quantity + $producedQuantity]);
+                        $productionOrderHistories = ProductionOrderHistory::where('production_order_id', $infoCongDoan->plan->production_order_id ?? null)->whereColumn('order_quantity', '>', 'actual_quantity')->get();
+                        if(count($productionOrderHistories) <= 0){
+                            ProductionOrderPriority::removeItemAndReorderList($infoCongDoan->plan->production_order_id);
+                        }
                     }
                 }
-                // $spec = Spec::where('product_id', $infoCongDoan->product_id)->where('line_id', $infoCongDoan->line_id)->where('slug', 'so-luong')->first();
-                // $count_info = InfoCongDoan::where('input_lot_id', $infoCongDoan->input_lot_id)->where('machine_code', $infoCongDoan->machine_code)->count();
-                // if ($spec && $line->id == 24 && $infoCongDoan->sl_dau_ra_hang_loat >= $spec->value && $count_info == 1 && $machine->is_iot == 1) {
-                //     $lotCurrent = $infoCongDoan->plan;
-                //     $nextPlan = ProductionPlan::where('ngay_sx', date('Y-m-d'))->where('machine_id', $infoCongDoan->machine_code)->where('id', '>', $lotCurrent->id)->orderBy('id', 'ASC')->first();
-                //     if ($nextPlan) {
-                //         $tracking = Tracking::where('machine_id', $infoCongDoan->machine_code)->first();
-                //         $tracking->input = $counter['PLC:Num_Input'][0]['value'] ?? 0;
-                //         $tracking->output = $counter['PLC:Num_Out'][0]['value'] ?? 0;
-                //         $tracking->lot_id = $nextPlan->lot_id;
-                //         $tracking->save();
-                //         InfoCongDoan::create([
-                //             'input_lot_id' => $infoCongDoan->input_lot_id,
-                //             'lot_plan_id' => $nextPlan->id,
-                //             'lot_id' => $nextPlan->lot_id,
-                //             'lo_sx' => $nextPlan->lo_sx,
-                //             'line_id' => $nextPlan->line_id,
-                //             'machine_code' => $nextPlan->machine_code,
-                //             'product_id' => $nextPlan->product_id,
-                //             'sl_kh' => $nextPlan->quantity,
-                //             'sl_dau_vao_hang_loat' => 0,
-                //             'sl_khi_bam_may' => $counter['PLC:Num_Out'][0]['value'] ?? 0,
-                //             'sl_dau_vao_bam_may' => $counter['PLC:Num_Input'][0]['value'] ?? 0,
-                //             'thoi_gian_bat_dau' => $thoi_gian_ket_thuc,
-                //             'thoi_gian_bam_may' => $thoi_gian_ket_thuc,
-                //             'user_id' => $request->user()->id,
-                //             'status' => InfoCongDoan::STATUS_INPROGRESS
-                //         ]);
-                //     } else {
-                //         if (isset($machine) && isset($tracking)) {
-                //             MachineStatus::deactive($machine->code);
-                //             $tracking->update([
-                //                 'lot_id' => null,
-                //                 'input' => 0,
-                //                 'output' => 0
-                //             ]);
-                //         }
-                //     }
-                // } else {
-                //     if (isset($machine) && isset($tracking)) {
-                //         MachineStatus::deactive($machine->code);
-                //         $tracking->update([
-                //             'lot_id' => null,
-                //             'input' => 0,
-                //             'output' => 0
-                //         ]);
-                //     }
-                // }
-                if (isset($machine) && isset($tracking)) {
+                if ($machine && $tracking) {
                     MachineStatus::deactive($machine->code);
                     $tracking->update([
                         'lot_id' => null,

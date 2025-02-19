@@ -748,6 +748,7 @@ Route::group([
     Route::post('production_plan/store', [Phase2UIApiController::class, 'storeProductionPlanAuto']);
     Route::post('production_plan/approve', [Phase2UIApiController::class, 'approveProductionPlanAuto']);
     Route::apiResource('production-order-priorities', ProductionOrderPriorityController::class);
+    Route::post('production-order-priorities/reorder', [ProductionOrderPriorityController::class, 'reorder']);
 });
 
 //Masterdata

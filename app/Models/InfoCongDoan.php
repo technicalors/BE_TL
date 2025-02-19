@@ -50,8 +50,29 @@ class InfoCongDoan extends Model
         'sl_khi_bam_may',
         'sl_dau_ra_ket_thuc',
         'sl_dau_vao_bam_may',
-        'plan_uid'
+        'plan_id'
     ];
+
+    public static function generateUniqueId($lo_sx, $line_id)
+    {
+        $latestInfo = InfoCongDoan::where('lo_sx', $lo_sx)->where('line_id', $line_id)->orderBy('lot_id')->get()->last();
+        $prefix = $lo_sx . '.' . $line_id . '.L.';
+        try {
+            if($latestInfo){
+                $array = explode('.', $latestInfo->lot_id);
+                $index = $latestInfo ? (int) end($array) : 0;
+            }else{
+                $index = 0;
+            }
+        } catch (\Throwable $th) {
+            throw $th;
+            $index = 0;
+        }
+        Log::info(['index' => $index, 'lot_id' => $latestInfo->lot_id ?? 'null']);
+        $newSequence = str_pad($index + 1, 4, '0', STR_PAD_LEFT);
+
+        return $prefix . $newSequence;
+    }
 
     static function validateStore($input)
     {
@@ -115,7 +136,7 @@ class InfoCongDoan extends Model
     // }
     public function plan()
     {
-        return $this->belongsTo(ProductionPlan::class, 'plan_uid', 'uid');
+        return $this->belongsTo(ProductionPlan::class, 'plan_id', 'id');
     }
     public function log()
     {
