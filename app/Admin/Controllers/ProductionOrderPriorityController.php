@@ -11,6 +11,7 @@ use App\Models\LineInventories;
 use App\Models\Lot;
 use App\Models\MachinePriorityOrder;
 use App\Models\NumberMachineOrder;
+use App\Models\Product;
 use App\Models\ProductionOrderHistory;
 use App\Models\ProductionOrderPriority;
 use App\Models\ProductOrder;
@@ -30,10 +31,6 @@ class ProductionOrderPriorityController extends Controller
     public function index(Request $request)
     {
         $query = ProductionOrderPriority::orderBy('priority');
-        if (isset($request->start_date) && isset($request->end_date)) {
-            $query->whereDate('confirm_date', '>=', date('Y-m-d', strtotime($request->start_date)))
-                ->whereDate('confirm_date', '<=', date('Y-m-d', strtotime($request->end_date)));
-        }
         $total = $query->count();
         $result = $query->with(['productionOrderHistory.line', 'productionOrder', 'product'])->get();
         foreach ($result as $value) {
