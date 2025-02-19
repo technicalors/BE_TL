@@ -4071,6 +4071,9 @@ class Phase2UIApiController extends Controller
                     continue;
                 }
                 $efficiency = $this->getEfficiency($productionOrderPriority->product_id, $history->line_id);
+                if($efficiency <= 0) {
+                    throw new Exception("Không tìm thấy năng suất cho sản phẩm " . $productionOrderPriority->product_id . " và công đoạn " . $history->line->name, 1);
+                }
                 $productionTime = ceil(($remainQuantityOrder / $efficiency) * 60) + $setupTime;
 
                 $machinePriorityOrder = $this->getPrioritizedMachine($history->line_id, $productionOrderPriority->product_id, $machine_load_factors, $productionTime);
