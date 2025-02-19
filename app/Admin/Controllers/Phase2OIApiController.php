@@ -1947,44 +1947,106 @@ class Phase2OIApiController extends Controller
             return null;
         }
         if ($test["phan_dinh"] = 'Nhập số') {
-            $specValue = trim(str_replace("\n", " ", $spec->value));
-            TODO: {
-                // Nham max voi min
-            }
-            if (str_contains($specValue, $plusOrMinus)) {
-                $arr = $this->extractNumbers($specValue);
-                if (empty($arr)) {
-                    return $test;
+            try {
+                $extractValues = $this->detect_format($spec->value);
+                foreach($extractValues as $key => $value) {
+                    $test[$key] = $value;
                 }
-                $test["input"] = true;
-                $test["max"] = $arr['before'] + $arr['after'];
-                $test["min"] = $arr['before'] - $arr['after'];
                 $test['note'] = $spec->value;
-                return $test;
-            } else if (str_contains($specValue, $approximate)) {
-                $arr = $this->extractNumbers($specValue);
-                if (empty($arr)) {
-                    return $test;
-                }
                 $test["input"] = true;
-                $test["min"] = $arr['before'];
-                $test["max"] = $arr['after'];
-                $test['note'] = $specValue;
-                return $test;
-            } else if (str_contains($specValue, $fromTo)) {
-                $arr = $this->extractNumbers($specValue);
-                if (empty($arr)) {
-                    return $test;
-                }
-                $test["input"] = true;
-                $test["min"] = $arr['before'];
-                $test["max"] = $arr['after'];
-                $test['note'] = $specValue;
-                return $test;
+            } catch (\Throwable $th) {
+                //throw $th;
             }
+            
+            // if (str_contains($specValue, $plusOrMinus)) {
+            //     $arr = $this->extractNumbers($specValue);
+            //     if (empty($arr)) {
+            //         return $test;
+            //     }
+            //     $test["input"] = true;
+            //     $test["max"] = $arr['before'] + $arr['after'];
+            //     $test["min"] = $arr['before'] - $arr['after'];
+            //     $test['note'] = $spec->value;
+            //     return $test;
+            // } else if (str_contains($specValue, $approximate)) {
+            //     $arr = $this->extractNumbers($specValue);
+            //     if (empty($arr)) {
+            //         return $test;
+            //     }
+            //     $test["input"] = true;
+            //     $test["min"] = $arr['before'];
+            //     $test["max"] = $arr['after'];
+            //     $test['note'] = $specValue;
+            //     return $test;
+            // } else if (str_contains($specValue, $fromTo)) {
+            //     $arr = $this->extractNumbers($specValue);
+            //     if (empty($arr)) {
+            //         return $test;
+            //     }
+            //     $test["input"] = true;
+            //     $test["min"] = $arr['before'];
+            //     $test["max"] = $arr['after'];
+            //     $test['note'] = $specValue;
+            //     return $test;
+            // }
         }
 
         return $test;
+    }
+
+    function detect_format($input) {
+        // Định dạng 1: '12.5+1.5/-1.25'
+        $pattern1 = "/(-?\d+(\.\d+)?)([+-]\d+(\.\d+)?)?\/(-?\d+(\.\d+)?)/";
+    
+        // Định dạng 2: 106.47 ± 1.2
+        $pattern2 = "/(-?\d+(\.\d+)?)\s*±\s*(-?\d+(\.\d+)?)/";
+    
+        // Định dạng 3: Khoảng dùng dấu '-'
+        $pattern3 = "/(-?\d+(\.\d+)?)-(-?\d+(\.\d+)?)/";
+
+        // Định dạng 4: Khoảng dùng dấu '~'
+        $pattern4 = "/(-?\d+(\.\d+)?)~(-?\d+(\.\d+)?)/";
+    
+        // Loại bỏ phần mô tả nếu có trước giá trị số
+        $input = trim(preg_replace("/.*?:\s*/", "", $input));
+    
+        if (preg_match($pattern1, $input, $matches)) {
+            Log::debug($matches);
+            $value1 = (float)$matches[1] + (float)$matches[3];
+            $value2 = (float)$matches[1] + (float)$matches[5];
+            if($value1 > $value2) {
+                $max = $value1;
+                $min = $value2;
+            }else{
+                $max = $value2;
+                $min = $value1;
+            }
+            return [
+                "type" => "Format 1 (X/Y/Z)",
+                "min" => $min,
+                "max" => $max,
+            ];
+        } elseif (preg_match($pattern2, $input, $matches)) {
+            return [
+                "type" => "Format 2 (± Tolerance)",
+                "min" => (float)$matches[1] - (float)$matches[3],
+                "max" => (float)$matches[1] + (float)$matches[3]
+            ];
+        } elseif (preg_match($pattern3, $input, $matches)) {
+            return [
+                "type" => "Format 3 (Range using '-')",
+                "min" => (float)$matches[1],
+                "max" => (float)$matches[3]
+            ];
+        } elseif (preg_match($pattern4, $input, $matches)) {
+            return [
+                "type" => "Format 4 (Range using '~')",
+                "min" => (float)$matches[1],
+                "max" => (float)$matches[3]
+            ];
+        } else {
+            return ["type" => "Unknown format"];
+        }
     }
 
     function extractNumbers($string)
