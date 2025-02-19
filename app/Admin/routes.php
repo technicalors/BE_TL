@@ -770,6 +770,8 @@ Route::group([
     Route::apiResource('production-journey', ProductionJourneyController::class);
     Route::post('product-journey/delete', [ProductionJourneyController::class, 'deleteManyMachinePriorityOrders']);
 
+    Route::apiResource('machine-production-mode', ProductionJourneyController::class);
+
     Route::apiResource('excel-headers', ExcelHeaderController::class);
     Route::post('excel-headers/import', [ExcelHeaderController::class, 'import']);
     Route::post('excel-headers/export', [ExcelHeaderController::class, 'export']);

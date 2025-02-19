@@ -10,5 +10,5 @@ use Illuminate\Support\Facades\Validator;
 class ProductionJourney extends Model
 {
     use HasFactory;
-    protected $fillable = ['product_id','line_id','ordinal'];
+    protected $fillable = ['product_id','line_id','production_order', 'material_waste', 'line_production_waste', 'prep_time', 'transportation_waste', 'roll_change_time', 'input_quantity', 'hourly_output', 'operator_count'];
 }
