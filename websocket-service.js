@@ -114,6 +114,8 @@ const deviceFieldConfig = {
     PM01_TEnergy: "PM01:Active_Energy",
   },
   "9032a0e0-45bc-11ef-b8c3-a13625245eca": {
+    Env01_Humi: "ENVI:HUMI",
+    Env01_Temper: "ENVI:TEMPER",
     PLC_UV1: "PLC:UV1",
     PLC_UV2: "PLC:UV2",
     PLC_UV3: "PLC:UV3",
