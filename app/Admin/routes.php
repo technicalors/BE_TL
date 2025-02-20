@@ -26,6 +26,8 @@ use App\Admin\Controllers\Phase2DBApiController;
 use App\Admin\Controllers\Phase2OIApiController;
 use App\Admin\Controllers\Phase2UIApiController;
 use App\Admin\Controllers\ParameterController;
+use App\Admin\Controllers\ProductController;
+use App\Admin\Controllers\ProductCustomerController;
 use App\Admin\Controllers\ProductionJourneyController;
 use App\Admin\Controllers\ProductionOrderHistoryController;
 use App\Admin\Controllers\ProductionOrderPriorityController;
@@ -776,6 +778,8 @@ Route::group([
 
     Route::apiResource('qc-criteria', QCCriteriaController::class);
 
+    Route::apiResource('product-customer', ProductCustomerController::class);
+
     Route::apiResource('excel-headers', ExcelHeaderController::class);
     Route::post('excel-headers/import', [ExcelHeaderController::class, 'import']);
     Route::post('excel-headers/export', [ExcelHeaderController::class, 'export']);
@@ -812,4 +816,13 @@ Route::group([
     $router->post('scan-material', [Phase2OIApiController::class, 'scanForFirstLine']);
     $router->post('scan-manufacture', [Phase2OIApiController::class, 'scanForProductionLine']);
     $router->post('end-of-production', [Phase2OIApiController::class, 'finishProductionLine']);
+});
+
+//OI
+Route::group([
+    'prefix'        => "/api/",
+    'middleware'    => [],
+], function (Router $router) {
+    //Test new api
+    $router->post('convert-spec', [ProductController::class, 'convertSpec']);
 });

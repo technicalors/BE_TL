@@ -67,15 +67,15 @@ class Product extends Model
         $validated = Validator::make(
             $input,
             [
-                'id' => 'required|unique:products,id' . ($id ? ',' . $id : ""),
+                'id' => 'required|unique:products,id,' . ($id ?? ""),
                 'name' => 'required',
-                'customer_id' => 'required',
+                // 'customer_id' => 'required',
             ],
             [
                 'id.required' => 'Không tìm thấy mã sản phẩm',
                 'id.unique' => 'Mã sản phẩm đã tồn tại',
                 'name.required' => 'Không tìm thấy tên sản phẩm',
-                'customer_id.required' => 'Không có khách hàng',
+                // 'customer_id.required' => 'Không có khách hàng',
             ]
         );
         return $validated;
