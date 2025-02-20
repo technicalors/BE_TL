@@ -5,10 +5,7 @@ namespace App\Admin\Controllers;
 use App\Http\Controllers\Controller;
 use App\Imports\StampsImport;
 use App\Models\Material;
-use App\Models\MachinePriorityOrder;
-use App\Models\MachineProductionMode;
-use App\Models\ProductionJourney;
-use App\Models\QCCriteria;
+use App\Models\qcCriteria;
 use App\Traits\API;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -48,57 +45,57 @@ class QCCriteriaController extends Controller
     public function store(Request $request)
     {
         $input = $request->all();
-        $validated = MachinePriorityOrder::validate($input);
-        if ($validated->fails()) {
-            return $this->failure('', $validated->errors()->first());
-        }
-        $machinePriorityOrder = MachinePriorityOrder::create($input);
+        // $validated = QCCriteria::validate($input);
+        // if ($validated->fails()) {
+        //     return $this->failure('', $validated->errors()->first());
+        // }
+        $qcCriteria = QCCriteria::create($input);
 
-        return $this->success($machinePriorityOrder);
+        return $this->success($qcCriteria);
     }
 
     public function show($id)
     {
-        $machinePriorityOrder = MachinePriorityOrder::find($id);
+        $qcCriteria = QCCriteria::find($id);
 
-        if (!$machinePriorityOrder) {
-            return $this->success('', 'MachinePriorityOrder not found');
+        if (!$qcCriteria) {
+            return $this->success('', 'qcCriteria not found');
         }
 
-        return $this->success($machinePriorityOrder);
+        return $this->success($qcCriteria);
     }
 
     public function update(Request $request, $id)
     {
-        $machinePriorityOrder = MachinePriorityOrder::find($id);
-        if (!$machinePriorityOrder) {
-            return $this->failure('', 'MachinePriorityOrder not found');
+        $qcCriteria = QCCriteria::find($id);
+        if (!$qcCriteria) {
+            return $this->failure('', 'qcCriteria not found');
         }
         $input = $request->all();
-        $validated = MachinePriorityOrder::validate($input);
-        if ($validated->fails()) {
-            return $this->failure('', $validated->errors()->first());
-        }
-        $machinePriorityOrder->update($request->all());
-        return $this->success($machinePriorityOrder);
+        // $validated = QCCriteria::validate($input);
+        // if ($validated->fails()) {
+        //     return $this->failure('', $validated->errors()->first());
+        // }
+        $qcCriteria->update($request->all());
+        return $this->success($qcCriteria);
     }
 
     public function destroy($id)
     {
-        $machinePriorityOrder = MachinePriorityOrder::find($id);
+        $qcCriteria = QCCriteria::find($id);
 
-        if (!$machinePriorityOrder) {
-            return $this->failure('', 'MachinePriorityOrder not found');
+        if (!$qcCriteria) {
+            return $this->failure('', 'qcCriteria not found');
         }
 
-        $machinePriorityOrder->delete();
+        $qcCriteria->delete();
 
-        return $this->success('','MachinePriorityOrder deleted');
+        return $this->success('','qcCriteria deleted');
     }
 
-    public function deleteManyMachinePriorityOrders(Request $request){
-        $machinePriorityOrder = MachinePriorityOrder::whereIn('id', $request->ids)->delete();
-        return $this->success('','MachinePriorityOrder deleted'); 
+    public function deleteManyQCCriteria(Request $request){
+        $qcCriteria = QCCriteria::whereIn('id', $request->ids)->delete();
+        return $this->success('','qcCriteria deleted'); 
     }
 
     public function import(Request $request)

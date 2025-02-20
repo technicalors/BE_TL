@@ -1848,6 +1848,36 @@ class Phase2OIApiController extends Controller
         $testCriteriaHistories = $infoCongDoan->qcHistory->testCriteriaHistories;
         $testCriteriaDetailHistories = $testCriteriaHistories->flatMap->testCriteriaDetailHistories ?? collect([]);
         $data = [];
+        if ($line->id == '30') {
+            $query = QCHistory::where(function ($q) {
+                $q->whereDate('scanned_time', date('Y-m-d'))->orWhere('eligible_to_end', 0);
+            })->whereHas('infoCongDoan', function ($q) use ($infoCongDoan) {
+                $q->where('line_id', $infoCongDoan->line_id);
+            });
+        } else {
+            $query = QCHistory::where(function ($q) {
+                $q->whereDate('scanned_time', date('Y-m-d'))->orWhereHas('infoCongDoan', function ($info_query) {
+                    $info_query->where('status', 1);
+                });
+            })->whereHas('infoCongDoan', function ($q) use ($infoCongDoan) {
+                $q->where('line_id', $infoCongDoan->line_id);
+                $q->where('machine_code', $infoCongDoan->machine_code);
+            });
+        }
+        $qcHistories = $query->where('info_cong_doan_id', '!=', $infoCongDoan->id)->get();
+        $detailHistory = $qcHistories->map(function ($qcHistory) {
+            return $qcHistory->testCriteriaHistories->flatMap->testCriteriaDetailHistories ?? collect([]);
+        })
+        ->flatten()
+        ->mapWithKeys(function ($detailHistory) {
+            $product_id = $detailHistory->testCriteriaHistory->qcHistory->infoCongDoan->product_id ?? null;
+            $machine_code = $detailHistory->testCriteriaHistory->qcHistory->infoCongDoan->machine_code ?? null;
+            $test_criteria_name = $detailHistory->testCriteria->hang_muc ?? null;
+            $info_lot_id = $detailHistory->testCriteriaHistory->qcHistory->infoCongDoan->lot_id ?? null;
+            return [$product_id . $machine_code . $test_criteria_name => $info_lot_id];
+        })
+        ->toArray();
+        Log::debug($detailHistory);
         foreach ($list as $item) {
 
             $chi_tieu_slug = Str::slug($item->chi_tieu);
@@ -1862,26 +1892,15 @@ class Phase2OIApiController extends Controller
             if (empty($item->result)) {
                 if ($item->frequency === TestCriteria::MOT_MAU_TREN_MOT_CA) {
                     //Lọc theo sản phẩm và theo máy trong ca
-                    $detailHistory = TestCriteriaDetailHistory::with('testCriteriaHistory.qcHistory.infoCongDoan')
-                        ->where('test_criteria_id', $item->id)
-                        ->where('created_at', '>=', date('Y-m-d 07:00:00'))
-                        ->get()
-                        ->map(function ($detailHistory) {
-                            return [
-                                'product_id' => $detailHistory->testCriteriaHistory->qcHistory->infoCongDoan->product_id ?? null,
-                                'machine_code' => $detailHistory->testCriteriaHistory->qcHistory->infoCongDoan->machine_code ?? null,
-                            ];
-                        })
-                        ->filter(function ($item) {
-                            return $item['product_id'] !== null && $item['machine_code'] !== null;
-                        })
-                        ->toArray();
                     $isExist = false;
-                    foreach ($detailHistory as $entry) {
-                        if ($entry['product_id'] === $infoCongDoan->product_id && $entry['machine_code'] === $infoCongDoan->machine_code) {
-                            $isExist = true;
-                        }
-                    }
+                    // foreach ($detailHistory as $entry) {
+                    //     if ($entry['product_id'] === $infoCongDoan->product_id && $entry['machine_code'] === $infoCongDoan->machine_code && $entry['test_criteria_name'] === $item->hang_muc) {
+                    //         $isExist = true;
+                    //     }
+                    // }
+                    if(isset($detailHistory[$infoCongDoan->product_id . $infoCongDoan->machine_code . $item->hang_muc])){
+                        $isExist = true;
+                    };
                     if ($isExist) {
                         continue;
                     }

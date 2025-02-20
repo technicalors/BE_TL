@@ -14,4 +14,8 @@ class TestCriteriaDetailHistory extends Model
     public function testCriteriaHistory(){
         return $this->belongsTo(TestCriteriaHistory::class, 'test_criteria_history_id');
     }
+
+    public function testCriteria(){
+        return $this->belongsTo(TestCriteria::class, 'test_criteria_id');
+    }
 }

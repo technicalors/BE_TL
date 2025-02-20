@@ -5,8 +5,7 @@ namespace App\Admin\Controllers;
 use App\Http\Controllers\Controller;
 use App\Imports\StampsImport;
 use App\Models\Material;
-use App\Models\MachinePriorityOrder;
-use App\Models\MachineProductionMode;
+use App\Models\machineProductionMode;
 use App\Models\ProductionJourney;
 use App\Traits\API;
 use Illuminate\Http\Request;
@@ -19,9 +18,6 @@ class MachineProductionModeController extends Controller
     public function index(Request $request)
     {   
         $query = MachineProductionMode::orderBy('product_id')->orderBy('machine_id');
-        if(!empty($request->line_id)){
-            $query->whereIn('line_id', $request->line_id ?? []);
-        }
         if(!empty($request->product_id)){
             $query->where('product_id', 'like', '%' . $request->product_id . '%');
         }
@@ -36,10 +32,10 @@ class MachineProductionModeController extends Controller
             $pageSize = $request->pageSize;
             $query->offset($page * $pageSize)->limit($pageSize);
         }
-        $result = $query->with('line', 'product')->get();
+        $result = $query->with('machine', 'product')->get();
         foreach ($result as $key => $value) {
             $value->product_name = $value->product->name;
-            $value->line_name = $value->line->name;
+            $value->machine_name = $value->machine->name;
         }
         return $this->success(['data'=>$result, 'total'=>$total]);
     }
@@ -47,57 +43,57 @@ class MachineProductionModeController extends Controller
     public function store(Request $request)
     {
         $input = $request->all();
-        $validated = MachinePriorityOrder::validate($input);
-        if ($validated->fails()) {
-            return $this->failure('', $validated->errors()->first());
-        }
-        $machinePriorityOrder = MachinePriorityOrder::create($input);
+        // $validated = machineProductionMode::validate($input);
+        // if ($validated->fails()) {
+        //     return $this->failure('', $validated->errors()->first());
+        // }
+        $machineProductionMode = MachineProductionMode::create($input);
 
-        return $this->success($machinePriorityOrder);
+        return $this->success($machineProductionMode);
     }
 
     public function show($id)
     {
-        $machinePriorityOrder = MachinePriorityOrder::find($id);
+        $machineProductionMode = MachineProductionMode::find($id);
 
-        if (!$machinePriorityOrder) {
-            return $this->success('', 'MachinePriorityOrder not found');
+        if (!$machineProductionMode) {
+            return $this->success('', 'MachineProductionMode not found');
         }
 
-        return $this->success($machinePriorityOrder);
+        return $this->success($machineProductionMode);
     }
 
     public function update(Request $request, $id)
     {
-        $machinePriorityOrder = MachinePriorityOrder::find($id);
-        if (!$machinePriorityOrder) {
-            return $this->failure('', 'MachinePriorityOrder not found');
+        $machineProductionMode = MachineProductionMode::find($id);
+        if (!$machineProductionMode) {
+            return $this->failure('', 'MachineProductionMode not found');
         }
-        $input = $request->all();
-        $validated = MachinePriorityOrder::validate($input);
-        if ($validated->fails()) {
-            return $this->failure('', $validated->errors()->first());
-        }
-        $machinePriorityOrder->update($request->all());
-        return $this->success($machinePriorityOrder);
+        // $input = $request->all();
+        // $validated = machineProductionMode::validate($input);
+        // if ($validated->fails()) {
+        //     return $this->failure('', $validated->errors()->first());
+        // }
+        $machineProductionMode->update($request->all());
+        return $this->success($machineProductionMode);
     }
 
     public function destroy($id)
     {
-        $machinePriorityOrder = MachinePriorityOrder::find($id);
+        $machineProductionMode = MachineProductionMode::find($id);
 
-        if (!$machinePriorityOrder) {
-            return $this->failure('', 'MachinePriorityOrder not found');
+        if (!$machineProductionMode) {
+            return $this->failure('', 'MachineProductionMode not found');
         }
 
-        $machinePriorityOrder->delete();
+        $machineProductionMode->delete();
 
-        return $this->success('','MachinePriorityOrder deleted');
+        return $this->success('','MachineProductionMode deleted');
     }
 
-    public function deleteManyMachinePriorityOrders(Request $request){
-        $machinePriorityOrder = MachinePriorityOrder::whereIn('id', $request->ids)->delete();
-        return $this->success('','MachinePriorityOrder deleted'); 
+    public function deleteManymachineProductionModes(Request $request){
+        $machineProductionMode = MachineProductionMode::whereIn('id', $request->ids)->delete();
+        return $this->success('','MachineProductionMode deleted'); 
     }
 
     public function import(Request $request)

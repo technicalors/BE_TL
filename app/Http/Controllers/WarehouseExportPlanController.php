@@ -80,6 +80,11 @@ class WarehouseExportPlanController extends Controller
             return $this->failure([], 'Không tìm thấy bản ghi', 404);
         }
         $record->update($request->all());
+        Inventory::updateOrCreate([
+            'product_id' => $record->product_id,
+        ], [
+            'sl_ton' => $request->ton_kho
+        ]);
         return $this->success($record, 'Cập nhật thành công');
     }
 
