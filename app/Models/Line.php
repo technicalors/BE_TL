@@ -13,9 +13,9 @@ class Line extends Model
     protected $fillable = ['name', 'note', 'ordering', 'display', 'factory_id'];
     protected $hidden = ['created_at', 'updated_at'];
     //casts
-    protected $casts = [
-        'id' => 'string',
-    ];
+    // protected $casts = [
+    //     'id' => 'string',
+    // ];
 
     public function machine()
     {
