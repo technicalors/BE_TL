@@ -32,11 +32,12 @@ class ProductionOrderPriorityController extends Controller
     {
         $query = ProductionOrderPriority::orderBy('priority');
         $total = $query->count();
-        $result = $query->with(['productionOrderHistory.line', 'productionOrder', 'product'])->get();
+        $result = $query->with(['productionOrderHistory.line', 'productionOrder', 'product.inventory'])->get();
         foreach ($result as $value) {
-            $value->customer_name = $value->productionOrder->customer->name ?? "";
-            $value->product_name = $value->product->name ?? "";
-            $value->quantity = $value->productionOrder->quantity ?? "";
+            $value->customer_name = $value->productionOrder->customer->name ?? 0;
+            $value->product_name = $value->product->name ?? 0;
+            $value->quantity = $value->productionOrder->quantity ?? 0;
+            $value->inventory_quantity = $value->product->inventory->sl_ton ?? 0;
         }
         return $this->success(['data' => $result, 'total' => $total]);
     }
@@ -98,7 +99,7 @@ class ProductionOrderPriorityController extends Controller
         try {
             DB::beginTransaction();
             $records = ProductionOrderPriority::all();
-            foreach($records as $value){
+            foreach ($records as $value) {
                 $target = $input[$value->production_order_id];
                 $value->priority = $target;
                 $value->save();
@@ -116,5 +117,40 @@ class ProductionOrderPriorityController extends Controller
         ProductionOrderHistory::where('production_order_id', $production_order_id)->delete();
         ProductOrder::find($production_order_id)->update(['status' => 2]);
         return $this->success('', 'Hoàn thành thành công');
+    }
+
+    public function updateRecord(Request $request)
+    {
+        $input = $request->all();
+        $new_order_quantity = $input['new_order_quantity'];
+        $inventory_quantity = $input['inventory_quantity'];
+        $fc_order_quantity = $input['fc_order_quantity'];
+        $outstanding_order = $input['outstanding_order'];
+        $production_quantity = ($new_order_quantity + $fc_order_quantity + $outstanding_order) - $inventory_quantity;
+        $product_id = $input['product_id'];
+        try {
+            DB::beginTransaction();
+            $inventory = Inventory::where('product_id', $product_id)->first();
+            if ($inventory) {
+                Inventory::where('product_id', $product_id)->update(['sl_ton' => $inventory_quantity]);
+            } else {
+                Inventory::create(['product_id' => $product_id, 'sl_ton' => $inventory_quantity]);
+            }
+            ProductionOrderPriority::where('product_id', $product_id)->update(['new_order_quantity' => $new_order_quantity, 'fc_order_quantity' => $fc_order_quantity, 'outstanding_order' => $outstanding_order, 'production_quantity' => $production_quantity]);
+            $productionSteps = Phase2UIApiController::getProductionSteps($product_id);
+            $quantity = $production_quantity;
+            foreach ($productionSteps as $productionStep) {
+                $calculatedQuantity = Phase2UIApiController::calculateProductionOutput($product_id, $productionStep->line_id, $quantity);
+                $productOrderHistory = ProductionOrderHistory::where('product_id', $product_id)->where('line_id', $productionStep->line_id)->first();
+                $order_quantity = $calculatedQuantity;
+                $production_quantity = $calculatedQuantity - $productOrderHistory->inventory_quantity;
+                $quantity = $production_quantity;
+                ProductionOrderHistory::where('product_id', $product_id)->where('line_id', $productionStep->line_id)->update(['order_quantity' => $order_quantity, 'production_quantity' => $production_quantity]);
+            }
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+        }
+        return $this->success('', 'Cập nhật thành công');
     }
 }

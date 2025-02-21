@@ -287,29 +287,62 @@ class ProductOrderController extends Controller
             $input = $request->all();
             $productOrder = ProductOrder::find($input['id']);
             $input['status'] = ProductOrder::STATUS_IN_PROGRESS;
+            $new_order_quantity = $productOrder->quantity;
+            $fc_order_quantity = $productOrder->fc_quantity;
+            $inventory = Inventory::where('product_id', $productOrder->product_id)->first();
+            $productionOrderPriority = ProductionOrderPriority::where('product_id', $productOrder->product_id)->first();
             $productionSteps = Phase2UIApiController::getProductionSteps($productOrder->product_id);
-            $quantity = $productOrder->quantity;
-            foreach ($productionSteps as $productionStep) {
-                $calculatedQuantity = Phase2UIApiController::calculateProductionOutput($productOrder->product_id, $productionStep->line_id, $quantity);
-                $quantity = $calculatedQuantity;
-                ProductionOrderHistory::where('production_order_id', $input['id'])->where('line_id', $productionStep->line_id)->delete();
-                $inp['production_order_id'] = $input['id'];
-                $inp['line_id'] = $productionStep->line_id;
-                $inp['order_quantity'] = $quantity;
-                $inp['actual_quantity'] = 0;
-                ProductionOrderHistory::create($inp);
-            }
-            $maxPriority = ProductionOrderPriority::max('priority');
-            $newPriority = ($maxPriority !== null) ? $maxPriority + 1 : 1;
-            ProductionOrderPriority::firstOrCreate(
-                ['production_order_id' => $input['id']],
-                [
-                    'production_order_id' => $input['id'],
+            if (!$productionOrderPriority) {
+                $maxPriority = ProductionOrderPriority::max('priority');
+                $newPriority = ($maxPriority !== null) ? $maxPriority + 1 : 1;
+                $production_quantity = ($new_order_quantity + $fc_order_quantity) - ($inventory->sl_ton ?? 0);
+                ProductionOrderPriority::firstOrCreate(
+                    ['product_id' => $productOrder->product_id],
+                    [
+                        'production_order_id' => $input['id'],
+                        'confirm_date'        => $input['confirm_date'],
+                        'product_id'          => $productOrder->product_id,
+                        'priority'            => $newPriority,
+                        'new_order_quantity'  => $new_order_quantity,
+                        'fc_order_quantity'   => $fc_order_quantity,
+                        'outstanding_order'   => 0,
+                        'production_quantity' => $production_quantity
+                    ]
+                );
+
+                $quantity = $production_quantity;
+                foreach ($productionSteps as $productionStep) {
+                    $calculatedQuantity = Phase2UIApiController::calculateProductionOutput($productOrder->product_id, $productionStep->line_id, $quantity);
+                    $quantity = $calculatedQuantity;
+                    $inp['product_id'] = $productOrder->product_id;
+                    $inp['line_id'] = $productionStep->line_id;
+                    $inp['order_quantity'] = $quantity;
+                    $inp['production_quantity'] = $quantity;
+                    $inp['inventory_quantity'] = 0;
+                    ProductionOrderHistory::create($inp);
+                }
+            } else {
+                $outstanding_order = $productionOrderPriority->outstanding_order + $productionOrderPriority->new_order_quantity;
+                $production_quantity = ($new_order_quantity + $fc_order_quantity + $outstanding_order) - ($inventory->sl_ton ?? 0);
+                $productionOrderPriority->update([
                     'confirm_date'        => $input['confirm_date'],
-                    'product_id'          => $productOrder->product_id,
-                    'priority'            => $newPriority,
-                ]
-            );
+                    'new_order_quantity'  => $new_order_quantity,
+                    'fc_order_quantity'   => $fc_order_quantity,
+                    'production_quantity' => $production_quantity,
+                    'outstanding_order'   => $outstanding_order
+                ]);
+
+                $quantity = $production_quantity;
+                foreach ($productionSteps as $productionStep) {
+                    $calculatedQuantity = Phase2UIApiController::calculateProductionOutput($productOrder->product_id, $productionStep->line_id, $quantity);
+                    $productOrderHistory = ProductionOrderHistory::where('product_id', $productOrder->product_id)->where('line_id', $productionStep->line_id)->first();
+                    $order_quantity = $calculatedQuantity;
+                    $production_quantity = $quantity - $productOrderHistory->inventory_quantity;
+                    $quantity = $production_quantity;
+                    ProductionOrderHistory::where('product_id', $productOrder->product_id)->where('line_id', $productionStep->line_id)->update(['order_quantity' => $order_quantity, 'production_quantity' => $production_quantity]);
+                }
+            }
+
             $records = ProductionOrderPriority::orderBy(DB::raw('DATE(confirm_date)'), 'asc')
                 ->orderBy('product_id', 'asc')
                 ->get();
