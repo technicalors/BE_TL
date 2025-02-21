@@ -26,8 +26,8 @@ class ProductionOrderPriority extends Model
         return $this->hasMany(ProductionOrderHistory::class, 'product_id','product_id')->orderBy('id', 'DESC');
     }
 
-    public static function removeItemAndReorderList($production_order_id){
-        $delete = ProductionOrderPriority::where('production_order_id', $production_order_id ?? null)->delete();
+    public static function removeItemAndReorderList($product_id){
+        $delete = ProductionOrderPriority::where('product_id', $product_id ?? null)->delete();
         $all = ProductionOrderPriority::all();
         foreach ($all as $key => $value) {
             $value->priority = ($key + 1);
