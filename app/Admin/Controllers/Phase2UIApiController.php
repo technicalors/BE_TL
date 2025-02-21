@@ -4067,7 +4067,7 @@ class Phase2UIApiController extends Controller
             $sortedHistories = $productionOrderPriority->productionOrderHistory->sortByDesc('updated_at');
             foreach ($sortedHistories as $key => $history) {
                 $setupTime = $this->getSetupTime($productionOrderPriority->product_id, $history->line_id);
-                $remainQuantityOrder = $history->order_quantity - $history->actual_quantity;
+                $remainQuantityOrder = $history->order_quantity - $history->inventory_quantity;
                 if($remainQuantityOrder <= 0) {
                     continue;
                 }
