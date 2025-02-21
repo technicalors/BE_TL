@@ -1511,7 +1511,7 @@ class ProductController extends Controller
         return $col;
     }
 
-    public function importNewVersion2(Request $request)
+    public function importProductAndCustomer(Request $request)
     {
         set_time_limit(0);
         ini_set('memory_limit', '2048M');
@@ -1529,21 +1529,8 @@ class ProductController extends Controller
         $spreadsheet = $reader->load($_FILES['file']['tmp_name']);
         $sheet = $spreadsheet->getActiveSheet();
         $allDataInSheet = $sheet->toArray(null, true, true, true);
-        ExcelHeader::truncate();
-        $mergedCells = $sheet->getMergeCells();
-        $parent = null;
-        $start = 0;
-        $first_key = array_key_first($allDataInSheet[1]);
-        $last_key = array_key_last($allDataInSheet[1]);
-        $slugArray = $allDataInSheet[1];
-        $this->insertHeader($sheet, array_splice($allDataInSheet, 2, 3), $parent, $start, $this->excelColumnRange($first_key, $last_key), $mergedCells, 3, $slugArray);
-        $excel_headers = ExcelHeader::query()
-            ->get()
-            ->pluck('header_name', 'field_name')
-            ->toArray();
-        // return $excel_headers;
         try {
-            Excel::import(new ProductImport($excel_headers), $request->file('file'));
+            Excel::import(new ProductImport(), $request->file('file'));
         } catch (\Exception $e) {
             // Handle the exception and return an appropriate response
             throw $e;
