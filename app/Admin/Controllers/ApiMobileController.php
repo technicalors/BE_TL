@@ -53,6 +53,7 @@ use App\Models\MaterialExportLog;
 use App\Models\MaterialLog;
 use App\Models\Monitor;
 use App\Models\OddBin;
+use App\Models\ProductionOrderHistory;
 use App\Models\ProductOrder;
 use App\Models\QCHistory;
 use App\Models\Scenario;
@@ -173,11 +174,11 @@ class ApiMobileController extends AdminController
         if (isset($request->is_iot)) {
             $query->where('is_iot', $request->is_iot);
         }
-        if(isset($request->withs) && $request->withs == 'plan'){
-            $query->whereHas('plan', function($q) {
+        if (isset($request->withs) && $request->withs == 'plan') {
+            $query->whereHas('plan', function ($q) {
                 $q->whereDate('thoi_gian_bat_dau', '>', '2024-12-01');
             })->with('plan');
-        }else{
+        } else {
             $result = $query->get();
         }
         $result = $query->get();
@@ -3419,10 +3420,10 @@ class ApiMobileController extends AdminController
             $input['so_luong'] = $lot->so_luong;
             WareHouseLog::create($input);
             $inventory = Inventory::where('product_id', $lot->product_id)->first();
-            if($inventory){
-                $inventory->update(['sl_ton'=>$inventory->sl_ton + $lot->so_luong, 'sl_nhap'=>$inventory->sl_nhap + $lot->so_luong]);
-            }else{
-                Inventory::create(['product_id'=>$request->product_id, 'sl_ton'=>$lot->so_luong, 'sl_nhap'=>$lot->so_luong]);
+            if ($inventory) {
+                $inventory->update(['sl_ton' => $inventory->sl_ton + $lot->so_luong, 'sl_nhap' => $inventory->sl_nhap + $lot->so_luong]);
+            } else {
+                Inventory::create(['product_id' => $request->product_id, 'sl_ton' => $lot->so_luong, 'sl_nhap' => $lot->so_luong]);
             }
         }
         return $this->success([], 'Nhập kho thành công');
@@ -3575,8 +3576,8 @@ class ApiMobileController extends AdminController
             $lineInventory->update(['quantity' => $lineInventory->quantity - $lot->so_luong]);
         }
         $inventory = Inventory::where('product_id', $lot->product_id)->first();
-        if($inventory){
-            $inventory->update(['sl_ton'=>$inventory->sl_ton - $lot->so_luong, 'sl_xuat'=>$inventory->sl_xuat + $lot->so_luong]);
+        if ($inventory) {
+            $inventory->update(['sl_ton' => $inventory->sl_ton - $lot->so_luong, 'sl_xuat' => $inventory->sl_xuat + $lot->so_luong]);
         }
         return $this->success([], 'Xuất kho thành công');
     }
@@ -3775,7 +3776,26 @@ class ApiMobileController extends AdminController
     public function storeProductPlan(Request $request)
     {
         $input = $request->all();
-        $input['cong_doan_sx'] = Str::slug($input['cong_doan_sx']);
+        $machine = Machine::where('code', $input['machine_id'])->first();
+        $input['line_id'] =  $machine->line_id;
+        $input['thoi_gian_bat_dau'] = date('Y-m-d H:i:s', strtotime($input['thoi_gian_bat_dau']));
+
+        $setupTime = Phase2UIApiController::getSetupTime($input['product_id'], $machine->line_id);
+        $efficiency = Phase2UIApiController::getEfficiency($input['product_id'], $machine->line_id);
+        $productionTime = ceil(($input['sl_giao_sx'] / $efficiency) * 60) + $setupTime;
+
+        $machineShifts = Phase2UIApiController::getMachineProductionShifts($machine->code, date('Y-m-d', strtotime('+1 day')));
+        if (count($machineShifts) <= 0) {
+            throw new Exception("Máy " . $machine->code . " chưa được phân ca ngày " . date('d-m-Y', strtotime('+1 day')), 1);
+        }
+        $start_time = $input['thoi_gian_bat_dau'];
+        $end_time = date('Y-m-d H:i:s', strtotime('+' . $productionTime . ' minutes', strtotime($input['thoi_gian_bat_dau'])));
+        $times = Phase2UIApiController::adjustShift($start_time, $end_time, $machineShifts);
+        $input['thoi_gian_ket_thuc'] = $times['end_time'];
+        $input['cong_doan_sx'] = $machine->line->name;
+        $input['lo_sx'] = Losx::generateUniqueId();
+        Losx::create(['id' =>  $input['lo_sx'], 'product_order_id' => $input['lo_sx']]);
+        $input['ngay_sx'] = date('Y-m-d', strtotime($input['thoi_gian_bat_dau']));
         $check = ProductionPlan::where('lo_sx', $input['lo_sx'])->where('cong_doan_sx', $input['cong_doan_sx'])->first();
         if ($check) {
             return $this->failure([], 'Trùng lô sản xuất');
@@ -3790,29 +3810,32 @@ class ApiMobileController extends AdminController
             DB::beginTransaction();
             $input = $request->all();
             $model = ProductionPlan::find($input['id']);
-            if($model->isDirty()){
-              return $model->getDirty();
+            if ($model->isDirty()) {
+                return $model->getDirty();
             }
-            // $newStartTime = Carbon::parse($input['thoi_gian_bat_dau']);
-            // $newEndTime = Carbon::parse($input['thoi_gian_ket_thuc']);
 
-            // $lotPlans = $model->lotPlan()->orderBy('start_time')->get();
-            // foreach ($lotPlans as $key => $lot_plan) {
-            //     $diff = Carbon::parse($lot_plan->end_time)->diffInSeconds($lot_plan->start_time);
-            //     if ($key === 0) {
-            //         $lotStartTime = $newStartTime;
-            //     } else {
-            //         $lotStartTime = Carbon::parse($lotPlans[$key - 1]->end_time);
-            //     }
-            //     $lotEndTime = $lotStartTime->copy()->addSeconds($diff);
-            //     $newEndTime = $lotEndTime;
-            //     $lot_plan->update([
-            //         'machine_code' => $model->machine_id,
-            //         'start_time' => $lotStartTime,
-            //         'end_time' => $lotEndTime
-            //     ]);
-            // }
-            // $input['thoi_gian_ket_thuc'] = $newEndTime->format('Y-m-d H:i:s');
+            $machine = Machine::where('code', $input['machine_id'])->first();
+            $setupTime = Phase2UIApiController::getSetupTime($input['product_id'], $machine->line_id);
+            $productOrderHistory = ProductionOrderHistory::where('product_id', $input['product_id'])->where('line_id', $machine->line_id)->first();
+            $efficiency = Phase2UIApiController::getEfficiency($input['product_id'], $machine->line_id);
+            $productionTime = ceil((($productOrderHistory->production_quantity ?? $model->sl_giao_sx) / $efficiency) * 60) + $setupTime;
+            $machineShifts = Phase2UIApiController::getMachineProductionShifts($machine->code, date('Y-m-d', strtotime('+1 day')));
+            if (count($machineShifts) <= 0) {
+                throw new Exception("Máy " . $machine->code . " chưa được phân ca ngày " . date('d-m-Y', strtotime('+1 day')), 1);
+            }
+            $totalTime = $machineShifts->where('type_break', 'Sản xuất')->sum('duration_minutes');
+            if ($productionTime > $totalTime) {
+                $productionTime = $totalTime;
+                $productionQuanty = ceil(($totalTime - $setupTime) * ($efficiency / 60));
+            } else {
+
+                $productionQuanty = $productOrderHistory->production_quantity ?? $model->sl_giao_sx;
+            }
+            $model->sl_giao_sx = $productionQuanty;
+            $start_time = $input['thoi_gian_bat_dau'];
+            $end_time = date('Y-m-d H:i:s', strtotime('+' . $productionTime . ' minutes', strtotime($input['thoi_gian_bat_dau'])));
+            $times = Phase2UIApiController::adjustShift($start_time, $end_time, $machineShifts);
+            $model->thoi_gian_ket_thuc = $times['end_time'];
             $model->fill($input);
             $model->save();
             DB::commit();
