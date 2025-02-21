@@ -4067,7 +4067,7 @@ class Phase2UIApiController extends Controller
             $sortedHistories = $productionOrderPriority->productionOrderHistory->sortByDesc('updated_at');
             foreach ($sortedHistories as $key => $history) {
                 $setupTime = $this->getSetupTime($productionOrderPriority->product_id, $history->line_id);
-                $remainQuantityOrder = $history->order_quantity - $history->actual_quantity;
+                $remainQuantityOrder = $history->order_quantity - $history->inventory_quantity;
                 if($remainQuantityOrder <= 0) {
                     continue;
                 }
@@ -4122,16 +4122,16 @@ class Phase2UIApiController extends Controller
                 $product = Product::find($product_id);
                 $productionPlans[] = [
                     'product_order_id' => $productionOrderPriority->production_order_id,
-                    'ngay_dat_hang' => $history->productionOrder->order_date,
+                    'ngay_dat_hang' => $history->productionOrderPriority->confirm_date,
                     'cong_doan_sx' => $history->line->name,
                     'line_id' => $history->line_id,
                     'ca_sx' => 1,
                     'ngay_sx' => date('Y-m-d', strtotime('+1 day')),
-                    'ngay_giao_hang' => $history->productionOrder->delivery_date,
+                    'ngay_giao_hang' => '',
                     'machine_id' => $machinePriorityOrder->machine_id,
                     'product_id' => $product_id,
                     'product_name' => $product->name,
-                    'khach_hang' => $productionOrderPriority->productionOrder->customer->name,
+                    'khach_hang' => '',
                     'so_bat' => 0,
                     'sl_nvl' => 0,
                     'sl_tong_don_hang' => $history->order_quantity,
@@ -4173,6 +4173,8 @@ class Phase2UIApiController extends Controller
                 $lo_sx = Losx::firstOrCreate(['product_order_id' => $plan['product_order_id']]);
                 $plan['lo_sx'] = $lo_sx->id;
                 $plan['production_order_id'] = $plan['product_order_id'];
+                $plan['khach_hang'] = $plan['khach_hang'] ?? '';
+                $plan['ngay_giao_hang'] = $plan['ngay_giao_hang'] ?? '';
                 ProductionPlan::create($plan);
             }
             DB::commit();

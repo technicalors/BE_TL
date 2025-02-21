@@ -3790,29 +3790,29 @@ class ApiMobileController extends AdminController
             DB::beginTransaction();
             $input = $request->all();
             $model = ProductionPlan::find($input['id']);
-            // if($model->isDirty()){
-            //   return $model->getDirty();
-            // }
-            $newStartTime = Carbon::parse($input['thoi_gian_bat_dau']);
-            $newEndTime = Carbon::parse($input['thoi_gian_ket_thuc']);
-
-            $lotPlans = $model->lotPlan()->orderBy('start_time')->get();
-            foreach ($lotPlans as $key => $lot_plan) {
-                $diff = Carbon::parse($lot_plan->end_time)->diffInSeconds($lot_plan->start_time);
-                if ($key === 0) {
-                    $lotStartTime = $newStartTime;
-                } else {
-                    $lotStartTime = Carbon::parse($lotPlans[$key - 1]->end_time);
-                }
-                $lotEndTime = $lotStartTime->copy()->addSeconds($diff);
-                $newEndTime = $lotEndTime;
-                $lot_plan->update([
-                    'machine_code' => $model->machine_id,
-                    'start_time' => $lotStartTime,
-                    'end_time' => $lotEndTime
-                ]);
+            if($model->isDirty()){
+              return $model->getDirty();
             }
-            $input['thoi_gian_ket_thuc'] = $newEndTime->format('Y-m-d H:i:s');
+            // $newStartTime = Carbon::parse($input['thoi_gian_bat_dau']);
+            // $newEndTime = Carbon::parse($input['thoi_gian_ket_thuc']);
+
+            // $lotPlans = $model->lotPlan()->orderBy('start_time')->get();
+            // foreach ($lotPlans as $key => $lot_plan) {
+            //     $diff = Carbon::parse($lot_plan->end_time)->diffInSeconds($lot_plan->start_time);
+            //     if ($key === 0) {
+            //         $lotStartTime = $newStartTime;
+            //     } else {
+            //         $lotStartTime = Carbon::parse($lotPlans[$key - 1]->end_time);
+            //     }
+            //     $lotEndTime = $lotStartTime->copy()->addSeconds($diff);
+            //     $newEndTime = $lotEndTime;
+            //     $lot_plan->update([
+            //         'machine_code' => $model->machine_id,
+            //         'start_time' => $lotStartTime,
+            //         'end_time' => $lotEndTime
+            //     ]);
+            // }
+            // $input['thoi_gian_ket_thuc'] = $newEndTime->format('Y-m-d H:i:s');
             $model->fill($input);
             $model->save();
             DB::commit();

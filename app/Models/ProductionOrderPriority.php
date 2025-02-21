@@ -9,7 +9,7 @@ class ProductionOrderPriority extends Model
 {
     use HasFactory;
     protected $table = 'production_order_priorities';
-    protected $fillable = ['production_order_id', 'confirm_date', 'product_id', 'priority'];
+    protected $fillable = ['production_order_id', 'confirm_date', 'product_id', 'priority','new_order_quantity','fc_order_quantity','outstanding_order','production_quantity'];
 
     public function productionOrder()
     {
@@ -23,7 +23,7 @@ class ProductionOrderPriority extends Model
 
     public function productionOrderHistory()
     {
-        return $this->hasMany(ProductionOrderHistory::class, 'production_order_id','production_order_id')->orderBy('id', 'DESC');
+        return $this->hasMany(ProductionOrderHistory::class, 'product_id','product_id')->orderBy('id', 'DESC');
     }
 
     public static function removeItemAndReorderList($production_order_id){
