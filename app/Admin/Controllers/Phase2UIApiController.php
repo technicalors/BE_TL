@@ -2273,7 +2273,7 @@ class Phase2UIApiController extends Controller
         return $rollChangeSpec ? $rollChangeSpec->value : 0;
     }
 
-    function getEfficiency($productId, $lineId)
+    public static function getEfficiency($productId, $lineId)
     {
         // Truy vấn để lấy giá trị năng suất từ bảng spec theo slug 'nang-suat'
         $efficiencySpec = Spec::where('line_id', $lineId)
@@ -2325,7 +2325,7 @@ class Phase2UIApiController extends Controller
         return $rollsPerTransportSpec ? $rollsPerTransportSpec->value : 0;
     }
 
-    function getSetupTime($productId, $lineId)
+    public static function getSetupTime($productId, $lineId)
     {
         // Truy vấn để lấy giá trị thời gian vào hàng từ bảng spec theo slug 'vao-hang-setup-may'
         $setupTimeSpec = Spec::where('line_id', $lineId)
@@ -2398,7 +2398,7 @@ class Phase2UIApiController extends Controller
         return $beforeStart->concat($afterStart)->take($numMachines)->values();
     }
 
-    function getMachineProductionShifts($machineId, $date): Collection
+    public static function getMachineProductionShifts($machineId, $date): Collection
     {
         $cacheKey = "machine_{$machineId}_production_shifts_{$date}";
 
@@ -3966,7 +3966,7 @@ class Phase2UIApiController extends Controller
         return ProductionPlan::create($planInput);
     }
 
-    public function adjustShift($shiftStart, $shiftEnd, $shiftBreaks)
+    public static function adjustShift($shiftStart, $shiftEnd, $shiftBreaks)
     {
         // Thiết lập múi giờ mong muốn
         $timezone = new DateTimeZone('Asia/Ho_Chi_Minh');
@@ -4068,11 +4068,11 @@ class Phase2UIApiController extends Controller
             foreach ($sortedHistories as $key => $history) {
                 $setupTime = $this->getSetupTime($productionOrderPriority->product_id, $history->line_id);
                 $remainQuantityOrder = $history->order_quantity - $history->inventory_quantity;
-                if($remainQuantityOrder <= 0) {
+                if ($remainQuantityOrder <= 0) {
                     continue;
                 }
                 $efficiency = $this->getEfficiency($productionOrderPriority->product_id, $history->line_id);
-                if($efficiency <= 0) {
+                if ($efficiency <= 0) {
                     throw new Exception("Không tìm thấy năng suất cho sản phẩm " . $productionOrderPriority->product_id . " và công đoạn " . $history->line->name, 1);
                 }
                 $productionTime = ceil(($remainQuantityOrder / $efficiency) * 60) + $setupTime;
