@@ -296,6 +296,9 @@ class ProductOrderController extends Controller
                 $maxPriority = ProductionOrderPriority::max('priority');
                 $newPriority = ($maxPriority !== null) ? $maxPriority + 1 : 1;
                 $production_quantity = ($new_order_quantity + $fc_order_quantity) - ($inventory->sl_ton ?? 0);
+                if($production_quantity < 0){
+                    $production_quantity = 0;
+                }
                 ProductionOrderPriority::firstOrCreate(
                     ['product_id' => $productOrder->product_id],
                     [
@@ -312,8 +315,10 @@ class ProductOrderController extends Controller
 
                 $quantity = $production_quantity;
                 foreach ($productionSteps as $productionStep) {
-                    $calculatedQuantity = Phase2UIApiController::calculateProductionOutput($productOrder->product_id, $productionStep->line_id, $quantity);
-                    $quantity = $calculatedQuantity;
+                    if($quantity > 0){
+                        $calculatedQuantity = Phase2UIApiController::calculateProductionOutput($productOrder->product_id, $productionStep->line_id, $quantity);
+                        $quantity = $calculatedQuantity;
+                    }
                     $inp['product_id'] = $productOrder->product_id;
                     $inp['line_id'] = $productionStep->line_id;
                     $inp['order_quantity'] = $quantity;
@@ -324,6 +329,9 @@ class ProductOrderController extends Controller
             } else {
                 $outstanding_order = $productionOrderPriority->outstanding_order + $productionOrderPriority->new_order_quantity;
                 $production_quantity = ($new_order_quantity + $fc_order_quantity + $outstanding_order) - ($inventory->sl_ton ?? 0);
+                if($production_quantity < 0){
+                    $production_quantity = 0;
+                }
                 $productionOrderPriority->update([
                     'confirm_date'        => $input['confirm_date'],
                     'new_order_quantity'  => $new_order_quantity,
@@ -334,10 +342,16 @@ class ProductOrderController extends Controller
 
                 $quantity = $production_quantity;
                 foreach ($productionSteps as $productionStep) {
-                    $calculatedQuantity = Phase2UIApiController::calculateProductionOutput($productOrder->product_id, $productionStep->line_id, $quantity);
+                    if($quantity > 0){
+                        $calculatedQuantity = Phase2UIApiController::calculateProductionOutput($productOrder->product_id, $productionStep->line_id, $quantity);
+                        $quantity = $calculatedQuantity;
+                    }
                     $productOrderHistory = ProductionOrderHistory::where('product_id', $productOrder->product_id)->where('line_id', $productionStep->line_id)->first();
-                    $order_quantity = $calculatedQuantity;
+                    $order_quantity = $quantity;
                     $production_quantity = $quantity - $productOrderHistory->inventory_quantity;
+                    if($production_quantity < 0){
+                        $production_quantity = 0;
+                    }
                     $quantity = $production_quantity;
                     ProductionOrderHistory::where('product_id', $productOrder->product_id)->where('line_id', $productionStep->line_id)->update(['order_quantity' => $order_quantity, 'production_quantity' => $production_quantity]);
                 }
