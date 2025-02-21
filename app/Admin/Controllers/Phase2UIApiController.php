@@ -4173,6 +4173,8 @@ class Phase2UIApiController extends Controller
                 $lo_sx = Losx::firstOrCreate(['product_order_id' => $plan['product_order_id']]);
                 $plan['lo_sx'] = $lo_sx->id;
                 $plan['production_order_id'] = $plan['product_order_id'];
+                $plan['khach_hang'] = $plan['khach_hang'] ?? '';
+                $plan['ngay_giao_hang'] = $plan['ngay_giao_hang'] ?? '';
                 ProductionPlan::create($plan);
             }
             DB::commit();
