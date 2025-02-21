@@ -3776,7 +3776,25 @@ class ApiMobileController extends AdminController
     public function storeProductPlan(Request $request)
     {
         $input = $request->all();
-        $input['cong_doan_sx'] = Str::slug($input['cong_doan_sx']);
+        $machine = Machine::where('code', $input['machine_id'])->first();
+        $input['line_id'] =  $machine->line_id;
+        $input['thoi_gian_bat_dau'] = date('Y-m-d H:i:s', strtotime($input['thoi_gian_bat_dau']));
+        
+        $setupTime = Phase2UIApiController::getSetupTime($input['product_id'], $machine->line_id);
+        $efficiency = Phase2UIApiController::getEfficiency($input['product_id'], $machine->line_id);
+        $productionTime = ceil(($input['sl_giao_sx'] / $efficiency) * 60) + $setupTime;
+
+        $machineShifts = Phase2UIApiController::getMachineProductionShifts($machine->code, date('Y-m-d', strtotime('+1 day')));
+        if (count($machineShifts) <= 0) {
+            throw new Exception("Máy " . $machine->code . " chưa được phân ca ngày " . date('d-m-Y', strtotime('+1 day')), 1);
+        }
+        $start_time = $input['thoi_gian_bat_dau'];
+        $end_time = date('Y-m-d H:i:s', strtotime('+' . $productionTime . ' minutes', strtotime($input['thoi_gian_bat_dau'])));
+        $times = Phase2UIApiController::adjustShift($start_time, $end_time, $machineShifts);
+        $input['thoi_gian_ket_thuc'] = $times['end_time'];
+        $input['cong_doan_sx'] = $machine->line->name;
+        $input['lo_sx'] = Losx::generateUniqueId();
+        $input['ngay_sx'] = date('Y-m-d', strtotime($input['thoi_gian_bat_dau']));
         $check = ProductionPlan::where('lo_sx', $input['lo_sx'])->where('cong_doan_sx', $input['cong_doan_sx'])->first();
         if ($check) {
             return $this->failure([], 'Trùng lô sản xuất');
