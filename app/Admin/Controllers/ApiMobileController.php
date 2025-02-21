@@ -3779,7 +3779,7 @@ class ApiMobileController extends AdminController
         $machine = Machine::where('code', $input['machine_id'])->first();
         $input['line_id'] =  $machine->line_id;
         $input['thoi_gian_bat_dau'] = date('Y-m-d H:i:s', strtotime($input['thoi_gian_bat_dau']));
-        
+
         $setupTime = Phase2UIApiController::getSetupTime($input['product_id'], $machine->line_id);
         $efficiency = Phase2UIApiController::getEfficiency($input['product_id'], $machine->line_id);
         $productionTime = ceil(($input['sl_giao_sx'] / $efficiency) * 60) + $setupTime;
@@ -3794,6 +3794,7 @@ class ApiMobileController extends AdminController
         $input['thoi_gian_ket_thuc'] = $times['end_time'];
         $input['cong_doan_sx'] = $machine->line->name;
         $input['lo_sx'] = Losx::generateUniqueId();
+        Losx::create(['id' =>  $input['lo_sx'], 'product_order_id' => $input['lo_sx']]);
         $input['ngay_sx'] = date('Y-m-d', strtotime($input['thoi_gian_bat_dau']));
         $check = ProductionPlan::where('lo_sx', $input['lo_sx'])->where('cong_doan_sx', $input['cong_doan_sx'])->first();
         if ($check) {
