@@ -5,7 +5,7 @@ namespace App\Admin\Controllers;
 use App\Http\Controllers\Controller;
 use App\Imports\StampsImport;
 use App\Models\Material;
-use App\Models\qcCriteria;
+use App\Models\QCCriteria;
 use App\Traits\API;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
