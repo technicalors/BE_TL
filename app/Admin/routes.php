@@ -517,6 +517,7 @@ Route::group([
     $router->post('products/delete', [App\Admin\Controllers\ProductController::class, 'deleteMultiple']);
     $router->get('product/export', [App\Admin\Controllers\ProductController::class, 'export']);
     $router->post('product/import', [App\Admin\Controllers\ProductController::class, 'importNewVersion']);
+    $router->post('product/import-product-and-customer', [App\Admin\Controllers\ProductController::class, 'importProductAndCustomer']);
 
     $router->get('material/list', [App\Admin\Controllers\MaterialController::class, 'list']);
     $router->patch('material/update/{id}', [App\Admin\Controllers\MaterialController::class, 'update']);
