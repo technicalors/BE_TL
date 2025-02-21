@@ -16,6 +16,7 @@ use App\Models\MachinePriorityOrderAttributeValue;
 use App\Models\Material;
 use App\Models\MaterialWastage;
 use App\Models\Product;
+use App\Models\ProductCustomer;
 use App\Models\ProductionJourney;
 use App\Models\Spec;
 use App\Models\TimeWastage;
@@ -80,7 +81,7 @@ class ProductController extends Controller
         } catch (\Throwable $th) {
             DB::rollBack();
         }
-        return $this->success('', 'Tạo thành công');
+        return $this->success($product, 'Tạo thành công');
     }
 
     public function update(Request $request, $id)
@@ -92,12 +93,15 @@ class ProductController extends Controller
         }
         try {
             DB::beginTransaction();
-            $product = Product::find($id)->update($input);
+            $product = Product::find($id);
+            if ($product) {
+                $product->update($input);
+            }
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
         }
-        return $this->success('', 'Cập nhật thành công');
+        return $this->success($product, 'Cập nhật thành công');
     }
 
     public function delete(Request $request, $id)
@@ -1546,5 +1550,44 @@ class ProductController extends Controller
         }
 
         return $this->success('', 'Import thành công');
+    }
+
+    public function convertSpec()
+    {
+        $lines = Line::where('factory_id', 2)->get();
+        ProductionJourney::truncate();
+        Product::all()->each(function ($product) use ($lines) {
+            ProductCustomer::updateOrCreate(['customer_id' => $product->customer_id, 'product_id' => $product->id]);
+            foreach ($lines as $line) {
+                $specs = Spec::where('product_id', $product->id)->where('line_id', $line->id)->get()->mapWithKeys(function ($spec) {
+                    return [$spec->slug => $spec->value];
+                });
+                $production_order = $specs['hanh-trinh-san-xuat'] ?? null;
+                if ($production_order) {
+                    $material_waste = $specs['hao-phi-vao-hang-cac-cong-doan'] ?? null;
+                    $line_production_waste = $specs['hao-phi-san-xuat-cac-cong-doan'] ?? null;
+                    $prep_time = $specs['chuan-bidau-ca'] ?? null;
+                    $transportation_waste = $specs['van-chuyen-chuyen-hang-cong-doan-truoc-sang-cong-doan-sau'] ?? null;
+                    $roll_change_time = $specs['thoi-gian-len-xuong-cuon'] ?? null;
+                    $input_quantity = $specs['vao-hang-setup-may'] ?? null;
+                    $hourly_output = $specs['nang-suat-an-dinhgio'] ?? null;
+                    $operator_count = $specs['nhan-su-an-dinh-may-nguoi'] ?? null;
+                    ProductionJourney::create([
+                        'product_id' => $product->id,
+                        'line_id' => $line->id,
+                        'production_order' => $production_order,
+                        'material_waste' => $material_waste,
+                        'line_production_waste' => $line_production_waste,
+                        'prep_time' => $prep_time,
+                        'transportation_waste' => $transportation_waste,
+                        'roll_change_time' => $roll_change_time,
+                        'input_quantity' => $input_quantity,
+                        'hourly_output' => $hourly_output,
+                        'operator_count' => $operator_count,
+                    ]);
+                }
+                $production_order = $specs['hanh-trinh-san-xuat'] ?? null;
+            }
+        });
     }
 }

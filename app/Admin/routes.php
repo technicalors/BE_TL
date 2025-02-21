@@ -13,6 +13,7 @@ use App\Admin\Controllers\LineInventoryController;
 use App\Admin\Controllers\LotPlanController;
 use App\Admin\Controllers\MachineController;
 use App\Admin\Controllers\MachinePriorityOrderController;
+use App\Admin\Controllers\MachineProductionModeController;
 use App\Admin\Controllers\RoleController;
 use App\Admin\Controllers\MaintenanceCategoryController;
 use App\Admin\Controllers\MaintenanceItemController;
@@ -25,10 +26,13 @@ use App\Admin\Controllers\Phase2DBApiController;
 use App\Admin\Controllers\Phase2OIApiController;
 use App\Admin\Controllers\Phase2UIApiController;
 use App\Admin\Controllers\ParameterController;
+use App\Admin\Controllers\ProductController;
+use App\Admin\Controllers\ProductCustomerController;
 use App\Admin\Controllers\ProductionJourneyController;
 use App\Admin\Controllers\ProductionOrderHistoryController;
 use App\Admin\Controllers\ProductionOrderPriorityController;
 use App\Admin\Controllers\ProductOrderController;
+use App\Admin\Controllers\QCCriteriaController;
 use App\Http\Controllers\ShiftBreakController;
 use App\Admin\Controllers\StampController;
 use App\Http\Controllers\FcPlantController;
@@ -771,6 +775,12 @@ Route::group([
     Route::apiResource('production-journey', ProductionJourneyController::class);
     Route::post('product-journey/delete', [ProductionJourneyController::class, 'deleteManyMachinePriorityOrders']);
 
+    Route::apiResource('machine-production-mode', MachineProductionModeController::class);
+
+    Route::apiResource('qc-criteria', QCCriteriaController::class);
+
+    Route::apiResource('product-customer', ProductCustomerController::class);
+
     Route::apiResource('excel-headers', ExcelHeaderController::class);
     Route::post('excel-headers/import', [ExcelHeaderController::class, 'import']);
     Route::post('excel-headers/export', [ExcelHeaderController::class, 'export']);
@@ -807,4 +817,13 @@ Route::group([
     $router->post('scan-material', [Phase2OIApiController::class, 'scanForFirstLine']);
     $router->post('scan-manufacture', [Phase2OIApiController::class, 'scanForProductionLine']);
     $router->post('end-of-production', [Phase2OIApiController::class, 'finishProductionLine']);
+});
+
+//OI
+Route::group([
+    'prefix'        => "/api/",
+    'middleware'    => [],
+], function (Router $router) {
+    //Test new api
+    $router->post('convert-spec', [ProductController::class, 'convertSpec']);
 });
