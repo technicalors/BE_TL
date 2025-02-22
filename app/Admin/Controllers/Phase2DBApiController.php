@@ -316,7 +316,8 @@ class Phase2DBApiController extends Controller
 
                 // $upm = $lotPlan->quantity / (2 * 60);
                 $diff_time = strtotime('now') - strtotime($info->thoi_gian_bat_dau ?? 'now');
-                $target = (int)($upm * ($diff_time / 60));
+                // $target = (int)($upm * ($diff_time / 60));
+                $target = 0;
                 // $tl_ht = (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ? number_format((($info->sl_dau_ra_hang_loat - $info->sl_ng) / $info->sl_dau_ra_hang_loat), 2) : 0));
                 $tl_ht = $sumLotPlan > 0 ? (int) number_format(($sumInfoActure ?? 0) / ($sumLotPlan ?? 0) * 100, 2) : 0;
                 if ((!is_null($info->thoi_gian_bat_dau) && is_null($info->thoi_gian_bam_may) && is_null($info->thoi_gian_ket_thuc)) || ($tracking->status != 1 && $tl_ht < 95)) {
