@@ -164,6 +164,27 @@ class Phase2DBApiController extends Controller
             $info = InfoCongDoan::where("line_id", $machine->line_id)->where('machine_code', $machine->code)->with(["lotPlan", "lot.plan.product"])->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->orderBy('thoi_gian_bat_dau', 'DESC')->first();
             $tracking = Tracking::where('machine_id', $machine->code)->first();
             if (!$info) {
+                $plan = ProductionPlan::where('line_id', $machine->line_id)
+                    ->where('machine_id', $machine->code)
+                    ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
+                    ->first();
+                $tm = [
+                    "cong_doan" => mb_strtoupper($info->line->name, 'UTF-8'),
+                    'machine_code' => $machine->code,
+                    'machine_name' => $machine->code,
+                    "product" => $plan ? $plan->product->name : '',
+                    // "sl_dau_ra_kh" => $lotPlan->quantity ?? 0,
+                    "sl_dau_ra_kh" => $plan->sl_giao_sx ?? 0,
+                    // "sl_thuc_te" => $info->sl_dau_ra_hang_loat - $info->sl_ng,
+                    "sl_thuc_te" => 0,
+                    // "sl_muc_tieu" =>  $lotPlan->quantity ?? 0,
+                    "sl_muc_tieu" =>  $sumLotPlan ?? 0,
+                    "ti_le_ng" => (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ?  number_format(($info->sl_ng /  $info->sl_dau_ra_hang_loat), 2) : 0)),
+                    "ti_le_ht" => 0,
+                    "status" => 0,
+                    "time" => "",
+                ];
+                $data[] = $tm;
                 // $tm = [
                 //     "cong_doan" => mb_strtoupper($machine->line->name, 'UTF-8'),
                 //     'machine_code' => mb_strtoupper($machine->code, 'UTF-8'),
