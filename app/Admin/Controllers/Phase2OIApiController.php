@@ -2036,8 +2036,11 @@ class Phase2OIApiController extends Controller
         // Định dạng 4: Khoảng dùng dấu '~'
         $pattern4 = "/(-?\d+(\.\d+)?)~(-?\d+(\.\d+)?)/";
     
-        // Loại bỏ phần mô tả nếu có trước giá trị số
-        $input = trim(preg_replace("/.*?:\s*/", "", $input));
+        // **Tìm tất cả số trong chuỗi**
+        preg_match_all("/-?\d+(\.\d+)?/", $input, $allNumbers);
+        
+        // **Chuyển danh sách số tìm được thành chuỗi để kiểm tra định dạng**
+        $input = implode(" ", $allNumbers[0]);
     
         if (preg_match($pattern1, $input, $matches)) {
             $value1 = (float)$matches[1] + (float)$matches[3];
