@@ -180,10 +180,10 @@ class Phase2DBApiController extends Controller
                 // ];
                 // $data[] = $tm;
             } else {
-                $lotPlan = $info->lotPlan;
-                if (!$lotPlan) {
-                    continue;
-                }
+                // $lotPlan = $info->lotPlan;
+                // if (!$lotPlan) {
+                //     continue;
+                // }
 
                 // Fix DB
                 $sumLotPlan = ProductionPlan::query()->where('line_id', $machine->line_id)
@@ -202,9 +202,10 @@ class Phase2DBApiController extends Controller
                 $product = $info->product ?? null;
                 // if (!isset($plan)) $plan = $info->lot->plan;
 
-                $upm = $lotPlan->quantity / (2 * 60);
+                // $upm = $lotPlan->quantity / (2 * 60);
                 $diff_time = strtotime('now') - strtotime($info->thoi_gian_bat_dau ?? 'now');
-                $target = (int)($upm * ($diff_time / 60));
+                // $target = (int)($upm * ($diff_time / 60));
+                $target = 0;
                 // $tl_ht = (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ? number_format((($info->sl_dau_ra_hang_loat - $info->sl_ng) / $info->sl_dau_ra_hang_loat), 2) : 0));
                 $tl_ht = $sumLotPlan > 0 ? (int) number_format(($sumInfoActure ?? 0) / ($sumLotPlan ?? 0) * 100, 2) : 0;
 
@@ -270,7 +271,7 @@ class Phase2DBApiController extends Controller
         // }
         // $machines = $query->get();
         $data = [];
-        $machine_ids = ProductionPlan::whereDate('ngay_sx', date('Y-m-d'))->pluck('machine_id')->where('line_id', '<>', 25)->toArray();
+        $machine_ids = ProductionPlan::whereDate('ngay_sx', date('Y-m-d'))->where('line_id', '<>', 25)->pluck('machine_id')->toArray();
         $machines = Machine::whereIn('code', $machine_ids)->get();
         foreach ($machines as $machine) {
             $info = InfoCongDoan::where("line_id", $machine->line_id)->where('machine_code', $machine->code)->with(["lotPlan", "lot.plan.product"])->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->orderBy('thoi_gian_bat_dau', 'DESC')->first();
