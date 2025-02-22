@@ -179,7 +179,7 @@ class Phase2DBApiController extends Controller
                     "sl_thuc_te" => 0,
                     // "sl_muc_tieu" =>  $lotPlan->quantity ?? 0,
                     "sl_muc_tieu" =>  $sumLotPlan ?? 0,
-                    "ti_le_ng" => (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ?  number_format(($info->sl_ng /  $info->sl_dau_ra_hang_loat), 2) : 0)),
+                    "ti_le_ng" => 0,
                     "ti_le_ht" => 0,
                     "status" => 0,
                     "time" => "",
