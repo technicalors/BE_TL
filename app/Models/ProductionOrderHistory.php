@@ -9,7 +9,7 @@ class ProductionOrderHistory extends Model
 {
     use HasFactory;
     protected $table = "production_order_histories";
-    protected $fillable = ['line_id', 'product_id', 'production_quantity', 'inventory_quantity', 'order_quantity'];
+    protected $fillable = ['line_id', 'product_id', 'production_quantity', 'inventory_quantity', 'order_quantity','component_id'];
 
     public function line()
     {

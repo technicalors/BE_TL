@@ -54,6 +54,7 @@ class ProductionPlan extends Model
         'material_id',
         'status_plan',
         'production_order_id',
+        'component_id',
     ];
     // public function setThoiGianBatDauAttribute($value)
     // {

@@ -50,7 +50,8 @@ class InfoCongDoan extends Model
         'sl_khi_bam_may',
         'sl_dau_ra_ket_thuc',
         'sl_dau_vao_bam_may',
-        'plan_id'
+        'plan_id',
+        'component_id',
     ];
 
     public static function generateUniqueId($lo_sx, $line_id)
