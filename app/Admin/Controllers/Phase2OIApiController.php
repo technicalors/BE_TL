@@ -2022,7 +2022,7 @@ class Phase2OIApiController extends Controller
     }
 
     function detect_format($input) {
-        $input = str_replace(',', '.', $input);
+        $input = str_replace([',', ' '], ['.', ''], $input);
 
         // Định dạng 1: '12.5+1.5/-1.25'
         $pattern1 = "/(-?\d+(\.\d+)?)([+-]\d+(\.\d+)?)?\/(-?\d+(\.\d+)?)/";
