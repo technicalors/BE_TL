@@ -292,10 +292,10 @@ class Phase2DBApiController extends Controller
                 // ];
                 // $data[] = $tm;
             } else {
-                $lotPlan = $info->lotPlan;
-                if (!$lotPlan) {
-                    continue;
-                }
+                // $lotPlan = $info->lotPlan;
+                // if (!$lotPlan) {
+                //     continue;
+                // }
 
                 // Fix DB
                 $sumLotPlan = (int)ProductionPlan::query()->where('line_id', $machine->line_id)
@@ -314,7 +314,7 @@ class Phase2DBApiController extends Controller
                 // if (!isset($plan)) $plan = $info->lot->plan;
                 $status = 0;
 
-                $upm = $lotPlan->quantity / (2 * 60);
+                // $upm = $lotPlan->quantity / (2 * 60);
                 $diff_time = strtotime('now') - strtotime($info->thoi_gian_bat_dau ?? 'now');
                 $target = (int)($upm * ($diff_time / 60));
                 // $tl_ht = (int) (100 * ($info->sl_dau_ra_hang_loat > 0 ? number_format((($info->sl_dau_ra_hang_loat - $info->sl_ng) / $info->sl_dau_ra_hang_loat), 2) : 0));
