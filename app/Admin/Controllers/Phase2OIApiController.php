@@ -174,19 +174,16 @@ class Phase2OIApiController extends Controller
         }
         $info_cong_doans = $info_query->get();
 
-        $lot_plan_query = LotPlan::whereDate("start_time", Carbon::now());
+        $plan = ProductionPlan::whereDate("ngay_sx", Carbon::now());
         if (!empty($request->machine_code)) {
-            $lot_plan_query->where('machine_code', $request->machine_code);
+            $plan->where('machine_code', $request->machine_code);
         }
         if (!empty($request->line_id)) {
-            $lot_plan_query->where('line_id', $request->line_id);
+            $plan->where('line_id', $request->line_id);
         }
-        $lot_plans = $lot_plan_query->whereHas('plan', function ($q) {
-            $q->whereIn('status_plan', [0, 1]);
-        })->get();
-
+        $plans = $plan->get();  
         $data =  [
-            "tong_sl_trong_ngay_kh" => $lot_plans->sum('quantity'),
+            "tong_sl_trong_ngay_kh" => $plans->sum('sl_giao_sx'),
             "tong_sl_thuc_te" =>  $info_cong_doans->sum('sl_dau_ra_hang_loat'),
             "tong_sl_tem_vang" =>  $info_cong_doans->sum('sl_tem_vang'),
             "tong_sl_ng" => $info_cong_doans->sum('sl_ng'),
