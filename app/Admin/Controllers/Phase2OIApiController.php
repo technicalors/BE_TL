@@ -687,7 +687,7 @@ class Phase2OIApiController extends Controller
                         'output' => 0
                     ]);
                 }
-                $infoCongDoan->plan && $infoCongDoan->plan->update(['status_plan' => ProductionPlan::STATUS_COMPLETED]);
+                // $infoCongDoan->plan && $infoCongDoan->plan->update(['status_plan' => ProductionPlan::STATUS_COMPLETED]);
                 DB::commit();
                 return $this->success($this->formatTemTrang($infoCongDoan, $request), "Kết thúc sản xuất thành công");
             } catch (\Throwable $th) {
@@ -1167,9 +1167,9 @@ class Phase2OIApiController extends Controller
                     $query->select(DB::raw("lot_id COLLATE utf8mb4_unicode_ci"))
                         ->from('info_cong_doan');
                 })->count();
-                if ($check === 0) {
-                    ProductionPlan::where('lo_sx', $infoCongDoan->lo_sx)->update(['status_plan' => ProductionPlan::STATUS_COMPLETED]);
-                }
+                // if ($check === 0) {
+                //     ProductionPlan::where('lo_sx', $infoCongDoan->lo_sx)->update(['status_plan' => ProductionPlan::STATUS_COMPLETED]);
+                // }
                 DB::commit();
                 return $this->success($this->formatTemTrang($infoCongDoan, $request), "Kết thúc sản xuất thành công");
             } catch (\Throwable $th) {
