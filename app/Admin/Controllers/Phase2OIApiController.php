@@ -421,8 +421,9 @@ class Phase2OIApiController extends Controller
         }
         $plan = ProductionPlan::where('line_id', $machine->line_id)
         ->where('machine_id', $machine->code)
-        ->where('status_plan', '!=', ProductionPlan::STATUS_COMPLETED)
+        ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
         ->whereDate('thoi_gian_bat_dau', '>=', date('Y-m-d'))
+        ->orderBy('status_plan', 'DESC')
         ->orderBy('thoi_gian_bat_dau')
         ->first();
         if (!$plan) {
@@ -493,8 +494,9 @@ class Phase2OIApiController extends Controller
         }
         $plan = ProductionPlan::where('line_id', $machine->line_id)
         ->where('machine_id', $machine->code)
-        ->where('status_plan', '!=', ProductionPlan::STATUS_COMPLETED)
+        ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
         ->whereDate('thoi_gian_bat_dau', '>=', date('Y-m-d'))
+        ->orderBy('status_plan', 'DESC')
         ->orderBy('thoi_gian_bat_dau')
         ->first();
         if (!$plan) {
