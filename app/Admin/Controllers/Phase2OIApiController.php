@@ -409,9 +409,9 @@ class Phase2OIApiController extends Controller
         if (!$roll) {
             return $this->failure([], "Không tìm thấy cuộn");
         }
-        if (!$roll->warehouse_inventory || $roll->warehouse_inventory->quantity <= 0) {
-            return $this->failure([], "Cuộn đã quét rồi");
-        }
+        // if (!$roll->warehouse_inventory || $roll->warehouse_inventory->quantity <= 0) {
+        //     return $this->failure([], "Cuộn đã quét rồi");
+        // }
         if (!$roll->material) {
             return $this->failure([], "Không tìm thấy NVL: ". ($roll->material_id ?? ""));
         }
@@ -437,7 +437,9 @@ class Phase2OIApiController extends Controller
             if ($plan->status_plan == ProductionPlan::STATUS_PENDING) {
                 $plan->update(['status_plan' => ProductionPlan::STATUS_IN_PROGRESS]);
             }
-            $roll->warehouse_inventory->update(['quantity' => 0]);
+            if($roll->warehouse_inventory){
+                $roll->warehouse_inventory->update(['quantity' => 0]);
+            }
             MachineStatus::reset($machine->code);
             $info = InfoCongDoan::firstOrCreate(
                 ['lot_id' => InfoCongDoan::generateUniqueId($plan->lo_sx, $plan->line_id), 'plan_id' => $plan->id, 'line_id' => $machine->line_id, 'machine_code' => $machine->code],
