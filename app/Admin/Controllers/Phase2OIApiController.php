@@ -439,7 +439,7 @@ class Phase2OIApiController extends Controller
             if ($plan->status_plan == ProductionPlan::STATUS_PENDING) {
                 $plan->update(['status_plan' => ProductionPlan::STATUS_IN_PROGRESS]);
             }
-            // $roll->warehouse_inventory->update(['quantity' => 0]);
+            $roll->warehouse_inventory->update(['quantity' => 0]);
             MachineStatus::reset($machine->code);
             $info = InfoCongDoan::firstOrCreate(
                 ['lot_id' => InfoCongDoan::generateUniqueId($plan->lo_sx, $plan->line_id), 'plan_id' => $plan->id, 'line_id' => $machine->line_id, 'machine_code' => $machine->code],
@@ -497,14 +497,13 @@ class Phase2OIApiController extends Controller
         $plan = ProductionPlan::where('line_id', $machine->line_id)
         ->where('machine_id', $machine->code)
         ->where('status_plan', '!=', ProductionPlan::STATUS_COMPLETED)
-        ->where('product_id', $scannedLot->product_id)
         ->whereDate('thoi_gian_bat_dau', '>=', date('Y-m-d'))
         ->orderBy('thoi_gian_bat_dau')
         ->first();
         if (!$plan) {
             return $this->failure([], 'Không tìm thấy KHSX');
         }
-        $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $scannedLot->product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
+        $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $plan->product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
         $requestValue = $hanh_trinh_san_xuat[$request->line_id] ?? 0;
         // Lọc các line_id có value nhỏ hơn requestValue
         $filteredLineIds = collect($hanh_trinh_san_xuat)
@@ -554,8 +553,9 @@ class Phase2OIApiController extends Controller
                 'plan_id' => $plan->id
             ]);
             if ($scannedLot) {
-                $line_inventory = LineInventories::where('product_id', $scannedLot->product_id)->where('line_id', $scannedLot->final_line_id)->first();
                 $sl_dat = $scannedLot->so_luong;
+                $line_inventory = LineInventories::where('product_id', $scannedLot->product_id)->where('line_id', $scannedLot->final_line_id)->first();
+                
                 if ($line_inventory) {
                     $line_inventory->update(['quantity' => $line_inventory->quantity - $sl_dat]);
                 } else {
@@ -653,26 +653,31 @@ class Phase2OIApiController extends Controller
                         'final_line_id' => $line->id,
                     ]);
                 }
-                $line_inventory = LineInventories::where('product_id', $infoCongDoan->product_id)->where('line_id', $infoCongDoan->line_id)->first();
                 $sl_dat = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng;
+                $line_inventory = LineInventories::where('product_id', $infoCongDoan->product_id)->where('line_id', $infoCongDoan->line_id)->first();
                 if ($line_inventory) {
                     $line_inventory->update(['quantity' => $line_inventory->quantity + $sl_dat]);
                 } else {
                     LineInventories::create(['quantity' => $sl_dat, 'line_id' => $infoCongDoan->line_id, 'product_id' => $infoCongDoan->product_id]);
                 }
                 //Update ProductionOrderHistory and ProductionOrderPriority
+                $productionOrderHistory = ProductionOrderHistory::where('line_id', $infoCongDoan->line_id)->where('product_id', $infoCongDoan->product_id)->first();
+                $producedInfoQuantity = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng;
+                if($productionOrderHistory){
+                    $productionOrderHistory->update([
+                        'inventory_quantity'=>$productionOrderHistory->inventory_quantity + $producedInfoQuantity, 
+                        'production_quantity' => $productionOrderHistory->production_quantity - $producedInfoQuantity
+                    ]);
+                    $productionOrderHistories = ProductionOrderHistory::where('product_id', $infoCongDoan->product_id ?? null)->where('production_quantity', '>', 0)->get();
+                    if(empty($productionOrderHistories)){
+                        ProductionOrderPriority::removeItemAndReorderList($infoCongDoan->product_id);
+                    }
+                }
+
                 $infos = InfoCongDoan::where('plan_id', $infoCongDoan->plan_id)->get();
                 $producedQuantity = $infos->sum('sl_dau_ra_hang_loat') - $infos->sum('sl_ng');
                 if($producedQuantity >= $infoCongDoan->plan->sl_giao_sx){
                     $infoCongDoan->plan->update(['status_plan'=>ProductionPlan::STATUS_COMPLETED]);
-                    $productionOrderHistory = ProductionOrderHistory::where('line_id', $infoCongDoan->line_id)->where('production_order_id', $infoCongDoan->plan->production_order_id ?? null)->first();
-                    if($productionOrderHistory){
-                        $productionOrderHistory->update(['actual_quantity'=>$productionOrderHistory->actual_quantity + $producedQuantity]);
-                        $productionOrderHistories = ProductionOrderHistory::where('production_order_id', $infoCongDoan->plan->production_order_id ?? null)->whereColumn('order_quantity', '>', 'actual_quantity')->get();
-                        if(count($productionOrderHistories) <= 0){
-                            ProductionOrderPriority::removeItemAndReorderList($infoCongDoan->plan->production_order_id);
-                        }
-                    }
                 }
                 if ($machine && $tracking) {
                     MachineStatus::deactive($machine->code);
@@ -2017,7 +2022,7 @@ class Phase2OIApiController extends Controller
 
     function detect_format($input) {
         $input = str_replace(',', '.', $input);
-        
+
         // Định dạng 1: '12.5+1.5/-1.25'
         $pattern1 = "/(-?\d+(\.\d+)?)([+-]\d+(\.\d+)?)?\/(-?\d+(\.\d+)?)/";
     

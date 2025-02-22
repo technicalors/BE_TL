@@ -759,7 +759,6 @@ Route::group([
     Route::post('production-order-priorities/complete', [ProductionOrderPriorityController::class, 'complete']);
     Route::post('production-order-priorities/reorder', [ProductionOrderPriorityController::class, 'reorder']);
     Route::post('production-order-history/update', [ProductionOrderHistoryController::class,'update']);
-    Route::post('production-order-priorities/reorder', [ProductionOrderPriorityController::class, 'reorder']);
 });
 
 //Masterdata
@@ -818,6 +817,7 @@ Route::group([
     $router->post('scan-material', [Phase2OIApiController::class, 'scanForFirstLine']);
     $router->post('scan-manufacture', [Phase2OIApiController::class, 'scanForProductionLine']);
     $router->post('end-of-production', [Phase2OIApiController::class, 'finishProductionLine']);
+    $router->post('scan-for-selection-line', [Phase2OIApiController::class, 'scanForSelectionLine']);
 });
 
 //OI
