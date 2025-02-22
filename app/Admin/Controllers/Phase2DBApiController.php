@@ -269,7 +269,7 @@ class Phase2DBApiController extends Controller
         //     $query->orderBy('name');
         // }
         // $machines = $query->get();
-        // $data = [];
+        $data = [];
         $machine_ids = ProductionPlan::whereDate('ngay_sx', date('Y-m-d'))->pluck('machine_id')->where('line_id', '<>', 25)->toArray();
         $machines = Machine::whereIn('code', $machine_ids)->get();
         foreach ($machines as $machine) {
