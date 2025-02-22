@@ -369,8 +369,8 @@ class Phase2OIApiController extends Controller
             $hao_phi_vao_hang = $info->spec->first(function ($record) {
                 return $record->name == 'Hao phí vào hàng các công đoạn';
             }) ?? null;
-            $hao_phi = ($info->sl_ng - (int)($hao_phi_vao_hang->value ?? 0));
-            $info->hao_phi = ($info->sl_dau_vao_hang_loat ? round(($hao_phi / $info->sl_dau_vao_hang_loat) * 100) : 0) . '%';
+            $hao_phi = ($info->sl_ng);
+            $info->hao_phi = ($info->sl_dau_ra_hang_loat ? round(($hao_phi / $info->sl_dau_ra_hang_loat) * 100) : 0) . '%';
 
         }
         return $this->success($infos);
