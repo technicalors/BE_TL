@@ -10,6 +10,7 @@ use App\Models\Lot;
 use App\Models\LotPlan;
 use App\Models\Machine;
 use App\Models\MachineParameterLogs;
+use App\Models\Product;
 use App\Models\ProductionPlan;
 use App\Models\Shift;
 use App\Models\Tracking;
@@ -188,8 +189,8 @@ class Phase2DBApiController extends Controller
                 $sumLotPlan = ProductionPlan::query()->where('line_id', $machine->line_id)
                     ->where('machine_id', $machine->code)
                     ->where('product_id', $info->product_id)
-                    ->whereDate('thoi_gian_bat_dau','<=', date('Y-m-d'))
-                    ->whereDate('thoi_gian_ket_thuc','>=', date('Y-m-d'))->sum('sl_giao_sx');
+                    ->whereDate('thoi_gian_bat_dau', '<=', date('Y-m-d'))
+                    ->whereDate('thoi_gian_ket_thuc', '>=', date('Y-m-d'))->sum('sl_giao_sx');
 
                 $sumInfoActure = InfoCongDoan::query()->where('line_id', $machine->line_id)
                     ->where('machine_code', $machine->code)
@@ -252,23 +253,25 @@ class Phase2DBApiController extends Controller
 
     public function getProductionSituationByMachine(Request $request)
     {
-        $order = [];
-        if (!empty($request->ordering_machine)) {
-            $order = explode(',', $request->ordering_machine);
-        }
-        //reorder
-        $firstElement = array_shift($order);
-        array_push($order, $firstElement);
-        $orderByString = "'" . implode("','", $order) . "'";
-        $lines = Line::where('factory_id', 2)->where('id', '<>', 25)->get();
-        $query = Machine::with('line')->where('is_iot', 1)->whereIn('line_id', $lines->pluck('id')->toArray());
-        if (!empty($request->ordering_machine)) {
-            $query->orderByRaw(DB::raw("FIELD(code, $orderByString)"));
-        } else {
-            $query->orderBy('name');
-        }
-        $machines = $query->get();
-        $data = [];
+        // $order = [];
+        // if (!empty($request->ordering_machine)) {
+        //     $order = explode(',', $request->ordering_machine);
+        // }
+        // //reorder
+        // $firstElement = array_shift($order);
+        // array_push($order, $firstElement);
+        // $orderByString = "'" . implode("','", $order) . "'";
+        // $lines = Line::where('factory_id', 2)->where('id', '<>', 25)->get();
+        // $query = Machine::with('line')->where('is_iot', 1)->whereIn('line_id', $lines->pluck('id')->toArray());
+        // if (!empty($request->ordering_machine)) {
+        //     $query->orderByRaw(DB::raw("FIELD(code, $orderByString)"));
+        // } else {
+        //     $query->orderBy('name');
+        // }
+        // $machines = $query->get();
+        // $data = [];
+        $machine_ids = ProductionPlan::whereDate('ngay_sx', date('Y-m-d'))->pluck('machine_id')->where('line_id', '<>', 25)->toArray();
+        $machines = Machine::whereIn('code', $machine_ids)->get();
         foreach ($machines as $machine) {
             $info = InfoCongDoan::where("line_id", $machine->line_id)->where('machine_code', $machine->code)->with(["lotPlan", "lot.plan.product"])->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->orderBy('thoi_gian_bat_dau', 'DESC')->first();
             $tracking = Tracking::where('machine_id', $machine->code)->first();
@@ -354,7 +357,7 @@ class Phase2DBApiController extends Controller
                 } catch (\Throwable $th) {
                     //throw $th;
                 }
-                
+
                 if ($tm['ti_le_ht'] > 100) {
                     $tm['ti_le_ht'] = 100;
                 }
@@ -376,10 +379,10 @@ class Phase2DBApiController extends Controller
                 ->whereDate('ngay_sx', date('Y-m-d'))
                 ->where('status_plan', 1)
                 ->first();
-            if(!$plan){
+            if (!$plan) {
                 continue;
             }
-            if ($plan)  {
+            if ($plan) {
                 $sumLotPlan = $plan->sum('sl_giao_sx');
 
                 $infos = InfoCongDoan::where('plan_id', $plan->id)->get();
@@ -433,7 +436,7 @@ class Phase2DBApiController extends Controller
                 } catch (\Throwable $th) {
                     //throw $th;
                 }
-                
+
                 if ($tm['ti_le_ht'] > 100) {
                     $tm['ti_le_ht'] = 100;
                 }
@@ -470,10 +473,10 @@ class Phase2DBApiController extends Controller
                 ->whereDate('ngay_sx', date('Y-m-d'))
                 ->where('status_plan', 1)
                 ->first();
-            if(!$plan){
+            if (!$plan) {
                 continue;
             }
-            if ($plan)  {
+            if ($plan) {
                 $sumLotPlan = $plan->sum('sl_giao_sx');
 
                 $infos = InfoCongDoan::where('plan_id', $plan->id)->get();
@@ -527,7 +530,7 @@ class Phase2DBApiController extends Controller
                 } catch (\Throwable $th) {
                     //throw $th;
                 }
-                
+
                 if ($tm['ti_le_ht'] > 100) {
                     $tm['ti_le_ht'] = 100;
                 }
