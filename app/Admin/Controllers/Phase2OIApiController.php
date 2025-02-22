@@ -176,7 +176,7 @@ class Phase2OIApiController extends Controller
 
         $plan = ProductionPlan::whereDate("ngay_sx", Carbon::now());
         if (!empty($request->machine_code)) {
-            $plan->where('machine_code', $request->machine_code);
+            $plan->where('machine_id', $request->machine_code);
         }
         if (!empty($request->line_id)) {
             $plan->where('line_id', $request->line_id);
