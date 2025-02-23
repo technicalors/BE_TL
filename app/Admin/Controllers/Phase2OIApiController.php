@@ -332,8 +332,7 @@ class Phase2OIApiController extends Controller
     {
         $line_id = $request->line_id;
         $machine_code = $request->machine_code;
-        $date  = date('Y-m-d', strtotime('3 days ago'));
-        $info_query = InfoCongDoan::orderBy('thoi_gian_bat_dau', 'DESC')->whereDate('thoi_gian_bat_dau', $date);
+        $info_query = InfoCongDoan::orderBy('thoi_gian_bat_dau', 'DESC')->whereDate('thoi_gian_bat_dau', date('Y-m-d'));
         if (!empty($request->line_id)) {
             $info_query->where('line_id', $line_id);
         }
