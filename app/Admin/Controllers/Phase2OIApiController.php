@@ -181,7 +181,7 @@ class Phase2OIApiController extends Controller
         if (!empty($request->line_id)) {
             $plan->where('line_id', $request->line_id);
         }
-        $plans = $plan->get();  
+        $plans = $plan->get();
         $data =  [
             "tong_sl_trong_ngay_kh" => $plans->sum('sl_giao_sx'),
             "tong_sl_thuc_te" =>  $info_cong_doans->sum('sl_dau_ra_hang_loat'),
@@ -328,11 +328,12 @@ class Phase2OIApiController extends Controller
 
     //=============================OI Sản xuất phiên bản mới=============================
     //Bottom table
-    public function oiProductionList(Request $request){
+    public function oiProductionList(Request $request)
+    {
         $line_id = $request->line_id;
         $machine_code = $request->machine_code;
         $date  = date('Y-m-d', strtotime('3 days ago'));
-        $info_query = InfoCongDoan::whereNotNull('plan_id')->orderBy('status')->whereDate('created_at', '>=', $date);
+        $info_query = InfoCongDoan::whereNotNull('plan_id')->orderBy('thoi_gian_bat_dau', 'DESC')->whereDate('created_at', $date);
         if (!empty($request->line_id)) {
             $info_query->where('line_id', $line_id);
         }
@@ -371,11 +372,11 @@ class Phase2OIApiController extends Controller
             }) ?? null;
             $hao_phi = ($info->sl_ng);
             $info->hao_phi = ($info->sl_dau_ra_hang_loat ? round(($hao_phi / $info->sl_dau_ra_hang_loat) * 100) : 0) . '%';
-
         }
         return $this->success($infos);
     }
-    public function scanForFirstLine(Request $request){
+    public function scanForFirstLine(Request $request)
+    {
         $line = Line::find($request->line_id);
         if (!$line) {
             return $this->failure([], "Không tìm thấy công đoạn");
@@ -385,9 +386,9 @@ class Phase2OIApiController extends Controller
             return $this->failure([], "Không tìm thấy máy");
         }
         $isExist = InfoCongDoan::where('machine_code', $machine->code)->where('status', 1)->first();
-        if ($isExist) {
-            return $this->failure('', 'Có lot chưa hoàn thành, không thể tiếp tục lot khác');
-        }
+        // if ($isExist) {
+        //     return $this->failure('', 'Có lot chưa hoàn thành, không thể tiếp tục lot khác');
+        // }
         if ($machine->is_iot) {
             $checksheet_logs = CheckSheetLog::where('info->machine_id', $machine->code)->whereDate('created_at', Carbon::today())->get();
             if (count($checksheet_logs) <= 0) {
@@ -405,41 +406,43 @@ class Phase2OIApiController extends Controller
                 return $this->failure([], "Máy này đang sản xuất");
             }
         }
-        $roll = RollMaterial::with(['material.products', 'warehouse_inventory'])->find($request->roll_id);
-        if (!$roll) {
-            return $this->failure([], "Không tìm thấy cuộn");
-        }
+        // $roll = RollMaterial::with(['material.products', 'warehouse_inventory'])->find($request->roll_id);
+        // if (!$roll) {
+        //     return $this->failure([], "Không tìm thấy cuộn");
+        // }
+
+
         // if (!$roll->warehouse_inventory || $roll->warehouse_inventory->quantity <= 0) {
         //     return $this->failure([], "Cuộn đã quét rồi");
         // }
-        if (!$roll->material) {
-            return $this->failure([], "Không tìm thấy NVL: ". ($roll->material_id ?? ""));
-        }
-        $product_ids = $roll->material->products->pluck('id')->toArray() ?? [];
-        if (count($product_ids) === 0) {
-            return $this->failure([], "Không tìm thấy sản phẩm");
-        }
+        // if (!$roll->material) {
+        //     return $this->failure([], "Không tìm thấy NVL: ". ($roll->material_id ?? ""));
+        // }
+        // $product_ids = $roll->material->products->pluck('id')->toArray() ?? [];
+        // if (count($product_ids) === 0) {
+        //     return $this->failure([], "Không tìm thấy sản phẩm");
+        // }
         $plan = ProductionPlan::where('line_id', $machine->line_id)
-        ->where('machine_id', $machine->code)
-        ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
-        ->whereDate('thoi_gian_bat_dau', '>=', date('Y-m-d'))
-        ->orderBy('status_plan', 'DESC')
-        ->orderBy('thoi_gian_bat_dau')
-        ->first();
+            ->where('machine_id', $machine->code)
+            ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
+            ->whereDate('thoi_gian_bat_dau', '>=', date('Y-m-d'))
+            ->orderBy('status_plan', 'DESC')
+            ->orderBy('thoi_gian_bat_dau')
+            ->first();
         if (!$plan) {
             return $this->failure([], 'Không tìm thấy KHSX');
         }
-        if (!in_array($plan->product_id, $product_ids)) {
-            return $this->failure([], "Mã cuộn không phù hợp");
-        }
+        // if (!in_array($plan->product_id, $product_ids)) {
+        //     return $this->failure([], "Mã cuộn không phù hợp");
+        // }
         try {
             DB::beginTransaction();
             if ($plan->status_plan == ProductionPlan::STATUS_PENDING) {
                 $plan->update(['status_plan' => ProductionPlan::STATUS_IN_PROGRESS]);
             }
-            if($roll->warehouse_inventory){
-                $roll->warehouse_inventory->update(['quantity' => 0]);
-            }
+            // if($roll->warehouse_inventory){
+            //     $roll->warehouse_inventory->update(['quantity' => 0]);
+            // }
             MachineStatus::reset($machine->code);
             $info = InfoCongDoan::firstOrCreate(
                 ['lot_id' => InfoCongDoan::generateUniqueId($plan->lo_sx, $plan->line_id), 'plan_id' => $plan->id, 'line_id' => $machine->line_id, 'machine_code' => $machine->code],
@@ -447,6 +450,7 @@ class Phase2OIApiController extends Controller
                     'input_lot_id' => $request->roll_id,
                     'lo_sx' => $plan->lo_sx,
                     'product_id' => $plan->product_id,
+                    'component_id' => $plan->component_id,
                     'thoi_gian_bat_dau' => Carbon::now(),
                     'status' => InfoCongDoan::STATUS_INPROGRESS,
                     'user_id' => $request->user()->id,
@@ -491,16 +495,16 @@ class Phase2OIApiController extends Controller
             }
         }
         $scannedLot = Lot::find($request->scanned_lot);
-        if(!$scannedLot){
+        if (!$scannedLot) {
             return $this->failure('', 'Không tìm thấy lot');
         }
         $plan = ProductionPlan::where('line_id', $machine->line_id)
-        ->where('machine_id', $machine->code)
-        ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
-        ->whereDate('thoi_gian_bat_dau', '>=', date('Y-m-d'))
-        ->orderBy('status_plan', 'DESC')
-        ->orderBy('thoi_gian_bat_dau')
-        ->first();
+            ->where('machine_id', $machine->code)
+            ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
+            ->whereDate('thoi_gian_bat_dau', '>=', date('Y-m-d'))
+            ->orderBy('status_plan', 'DESC')
+            ->orderBy('thoi_gian_bat_dau')
+            ->first();
         if (!$plan) {
             return $this->failure([], 'Không tìm thấy KHSX');
         }
@@ -530,7 +534,7 @@ class Phase2OIApiController extends Controller
                 }
             } else {
                 if ($previousLineLot->product_id !== $plan->product_id) {
-                    return $this->failure([$previousLineLot,$plan], 'Không khớp mã sản phẩm');
+                    return $this->failure([$previousLineLot, $plan], 'Không khớp mã sản phẩm');
                 }
             }
         }
@@ -542,7 +546,7 @@ class Phase2OIApiController extends Controller
             }
             $infoCongDoan = InfoCongDoan::create([
                 'lot_id' => InfoCongDoan::generateUniqueId($plan->lo_sx, $machine->line_id),
-                'line_id' => $machine->line_id, 
+                'line_id' => $machine->line_id,
                 'machine_code' => $machine->code,
                 'input_lot_id' => $request->scanned_lot,
                 'lo_sx' => $plan->lo_sx,
@@ -556,7 +560,7 @@ class Phase2OIApiController extends Controller
             if ($scannedLot) {
                 $sl_dat = $scannedLot->so_luong;
                 $line_inventory = LineInventories::where('product_id', $scannedLot->product_id)->where('line_id', $scannedLot->final_line_id)->first();
-                
+
                 if ($line_inventory) {
                     $line_inventory->update(['quantity' => $line_inventory->quantity - $sl_dat]);
                 } else {
@@ -664,21 +668,21 @@ class Phase2OIApiController extends Controller
                 //Update ProductionOrderHistory and ProductionOrderPriority
                 $productionOrderHistory = ProductionOrderHistory::where('line_id', $infoCongDoan->line_id)->where('product_id', $infoCongDoan->product_id)->first();
                 $producedInfoQuantity = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng;
-                if($productionOrderHistory){
+                if ($productionOrderHistory) {
                     $productionOrderHistory->update([
-                        'inventory_quantity'=>$productionOrderHistory->inventory_quantity + $producedInfoQuantity, 
+                        'inventory_quantity' => $productionOrderHistory->inventory_quantity + $producedInfoQuantity,
                         'production_quantity' => $productionOrderHistory->production_quantity - $producedInfoQuantity
                     ]);
                     $productionOrderHistories = ProductionOrderHistory::where('product_id', $infoCongDoan->product_id ?? null)->where('production_quantity', '>', 0)->get();
-                    if(empty($productionOrderHistories)){
+                    if (empty($productionOrderHistories)) {
                         ProductionOrderPriority::removeItemAndReorderList($infoCongDoan->product_id);
                     }
                 }
 
                 $infos = InfoCongDoan::where('plan_id', $infoCongDoan->plan_id)->get();
                 $producedQuantity = $infos->sum('sl_dau_ra_hang_loat') - $infos->sum('sl_ng');
-                if($producedQuantity >= $infoCongDoan->plan->sl_giao_sx){
-                    $infoCongDoan->plan->update(['status_plan'=>ProductionPlan::STATUS_COMPLETED]);
+                if ($producedQuantity >= $infoCongDoan->plan->sl_giao_sx) {
+                    $infoCongDoan->plan->update(['status_plan' => ProductionPlan::STATUS_COMPLETED]);
                 }
                 if ($machine && $tracking) {
                     MachineStatus::deactive($machine->code);
@@ -846,7 +850,7 @@ class Phase2OIApiController extends Controller
                 }
             } else {
                 if ($previousLineLot->product_id !== $lot_plan->product_id) {
-                    return $this->failure([$previousLineLot,$lot_plan], 'Không khớp mã sản phẩm');
+                    return $this->failure([$previousLineLot, $lot_plan], 'Không khớp mã sản phẩm');
                 }
             }
         }
@@ -1090,7 +1094,7 @@ class Phase2OIApiController extends Controller
                 $sl_con_lai = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang;
                 if ($sl_con_lai < 0) {
                     return $this->failure([], "Số lượng sản xuất không hợp lệ");
-                } 
+                }
                 $lot = Lot::find($infoCongDoan->lot_id);
                 if (!$lot) {
                     Lot::create([
@@ -1874,15 +1878,15 @@ class Phase2OIApiController extends Controller
         $detailHistory = $qcHistories->map(function ($qcHistory) {
             return $qcHistory->testCriteriaHistories->flatMap->testCriteriaDetailHistories ?? collect([]);
         })
-        ->flatten()
-        ->mapWithKeys(function ($detailHistory) {
-            $product_id = $detailHistory->testCriteriaHistory->qcHistory->infoCongDoan->product_id ?? null;
-            $machine_code = $detailHistory->testCriteriaHistory->qcHistory->infoCongDoan->machine_code ?? null;
-            $test_criteria_name = $detailHistory->testCriteria->hang_muc ?? null;
-            $info_lot_id = $detailHistory->testCriteriaHistory->qcHistory->infoCongDoan->lot_id ?? null;
-            return [$product_id . $machine_code . $test_criteria_name => $info_lot_id];
-        })
-        ->toArray();
+            ->flatten()
+            ->mapWithKeys(function ($detailHistory) {
+                $product_id = $detailHistory->testCriteriaHistory->qcHistory->infoCongDoan->product_id ?? null;
+                $machine_code = $detailHistory->testCriteriaHistory->qcHistory->infoCongDoan->machine_code ?? null;
+                $test_criteria_name = $detailHistory->testCriteria->hang_muc ?? null;
+                $info_lot_id = $detailHistory->testCriteriaHistory->qcHistory->infoCongDoan->lot_id ?? null;
+                return [$product_id . $machine_code . $test_criteria_name => $info_lot_id];
+            })
+            ->toArray();
         Log::debug($detailHistory);
         foreach ($list as $item) {
 
@@ -1904,7 +1908,7 @@ class Phase2OIApiController extends Controller
                     //         $isExist = true;
                     //     }
                     // }
-                    if(isset($detailHistory[$infoCongDoan->product_id . $infoCongDoan->machine_code . $item->hang_muc])){
+                    if (isset($detailHistory[$infoCongDoan->product_id . $infoCongDoan->machine_code . $item->hang_muc])) {
                         $isExist = true;
                     };
                     if ($isExist) {
@@ -1974,8 +1978,8 @@ class Phase2OIApiController extends Controller
         if ($test["phan_dinh"] = 'Nhập số') {
             try {
                 $extractValues = $this->detect_format($spec->value);
-                if($extractValues){
-                    foreach($extractValues as $key => $value) {
+                if ($extractValues) {
+                    foreach ($extractValues as $key => $value) {
                         $test[$key] = $value;
                     }
                     $test['note'] = $spec->value;
@@ -1984,7 +1988,7 @@ class Phase2OIApiController extends Controller
             } catch (\Throwable $th) {
                 //throw $th;
             }
-            
+
             // if (str_contains($specValue, $plusOrMinus)) {
             //     $arr = $this->extractNumbers($specValue);
             //     if (empty($arr)) {
@@ -2021,31 +2025,32 @@ class Phase2OIApiController extends Controller
         return $test;
     }
 
-    function detect_format($input) {
+    function detect_format($input)
+    {
         $input = str_replace([',', ' '], ['.', ''], $input);
 
         // Định dạng 1: '12.5+1.5/-1.25'
         $pattern1 = "/(-?\d+(\.\d+)?)([+-]\d+(\.\d+)?)?\/(-?\d+(\.\d+)?)/";
-    
+
         // Định dạng 2: 106.47 ± 1.2
         $pattern2 = "/(-?\d+(\.\d+)?)\s*±\s*(-?\d+(\.\d+)?)/";
-    
+
         // Định dạng 3: Khoảng dùng dấu '-'
         $pattern3 = "/(-?\d+(\.\d+)?)-(-?\d+(\.\d+)?)/";
 
         // Định dạng 4: Khoảng dùng dấu '~'
         $pattern4 = "/(-?\d+(\.\d+)?)~(-?\d+(\.\d+)?)/";
-    
+
         // Loại bỏ phần mô tả nếu có trước giá trị số
         $input = trim(preg_replace("/.*?:\s*/", "", $input));
-    
+
         if (preg_match($pattern1, $input, $matches)) {
             $value1 = (float)$matches[1] + (float)$matches[3];
             $value2 = (float)$matches[1] + (float)$matches[5];
-            if($value1 > $value2) {
+            if ($value1 > $value2) {
                 $max = $value1;
                 $min = $value2;
-            }else{
+            } else {
                 $max = $value2;
                 $min = $value1;
             }
@@ -2169,7 +2174,7 @@ class Phase2OIApiController extends Controller
                         'lot_id' => $request->lot_id,
                         'is_check' => false,
                     ];
-                    if($line->id == 30){
+                    if ($line->id == 30) {
                         $infoCongDoan->update(['sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_ng]);
                     }
                     broadcast(new QualityUpdated($qualityData));
