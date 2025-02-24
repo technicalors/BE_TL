@@ -520,23 +520,23 @@ class Phase2OIApiController extends Controller
             ->orderByRaw("FIELD(line_id, $orderByString)")
             ->get()
             ->last();
-        if (count($filteredLineIds) > 0) {
-            if (!$previousLineLot) {
-                return $this->failure([], 'Không tìm thấy lot đã chạy trước đó');
-            }
-            if ($previousLineLot->line_id == 24) {
-                $bomProducts = Bom::where(function ($subQuery) use ($previousLineLot) {
-                    $subQuery->where('material_id', $previousLineLot->product_id)->orWhere('product_id', $previousLineLot->product_id);
-                })->pluck('product_id')->toArray();
-                if (!in_array($plan->product_id, $bomProducts)) {
-                    return $this->failure($previousLineLot, 'Không khớp mã sản phẩm');
-                }
-            } else {
-                if ($previousLineLot->product_id !== $plan->product_id) {
-                    return $this->failure([$previousLineLot, $plan], 'Không khớp mã sản phẩm');
-                }
-            }
-        }
+        // if (count($filteredLineIds) > 0) {
+        //     if (!$previousLineLot) {
+        //         return $this->failure([], 'Không tìm thấy lot đã chạy trước đó');
+        //     }
+        //     if ($previousLineLot->line_id == 24) {
+        //         $bomProducts = Bom::where(function ($subQuery) use ($previousLineLot) {
+        //             $subQuery->where('material_id', $previousLineLot->product_id)->orWhere('product_id', $previousLineLot->product_id);
+        //         })->pluck('product_id')->toArray();
+        //         if (!in_array($plan->product_id, $bomProducts)) {
+        //             return $this->failure($previousLineLot, 'Không khớp mã sản phẩm');
+        //         }
+        //     } else {
+        //         if ($previousLineLot->product_id !== $plan->product_id) {
+        //             return $this->failure([$previousLineLot, $plan], 'Không khớp mã sản phẩm');
+        //         }
+        //     }
+        // }
         try {
             DB::beginTransaction();
             MachineStatus::reset($machine->code);
