@@ -501,7 +501,7 @@ class Phase2OIApiController extends Controller
             ->where('machine_id', $machine->code)
             ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
             ->whereDate('thoi_gian_bat_dau', '>=', date('Y-m-d'))
-            ->orderBy('status_plsan', 'DESC')
+            ->orderBy('status_plan', 'DESC')
             ->orderBy('thoi_gian_bat_dau')
             ->first();
         if (!$plan) {
