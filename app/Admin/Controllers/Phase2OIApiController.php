@@ -494,9 +494,9 @@ class Phase2OIApiController extends Controller
             }
         }
         $scannedLot = Lot::find($request->scanned_lot);
-        if (!$scannedLot) {
-            return $this->failure('', 'Không tìm thấy lot');
-        }
+        // if (!$scannedLot) {
+        //     return $this->failure('', 'Không tìm thấy lot');
+        // }
         $plan = ProductionPlan::where('line_id', $machine->line_id)
             ->where('machine_id', $machine->code)
             ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
