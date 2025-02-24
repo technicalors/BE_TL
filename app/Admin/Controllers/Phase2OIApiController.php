@@ -501,7 +501,7 @@ class Phase2OIApiController extends Controller
             ->where('machine_id', $machine->code)
             ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
             ->whereDate('thoi_gian_bat_dau', '>=', date('Y-m-d'))
-            ->orderBy('status_plan', 'DESC')
+            ->orderBy('status_plsan', 'DESC')
             ->orderBy('thoi_gian_bat_dau')
             ->first();
         if (!$plan) {
@@ -515,11 +515,11 @@ class Phase2OIApiController extends Controller
                 return $value < $requestValue;
             })->keys();
         $orderByString = "'" . implode("','", $filteredLineIds->toArray()) . "'";
-        $previousLineLot = InfoCongDoan::where('lot_id', $request->scanned_lot)
-            ->whereIn('line_id', $filteredLineIds)->where('status', InfoCongDoan::STATUS_COMPLETED)
-            ->orderByRaw("FIELD(line_id, $orderByString)")
-            ->get()
-            ->last();
+        // $previousLineLot = InfoCongDoan::where('lot_id', $request->scanned_lot)
+        //     ->whereIn('line_id', $filteredLineIds)->where('status', InfoCongDoan::STATUS_COMPLETED)
+        //     ->orderByRaw("FIELD(line_id, $orderByString)")
+        //     ->get()
+        //     ->last();
         // if (count($filteredLineIds) > 0) {
         //     if (!$previousLineLot) {
         //         return $this->failure([], 'Không tìm thấy lot đã chạy trước đó');
@@ -577,7 +577,7 @@ class Phase2OIApiController extends Controller
         } catch (\Throwable $th) {
             DB::rollBack();
             throw $th;
-            return $this->failure($th, "Lỗi quét lot");
+            return $this->failure($th, 'Lỗi quét tem' . $th);
         }
         return $this->success([], "Quét lot thành công");
     }
