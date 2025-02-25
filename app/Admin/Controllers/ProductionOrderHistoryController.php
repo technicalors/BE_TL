@@ -28,7 +28,10 @@ class ProductionOrderHistoryController extends Controller
                 $calculatedQuantity = Phase2UIApiController::calculateProductionOutput($input['product_id'], $result['line_id'], $quantity);
                 $order_quantity = $calculatedQuantity;
                 $production_quantity = $calculatedQuantity - $inventory_quantity;
-                $quantity = $production_quantity <= 0 ? 0 : $production_quantity;
+                if ($production_quantity < 0) {
+                    $production_quantity = 0;
+                }
+                $quantity = $production_quantity < 0 ? 0 : $production_quantity;
                 ProductionOrderHistory::where('product_id', $input['product_id'])->where('line_id', $result['line_id'])->update(['order_quantity' => $order_quantity, 'production_quantity' => $production_quantity, 'inventory_quantity' => $inventory_quantity]);
             }
             DB::commit();
