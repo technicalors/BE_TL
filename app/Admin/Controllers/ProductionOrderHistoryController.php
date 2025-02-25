@@ -25,7 +25,11 @@ class ProductionOrderHistoryController extends Controller
                     $quantity = $result['order_quantity'];
                 }
                 $inventory_quantity = $result['inventory_quantity'];
-                $calculatedQuantity = Phase2UIApiController::calculateProductionOutput($input['product_id'], $result['line_id'], $quantity);
+                if ($quantity == 0) {
+                    $calculatedQuantity = 0;
+                } else {
+                    $calculatedQuantity = Phase2UIApiController::calculateProductionOutput($input['product_id'], $result['line_id'], $quantity);
+                }
                 $order_quantity = $calculatedQuantity;
                 $production_quantity = $calculatedQuantity - $inventory_quantity;
                 if ($production_quantity < 0) {
