@@ -817,7 +817,7 @@ Route::group([
     $router->post('scan-material', [Phase2OIApiController::class, 'scanForFirstLine']);
     $router->post('scan-manufacture', [Phase2OIApiController::class, 'scanForProductionLine']);
     $router->post('end-of-production', [Phase2OIApiController::class, 'finishProductionLine']);
-    $router->post('scan-for-selection-line', [Phase2OIApiController::class, 'scanForSelectionLine']);
+    $router->post('scan-for-selection-line', [Phase2OIApiController::class, 'scanForSelectionLineV2']);
 });
 
 //OI
