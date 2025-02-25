@@ -103,6 +103,7 @@ class MachineShiftController extends Controller
                         'date' => $machineShift->date,
                         'shift_name' => $machineShift->shift->name, // Lấy tên của ca
                         'shift_id' => $machineShift->shift_id,
+                        'operator_quantity' => $machineShift->operator_quantity,
                     ];
                 })->toArray(),
             ];
@@ -120,21 +121,29 @@ class MachineShiftController extends Controller
         try {
             // Lấy dữ liệu từ request
             $date = $request->input('date');
-            $shiftIds = $request->input('shift_ids');
+            $shift_id = $request->input('shift_id');
             $machineId = $request->input('machine_id');
+            $operatorQuantity = $request->input('operator_quantity');
 
-            // Xóa các ca làm việc hiện tại của máy trong ngày đó
-            MachineShift::where('machine_id', $machineId)
-                ->whereDate('date', $date)
-                ->delete();
-            // Thêm các ca làm việc mới
-            foreach ($shiftIds as $shiftId) {
-                MachineShift::create([
-                    'machine_id' => $machineId,
-                    'date' => $date,
-                    'shift_id' => $shiftId,
-                ]);
-            }
+            // // Xóa các ca làm việc hiện tại của máy trong ngày đó
+            // MachineShift::where('machine_id', $machineId)
+            //     ->whereDate('date', $date)
+            //     ->delete();
+            // // Thêm các ca làm việc mới
+            // foreach ($shiftIds as $shiftId) {
+            //     MachineShift::create([
+            //         'machine_id' => $machineId,
+            //         'date' => $date,
+            //         'shift_id' => $shiftId,
+            //     ]);
+            // }
+            MachineShift::updateOrCreate(
+                ['machine_id' => $machineId, 'date' => $date, 'shift_id' => $shift_id],
+                [
+                    'shift_id' => $shift_id,
+                    'operator_quantity' => $operatorQuantity,
+                ]
+            );
 
             return response()->json([
                 'success' => true,
@@ -145,6 +154,28 @@ class MachineShiftController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Đã xảy ra lỗi khi cập nhật ca làm việc.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function delete(Request $request)
+    {
+        try {
+            // Lấy dữ liệu từ request
+            $date = $request->input('date');
+            $shift_id = $request->input('shift_id');
+            $machineId = $request->input('machine_id');
+            MachineShift::where('machine_id', $machineId)->whereDate('date', $date)->where('shift_id', $shift_id)->delete();
+            return response()->json([
+                'success' => true,
+                'message' => 'Xoá ca làm việc thành công!',
+            ]);
+        } catch (\Exception $e) {
+            // Xử lý lỗi và trả về thông báo lỗi
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi khi xoá ca làm việc.',
                 'error' => $e->getMessage(),
             ], 500);
         }

@@ -690,9 +690,6 @@ class Phase2OIApiController extends Controller
         if (!$line) {
             return $this->failure([], "Không tìm thấy công đoạn");
         }
-        // if ($line->id == 29) {
-        //     $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
-        // } else {
         $machine = Machine::where('code', $request->machine_code)->first();
         if (!$machine) {
             return $this->failure([], "Không tìm thấy máy");
@@ -702,7 +699,6 @@ class Phase2OIApiController extends Controller
             return $this->failure([], "Máy này chưa được sử dụng");
         }
         $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
-        // }
 
         if ($infoCongDoan) {
             if (!$infoCongDoan->qcHistory) {

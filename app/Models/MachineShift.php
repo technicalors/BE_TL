@@ -15,6 +15,7 @@ class MachineShift extends Model
             'shift_id',
             'date',
             'ordering',
+            'operator_quantity'
         ];
 
     public function shift()

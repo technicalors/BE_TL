@@ -802,6 +802,7 @@ Route::group([
     Route::get('machine-shift', [MachineShiftController::class, 'index']);
     Route::post('machine-shift', [MachineShiftController::class, 'store']);
     Route::put('machine-shift', [MachineShiftController::class, 'update']);
+    Route::post('machine-shift/delete', [MachineShiftController::class, 'delete']);
 
     Route::apiResource('shift-breaks', ShiftBreakController::class);
     Route::apiResource('line-inventory', LineInventoryController::class);
