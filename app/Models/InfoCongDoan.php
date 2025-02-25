@@ -55,7 +55,7 @@ class InfoCongDoan extends Model
 
     public static function generateUniqueId($lo_sx, $line_id)
     {
-        $latestInfo = InfoCongDoan::where('lo_sx', $lo_sx)->where('line_id', $line_id)->orderBy('lot_id')->get()->last();
+        $latestInfo = InfoCongDoan::where('lo_sx', $lo_sx)->where('line_id', $line_id)->orderBy('id')->get()->last();
         $prefix = $lo_sx . '.' . $line_id . '.L.';
         try {
             if($latestInfo){

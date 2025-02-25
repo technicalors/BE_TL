@@ -1756,6 +1756,86 @@ class Phase2UIApiController extends Controller
         return $this->success($href);
     }
 
+    public function exportQCReport(Request $request){
+        $input = $request->all();
+        $sheet_array = [];
+        foreach ($input as $key => $value) {
+            switch ($key) {
+                case 'day':
+                    $sheet_array[$key]['title'] = 'ngày';
+                    $sheet_array[$key]['start_date'] = Carbon::parse($value)->startOfDay();
+                    $sheet_array[$key]['end_date'] = Carbon::parse($value)->endOfDay();
+                    break;
+                case 'week':
+                    $sheet_array[$key]['title'] = 'tuần';
+                    $sheet_array[$key]['start_date'] = Carbon::parse($value)->startOfWeek(Carbon::MONDAY);
+                    $sheet_array[$key]['end_date'] = $sheet_array[$key]['start_date']->copy()->addWeeks(10)->endOfDay();
+                    break;
+                case 'month':
+                    $sheet_array[$key]['title'] = 'tháng';
+                    $sheet_array[$key]['start_date'] = Carbon::parse($value)->startOfYear();
+                    $sheet_array[$key]['end_date'] = Carbon::parse($value)->endOfYear();
+                    break;
+                default:
+                    break;
+            }
+            $groupByLine = QCHistory::with('testCriteriaHistories', 'infoCongDoan')->orderBy('created_at')
+                ->whereDate('created_at', '>=', $sheet_array[$key]['start_date'])
+                ->whereDate('created_at', '<=', $sheet_array[$key]['end_date'])
+                ->get()
+                ->groupBy(function ($qc_history) {
+                    return $qc_history->infoCongDoan->line_id ?? '';
+                });
+            $shifts = Shift::all();
+            foreach ($groupByLine as $line_id => $values) {
+                if(!$key) continue;
+                
+                $groupByMachineAndProduct = $values->groupBy(function ($qcHistory) use($shifts) {
+                    return ($qcHistory->infoCongDoan->machine_code ?? "") . ($qcHistory->infoCongDoan->product_id ?? "") . ($this->findShift($qcHistory, $shifts)->name ?? "") . date('Y-m-d', strtotime($qcHistory->scanned_time));
+                });
+                return $groupByMachineAndProduct;
+                $checked_counter = count($groupByMachineAndProduct);
+                $line = Line::find($line_id);
+                if (!$line) continue;
+                $sum_ng = 0;
+                foreach ($groupByMachineAndProduct as $machineProductDate => $detailQcHistories) {
+                    foreach ($detailQcHistories as $qcHistory) {
+                        $final_result = $qcHistory->testCriteriaHistories->pluck('result')->toArray();
+                        if (count($final_result) >= 3) {
+                            if (in_array('NG', $final_result)) {
+                                $sum_ng += 1;
+                                break;
+                            }
+                        }
+                    }
+                }
+                $sum_ok = $checked_counter - $sum_ng;
+                $data[$line_id]['cong_doan'] = $line->name;
+                $data[$line_id]['sum_lot_kt'] = $checked_counter;
+                $data[$line_id]['sum_lot_ok'] = $sum_ok;
+                $data[$line_id]['sum_lot_ng'] = $sum_ng;
+                $data[$line_id]['sum_ty_le_ng'] = $checked_counter ? number_format($sum_ng / $checked_counter * 100, 2) : 0;
+                $data[$line_id]['loi_phat_sinh'] = '';
+            }
+        }
+    }
+
+    function findShift($record, $shifts){
+        $createdTime = Carbon::parse($record->created_at)->format('H:i:s');
+        foreach ($shifts as $shift) {
+            if ($shift->start_time < $shift->end_time) {
+                if ($createdTime >= $shift->start_time && $createdTime <= $shift->end_time) {
+                    return $shift;
+                }
+            } else {
+                if ($createdTime >= $shift->start_time || $createdTime <= $shift->end_time) {
+                    return $shift;
+                }
+            }
+        }
+        return null;
+    }
+
     //Lỗi
     public function qcErrorList(Request $request)
     {
@@ -4071,7 +4151,7 @@ class Phase2UIApiController extends Controller
                 if ($remainQuantityOrder <= 0) {
                     continue;
                 }
-                $efficiency = $this->getEfficiency($productionOrderPriority->product_id, $history->line_id);
+                $efficiency = $this->getEfficiency($productionOrderPriority->product_id, $history->line_id, date('Y-m-d', strtotime('+1 day')));
                 if ($efficiency <= 0) {
                     throw new Exception("Không tìm thấy năng suất cho sản phẩm " . $productionOrderPriority->product_id . " và công đoạn " . $history->line->name, 1);
                 }
@@ -4116,12 +4196,8 @@ class Phase2UIApiController extends Controller
                 if ($history->line_id == 24) {
                     $bom = Bom::where('product_id', $productionOrderPriority->product_id)->where('priority', 1)->first();
                     if ($bom) {
-                        $component_id = $bom->material_id;
-                    } else {
-                        $component_id = $product_id;
+                        $product_id = $bom->material_id;
                     }
-                } else {
-                    $component_id = $product_id;
                 }
                 $product = Product::find($product_id);
                 $productionPlans[] = [
@@ -4134,7 +4210,6 @@ class Phase2UIApiController extends Controller
                     'ngay_giao_hang' => '',
                     'machine_id' => $machinePriorityOrder->machine_id,
                     'product_id' => $product_id,
-                    'component_id' => $component_id,
                     'product_name' => $product->name,
                     'khach_hang' => '',
                     'so_bat' => 0,

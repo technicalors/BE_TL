@@ -802,6 +802,7 @@ Route::group([
     Route::get('machine-shift', [MachineShiftController::class, 'index']);
     Route::post('machine-shift', [MachineShiftController::class, 'store']);
     Route::put('machine-shift', [MachineShiftController::class, 'update']);
+    Route::post('machine-shift/delete', [MachineShiftController::class, 'delete']);
 
     Route::apiResource('shift-breaks', ShiftBreakController::class);
     Route::apiResource('line-inventory', LineInventoryController::class);
@@ -817,7 +818,7 @@ Route::group([
     $router->post('scan-material', [Phase2OIApiController::class, 'scanForFirstLine']);
     $router->post('scan-manufacture', [Phase2OIApiController::class, 'scanForProductionLine']);
     $router->post('end-of-production', [Phase2OIApiController::class, 'finishProductionLine']);
-    $router->post('scan-for-selection-line', [Phase2OIApiController::class, 'scanForSelectionLine']);
+    $router->post('scan-for-selection-line', [Phase2OIApiController::class, 'scanForSelectionLineV2']);
 });
 
 //OI
