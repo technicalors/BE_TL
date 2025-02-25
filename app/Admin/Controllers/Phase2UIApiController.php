@@ -4102,6 +4102,17 @@ class Phase2UIApiController extends Controller
             ->where('product_id', $product_id)
             ->orderBy('priority', 'asc')
             ->get();
+        if($line_id == 29){
+            $priority = 1;
+            $machinePriorityOrders = Machine::where('line_id', $line_id)
+            ->get()->sortBy('code', SORT_NATURAL)->map(function($machine) use(&$priority, $product_id){
+                $machine->machine_id = $machine->code;
+                $machine->priority = $priority;
+                $machine->product_id = $product_id;
+                $priority++;
+                return $machine;
+            });
+        }
 
         $acceptableMachines = [];      // Những máy đáp ứng điều kiện (chưa sử dụng hoặc có đủ chỗ cho maxProductionMinutes)
         $nonAcceptableMachines = [];   // Những máy đã sử dụng nhưng không đáp ứng điều kiện
@@ -4151,14 +4162,14 @@ class Phase2UIApiController extends Controller
                 if ($remainQuantityOrder <= 0) {
                     continue;
                 }
-                $efficiency = $this->getEfficiency($productionOrderPriority->product_id, $history->line_id, date('Y-m-d', strtotime('+1 day')));
+                $efficiency = $this->getEfficiency($productionOrderPriority->product_id, $history->line_id);
                 if ($efficiency <= 0) {
                     throw new Exception("Không tìm thấy năng suất cho sản phẩm " . $productionOrderPriority->product_id . " và công đoạn " . $history->line->name, 1);
                 }
                 $productionTime = ceil(($remainQuantityOrder / $efficiency) * 60) + $setupTime;
 
                 $machinePriorityOrder = $this->getPrioritizedMachine($history->line_id, $productionOrderPriority->product_id, $machine_load_factors, $productionTime);
-                if (empty($machinePriorityOrder) || $history->line_id == 29) {
+                if (empty($machinePriorityOrder)) {
                     continue;
                 }
                 $machineShifts = $this->getMachineProductionShifts($machinePriorityOrder->machine_id, date('Y-m-d', strtotime('+1 day')));
@@ -4178,6 +4189,15 @@ class Phase2UIApiController extends Controller
                 }
                 if ($totalTime <= 0 || $totalTime <= $setupTime) {
                     continue;
+                }
+
+                if($history->line_id == 29){
+                    $machineShift = MachineShift::where('machine_id', $machinePriorityOrder->machine_id)
+                    ->where('date', date('Y-m-d', strtotime('+1 day')))
+                    ->where('shift_id', $machineShifts->first()->shift_id ?? null)
+                    ->first();
+                    Log::debug($machineShift);
+                    $efficiency = ($machineShift->operator_quantity ?? 1) * $efficiency;
                 }
 
                 if ($productionTime > $totalTime) {
