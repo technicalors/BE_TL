@@ -1791,14 +1791,18 @@ class Phase2UIApiController extends Controller
                 if(!$key) continue;
                 
                 $groupByMachineAndProduct = $values->groupBy(function ($qcHistory) use($shifts) {
-                    return ($qcHistory->infoCongDoan->machine_code ?? "") . ($qcHistory->infoCongDoan->product_id ?? "") . ($this->findShift($qcHistory, $shifts)->name ?? "") . date('Y-m-d', strtotime($qcHistory->scanned_time));
+                    $time = Carbon::parse($qcHistory->scanned_time);
+                    $shift = $this->findShift($qcHistory, $shifts);
+                    if($shift->start_time >= $shift->end_time){
+                        $time->subDay();
+                    }
+                    return ($qcHistory->infoCongDoan->machine_code ?? "") . ($qcHistory->infoCongDoan->product_id ?? "") . date('Y-m-d', strtotime($qcHistory->scanned_time)) . "Ca$shift->id";
                 });
-                return $groupByMachineAndProduct;
                 $checked_counter = count($groupByMachineAndProduct);
                 $line = Line::find($line_id);
                 if (!$line) continue;
                 $sum_ng = 0;
-                foreach ($groupByMachineAndProduct as $machineProductDate => $detailQcHistories) {
+                foreach ($groupByMachineAndProduct as $detailQcHistories) {
                     foreach ($detailQcHistories as $qcHistory) {
                         $final_result = $qcHistory->testCriteriaHistories->pluck('result')->toArray();
                         if (count($final_result) >= 3) {
@@ -1818,6 +1822,8 @@ class Phase2UIApiController extends Controller
                 $data[$line_id]['loi_phat_sinh'] = '';
             }
         }
+
+        
     }
 
     function findShift($record, $shifts){
