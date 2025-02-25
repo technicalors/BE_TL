@@ -5,6 +5,7 @@ namespace App\Admin\Controllers;
 use App\Exports\Production\ProductOrderExport;
 use App\Http\Controllers\Controller;
 use App\Imports\ProductOrderImport;
+use App\Models\Bom;
 use App\Models\Inventory;
 use App\Models\Line;
 use App\Models\LineInventories;
@@ -296,7 +297,7 @@ class ProductOrderController extends Controller
                 $maxPriority = ProductionOrderPriority::max('priority');
                 $newPriority = ($maxPriority !== null) ? $maxPriority + 1 : 1;
                 $production_quantity = ($new_order_quantity + $fc_order_quantity) - ($inventory->sl_ton ?? 0);
-                if($production_quantity < 0){
+                if ($production_quantity < 0) {
                     $production_quantity = 0;
                 }
                 ProductionOrderPriority::firstOrCreate(
@@ -315,11 +316,18 @@ class ProductOrderController extends Controller
 
                 $quantity = $production_quantity;
                 foreach ($productionSteps as $productionStep) {
-                    if($quantity > 0){
+                    if ($quantity > 0) {
                         $calculatedQuantity = Phase2UIApiController::calculateProductionOutput($productOrder->product_id, $productionStep->line_id, $quantity);
                         $quantity = $calculatedQuantity;
                     }
+                    if ($productionStep->line_id == 24) {
+                        $bom = Bom::where('product_id', $productOrder->product_id)->where('priority', 1)->first();
+                        $component_id = $bom->material_id;;
+                    } else {
+                        $component_id = $productOrder->product_id;
+                    }
                     $inp['product_id'] = $productOrder->product_id;
+                    $inp['component_id'] = $component_id;
                     $inp['line_id'] = $productionStep->line_id;
                     $inp['order_quantity'] = $quantity;
                     $inp['production_quantity'] = $quantity;
@@ -329,7 +337,7 @@ class ProductOrderController extends Controller
             } else {
                 $outstanding_order = $productionOrderPriority->outstanding_order + $productionOrderPriority->new_order_quantity;
                 $production_quantity = ($new_order_quantity + $fc_order_quantity + $outstanding_order) - ($inventory->sl_ton ?? 0);
-                if($production_quantity < 0){
+                if ($production_quantity < 0) {
                     $production_quantity = 0;
                 }
                 $productionOrderPriority->update([
@@ -342,14 +350,14 @@ class ProductOrderController extends Controller
 
                 $quantity = $production_quantity;
                 foreach ($productionSteps as $productionStep) {
-                    if($quantity > 0){
+                    if ($quantity > 0) {
                         $calculatedQuantity = Phase2UIApiController::calculateProductionOutput($productOrder->product_id, $productionStep->line_id, $quantity);
                         $quantity = $calculatedQuantity;
                     }
                     $productOrderHistory = ProductionOrderHistory::where('product_id', $productOrder->product_id)->where('line_id', $productionStep->line_id)->first();
                     $order_quantity = $quantity;
                     $production_quantity = $quantity - $productOrderHistory->inventory_quantity;
-                    if($production_quantity < 0){
+                    if ($production_quantity < 0) {
                         $production_quantity = 0;
                     }
                     $quantity = $production_quantity;

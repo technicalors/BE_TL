@@ -4196,8 +4196,12 @@ class Phase2UIApiController extends Controller
                 if ($history->line_id == 24) {
                     $bom = Bom::where('product_id', $productionOrderPriority->product_id)->where('priority', 1)->first();
                     if ($bom) {
-                        $product_id = $bom->material_id;
+                        $component_id = $bom->material_id;
+                    } else {
+                        $component_id = $product_id;
                     }
+                } else {
+                    $component_id = $product_id;
                 }
                 $product = Product::find($product_id);
                 $productionPlans[] = [
@@ -4210,6 +4214,7 @@ class Phase2UIApiController extends Controller
                     'ngay_giao_hang' => '',
                     'machine_id' => $machinePriorityOrder->machine_id,
                     'product_id' => $product_id,
+                    'component_id' => $component_id,
                     'product_name' => $product->name,
                     'khach_hang' => '',
                     'so_bat' => 0,
