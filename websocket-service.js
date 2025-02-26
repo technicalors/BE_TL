@@ -139,6 +139,12 @@ const deviceFieldConfig = {
   "da03f550-45be-11ef-b8c3-a13625245eca": {
     PM01_TEnergy: "PM01:Active_Energy",
   },
+  "2a9b5df0-45bf-11ef-b8c3-a13625245eca": {
+    PM01_TEnergy: "PM01:Active_Energy",
+  },
+  "7b85a180-45bf-11ef-b8c3-a13625245eca": {
+    PM01_TEnergy: "PM01:Active_Energy",
+  },
   "f7f77560-45bd-11ef-b8c3-a13625245eca": {
     PLC_CB01: "PLC:CB01",
     PLC_CB02: "PLC:CB02",
@@ -400,6 +406,44 @@ async function connectWebSocket(deviceId) {
       parsedData.data.device_id = deviceId;
       // const data = parsedData.data;
       enqueueData(deviceId, parsedData.data);
+      if (deviceId === "9032a0e0-45bc-11ef-b8c3-a13625245eca") {
+        const envHumi =
+          parsedData.data["ENVI:HUMI"] && parsedData.data["ENVI:HUMI"][0]
+            ? parsedData.data["ENVI:HUMI"][0][1]
+            : null;
+        const envTemper =
+          parsedData.data["ENVI:TEMPER"] && parsedData.data["ENVI:TEMPER"][0]
+            ? parsedData.data["ENVI:TEMPER"][0][1]
+            : null;
+
+        if (envHumi !== null && envTemper !== null) {
+          // Tạo payload chung cho 2 device
+          const forwardPayload = {
+            Env01_Humi: envHumi,
+            Env01_Temper: envTemper,
+          };
+
+          // Đẩy dữ liệu cho device 886...
+          dataQueues["40a1abc0-45bc-11ef-b8c3-a13625245eca"].push({
+            data: {
+              ...forwardPayload,
+              device_id: "40a1abc0-45bc-11ef-b8c3-a13625245eca", 
+            },
+            apiUrl: MACHINE_INFO_API_URL,
+          });
+          processQueue("40a1abc0-45bc-11ef-b8c3-a13625245eca");
+
+          // Đẩy dữ liệu cho device a43...
+          dataQueues["7cda31d0-45bb-11ef-b8c3-a13625245eca"].push({
+            data: {
+              ...forwardPayload,
+              device_id: "7cda31d0-45bb-11ef-b8c3-a13625245eca",
+            },
+            apiUrl: MACHINE_INFO_API_URL,
+          });
+          processQueue("7cda31d0-45bb-11ef-b8c3-a13625245eca");
+        }
+      }
     } catch (error) {
       console.error(`Error processing data from ${deviceId}:`, error.message);
     }
