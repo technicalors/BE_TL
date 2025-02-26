@@ -127,6 +127,9 @@ class ProductionOrderPriorityController extends Controller
         $fc_order_quantity = $input['fc_order_quantity'];
         $outstanding_order = $input['outstanding_order'];
         $production_quantity = ($new_order_quantity + $fc_order_quantity + $outstanding_order) - $inventory_quantity;
+        if ($production_quantity < 0) {
+            $production_quantity = 0;
+        }
         $product_id = $input['product_id'];
         try {
             DB::beginTransaction();
@@ -144,6 +147,9 @@ class ProductionOrderPriorityController extends Controller
                 $productOrderHistory = ProductionOrderHistory::where('product_id', $product_id)->where('line_id', $productionStep->line_id)->first();
                 $order_quantity = $calculatedQuantity;
                 $production_quantity = $calculatedQuantity - $productOrderHistory->inventory_quantity;
+                if ($production_quantity < 0) {
+                    $production_quantity = 0;
+                }
                 $quantity = $production_quantity;
                 ProductionOrderHistory::where('product_id', $product_id)->where('line_id', $productionStep->line_id)->update(['order_quantity' => $order_quantity, 'production_quantity' => $production_quantity]);
             }

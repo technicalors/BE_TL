@@ -32,6 +32,9 @@ class IOTController extends AdminController
         $iot_log = new IOTLog();
         $iot_log->data = $request->all();
         $iot_log->save();
+        $log_iot = new MachineIot();
+        $log_iot->data = $request->all();
+        $log_iot->save();
         $machine = Machine::where('device_id', $request->device_id)->first();
         $status = MachineStatus::getStatus($machine->code);
         $info_cong_doan = InfoCongDoan::where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
@@ -134,6 +137,18 @@ class IOTController extends AdminController
                     if ($count > 0) {
                         $arr[$parameter] = $value / $count;
                     }
+                }
+                $logsWithNumOut = array_values(array_filter($logs, function($log) {
+                    return isset($log['output']);
+                }));
+                if (count($logsWithNumOut) > 1) {
+                    $startValue = (float)$logsWithNumOut[0]['output'];
+                    $endValue = (float)$logsWithNumOut[count($logsWithNumOut) - 1]['output'];
+                    $productionSpeed = ($endValue - $startValue) / 5; 
+                    $arr['speed'] = $productionSpeed;
+                } else {
+                    // Không đủ dữ liệu để tính tốc độ, có thể gán null hoặc bỏ qua
+                    $arr['speed'] = 0;
                 }
                 MachineIot::where('data->device_id', $machine->device_id)->delete();
                 Tracking::where('machine_id', $machine->code)->update(['timestamp' =>  strtotime(now())]);

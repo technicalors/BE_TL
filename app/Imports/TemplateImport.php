@@ -41,7 +41,6 @@ class TemplateImport implements ToCollection, WithHeadingRow, WithStartRow
         foreach ($collection as $row) {
             $this->importRow($row->toArray());
         }
-
         if ($this->imported == 0) throw new Exception('Không có bản ghi nào được thêm');
     }
 
