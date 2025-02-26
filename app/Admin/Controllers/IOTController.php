@@ -138,15 +138,17 @@ class IOTController extends AdminController
                         $arr[$parameter] = $value / $count;
                     }
                 }
-                if (
-                    count($logs) > 0
-                    && isset($logs[0]['output'])
-                    && isset($logs[count($logs) - 1]['output'])
-                ) {
-                    $startValue = (float)$logs[0]['output'];
-                    $endValue = (float)$logs[count($logs) - 1]['output'];
-                    $productionSpeed = ($endValue - $startValue) / 5; // sản phẩm/phút
+                $logsWithNumOut = array_values(array_filter($logs, function($log) {
+                    return isset($log['output']);
+                }));
+                if (count($logsWithNumOut) > 1) {
+                    $startValue = (float)$logsWithNumOut[0]['output'];
+                    $endValue = (float)$logsWithNumOut[count($logsWithNumOut) - 1]['output'];
+                    $productionSpeed = ($endValue - $startValue) / 5; 
                     $arr['speed'] = $productionSpeed;
+                } else {
+                    // Không đủ dữ liệu để tính tốc độ, có thể gán null hoặc bỏ qua
+                    $arr['speed'] = 0;
                 }
                 MachineIot::where('data->device_id', $machine->device_id)->delete();
                 Tracking::where('machine_id', $machine->code)->update(['timestamp' =>  strtotime(now())]);
