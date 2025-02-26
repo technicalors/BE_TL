@@ -1756,7 +1756,8 @@ class Phase2UIApiController extends Controller
         return $this->success($href);
     }
 
-    public function exportQCReport(Request $request){
+    public function exportQCReport(Request $request)
+    {
         $input = $request->all();
         $sheet_array = [];
         foreach ($input as $key => $value) {
@@ -1788,12 +1789,12 @@ class Phase2UIApiController extends Controller
                 });
             $shifts = Shift::all();
             foreach ($groupByLine as $line_id => $values) {
-                if(!$key) continue;
-                
-                $groupByMachineAndProduct = $values->groupBy(function ($qcHistory) use($shifts) {
+                if (!$key) continue;
+
+                $groupByMachineAndProduct = $values->groupBy(function ($qcHistory) use ($shifts) {
                     $time = Carbon::parse($qcHistory->scanned_time);
                     $shift = $this->findShift($qcHistory, $shifts);
-                    if($shift->start_time >= $shift->end_time){
+                    if ($shift->start_time >= $shift->end_time) {
                         $time->subDay();
                     }
                     return ($qcHistory->infoCongDoan->machine_code ?? "") . ($qcHistory->infoCongDoan->product_id ?? "") . date('Y-m-d', strtotime($qcHistory->scanned_time)) . "Ca$shift->id";
@@ -1822,11 +1823,10 @@ class Phase2UIApiController extends Controller
                 $data[$line_id]['loi_phat_sinh'] = '';
             }
         }
-
-        
     }
 
-    function findShift($record, $shifts){
+    function findShift($record, $shifts)
+    {
         $createdTime = Carbon::parse($record->created_at)->format('H:i:s');
         foreach ($shifts as $shift) {
             if ($shift->start_time < $shift->end_time) {
@@ -4108,16 +4108,16 @@ class Phase2UIApiController extends Controller
             ->where('product_id', $product_id)
             ->orderBy('priority', 'asc')
             ->get();
-        if($line_id == 29){
+        if ($line_id == 29) {
             $priority = 1;
             $machinePriorityOrders = Machine::where('line_id', $line_id)
-            ->get()->sortBy('code', SORT_NATURAL)->map(function($machine) use(&$priority, $product_id){
-                $machine->machine_id = $machine->code;
-                $machine->priority = $priority;
-                $machine->product_id = $product_id;
-                $priority++;
-                return $machine;
-            });
+                ->get()->sortBy('code', SORT_NATURAL)->map(function ($machine) use (&$priority, $product_id) {
+                    $machine->machine_id = $machine->code;
+                    $machine->priority = $priority;
+                    $machine->product_id = $product_id;
+                    $priority++;
+                    return $machine;
+                });
         }
 
         $acceptableMachines = [];      // Những máy đáp ứng điều kiện (chưa sử dụng hoặc có đủ chỗ cho maxProductionMinutes)
@@ -4180,7 +4180,11 @@ class Phase2UIApiController extends Controller
                 }
                 $machineShifts = $this->getMachineProductionShifts($machinePriorityOrder->machine_id, date('Y-m-d', strtotime('+1 day')));
                 if (count($machineShifts) <= 0) {
-                    throw new Exception("Máy " . $machinePriorityOrder->machine_id . " chưa được phân ca ngày " . date('d-m-Y', strtotime('+1 day')), 1);
+                    if ($history->line_id == 29) {
+                        continue;
+                    } else {
+                        throw new Exception("Máy " . $machinePriorityOrder->machine_id . " chưa được phân ca ngày " . date('d-m-Y', strtotime('+1 day')), 1);
+                    }
                 }
 
                 if (isset($machine_load_factors[$machinePriorityOrder->machine_id])) {
@@ -4197,11 +4201,11 @@ class Phase2UIApiController extends Controller
                     continue;
                 }
 
-                if($history->line_id == 29){
+                if ($history->line_id == 29) {
                     $machineShift = MachineShift::where('machine_id', $machinePriorityOrder->machine_id)
-                    ->where('date', date('Y-m-d', strtotime('+1 day')))
-                    ->where('shift_id', $machineShifts->first()->shift_id ?? null)
-                    ->first();
+                        ->where('date', date('Y-m-d', strtotime('+1 day')))
+                        ->where('shift_id', $machineShifts->first()->shift_id ?? null)
+                        ->first();
                     Log::debug($machineShift);
                     $efficiency = ($machineShift->operator_quantity ?? 1) * $efficiency;
                 }
