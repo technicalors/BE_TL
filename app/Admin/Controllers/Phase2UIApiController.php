@@ -4101,7 +4101,7 @@ class Phase2UIApiController extends Controller
         ];
     }
 
-    protected function getPrioritizedMachine($line_id, $product_id, $machine_load_factors, $maxProductionMinutes)
+    protected function getPrioritizedMachine($line_id, $product_id, $machine_load_factors, $maxProductionMinutes, $except_machine = [])
     {
         // Lấy tất cả các máy theo line_id và product_id theo thứ tự ưu tiên ban đầu
         $machinePriorityOrders = MachinePriorityOrder::where('line_id', $line_id)
@@ -4109,8 +4109,10 @@ class Phase2UIApiController extends Controller
             ->orderBy('priority', 'asc')
             ->get();
         if($line_id == 29){
+            Log::debug($except_machine);
             $priority = 1;
             $machinePriorityOrders = Machine::where('line_id', $line_id)
+            ->whereNotIn('code', $except_machine)
             ->get()->sortBy('code', SORT_NATURAL)->map(function($machine) use(&$priority, $product_id){
                 $machine->machine_id = $machine->code;
                 $machine->priority = $priority;
@@ -4174,15 +4176,22 @@ class Phase2UIApiController extends Controller
                 }
                 $productionTime = ceil(($remainQuantityOrder / $efficiency) * 60) + $setupTime;
 
-                $machinePriorityOrder = $this->getPrioritizedMachine($history->line_id, $productionOrderPriority->product_id, $machine_load_factors, $productionTime);
+                // $machinePriorityOrder = $this->getPrioritizedMachine($history->line_id, $productionOrderPriority->product_id, $machine_load_factors, $productionTime);
+                // if (empty($machinePriorityOrder)) {
+                //     continue;
+                // }
+                // $machineShifts = $this->getMachineProductionShifts($machinePriorityOrder->machine_id, date('Y-m-d', strtotime('+1 day')));
+                // if (count($machineShifts) <= 0) {
+                //     throw new Exception("Máy " . $machinePriorityOrder->machine_id . " chưa được phân ca ngày " . date('d-m-Y', strtotime('+1 day')), 1);
+                // }
+
+                list($machinePriorityOrder, $machineShifts) = $this->getMachineOrderAndShift($history->line_id, $productionOrderPriority->product_id, $machine_load_factors, $productionTime);
                 if (empty($machinePriorityOrder)) {
                     continue;
                 }
-                $machineShifts = $this->getMachineProductionShifts($machinePriorityOrder->machine_id, date('Y-m-d', strtotime('+1 day')));
                 if (count($machineShifts) <= 0) {
                     throw new Exception("Máy " . $machinePriorityOrder->machine_id . " chưa được phân ca ngày " . date('d-m-Y', strtotime('+1 day')), 1);
                 }
-
                 if (isset($machine_load_factors[$machinePriorityOrder->machine_id])) {
                     $totalTime = $machine_load_factors[$machinePriorityOrder->machine_id]['fixed_hours'] - $machine_load_factors[$machinePriorityOrder->machine_id]['work_hours'];
                     $start_time = $machine_load_factors[$machinePriorityOrder->machine_id]['available_at'];
@@ -4268,6 +4277,24 @@ class Phase2UIApiController extends Controller
             }
         }
         return $this->success($productionPlans, 'Tạo kế hoạch thành công');
+    }
+
+    function getMachineOrderAndShift($lineId, $product_id, $machine_load_factors, $productionTime, &$except_machine = []){
+        $machinePriorityOrder = $this->getPrioritizedMachine($lineId, $product_id, $machine_load_factors, $productionTime, $except_machine);
+        if (empty($machinePriorityOrder)) {
+            return [[], []];
+        }
+        $machineShifts = $this->getMachineProductionShifts($machinePriorityOrder->machine_id, date('Y-m-d', strtotime('+1 day')));
+        if($lineId == 29){
+            $except_machine[] = $machinePriorityOrder->machine_id;
+            $this->getMachineOrderAndShift($lineId, $product_id, $machine_load_factors, $productionTime, $except_machine);
+        }else{
+            if (count($machineShifts) <= 0) {
+                throw new Exception("Máy " . $machinePriorityOrder->machine_id . " chưa được phân ca ngày " . date('d-m-Y', strtotime('+1 day')), 1);
+            }
+        }
+        
+        return [$machinePriorityOrder, $machineShifts];
     }
 
     public function approveProductionPlanAuto(Request $request)
