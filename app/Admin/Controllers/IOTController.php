@@ -140,12 +140,11 @@ class IOTController extends AdminController
                 }
                 if (
                     count($logs) > 0
-                    && isset($logs[0]['ouput'])
-                    && isset($logs[count($logs) - 1]['ouput'])
+                    && isset($logs[0]['output'])
+                    && isset($logs[count($logs) - 1]['output'])
                 ) {
-                    $startValue = (float)$logs[0]['ouput'];
-                    $endValue = (float)$logs[count($logs) - 1]['ouput'];
-                    // Khoảng thời gian 300 giây = 5 phút
+                    $startValue = (float)$logs[0]['output'];
+                    $endValue = (float)$logs[count($logs) - 1]['output'];
                     $productionSpeed = ($endValue - $startValue) / 5; // sản phẩm/phút
                     $arr['speed'] = $productionSpeed;
                 }
