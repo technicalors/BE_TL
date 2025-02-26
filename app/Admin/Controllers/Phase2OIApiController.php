@@ -594,9 +594,9 @@ class Phase2OIApiController extends Controller
             return $this->failure([], "Không tìm thấy máy");
         }
         $scannedLot = Lot::find($request->scanned_lot);
-        if(!$scannedLot){
-            return $this->failure('', 'Không tìm thấy lot');
-        }
+        // if(!$scannedLot){
+        //     return $this->failure('', 'Không tìm thấy lot');
+        // }
         $check = InfoCongDoan::whereDate('created_at', date('Y-m-d'))->where('machine_code', $machine->code)->where('line_id', $line->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
         if ($check) {
             return $this->failure([], "Chưa hoàn thành lot trước đó");
@@ -611,36 +611,36 @@ class Phase2OIApiController extends Controller
         if (!$plan) {
             return $this->failure([], 'Không tìm thấy KHSX');
         }
-        $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $plan->product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
-        $requestValue = $hanh_trinh_san_xuat[$request->line_id] ?? 0;
-        // Lọc các line_id có value nhỏ hơn requestValue
-        $filteredLineIds = collect($hanh_trinh_san_xuat)
-            ->filter(function ($value, $lineId) use ($requestValue) {
-                return $value < $requestValue;
-            })->keys();
-        $orderByString = "'" . implode("','", $filteredLineIds->toArray()) . "'";
-        $previousLineLot = InfoCongDoan::where('lot_id', $request->scanned_lot)
-            ->whereIn('line_id', $filteredLineIds)->where('status', InfoCongDoan::STATUS_COMPLETED)
-            ->orderByRaw("FIELD(line_id, $orderByString)")
-            ->get()
-            ->last();
-        if (count($filteredLineIds) > 0) {
-            if (!$previousLineLot) {
-                return $this->failure([], 'Không tìm thấy lot đã chạy trước đó');
-            }
-            if ($previousLineLot->line_id == 24) {
-                $bomProducts = Bom::where(function ($subQuery) use ($previousLineLot) {
-                    $subQuery->where('material_id', $previousLineLot->product_id)->orWhere('product_id', $previousLineLot->product_id);
-                })->pluck('product_id')->toArray();
-                if (!in_array($plan->product_id, $bomProducts)) {
-                    return $this->failure($previousLineLot, 'Không khớp mã sản phẩm');
-                }
-            } else {
-                if ($previousLineLot->product_id !== $plan->product_id) {
-                    return $this->failure([$previousLineLot,$plan], 'Không khớp mã sản phẩm');
-                }
-            }
-        }
+        // $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $plan->product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
+        // $requestValue = $hanh_trinh_san_xuat[$request->line_id] ?? 0;
+        // // Lọc các line_id có value nhỏ hơn requestValue
+        // $filteredLineIds = collect($hanh_trinh_san_xuat)
+        //     ->filter(function ($value, $lineId) use ($requestValue) {
+        //         return $value < $requestValue;
+        //     })->keys();
+        // $orderByString = "'" . implode("','", $filteredLineIds->toArray()) . "'";
+        // $previousLineLot = InfoCongDoan::where('lot_id', $request->scanned_lot)
+        //     ->whereIn('line_id', $filteredLineIds)->where('status', InfoCongDoan::STATUS_COMPLETED)
+        //     ->orderByRaw("FIELD(line_id, $orderByString)")
+        //     ->get()
+        //     ->last();
+        // if (count($filteredLineIds) > 0) {
+        //     if (!$previousLineLot) {
+        //         return $this->failure([], 'Không tìm thấy lot đã chạy trước đó');
+        //     }
+        //     if ($previousLineLot->line_id == 24) {
+        //         $bomProducts = Bom::where(function ($subQuery) use ($previousLineLot) {
+        //             $subQuery->where('material_id', $previousLineLot->product_id)->orWhere('product_id', $previousLineLot->product_id);
+        //         })->pluck('product_id')->toArray();
+        //         if (!in_array($plan->product_id, $bomProducts)) {
+        //             return $this->failure($previousLineLot, 'Không khớp mã sản phẩm');
+        //         }
+        //     } else {
+        //         if ($previousLineLot->product_id !== $plan->product_id) {
+        //             return $this->failure([$previousLineLot,$plan], 'Không khớp mã sản phẩm');
+        //         }
+        //     }
+        // }
         try {
             DB::beginTransaction();
             $infoCongDoan = InfoCongDoan::create([
@@ -651,11 +651,11 @@ class Phase2OIApiController extends Controller
                 'lo_sx' => $plan->lo_sx,
                 'product_id' => $plan->product_id,
                 'thoi_gian_bat_dau' => Carbon::now(),
-                'sl_dau_vao_hang_loat' => $scannedLot->so_luong,
-                'sl_dau_ra_hang_loat' => $scannedLot->so_luong,
+                'sl_dau_vao_hang_loat' => $scannedLot->so_luong ?? 11000,
+                'sl_dau_ra_hang_loat' => $scannedLot->so_luong ?? 11000,
                 'status' => InfoCongDoan::STATUS_INPROGRESS,
                 'user_id' => $request->user()->id,
-                'sl_kh' => $scannedLot->so_luong,
+                'sl_kh' => $scannedLot->so_luong ?? 11000,
                 'plan_id' => $plan->id
             ]);
             if ($scannedLot) {
