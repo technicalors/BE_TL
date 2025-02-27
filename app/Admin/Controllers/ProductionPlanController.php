@@ -1425,7 +1425,7 @@ class ProductionPlanController extends AdminController
                     'ngay_giao_hang' => '',
                     'machine_id' => $machinePriorityOrder->machine_id,
                     'product_id' => $product_id,
-                    'product_name' => $product->name,
+                    'product_name' => $product->name ?? '',
                     'khach_hang' => '',
                     'so_bat' => 0,
                     'sl_nvl' => 0,
