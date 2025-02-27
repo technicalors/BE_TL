@@ -781,17 +781,12 @@ class Phase2OIApiController extends Controller
                     LineInventories::create(['quantity' => $sl_dat, 'line_id' => $infoCongDoan->line_id, 'product_id' => $infoCongDoan->product_id]);
                 }
                 //Update ProductionOrderHistory and ProductionOrderPriority
-                $productionOrderHistory = ProductionOrderHistory::where('line_id', $infoCongDoan->line_id)->where('product_id', $infoCongDoan->product_id)->first();
+                $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->where('component_id', $infoCongDoan->plan->component_id)->first();
                 $producedInfoQuantity = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng;
                 if ($productionOrderHistory) {
                     $productionOrderHistory->update([
-                        'inventory_quantity' => $productionOrderHistory->inventory_quantity + $producedInfoQuantity,
-                        'production_quantity' => $productionOrderHistory->production_quantity - $producedInfoQuantity
+                        'producted_quantity' => $productionOrderHistory->producted_quantity + $producedInfoQuantity,
                     ]);
-                    $productionOrderHistories = ProductionOrderHistory::where('product_id', $infoCongDoan->product_id ?? null)->where('production_quantity', '>', 0)->get();
-                    if (empty($productionOrderHistories)) {
-                        ProductionOrderPriority::removeItemAndReorderList($infoCongDoan->product_id);
-                    }
                 }
 
                 $infos = InfoCongDoan::where('plan_id', $infoCongDoan->plan_id)->get();
@@ -1645,17 +1640,12 @@ class Phase2OIApiController extends Controller
             ]);
             if($infoCongDoan->plan){
                 //Update ProductionOrderHistory and ProductionOrderPriority
-                $productionOrderHistory = ProductionOrderHistory::where('line_id', $infoCongDoan->line_id)->where('product_id', $infoCongDoan->product_id)->first();
+                $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->where('component_id', $infoCongDoan->plan->component_id)->first();
                 $producedInfoQuantity = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng;
-                if($productionOrderHistory){
+                if ($productionOrderHistory) {
                     $productionOrderHistory->update([
-                        'inventory_quantity'=>$productionOrderHistory->inventory_quantity + $producedInfoQuantity, 
-                        'production_quantity' => $productionOrderHistory->production_quantity - $producedInfoQuantity
+                        'producted_quantity' => $productionOrderHistory->producted_quantity + $producedInfoQuantity,
                     ]);
-                    $productionOrderHistories = ProductionOrderHistory::where('product_id', $infoCongDoan->product_id ?? null)->where('production_quantity', '>', 0)->get();
-                    if(empty($productionOrderHistories)){
-                        ProductionOrderPriority::removeItemAndReorderList($infoCongDoan->product_id);
-                    }
                 }
 
                 $infos = InfoCongDoan::where('plan_id', $infoCongDoan->plan_id)->get();
