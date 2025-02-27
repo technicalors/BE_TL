@@ -36,23 +36,23 @@ class Losx extends Model
 
 
 
-    // public static function generateUniqueId()
-    // {
-    //     $currentMonth = Carbon::now()->format('ym');
-    //     $latestLosx = self::where('id', 'LIKE', $currentMonth . '%')
-    //         ->orderBy('id', 'desc')
-    //         ->first();
+    public static function generateUniqueIdV1()
+    {
+        $currentMonth = Carbon::now()->format('ym');
+        $latestLosx = self::where('id', 'LIKE', $currentMonth . '%')
+            ->orderBy('id', 'desc')
+            ->first();
 
-    //     if ($latestLosx) {
-    //         $lastSequence = (int) substr($latestLosx->id, -4);
-    //     } else {
-    //         $lastSequence = 0;
-    //     }
+        if ($latestLosx) {
+            $lastSequence = (int) substr($latestLosx->id, -4);
+        } else {
+            $lastSequence = 0;
+        }
 
-    //     $newSequence = str_pad($lastSequence + 1, 4, '0', STR_PAD_LEFT);
+        $newSequence = str_pad($lastSequence + 1, 4, '0', STR_PAD_LEFT);
 
-    //     return $currentMonth . $newSequence;
-    // }
+        return $currentMonth . $newSequence;
+    }
 
     public static function generateUniqueId($productId)
     {

@@ -3780,20 +3780,20 @@ class ApiMobileController extends AdminController
         $input['line_id'] =  $machine->line_id;
         $input['thoi_gian_bat_dau'] = date('Y-m-d H:i:s', strtotime($input['thoi_gian_bat_dau']));
 
-        $setupTime = Phase2UIApiController::getSetupTime($input['product_id'], $machine->line_id);
-        $efficiency = Phase2UIApiController::getEfficiency($input['product_id'], $machine->line_id);
+        $setupTime = ProductionPlanController::getSetupTime($input['product_id'], $machine->line_id);
+        $efficiency = ProductionPlanController::getEfficiency($input['product_id'], $machine->line_id);
         $productionTime = ceil(($input['sl_giao_sx'] / $efficiency) * 60) + $setupTime;
 
-        $machineShifts = Phase2UIApiController::getMachineProductionShifts($machine->code, date('Y-m-d', strtotime('+1 day')));
+        $machineShifts = ProductionPlanController::getMachineProductionShifts($machine->code, date('Y-m-d', strtotime('+1 day')));
         if (count($machineShifts) <= 0) {
             throw new Exception("Máy " . $machine->code . " chưa được phân ca ngày " . date('d-m-Y', strtotime('+1 day')), 1);
         }
         $start_time = $input['thoi_gian_bat_dau'];
         $end_time = date('Y-m-d H:i:s', strtotime('+' . $productionTime . ' minutes', strtotime($input['thoi_gian_bat_dau'])));
-        $times = Phase2UIApiController::adjustShift($start_time, $end_time, $machineShifts);
+        $times = ProductionPlanController::adjustShift($start_time, $end_time, $machineShifts);
         $input['thoi_gian_ket_thuc'] = $times['end_time'];
         $input['cong_doan_sx'] = $machine->line->name;
-        $input['lo_sx'] = Losx::generateUniqueId();
+        $input['lo_sx'] = Losx::generateUniqueIdV1();
         Losx::create(['id' =>  $input['lo_sx'], 'product_order_id' => $input['lo_sx']]);
         $input['ngay_sx'] = date('Y-m-d', strtotime($input['thoi_gian_bat_dau']));
         $check = ProductionPlan::where('lo_sx', $input['lo_sx'])->where('cong_doan_sx', $input['cong_doan_sx'])->first();
@@ -3815,11 +3815,11 @@ class ApiMobileController extends AdminController
             }
 
             $machine = Machine::where('code', $input['machine_id'])->first();
-            $setupTime = Phase2UIApiController::getSetupTime($input['product_id'], $machine->line_id);
+            $setupTime = ProductionPlanController::getSetupTime($input['product_id'], $machine->line_id);
             $productOrderHistory = ProductionOrderHistory::where('product_id', $input['product_id'])->where('line_id', $machine->line_id)->first();
-            $efficiency = Phase2UIApiController::getEfficiency($input['product_id'], $machine->line_id);
+            $efficiency = ProductionPlanController::getEfficiency($input['product_id'], $machine->line_id);
             $productionTime = ceil((($productOrderHistory->production_quantity ?? $model->sl_giao_sx) / $efficiency) * 60) + $setupTime;
-            $machineShifts = Phase2UIApiController::getMachineProductionShifts($machine->code, date('Y-m-d', strtotime('+1 day')));
+            $machineShifts = ProductionPlanController::getMachineProductionShifts($machine->code, date('Y-m-d', strtotime('+1 day')));
             if (count($machineShifts) <= 0) {
                 throw new Exception("Máy " . $machine->code . " chưa được phân ca ngày " . date('d-m-Y', strtotime('+1 day')), 1);
             }
@@ -3834,7 +3834,7 @@ class ApiMobileController extends AdminController
             $model->sl_giao_sx = $productionQuanty;
             $start_time = $input['thoi_gian_bat_dau'];
             $end_time = date('Y-m-d H:i:s', strtotime('+' . $productionTime . ' minutes', strtotime($input['thoi_gian_bat_dau'])));
-            $times = Phase2UIApiController::adjustShift($start_time, $end_time, $machineShifts);
+            $times = ProductionPlanController::adjustShift($start_time, $end_time, $machineShifts);
             $model->thoi_gian_ket_thuc = $times['end_time'];
             $model->fill($input);
             $model->save();
