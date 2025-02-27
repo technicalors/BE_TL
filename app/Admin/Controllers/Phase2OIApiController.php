@@ -1334,7 +1334,7 @@ class Phase2OIApiController extends Controller
         $data['ver'] = $product->ver ?? "";
         $data['cd_thuc_hien'] = $line->name ?? "";
         $data['cd_tiep_theo'] = $next_line->name ?? "";
-        $data['nguoi_sx'] = $user->name ?? "";
+        // $data['nguoi_sx'] = $user->name ?? "";
         $data['ghi_chu'] = $ghi_chu ?? "";
         $data['machine_code'] = $infoCongDoan->machine_code;
         return $data;
