@@ -292,7 +292,7 @@ class ProductOrderController extends Controller
             $fc_order_quantity = $productOrder->fc_quantity;
             $inventory = Inventory::where('product_id', $productOrder->product_id)->first();
             $productionOrderPriority = ProductionOrderPriority::where('product_id', $productOrder->product_id)->first();
-            $productionSteps = Phase2UIApiController::getProductionSteps($productOrder->product_id);
+            $productionSteps = ProductionPlanController::getProductionSteps($productOrder->product_id);
             if (!$productionOrderPriority) {
                 $maxPriority = ProductionOrderPriority::max('priority');
                 $newPriority = ($maxPriority !== null) ? $maxPriority + 1 : 1;
@@ -317,7 +317,7 @@ class ProductOrderController extends Controller
                 $quantity = $production_quantity;
                 foreach ($productionSteps as $productionStep) {
                     if ($quantity > 0) {
-                        $calculatedQuantity = Phase2UIApiController::calculateProductionOutput($productOrder->product_id, $productionStep->line_id, $quantity);
+                        $calculatedQuantity = ProductionPlanController::calculateProductionOutput($productOrder->product_id, $productionStep->line_id, $quantity);
                         $quantity = $calculatedQuantity;
                     }
                     if ($productionStep->line_id == 24) {
@@ -351,7 +351,7 @@ class ProductOrderController extends Controller
                 $quantity = $production_quantity;
                 foreach ($productionSteps as $productionStep) {
                     if ($quantity > 0) {
-                        $calculatedQuantity = Phase2UIApiController::calculateProductionOutput($productOrder->product_id, $productionStep->line_id, $quantity);
+                        $calculatedQuantity = ProductionPlanController::calculateProductionOutput($productOrder->product_id, $productionStep->line_id, $quantity);
                         $quantity = $calculatedQuantity;
                     }
                     $productOrderHistory = ProductionOrderHistory::where('product_id', $productOrder->product_id)->where('line_id', $productionStep->line_id)->first();
