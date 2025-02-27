@@ -140,10 +140,10 @@ class ProductionOrderPriorityController extends Controller
                 Inventory::create(['product_id' => $product_id, 'sl_ton' => $inventory_quantity]);
             }
             ProductionOrderPriority::where('product_id', $product_id)->update(['new_order_quantity' => $new_order_quantity, 'fc_order_quantity' => $fc_order_quantity, 'outstanding_order' => $outstanding_order, 'production_quantity' => $production_quantity]);
-            $productionSteps = Phase2UIApiController::getProductionSteps($product_id);
+            $productionSteps = ProductionPlanController::getProductionSteps($product_id);
             $quantity = $production_quantity;
             foreach ($productionSteps as $productionStep) {
-                $calculatedQuantity = Phase2UIApiController::calculateProductionOutput($product_id, $productionStep->line_id, $quantity);
+                $calculatedQuantity = ProductionPlanController::calculateProductionOutput($product_id, $productionStep->line_id, $quantity);
                 $productOrderHistory = ProductionOrderHistory::where('product_id', $product_id)->where('line_id', $productionStep->line_id)->first();
                 $order_quantity = $calculatedQuantity;
                 $production_quantity = $calculatedQuantity - $productOrderHistory->inventory_quantity;

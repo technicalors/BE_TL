@@ -16,7 +16,7 @@ class ProductionOrderHistoryController extends Controller
         $input = $request->all();
         try {
             DB::beginTransaction();
-            $productionSteps = Phase2UIApiController::getProductionSteps($input['product_id']);
+            $productionSteps = ProductionPlanController::getProductionSteps($input['product_id']);
             foreach ($productionSteps as $key => $value) {
                 $result = collect($input['dataHistory'])->first(function ($item) use ($value) {
                     return $item['line_id'] == $value->line_id;
@@ -25,17 +25,17 @@ class ProductionOrderHistoryController extends Controller
                     $quantity = $result['order_quantity'];
                 }
                 $inventory_quantity = $result['inventory_quantity'];
-                if ($quantity == 0) {
+                if ($quantity <= 0) {
                     $calculatedQuantity = 0;
                 } else {
-                    $calculatedQuantity = Phase2UIApiController::calculateProductionOutput($input['product_id'], $result['line_id'], $quantity);
+                    $calculatedQuantity = ProductionPlanController::calculateProductionOutput($input['product_id'], $result['line_id'], $quantity);
                 }
                 $order_quantity = $calculatedQuantity;
                 $production_quantity = $calculatedQuantity - $inventory_quantity;
-                if ($production_quantity < 0) {
+                if ($production_quantity <= 0) {
                     $production_quantity = 0;
                 }
-                $quantity = $production_quantity < 0 ? 0 : $production_quantity;
+                $quantity = $production_quantity <= 0 ? 0 : $production_quantity;
                 ProductionOrderHistory::where('product_id', $input['product_id'])->where('line_id', $result['line_id'])->update(['order_quantity' => $order_quantity, 'production_quantity' => $production_quantity, 'inventory_quantity' => $inventory_quantity]);
             }
             DB::commit();
