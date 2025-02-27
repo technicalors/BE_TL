@@ -68,7 +68,6 @@ class InfoCongDoan extends Model
             throw $th;
             $index = 0;
         }
-        Log::info(['index' => $index, 'lot_id' => $latestInfo->lot_id ?? 'null']);
         $newSequence = str_pad($index + 1, 4, '0', STR_PAD_LEFT);
 
         return $prefix . $newSequence;
