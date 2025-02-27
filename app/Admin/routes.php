@@ -31,6 +31,7 @@ use App\Admin\Controllers\ProductCustomerController;
 use App\Admin\Controllers\ProductionJourneyController;
 use App\Admin\Controllers\ProductionOrderHistoryController;
 use App\Admin\Controllers\ProductionOrderPriorityController;
+use App\Admin\Controllers\ProductionPlanController;
 use App\Admin\Controllers\ProductOrderController;
 use App\Admin\Controllers\QCCriteriaController;
 use App\Http\Controllers\ShiftBreakController;
@@ -723,11 +724,11 @@ Route::group([
     $router->get('quality/oqc/data-chart', [Phase2UIApiController::class, 'getOQCDataChart']);
     $router->get('quality/oqc/data-summary', [Phase2UIApiController::class, 'getOQCDataSummary']);
     $router->get('quality/oqc/export-data-table', [Phase2UIApiController::class, 'exportOQCDataTable']);
-    $router->post('plan/generate', [Phase2UIApiController::class, 'generateProductionPlan']);
-    $router->get('plan/store/{order_id}', [Phase2UIApiController::class, 'processProductionPlan']);
-    $router->post('plan/create', [Phase2UIApiController::class, 'createProductionPlan']);
-    $router->post('plan/upload', [Phase2UIApiController::class, 'uploadProductionPlan']);
-    $router->post('plan/print', [Phase2UIApiController::class, 'printProductionPlan']);
+    $router->post('plan/generate', [ProductionPlanController::class, 'generateProductionPlan']);
+    $router->get('plan/store/{order_id}', [ProductionPlanController::class, 'processProductionPlan']);
+    $router->post('plan/create', [ProductionPlanController::class, 'createProductionPlan']);
+    $router->post('plan/upload', [ProductionPlanController::class, 'uploadProductionPlan']);
+    $router->post('plan/print', [ProductionPlanController::class, 'printProductionPlan']);
 
 
     $router->get('kpi/pass-rate-chart', [Phase2UIApiController::class, 'getKPIPassRateChart']);
@@ -752,8 +753,8 @@ Route::group([
 
     Route::get('update-finished-product-inventory', [ApiUIController::class, 'updateFinishedProductInventory']);
 
-    Route::post('production_plan/store', [Phase2UIApiController::class, 'storeProductionPlanAuto']);
-    Route::post('production_plan/approve', [Phase2UIApiController::class, 'approveProductionPlanAuto']);
+    Route::post('production_plan/store', [ProductionPlanController::class, 'storeProductionPlanAuto']);
+    Route::post('production_plan/approve', [ProductionPlanController::class, 'approveProductionPlanAuto']);
     Route::apiResource('production-order-priorities', ProductionOrderPriorityController::class);
     Route::post('production-order-priorities/update', [ProductionOrderPriorityController::class, 'updateRecord']);
     Route::post('production-order-priorities/complete', [ProductionOrderPriorityController::class, 'complete']);

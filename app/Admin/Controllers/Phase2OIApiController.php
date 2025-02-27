@@ -1290,14 +1290,14 @@ class Phase2OIApiController extends Controller
     {
         $request->validate([
             'list' => 'required|array',
-            'list.*.info_id' => 'required',
+            // 'list.*.info_id' => 'required',
             'list.*.lot_id' => 'required',
         ]);
 
         $result = [];
         foreach ($request->list as $record) {
             $record = (object) $record;
-            $info = InfoCongDoan::find($record->info_id);
+            $info = InfoCongDoan::where('lot_id', $record->lot_id)->first();
             if (!empty($info)) {
                 $param = (object) ['lot_id' => $record->lot_id];
                 $result[] = $this->formatTemTrang($info, $param);
