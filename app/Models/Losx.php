@@ -17,11 +17,23 @@ class Losx extends Model
         'order_quantity',
         'status',
         'delivery_date',
+        'priority',
     ];
     public $incrementing = false;
     protected $casts = [
         "id" => "string"
     ];
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class, 'product_id', 'id');
+    }
+    
+    public function productionOrderHistory()
+    {
+        return $this->hasMany(ProductionOrderHistory::class, 'lo_sx', 'id');
+    }
+
 
 
     // public static function generateUniqueId()

@@ -1972,14 +1972,14 @@ class ProductionPlanController extends AdminController
 
     public function storeProductionPlanAuto(Request $request)
     {
-        $productionOrderPriorities = ProductionOrderPriority::with('productionOrder', 'productionOrderHistory')->orderBy('priority', 'asc')->get();
+        $productionOrderPriorities = Losx::with('productionOrderHistory')->where('status', 1)->orderBy('priority', 'asc')->get();
         $productionPlans = [];
         $machine_load_factors = [];
         foreach ($productionOrderPriorities as $productionOrderPriority) {
             $sortedHistories = $productionOrderPriority->productionOrderHistory->sortByDesc('updated_at');
             foreach ($sortedHistories as $key => $history) {
                 $setupTime = $this->getSetupTime($productionOrderPriority->product_id, $history->line_id);
-                $remainQuantityOrder = $history->order_quantity - $history->inventory_quantity;
+                $remainQuantityOrder = $history->order_quantity - $history->produced_quantity;
                 if ($remainQuantityOrder <= 0) {
                     continue;
                 }
@@ -2047,8 +2047,9 @@ class ProductionPlanController extends AdminController
                 }
                 $product = Product::find($product_id);
                 $productionPlans[] = [
+                    'lo_sx' => $history->lo_sx,
                     'product_order_id' => $productionOrderPriority->production_order_id,
-                    'ngay_dat_hang' => $history->productionOrderPriority->confirm_date,
+                    'ngay_dat_hang' => '',
                     'cong_doan_sx' => $history->line->name,
                     'line_id' => $history->line_id,
                     'ca_sx' => 1,
@@ -2096,8 +2097,6 @@ class ProductionPlanController extends AdminController
         DB::beginTransaction();
         try {
             foreach ($productionPlans as $plan) {
-                $lo_sx = Losx::firstOrCreate(['product_order_id' => $plan['product_order_id']]);
-                $plan['lo_sx'] = $lo_sx->id;
                 $plan['production_order_id'] = $plan['product_order_id'];
                 $plan['khach_hang'] = $plan['khach_hang'] ?? '';
                 $plan['ngay_giao_hang'] = $plan['ngay_giao_hang'] ?? '';
@@ -2279,9 +2278,9 @@ class ProductionPlanController extends AdminController
             $priority = 1;
             foreach ($machines as &$machine) {
                 $key = $machine['machine_id'] . '_' . $machine['product_id'] . '_' . $machine['line_id'];
-                if(isset($machinePriorityOrders[$key])) {
+                if (isset($machinePriorityOrders[$key])) {
                     continue;
-                }else{
+                } else {
                     $machinePriorityOrders[$key] = [
                         'machine_id' => $machine['machine_id'],
                         'product_id' => $machine['product_id'],
