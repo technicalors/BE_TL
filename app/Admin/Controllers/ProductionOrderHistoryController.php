@@ -16,7 +16,7 @@ class ProductionOrderHistoryController extends Controller
         $input = $request->all();
         try {
             DB::beginTransaction();
-            $productionSteps = Phase2UIApiController::getProductionSteps($input['product_id']);
+            $productionSteps = ProductionPlanController::getProductionSteps($input['product_id']);
             foreach ($productionSteps as $key => $value) {
                 $result = collect($input['dataHistory'])->first(function ($item) use ($value) {
                     return $item['line_id'] == $value->line_id;
@@ -28,7 +28,7 @@ class ProductionOrderHistoryController extends Controller
                 if ($quantity <= 0) {
                     $calculatedQuantity = 0;
                 } else {
-                    $calculatedQuantity = Phase2UIApiController::calculateProductionOutput($input['product_id'], $result['line_id'], $quantity);
+                    $calculatedQuantity = ProductionPlanController::calculateProductionOutput($input['product_id'], $result['line_id'], $quantity);
                 }
                 $order_quantity = $calculatedQuantity;
                 $production_quantity = $calculatedQuantity - $inventory_quantity;
