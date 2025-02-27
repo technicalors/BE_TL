@@ -829,4 +829,5 @@ Route::group([
 ], function (Router $router) {
     //Test new api
     $router->post('convert-spec', [ProductController::class, 'convertSpec']);
+    $router->post('create-prioritized-machines', [ProductionPlanController::class, 'createPrioritizedMachines']);
 });

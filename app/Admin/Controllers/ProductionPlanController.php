@@ -16,7 +16,6 @@ use App\Models\MachineLoadFactor;
 use App\Models\MachinePriorityOrder;
 use App\Models\MachineShift;
 use App\Models\NumberMachineOrder;
-use App\Models\PrioritizedMachines;
 use App\Models\Product;
 use App\Models\ProductionOrderPriority;
 use App\Models\ProductionPlan;
@@ -1924,17 +1923,17 @@ class ProductionPlanController extends AdminController
             ->where('product_id', $product_id)
             ->orderBy('priority', 'asc')
             ->get();
-        if ($line_id == 29) {
-            $priority = 1;
-            $machinePriorityOrders = Machine::where('line_id', $line_id)
-                ->get()->sortBy('code', SORT_NATURAL)->map(function ($machine) use (&$priority, $product_id) {
-                    $machine->machine_id = $machine->code;
-                    $machine->priority = $priority;
-                    $machine->product_id = $product_id;
-                    $priority++;
-                    return $machine;
-                });
-        }
+        // if ($line_id == 29) {
+        //     $priority = 1;
+        //     $machinePriorityOrders = Machine::where('line_id', $line_id)
+        //         ->get()->sortBy('code', SORT_NATURAL)->map(function ($machine) use (&$priority, $product_id) {
+        //             $machine->machine_id = $machine->code;
+        //             $machine->priority = $priority;
+        //             $machine->product_id = $product_id;
+        //             $priority++;
+        //             return $machine;
+        //         });
+        // }
 
         $acceptableMachines = [];      // Những máy đáp ứng điều kiện (chưa sử dụng hoặc có đủ chỗ cho maxProductionMinutes)
         $nonAcceptableMachines = [];   // Những máy đã sử dụng nhưng không đáp ứng điều kiện
@@ -2242,30 +2241,63 @@ class ProductionPlanController extends AdminController
     }
 
     function createPrioritizedMachines(){
-        $plans = ProductionPlan::whereNotNull('production_order_id')->get();
-        $prioritizedMachines = [];
+        $plans = ProductionPlan::get();
+        $machinePriorityOrders = [];
+    
+        // Thu thập dữ liệu frequency cho từng máy theo (product_id, line_id)
         foreach($plans as $plan){
-            $key = $plan->machine_id . '_' . $plan->product_id;
-            if(!isset($prioritizedMachines[$key])){
-                $prioritizedMachines[$key] = [
+            $key = $plan->product_id . '_' . $plan->line_id . '_' . $plan->machine_id;
+            if (!isset($machinePriorityOrders[$key])) {
+                $machinePriorityOrders[$key] = [
                     'machine_id' => $plan->machine_id,
                     'product_id' => $plan->product_id,
+                    'line_id' => $plan->line_id,
                     'frequency' => 1
                 ];
-            }else{
-                $prioritizedMachines[$key]['frequency']++;
+            } else {
+                $machinePriorityOrders[$key]['frequency']++;
             }
         }
-        PrioritizedMachines::truncate();
-        PrioritizedMachines::insert(array_values($prioritizedMachines));
-    }
-
-    function getMostUsedMachine($line_id, $product_id = ""){
-        $line = Line::find($line_id);
-        if(!$line){
-            return [];
+    
+        // Nhóm theo (product_id, line_id)
+        $groupedMachines = [];
+        foreach ($machinePriorityOrders as $order) {
+            $groupKey = $order['product_id'] . '_' . $order['line_id'];
+            if (!isset($groupedMachines[$groupKey])) {
+                $groupedMachines[$groupKey] = [];
+            }
+            $groupedMachines[$groupKey][] = $order;
         }
-        $machine_ids = $line->machines->pluck('code')->toArray();
-        return PrioritizedMachines::orderBy('frequency', 'desc')->whereIn('machine_id', $machine_ids)->first();
+    
+        // Gán priority trong từng nhóm
+        $finalPriorityOrders = [];
+        foreach ($groupedMachines as $groupKey => &$machines) {
+            // Sắp xếp theo frequency giảm dần trong nhóm
+            usort($machines, function($a, $b) {
+                return $b['frequency'] <=> $a['frequency'];
+            });
+    
+            // Gán priority bắt đầu từ 1 trong từng nhóm
+            $priority = 1;
+            foreach ($machines as &$machine) {
+                $machine['priority'] = $priority;
+                $priority++;
+                $finalPriorityOrders[] = $machine; // Lưu vào danh sách cuối cùng
+            }
+        }
+    
+        // Cập nhật dữ liệu vào MachinePriorityOrder
+        foreach ($finalPriorityOrders as $order) {
+            MachinePriorityOrder::updateOrCreate(
+                [
+                    'machine_id' => $order['machine_id'],
+                    'product_id' => $order['product_id'],
+                    'line_id' => $order['line_id']
+                ],
+                [
+                    'priority' => $order['priority']
+                ]
+            );
+        }
     }
 }
