@@ -763,6 +763,7 @@ Route::group([
     Route::post('production-order-history/update', [ProductionOrderHistoryController::class,'update']);
 
     Route::get('losx-priorities', [LosxController::class, 'getPriorities']);
+    Route::post('losx-update', [LosxController::class, 'update']);
 });
 
 //Masterdata

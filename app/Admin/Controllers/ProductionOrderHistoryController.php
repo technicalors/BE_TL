@@ -16,27 +16,8 @@ class ProductionOrderHistoryController extends Controller
         $input = $request->all();
         try {
             DB::beginTransaction();
-            $productionSteps = ProductionPlanController::getProductionSteps($input['product_id']);
-            foreach ($productionSteps as $key => $value) {
-                $result = collect($input['dataHistory'])->first(function ($item) use ($value) {
-                    return $item['line_id'] == $value->line_id;
-                });
-                if (!isset($quantity)) {
-                    $quantity = $result['order_quantity'];
-                }
-                $inventory_quantity = $result['inventory_quantity'];
-                if ($quantity <= 0) {
-                    $calculatedQuantity = 0;
-                } else {
-                    $calculatedQuantity = ProductionPlanController::calculateProductionOutput($input['product_id'], $result['line_id'], $quantity);
-                }
-                $order_quantity = $calculatedQuantity;
-                $production_quantity = $calculatedQuantity - $inventory_quantity;
-                if ($production_quantity <= 0) {
-                    $production_quantity = 0;
-                }
-                $quantity = $production_quantity <= 0 ? 0 : $production_quantity;
-                ProductionOrderHistory::where('product_id', $input['product_id'])->where('line_id', $result['line_id'])->update(['order_quantity' => $order_quantity, 'production_quantity' => $production_quantity, 'inventory_quantity' => $inventory_quantity]);
+            foreach ($input['dataHistory'] as $data) {
+                ProductionOrderHistory::where('lo_sx', $input['lo_sx'])->where('line_id', $data['line_id'])->update(['produced_quantity' => $data['produced_quantity']]);
             }
             DB::commit();
         } catch (\Throwable $th) {
