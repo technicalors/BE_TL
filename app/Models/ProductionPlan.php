@@ -56,14 +56,6 @@ class ProductionPlan extends Model
         'production_order_id',
         'component_id',
     ];
-    // public function setThoiGianBatDauAttribute($value)
-    // {
-    //     $this->attributes['thoi_gian_bat_dau'] = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh');
-    // }
-    // public function setThoiGianKetThucAttribute($value)
-    // {
-    //     $this->attributes['thoi_gian_ket_thuc'] = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh');
-    // }
     public function machine()
     {
         return $this->belongsTo(Machine::class);
