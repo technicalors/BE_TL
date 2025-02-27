@@ -9,6 +9,7 @@ use App\Models\Bom;
 use App\Models\Inventory;
 use App\Models\Line;
 use App\Models\LineInventories;
+use App\Models\Losx;
 use App\Models\Lot;
 use App\Models\MachinePriorityOrder;
 use App\Models\NumberMachineOrder;
@@ -288,36 +289,23 @@ class ProductOrderController extends Controller
             $input = $request->all();
             $productOrder = ProductOrder::find($input['id']);
             $input['status'] = ProductOrder::STATUS_IN_PROGRESS;
-            $new_order_quantity = $productOrder->quantity;
-            $fc_order_quantity = $productOrder->fc_quantity;
-            $inventory = Inventory::where('product_id', $productOrder->product_id)->first();
-            $productionOrderPriority = ProductionOrderPriority::where('product_id', $productOrder->product_id)->first();
-            $productionSteps = Phase2UIApiController::getProductionSteps($productOrder->product_id);
-            if (!$productionOrderPriority) {
-                $maxPriority = ProductionOrderPriority::max('priority');
-                $newPriority = ($maxPriority !== null) ? $maxPriority + 1 : 1;
-                $production_quantity = ($new_order_quantity + $fc_order_quantity) - ($inventory->sl_ton ?? 0);
-                if ($production_quantity < 0) {
-                    $production_quantity = 0;
-                }
-                ProductionOrderPriority::firstOrCreate(
-                    ['product_id' => $productOrder->product_id],
-                    [
-                        'production_order_id' => $input['id'],
-                        'confirm_date'        => $input['confirm_date'],
-                        'product_id'          => $productOrder->product_id,
-                        'priority'            => $newPriority,
-                        'new_order_quantity'  => $new_order_quantity,
-                        'fc_order_quantity'   => $fc_order_quantity,
-                        'outstanding_order'   => 0,
-                        'production_quantity' => $production_quantity
-                    ]
-                );
+            if ($input['type'] == 1) {
+                Losx::where('product_id', $productOrder->product_id)->update(['status' => 2]);
 
-                $quantity = $production_quantity;
+                $losx['id'] = Losx::generateUniqueId($productOrder->product_id);
+                $losx['product_order_id'] = $input['id'];
+                $losx['product_id'] = $productOrder->product_id;
+                $losx['order_quantity'] = $productOrder->quantity;
+                $losx['priority'] = 1;
+                $losx['status'] = 1;
+                $losx['delivery_date'] = $input['confirm_date'];
+                $record = Losx::create($losx);
+
+                $productionSteps = ProductionPlanController::getProductionSteps($productOrder->product_id);
+                $quantity = $productOrder->quantity;
                 foreach ($productionSteps as $productionStep) {
                     if ($quantity > 0) {
-                        $calculatedQuantity = Phase2UIApiController::calculateProductionOutput($productOrder->product_id, $productionStep->line_id, $quantity);
+                        $calculatedQuantity = ProductionPlanController::calculateProductionOutput($productOrder->product_id, $productionStep->line_id, $quantity);
                         $quantity = $calculatedQuantity;
                     }
                     if ($productionStep->line_id == 24) {
@@ -326,46 +314,107 @@ class ProductOrderController extends Controller
                     } else {
                         $component_id = $productOrder->product_id;
                     }
+                    $inp['lo_sx'] = $record->id;
                     $inp['product_id'] = $productOrder->product_id;
                     $inp['component_id'] = $component_id;
                     $inp['line_id'] = $productionStep->line_id;
                     $inp['order_quantity'] = $quantity;
-                    $inp['production_quantity'] = $quantity;
+                    $inp['produced_quantity'] = 0;
                     $inp['inventory_quantity'] = 0;
                     ProductionOrderHistory::create($inp);
                 }
-            } else {
-                $outstanding_order = $productionOrderPriority->outstanding_order + $productionOrderPriority->new_order_quantity;
-                $production_quantity = ($new_order_quantity + $fc_order_quantity + $outstanding_order) - ($inventory->sl_ton ?? 0);
-                if ($production_quantity < 0) {
-                    $production_quantity = 0;
-                }
-                $productionOrderPriority->update([
-                    'confirm_date'        => $input['confirm_date'],
-                    'new_order_quantity'  => $new_order_quantity,
-                    'fc_order_quantity'   => $fc_order_quantity,
-                    'production_quantity' => $production_quantity,
-                    'outstanding_order'   => $outstanding_order
-                ]);
-
-                $quantity = $production_quantity;
+            } elseif ($input['type'] == 2) {
+                $losx = Losx::where('product_id', $productOrder->product_id)->orderBy('created_at', 'DESC')->first();
+                $losx->update(['delivery_date' => $input['confirm_date'], 'order_quantity' => $productOrder->quantity + $losx->order_quantity]);
+                $productionSteps = ProductionPlanController::getProductionSteps($productOrder->product_id);
+                $quantity = $productOrder->quantity;
                 foreach ($productionSteps as $productionStep) {
                     if ($quantity > 0) {
-                        $calculatedQuantity = Phase2UIApiController::calculateProductionOutput($productOrder->product_id, $productionStep->line_id, $quantity);
+                        $calculatedQuantity = ProductionPlanController::calculateProductionOutput($productOrder->product_id, $productionStep->line_id, $quantity);
                         $quantity = $calculatedQuantity;
                     }
-                    $productOrderHistory = ProductionOrderHistory::where('product_id', $productOrder->product_id)->where('line_id', $productionStep->line_id)->first();
-                    $order_quantity = $quantity;
-                    $production_quantity = $quantity - $productOrderHistory->inventory_quantity;
-                    if ($production_quantity < 0) {
-                        $production_quantity = 0;
-                    }
-                    $quantity = $production_quantity;
-                    ProductionOrderHistory::where('product_id', $productOrder->product_id)->where('line_id', $productionStep->line_id)->update(['order_quantity' => $order_quantity, 'production_quantity' => $production_quantity]);
+                    $productOrderHistory = ProductionOrderHistory::where('lo_sx', $losx->id)->where('line_id', $productionStep->line_id)->first();
+                    ProductionOrderHistory::where('lo_sx', $losx->id)->where('line_id', $productionStep->line_id)->update(['order_quantity' => $quantity + $productOrderHistory->order_quantity]);
                 }
             }
+            // $new_order_quantity = $productOrder->quantity;
+            // $fc_order_quantity = $productOrder->fc_quantity;
+            // $inventory = Inventory::where('product_id', $productOrder->product_id)->first();
+            // $productionOrderPriority = ProductionOrderPriority::where('product_id', $productOrder->product_id)->first();
+            // $productionSteps = ProductionPlanController::getProductionSteps($productOrder->product_id);
+            // if (!$productionOrderPriority) {
+            //     $maxPriority = ProductionOrderPriority::max('priority');
+            //     $newPriority = ($maxPriority !== null) ? $maxPriority + 1 : 1;
+            //     $production_quantity = ($new_order_quantity + $fc_order_quantity) - ($inventory->sl_ton ?? 0);
+            //     if ($production_quantity < 0) {
+            //         $production_quantity = 0;
+            //     }
+            //     ProductionOrderPriority::firstOrCreate(
+            //         ['product_id' => $productOrder->product_id],
+            //         [
+            //             'production_order_id' => $input['id'],
+            //             'confirm_date'        => $input['confirm_date'],
+            //             'product_id'          => $productOrder->product_id,
+            //             'priority'            => $newPriority,
+            //             'new_order_quantity'  => $new_order_quantity,
+            //             'fc_order_quantity'   => $fc_order_quantity,
+            //             'outstanding_order'   => 0,
+            //             'production_quantity' => $production_quantity
+            //         ]
+            //     );
 
-            $records = ProductionOrderPriority::orderBy(DB::raw('DATE(confirm_date)'), 'asc')
+            //     $quantity = $production_quantity;
+            //     foreach ($productionSteps as $productionStep) {
+            //         if ($quantity > 0) {
+            //             $calculatedQuantity = ProductionPlanController::calculateProductionOutput($productOrder->product_id, $productionStep->line_id, $quantity);
+            //             $quantity = $calculatedQuantity;
+            //         }
+            //         if ($productionStep->line_id == 24) {
+            //             $bom = Bom::where('product_id', $productOrder->product_id)->where('priority', 1)->first();
+            //             $component_id = $bom->material_id;;
+            //         } else {
+            //             $component_id = $productOrder->product_id;
+            //         }
+            //         $inp['product_id'] = $productOrder->product_id;
+            //         $inp['component_id'] = $component_id;
+            //         $inp['line_id'] = $productionStep->line_id;
+            //         $inp['order_quantity'] = $quantity;
+            //         $inp['production_quantity'] = $quantity;
+            //         $inp['inventory_quantity'] = 0;
+            //         ProductionOrderHistory::create($inp);
+            //     }
+            // } else {
+            //     $outstanding_order = $productionOrderPriority->outstanding_order + $productionOrderPriority->new_order_quantity;
+            //     $production_quantity = ($new_order_quantity + $fc_order_quantity + $outstanding_order) - ($inventory->sl_ton ?? 0);
+            //     if ($production_quantity < 0) {
+            //         $production_quantity = 0;
+            //     }
+            //     $productionOrderPriority->update([
+            //         'confirm_date'        => $input['confirm_date'],
+            //         'new_order_quantity'  => $new_order_quantity,
+            //         'fc_order_quantity'   => $fc_order_quantity,
+            //         'production_quantity' => $production_quantity,
+            //         'outstanding_order'   => $outstanding_order
+            //     ]);
+
+            //     $quantity = $production_quantity;
+            //     foreach ($productionSteps as $productionStep) {
+            //         if ($quantity > 0) {
+            //             $calculatedQuantity = Phase2UIApiController::calculateProductionOutput($productOrder->product_id, $productionStep->line_id, $quantity);
+            //             $quantity = $calculatedQuantity;
+            //         }
+            //         $productOrderHistory = ProductionOrderHistory::where('product_id', $productOrder->product_id)->where('line_id', $productionStep->line_id)->first();
+            //         $order_quantity = $quantity;
+            //         $production_quantity = $quantity - $productOrderHistory->inventory_quantity;
+            //         if ($production_quantity < 0) {
+            //             $production_quantity = 0;
+            //         }
+            //         $quantity = $production_quantity;
+            //         ProductionOrderHistory::where('product_id', $productOrder->product_id)->where('line_id', $productionStep->line_id)->update(['order_quantity' => $order_quantity, 'production_quantity' => $production_quantity]);
+            //     }
+            // }
+
+            $records = Losx::where('status', 1)->orderBy(DB::raw('DATE(delivery_date)'), 'asc')
                 ->orderBy('product_id', 'asc')
                 ->get();
 
