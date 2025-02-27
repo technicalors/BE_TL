@@ -23,6 +23,7 @@ use App\Models\LotErrorLog;
 use App\Models\LotPlan;
 use App\Models\LSXLog;
 use App\Models\Machine;
+use App\Models\MachinePriorityOrder;
 use App\Models\MachineStatus;
 use App\Models\Material;
 use App\Models\OddBin;
@@ -378,6 +379,18 @@ class Phase2OIApiController extends Controller
         }
         return $this->success($infos);
     }
+
+    function updateAndReorderMachinePriorities($machineId, $productId, $lineId){
+        $machinePriority = MachinePriorityOrder::where('machine_id', $machineId)->where('product_id', $productId)->where('line_id', $lineId)->first();
+        if($machinePriority){
+            $machinePriority->update(['priority' => 1]);
+            $list = MachinePriorityOrder::where('machine_id', '!=', $machineId)->where('product_id', $productId)->where('line_id', $lineId)->orderBy('priority')->get();
+            foreach ($list as $key => $value) {
+                $value->update(['priority' => $key + 2]);
+            }
+        }
+    }
+
     public function scanForFirstLine(Request $request)
     {
         $line = Line::find($request->line_id);
@@ -464,6 +477,7 @@ class Phase2OIApiController extends Controller
                 'input' => 0,
                 'output' => 0
             ]);
+            $this->updateAndReorderMachinePriorities($machine->code, $plan->product_id, $machine->line_id);
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -575,6 +589,7 @@ class Phase2OIApiController extends Controller
                     'output' => 0
                 ]);
             }
+            $this->updateAndReorderMachinePriorities($machine->code, $plan->product_id, $machine->line_id);
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -643,6 +658,9 @@ class Phase2OIApiController extends Controller
         // }
         try {
             DB::beginTransaction();
+            if ($plan->status_plan == ProductionPlan::STATUS_PENDING) {
+                $plan->update(['status_plan' => ProductionPlan::STATUS_IN_PROGRESS]);
+            }
             $infoCongDoan = InfoCongDoan::create([
                 'lot_id' => InfoCongDoan::generateUniqueId($plan->lo_sx, $machine->line_id),
                 'line_id' => $machine->line_id, 
@@ -674,6 +692,7 @@ class Phase2OIApiController extends Controller
                     'output' => 0
                 ]);
             }
+            $this->updateAndReorderMachinePriorities($machine->code, $plan->product_id, $machine->line_id);
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();

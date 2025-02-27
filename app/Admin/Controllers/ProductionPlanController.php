@@ -2241,54 +2241,62 @@ class ProductionPlanController extends AdminController
         return $lot_plan;
     }
 
-    function createPrioritizedMachines(){
-        $plans = ProductionPlan::get();
-        $machinePriorityOrders = [];
-    
-        // Thu thập dữ liệu frequency cho từng máy theo (product_id, line_id)
-        foreach($plans as $plan){
-            $key = $plan->product_id . '_' . $plan->line_id . '_' . $plan->machine_id;
-            if (!isset($machinePriorityOrders[$key])) {
-                $machinePriorityOrders[$key] = [
+    function createPrioritizedMachines()
+    {
+        // Lấy tất cả các plans có production_order_id không null và có quan hệ infoCongDoan
+        $plans = ProductionPlan::with('infoCongDoan')->get();
+
+        $groupedMachines = [];
+
+        // Lọc các plans có ít nhất một bản ghi infoCongDoan
+        foreach ($plans as $plan) {
+            if ($plan->infoCongDoan->isNotEmpty()) {
+                // Lấy infoCongDoan có updated_at mới nhất của plan này
+                $latestInfo = $plan->infoCongDoan->sortByDesc('updated_at')->first();
+
+                $groupKey = $plan->product_id . '_' . $plan->line_id;
+
+                $groupedMachines[$groupKey][] = [
                     'machine_id' => $plan->machine_id,
                     'product_id' => $plan->product_id,
                     'line_id' => $plan->line_id,
-                    'frequency' => 1
+                    'updated_at' => $latestInfo->updated_at
                 ];
-            } else {
-                $machinePriorityOrders[$key]['frequency']++;
             }
         }
-    
-        // Nhóm theo (product_id, line_id)
-        $groupedMachines = [];
-        foreach ($machinePriorityOrders as $order) {
-            $groupKey = $order['product_id'] . '_' . $order['line_id'];
-            if (!isset($groupedMachines[$groupKey])) {
-                $groupedMachines[$groupKey] = [];
-            }
-            $groupedMachines[$groupKey][] = $order;
-        }
-    
-        // Gán priority trong từng nhóm
-        $finalPriorityOrders = [];
+
+        // Mảng chứa kết quả cuối cùng
+        $machinePriorityOrders = [];
+
+        // Duyệt qua từng nhóm (product_id, line_id)
         foreach ($groupedMachines as $groupKey => &$machines) {
-            // Sắp xếp theo frequency giảm dần trong nhóm
-            usort($machines, function($a, $b) {
-                return $b['frequency'] <=> $a['frequency'];
+            // Sắp xếp theo updated_at giảm dần trong nhóm
+            usort($machines, function ($a, $b) {
+                return strtotime($b['updated_at']) <=> strtotime($a['updated_at']);
             });
-    
+
             // Gán priority bắt đầu từ 1 trong từng nhóm
             $priority = 1;
             foreach ($machines as &$machine) {
-                $machine['priority'] = $priority;
-                $priority++;
-                $finalPriorityOrders[] = $machine; // Lưu vào danh sách cuối cùng
+                $key = $machine['machine_id'] . '_' . $machine['product_id'] . '_' . $machine['line_id'];
+                if(isset($machinePriorityOrders[$key])) {
+                    continue;
+                }else{
+                    $machinePriorityOrders[$key] = [
+                        'machine_id' => $machine['machine_id'],
+                        'product_id' => $machine['product_id'],
+                        'line_id' => $machine['line_id'],
+                        'priority' => $priority
+                    ];
+                    $priority++;
+                }
             }
         }
-    
+
+        // return $machinePriorityOrders;
+
         // Cập nhật dữ liệu vào MachinePriorityOrder
-        foreach ($finalPriorityOrders as $order) {
+        foreach ($machinePriorityOrders as $order) {
             MachinePriorityOrder::updateOrCreate(
                 [
                     'machine_id' => $order['machine_id'],
