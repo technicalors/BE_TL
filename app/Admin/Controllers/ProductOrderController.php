@@ -291,7 +291,6 @@ class ProductOrderController extends Controller
             $input['status'] = ProductOrder::STATUS_IN_PROGRESS;
             if ($input['type'] == 1) {
                 Losx::where('product_id', $productOrder->product_id)->update(['status' => 2]);
-
                 $losx['id'] = Losx::generateUniqueId($productOrder->product_id);
                 $losx['product_order_id'] = $input['id'];
                 $losx['product_id'] = $productOrder->product_id;

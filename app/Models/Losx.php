@@ -11,23 +11,18 @@ class Losx extends Model
     use HasFactory;
     protected $table = 'losx';
     protected $fillable = [
+        'id',
         'product_order_id',
         'product_id',
         'order_quantity',
         'status',
         'delivery_date',
     ];
-    protected $primaryKey = 'id';
     public $incrementing = false;
-    protected $keyType = 'string';
-    public static function boot()
-    {
-        parent::boot();
+    protected $casts = [
+        "id" => "string"
+    ];
 
-        // static::creating(function ($model) {
-        //     $model->id = self::generateUniqueId();
-        // });
-    }
 
     // public static function generateUniqueId()
     // {
