@@ -10,6 +10,7 @@ use App\Admin\Controllers\InfoCongDoanController;
 use App\Admin\Controllers\IOTController;
 use App\Admin\Controllers\KPIController;
 use App\Admin\Controllers\LineInventoryController;
+use App\Admin\Controllers\LosxController;
 use App\Admin\Controllers\LotPlanController;
 use App\Admin\Controllers\MachineController;
 use App\Admin\Controllers\MachinePriorityOrderController;
@@ -760,6 +761,8 @@ Route::group([
     Route::post('production-order-priorities/complete', [ProductionOrderPriorityController::class, 'complete']);
     Route::post('production-order-priorities/reorder', [ProductionOrderPriorityController::class, 'reorder']);
     Route::post('production-order-history/update', [ProductionOrderHistoryController::class,'update']);
+
+    Route::get('losx-priorities', [LosxController::class, 'getPriorities']);
 });
 
 //Masterdata

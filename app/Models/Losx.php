@@ -11,36 +11,63 @@ class Losx extends Model
     use HasFactory;
     protected $table = 'losx';
     protected $fillable = [
-        'product_order_id'
+        'id',
+        'product_order_id',
+        'product_id',
+        'order_quantity',
+        'status',
+        'delivery_date',
+        'priority',
     ];
-    protected $primaryKey = 'id';
     public $incrementing = false;
-    protected $keyType = 'string';
-    public static function boot()
-    {
-        parent::boot();
+    protected $casts = [
+        "id" => "string"
+    ];
 
-        static::creating(function ($model) {
-            $model->id = self::generateUniqueId();
-        });
+    public function product()
+    {
+        return $this->belongsTo(Product::class, 'product_id', 'id');
+    }
+    
+    public function productionOrderHistory()
+    {
+        return $this->hasMany(ProductionOrderHistory::class, 'lo_sx', 'id');
     }
 
-    public static function generateUniqueId()
+
+
+    // public static function generateUniqueId()
+    // {
+    //     $currentMonth = Carbon::now()->format('ym');
+    //     $latestLosx = self::where('id', 'LIKE', $currentMonth . '%')
+    //         ->orderBy('id', 'desc')
+    //         ->first();
+
+    //     if ($latestLosx) {
+    //         $lastSequence = (int) substr($latestLosx->id, -4);
+    //     } else {
+    //         $lastSequence = 0;
+    //     }
+
+    //     $newSequence = str_pad($lastSequence + 1, 4, '0', STR_PAD_LEFT);
+
+    //     return $currentMonth . $newSequence;
+    // }
+
+    public static function generateUniqueId($productId)
     {
-        $currentMonth = Carbon::now()->format('ym');
-        $latestLosx = self::where('id', 'LIKE', $currentMonth . '%')
+        $currentDate = Carbon::now()->format('ym');
+        $prefix = $productId . '-' . $currentDate;
+        $latestOrder = self::where('id', 'LIKE', $prefix . '%')
             ->orderBy('id', 'desc')
             ->first();
-
-        if ($latestLosx) {
-            $lastSequence = (int) substr($latestLosx->id, -4);
+        if ($latestOrder) {
+            $lastSequence = (int) substr($latestOrder->id, -2);
         } else {
             $lastSequence = 0;
         }
-
-        $newSequence = str_pad($lastSequence + 1, 4, '0', STR_PAD_LEFT);
-
-        return $currentMonth . $newSequence;
+        $newSequence = str_pad($lastSequence + 1, 2, '0', STR_PAD_LEFT);
+        return $prefix . $newSequence;
     }
 
     public static function generateUniqueIdPreview($index)
