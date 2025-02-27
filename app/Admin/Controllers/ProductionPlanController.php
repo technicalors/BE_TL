@@ -16,7 +16,6 @@ use App\Models\MachineLoadFactor;
 use App\Models\MachinePriorityOrder;
 use App\Models\MachineShift;
 use App\Models\NumberMachineOrder;
-use App\Models\PrioritizedMachines;
 use App\Models\Product;
 use App\Models\ProductionOrderPriority;
 use App\Models\ProductionPlan;
@@ -1924,17 +1923,17 @@ class ProductionPlanController extends AdminController
             ->where('product_id', $product_id)
             ->orderBy('priority', 'asc')
             ->get();
-        if ($line_id == 29) {
-            $priority = 1;
-            $machinePriorityOrders = Machine::where('line_id', $line_id)
-                ->get()->sortBy('code', SORT_NATURAL)->map(function ($machine) use (&$priority, $product_id) {
-                    $machine->machine_id = $machine->code;
-                    $machine->priority = $priority;
-                    $machine->product_id = $product_id;
-                    $priority++;
-                    return $machine;
-                });
-        }
+        // if ($line_id == 29) {
+        //     $priority = 1;
+        //     $machinePriorityOrders = Machine::where('line_id', $line_id)
+        //         ->get()->sortBy('code', SORT_NATURAL)->map(function ($machine) use (&$priority, $product_id) {
+        //             $machine->machine_id = $machine->code;
+        //             $machine->priority = $priority;
+        //             $machine->product_id = $product_id;
+        //             $priority++;
+        //             return $machine;
+        //         });
+        // }
 
         $acceptableMachines = [];      // Những máy đáp ứng điều kiện (chưa sử dụng hoặc có đủ chỗ cho maxProductionMinutes)
         $nonAcceptableMachines = [];   // Những máy đã sử dụng nhưng không đáp ứng điều kiện
@@ -1995,6 +1994,7 @@ class ProductionPlanController extends AdminController
                     continue;
                 }
                 $machineShifts = $this->getMachineProductionShifts($machinePriorityOrder->machine_id, date('Y-m-d', strtotime('+1 day')));
+                Log::debug([$history->line_id, $machinePriorityOrder->machine_id, $machineShifts]);
                 if (count($machineShifts) <= 0) {
                     if ($history->line_id == 29) {
                         continue;
@@ -2241,31 +2241,72 @@ class ProductionPlanController extends AdminController
         return $lot_plan;
     }
 
-    function createPrioritizedMachines(){
-        $plans = ProductionPlan::whereNotNull('production_order_id')->get();
-        $prioritizedMachines = [];
-        foreach($plans as $plan){
-            $key = $plan->machine_id . '_' . $plan->product_id;
-            if(!isset($prioritizedMachines[$key])){
-                $prioritizedMachines[$key] = [
+    function createPrioritizedMachines()
+    {
+        // Lấy tất cả các plans có production_order_id không null và có quan hệ infoCongDoan
+        $plans = ProductionPlan::with('infoCongDoan')->get();
+
+        $groupedMachines = [];
+
+        // Lọc các plans có ít nhất một bản ghi infoCongDoan
+        foreach ($plans as $plan) {
+            if ($plan->infoCongDoan->isNotEmpty()) {
+                // Lấy infoCongDoan có updated_at mới nhất của plan này
+                $latestInfo = $plan->infoCongDoan->sortByDesc('updated_at')->first();
+
+                $groupKey = $plan->product_id . '_' . $plan->line_id;
+
+                $groupedMachines[$groupKey][] = [
                     'machine_id' => $plan->machine_id,
                     'product_id' => $plan->product_id,
-                    'frequency' => 1
+                    'line_id' => $plan->line_id,
+                    'updated_at' => $latestInfo->updated_at
                 ];
-            }else{
-                $prioritizedMachines[$key]['frequency']++;
             }
         }
-        PrioritizedMachines::truncate();
-        PrioritizedMachines::insert(array_values($prioritizedMachines));
-    }
 
-    function getMostUsedMachine($line_id, $product_id = ""){
-        $line = Line::find($line_id);
-        if(!$line){
-            return [];
+        // Mảng chứa kết quả cuối cùng
+        $machinePriorityOrders = [];
+
+        // Duyệt qua từng nhóm (product_id, line_id)
+        foreach ($groupedMachines as $groupKey => &$machines) {
+            // Sắp xếp theo updated_at giảm dần trong nhóm
+            usort($machines, function ($a, $b) {
+                return strtotime($b['updated_at']) <=> strtotime($a['updated_at']);
+            });
+
+            // Gán priority bắt đầu từ 1 trong từng nhóm
+            $priority = 1;
+            foreach ($machines as &$machine) {
+                $key = $machine['machine_id'] . '_' . $machine['product_id'] . '_' . $machine['line_id'];
+                if(isset($machinePriorityOrders[$key])) {
+                    continue;
+                }else{
+                    $machinePriorityOrders[$key] = [
+                        'machine_id' => $machine['machine_id'],
+                        'product_id' => $machine['product_id'],
+                        'line_id' => $machine['line_id'],
+                        'priority' => $priority
+                    ];
+                    $priority++;
+                }
+            }
         }
-        $machine_ids = $line->machines->pluck('code')->toArray();
-        return PrioritizedMachines::orderBy('frequency', 'desc')->whereIn('machine_id', $machine_ids)->first();
+
+        // return $machinePriorityOrders;
+
+        // Cập nhật dữ liệu vào MachinePriorityOrder
+        foreach ($machinePriorityOrders as $order) {
+            MachinePriorityOrder::updateOrCreate(
+                [
+                    'machine_id' => $order['machine_id'],
+                    'product_id' => $order['product_id'],
+                    'line_id' => $order['line_id']
+                ],
+                [
+                    'priority' => $order['priority']
+                ]
+            );
+        }
     }
 }

@@ -83,6 +83,6 @@ class ProductionPlan extends Model
     }
 
     public function infoCongDoan(){
-        return $this->hasOne(InfoCongDoan::class, 'plan_uid', 'uid');
+        return $this->hasMany(InfoCongDoan::class, 'plan_id', 'id');
     }
 }
