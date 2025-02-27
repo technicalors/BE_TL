@@ -1994,6 +1994,7 @@ class ProductionPlanController extends AdminController
                     continue;
                 }
                 $machineShifts = $this->getMachineProductionShifts($machinePriorityOrder->machine_id, date('Y-m-d', strtotime('+1 day')));
+                Log::debug([$history->line_id, $machinePriorityOrder->machine_id, $machineShifts]);
                 if (count($machineShifts) <= 0) {
                     if ($history->line_id == 29) {
                         continue;

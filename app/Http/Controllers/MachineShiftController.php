@@ -89,7 +89,7 @@ class MachineShiftController extends Controller
                 ->with('shift'); // Eager load tên ca
         }]);
         if ($machineId) {
-            $query->where('code', $machineId);
+            $query->where('code', 'like', "%$machineId%");
         }
         $machines = $query->get();
 
