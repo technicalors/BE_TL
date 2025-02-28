@@ -334,10 +334,10 @@ class Phase2OIApiController extends Controller
         $line_id = $request->line_id;
         $machine_code = $request->machine_code;
         $info_query = InfoCongDoan::whereNotNull('plan_id')
-        ->orderBy('thoi_gian_bat_dau', 'DESC')
-        ->where(function ($query) {
-            $query->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->orWhere('status', InfoCongDoan::STATUS_INPROGRESS);
-        });
+            ->orderBy('thoi_gian_bat_dau', 'DESC')
+            ->where(function ($query) {
+                $query->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->orWhere('status', InfoCongDoan::STATUS_INPROGRESS);
+            });
         if (!empty($request->line_id)) {
             $info_query->where('line_id', $line_id);
         }
@@ -349,8 +349,8 @@ class Phase2OIApiController extends Controller
             $plan = $info->plan;
             $info->ten_sp = $info->product->name ?? "";
             $info->ma_hang = $info->product_id;
-            $info->thoi_gian_bat_dau_kh = Carbon::parse($plan->thoi_gian_bat_dau)->format('d/m/Y H:i:s');
-            $info->thoi_gian_ket_thuc_kh = Carbon::parse($plan->thoi_gian_ket_thuc)->format('d/m/Y H:i:s');
+            $info->thoi_gian_bat_dau_kh = $plan->thoi_gian_bat_dau ? Carbon::parse($plan->thoi_gian_bat_dau)->format('d/m/Y H:i:s') : '';
+            $info->thoi_gian_ket_thuc_kh = $plan->thoi_gian_bat_dau ? Carbon::parse($plan->thoi_gian_ket_thuc)->format('d/m/Y H:i:s') : '';
             $info->sl_dau_ra_kh = $info->sl_kh;
             $info->thoi_gian_bat_dau = $info->thoi_gian_bat_dau ? Carbon::parse($info->thoi_gian_bat_dau)->format('d/m/Y H:i:s') : "";
             $info->thoi_gian_ket_thuc = $info->thoi_gian_ket_thuc ? Carbon::parse($info->thoi_gian_ket_thuc)->format('d/m/Y H:i:s') : "";
@@ -380,9 +380,10 @@ class Phase2OIApiController extends Controller
         return $this->success($infos);
     }
 
-    function updateAndReorderMachinePriorities($machineId, $productId, $lineId){
+    function updateAndReorderMachinePriorities($machineId, $productId, $lineId)
+    {
         $machinePriority = MachinePriorityOrder::where('machine_id', $machineId)->where('product_id', $productId)->where('line_id', $lineId)->first();
-        if($machinePriority){
+        if ($machinePriority) {
             $machinePriority->update(['priority' => 1]);
             $list = MachinePriorityOrder::where('machine_id', '!=', $machineId)->where('product_id', $productId)->where('line_id', $lineId)->orderBy('priority')->get();
             foreach ($list as $key => $value) {
@@ -430,7 +431,7 @@ class Phase2OIApiController extends Controller
             return $this->failure([], "Cuộn đã quét rồi");
         }
         if (!$roll->material) {
-            return $this->failure([], "Không tìm thấy NVL: ". ($roll->material_id ?? ""));
+            return $this->failure([], "Không tìm thấy NVL: " . ($roll->material_id ?? ""));
         }
         $product_ids = $roll->material->products->pluck('id')->toArray() ?? [];
         if (count($product_ids) === 0) {
@@ -599,7 +600,8 @@ class Phase2OIApiController extends Controller
         return $this->success([], "Quét lot thành công");
     }
 
-    public function scanForSelectionLineV2(Request $request){
+    public function scanForSelectionLineV2(Request $request)
+    {
         $line = Line::find($request->line_id);
         if (!$line) {
             return $this->failure([], "Không tìm thấy công đoạn");
@@ -617,12 +619,12 @@ class Phase2OIApiController extends Controller
             return $this->failure([], "Chưa hoàn thành lot trước đó");
         }
         $plan = ProductionPlan::where('line_id', $machine->line_id)
-        ->where('machine_id', $machine->code)
-        ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
-        ->whereDate('thoi_gian_bat_dau', '>=', date('Y-m-d'))
-        ->orderBy('status_plan', 'DESC')
-        ->orderBy('thoi_gian_bat_dau')
-        ->first();
+            ->where('machine_id', $machine->code)
+            ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
+            ->whereDate('thoi_gian_bat_dau', '>=', date('Y-m-d'))
+            ->orderBy('status_plan', 'DESC')
+            ->orderBy('thoi_gian_bat_dau')
+            ->first();
         if (!$plan) {
             return $this->failure([], 'Không tìm thấy KHSX');
         }
@@ -663,7 +665,7 @@ class Phase2OIApiController extends Controller
             }
             $infoCongDoan = InfoCongDoan::create([
                 'lot_id' => InfoCongDoan::generateUniqueId($plan->lo_sx, $machine->line_id),
-                'line_id' => $machine->line_id, 
+                'line_id' => $machine->line_id,
                 'machine_code' => $machine->code,
                 'input_lot_id' => $request->scanned_lot,
                 'lo_sx' => $plan->lo_sx,
@@ -1638,7 +1640,7 @@ class Phase2OIApiController extends Controller
                 'thoi_gian_ket_thuc' => Carbon::now(),
                 'status' => InfoCongDoan::STATUS_COMPLETED
             ]);
-            if($infoCongDoan->plan){
+            if ($infoCongDoan->plan) {
                 //Update ProductionOrderHistory and ProductionOrderPriority
                 $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->where('component_id', $infoCongDoan->plan->component_id)->first();
                 $producedInfoQuantity = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng;
@@ -1650,8 +1652,8 @@ class Phase2OIApiController extends Controller
 
                 $infos = InfoCongDoan::where('plan_id', $infoCongDoan->plan_id)->get();
                 $producedQuantity = $infos->sum('sl_dau_ra_hang_loat') - $infos->sum('sl_ng');
-                if($producedQuantity >= $infoCongDoan->plan->sl_giao_sx){
-                    $infoCongDoan->plan->update(['status_plan'=>ProductionPlan::STATUS_COMPLETED]);
+                if ($producedQuantity >= $infoCongDoan->plan->sl_giao_sx) {
+                    $infoCongDoan->plan->update(['status_plan' => ProductionPlan::STATUS_COMPLETED]);
                 }
             }
             $quantity = 0;
