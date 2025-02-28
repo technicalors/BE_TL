@@ -1760,70 +1760,207 @@ class Phase2UIApiController extends Controller
     {
         $input = $request->all();
         $sheet_array = [];
+        $lines = Line::where('factory_id', 2)->get();
+        $qc_history_query = QCHistory::with('testCriteriaHistories', 'infoCongDoan')->orderBy('created_at');
         foreach ($input as $key => $value) {
+            $groupKey = '';
+            $range = [];
+            $groupedData = [];
             switch ($key) {
                 case 'day':
+                    $groupKey = 'd/m/Y';
                     $sheet_array[$key]['title'] = 'ngày';
-                    $sheet_array[$key]['start_date'] = Carbon::parse($value)->startOfDay();
-                    $sheet_array[$key]['end_date'] = Carbon::parse($value)->endOfDay();
+                    $start = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh')->startOfDay();
+                    $end = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh')->endOfDay();
+                    $range = collect(CarbonPeriod::create($start, $end)->toArray())->map(function ($date) {
+                        return $date->format('Y-m-d');
+                    })->toArray();
                     break;
                 case 'week':
+                    $groupKey = 'W/Y';
                     $sheet_array[$key]['title'] = 'tuần';
-                    $sheet_array[$key]['start_date'] = Carbon::parse($value)->startOfWeek(Carbon::MONDAY);
-                    $sheet_array[$key]['end_date'] = $sheet_array[$key]['start_date']->copy()->addWeeks(10)->endOfDay();
+                    $start = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh')->startOfWeek(Carbon::MONDAY);
+                    $end = $start->copy()->addWeeks(10)->endOfDay();
+                    $range = collect(range($start->weekOfYear, $end->weekOfYear))->map(function ($week) {
+                        return "Tuần " . $week;
+                    })->toArray();
                     break;
                 case 'month':
+                    $groupKey = 'm/Y';
                     $sheet_array[$key]['title'] = 'tháng';
-                    $sheet_array[$key]['start_date'] = Carbon::parse($value)->startOfYear();
-                    $sheet_array[$key]['end_date'] = Carbon::parse($value)->endOfYear();
+                    $start = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh')->startOfYear();
+                    $end = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh')->endOfYear();
+                    $range = collect(range($start->month, $end->month))->map(function ($month) {
+                        return "Tháng " . $month;
+                    })->toArray();
                     break;
                 default:
+                    continue 2;
                     break;
             }
-            $groupByLine = QCHistory::with('testCriteriaHistories', 'infoCongDoan')->orderBy('created_at')
-                ->whereDate('created_at', '>=', $sheet_array[$key]['start_date'])
-                ->whereDate('created_at', '<=', $sheet_array[$key]['end_date'])
-                ->get()
-                ->groupBy(function ($qc_history) {
-                    return $qc_history->infoCongDoan->line_id ?? '';
-                });
-            $shifts = Shift::all();
-            foreach ($groupByLine as $line_id => $values) {
-                if (!$key) continue;
-
-                $groupByMachineAndProduct = $values->groupBy(function ($qcHistory) use ($shifts) {
-                    $time = Carbon::parse($qcHistory->scanned_time);
-                    $shift = $this->findShift($qcHistory, $shifts);
-                    if ($shift->start_time >= $shift->end_time) {
-                        $time->subDay();
-                    }
-                    return ($qcHistory->infoCongDoan->machine_code ?? "") . ($qcHistory->infoCongDoan->product_id ?? "") . date('Y-m-d', strtotime($qcHistory->scanned_time)) . "Ca$shift->id";
-                });
-                $checked_counter = count($groupByMachineAndProduct);
-                $line = Line::find($line_id);
-                if (!$line) continue;
-                $sum_ng = 0;
-                foreach ($groupByMachineAndProduct as $detailQcHistories) {
-                    foreach ($detailQcHistories as $qcHistory) {
-                        $final_result = $qcHistory->testCriteriaHistories->pluck('result')->toArray();
-                        if (count($final_result) >= 3) {
-                            if (in_array('NG', $final_result)) {
-                                $sum_ng += 1;
-                                break;
-                            }
-                        }
-                    }
+            foreach ($lines as $line) {
+                $groupedData[$line->id] = [];
+                foreach ($range as $col) { // Nếu nhóm theo ngày
+                    $groupedData[$line->id][$col] = [];
                 }
-                $sum_ok = $checked_counter - $sum_ng;
-                $data[$line_id]['cong_doan'] = $line->name;
-                $data[$line_id]['sum_lot_kt'] = $checked_counter;
-                $data[$line_id]['sum_lot_ok'] = $sum_ok;
-                $data[$line_id]['sum_lot_ng'] = $sum_ng;
-                $data[$line_id]['sum_ty_le_ng'] = $checked_counter ? number_format($sum_ng / $checked_counter * 100, 2) : 0;
-                $data[$line_id]['loi_phat_sinh'] = '';
+            }
+            // $groupByLine = QCHistory::with('testCriteriaHistories', 'infoCongDoan')->orderBy('created_at')
+            //     ->whereDate('created_at', '>=', $sheet_array[$key]['start_date'])
+            //     ->whereDate('created_at', '<=', $sheet_array[$key]['end_date'])
+            //     ->get()
+            //     ->groupBy(function ($qc_history) {
+            //         return $qc_history->infoCongDoan->line_id ?? '';
+            //     });
+            // foreach ($groupByLine as $line_id => $values) {
+            //     if (!$key) continue;
+            //     $groupByMachineAndProduct = $values->groupBy(function ($qcHistory) use ($groupKey) {
+            //         return ($qcHistory->infoCongDoan->machine_code ?? "") . ($qcHistory->infoCongDoan->product_id ?? "") . $groupKey;
+            //     });
+            //     $checked_counter = count($groupByMachineAndProduct);
+            //     $line = Line::find($line_id);
+            //     if (!$line) continue;
+            //     $sum_ng = 0;
+            //     foreach ($groupByMachineAndProduct as $detailQcHistories) {
+            //         foreach ($detailQcHistories as $qcHistory) {
+            //             $final_result = $qcHistory->testCriteriaHistories->pluck('result')->toArray();
+            //             if (count($final_result) >= 3) {
+            //                 if (in_array('NG', $final_result)) {
+            //                     $sum_ng += 1;
+            //                     break;
+            //                 }
+            //             }
+            //         }
+            //     }
+            // }
+            $sheet_array[$key] = $groupedData;
+        }
+        return $sheet_array;
+        $centerStyle = [
+            'alignment' => [
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
+                'wrapText' => true
+            ],
+            'borders' => array(
+                'outline' => array(
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => array('argb' => '000000'),
+                ),
+            ),
+        ];
+        $headerStyle = array_merge($centerStyle, [
+            'font' => ['bold' => true],
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => array('argb' => 'EBF1DE')
+            ]
+        ]);
+        $titleStyle = array_merge($centerStyle, [
+            'font' => ['size' => 16, 'bold' => true],
+        ]);
+        $border = [
+            'borders' => array(
+                'allBorders' => array(
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => array('argb' => '000000'),
+                ),
+            ),
+        ];
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet_index = 0;
+        // return $sheet_array;
+        foreach ($sheet_array as $arr) {
+            $sheet = $spreadsheet->getSheet($sheet_index);
+            $sheet->setTitle('Báo cáo ' . $arr['title']);
+            $start_row = 2;
+            $start_col = 1;
+
+            $header = ['Công đoạn', 'Tổng số lot kiểm tra', "Số lot OK", "Số lot NG", "Tỷ lệ NG (%)", "Lỗi phát sinh"];
+            array_unshift($header, ucfirst($arr['title']));
+            $table_key = [
+                'A' => 'date',
+                'B' => 'cong_doan',
+                'C' => 'sum_lot_kt',
+                'D' => 'sum_lot_ok',
+                'E' => 'sum_lot_ng',
+                'F' => 'sum_ty_le_ng',
+                'G' => 'loi_phat_sinh',
+            ];
+            $table = $arr['data'] ?? [];
+            foreach ($header as $key => $cell) {
+                if (!is_array($cell)) {
+                    $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row + 1])->getStyle([$start_col, $start_row, $start_col, $start_row + 1])->applyFromArray($headerStyle);
+                } else {
+                    $style = array_merge($headerStyle, array('fill' => [
+                        'fillType' => Fill::FILL_SOLID,
+                        'startColor' => array('argb' => 'EBF1DE')
+                    ]));
+                    $sheet->setCellValue([$start_col, $start_row], $key)->mergeCells([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->getStyle([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->applyFromArray($style);
+                    foreach ($cell as $val) {
+
+                        $sheet->setCellValue([$start_col, $start_row + 1], $val)->getStyle([$start_col, $start_row + 1])->applyFromArray($style);
+                        $start_col += 1;
+                    }
+                    continue;
+                }
+                $start_col += 1;
             }
 
+            $sheet->setCellValue([1, 1], 'BÁO CÁO ' . mb_strtoupper($arr['title']))->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
+            $sheet->getRowDimension(1)->setRowHeight(40);
+            $table_col = 2;
+            $table_row = $start_row + 2;
+            foreach ($table as $key => $row) {
+                $table_col = 2;
+                foreach ((array)$row as $key => $cell) {
+                    if (in_array($key, $table_key)) {
+                        $value = '';
+                        if (is_numeric($key)) {
+                            switch ($cell) {
+                                case 0:
+                                    $value = "NG";
+                                    break;
+                                case 1:
+                                    $value = "OK";
+                                    break;
+                                default:
+                                    $value = "";
+                                    break;
+                            }
+                        } else {
+                            $value = $cell;
+                        }
+                        $sheet->setCellValue(array_search($key, $table_key) . $table_row, $value)->getStyle(array_search($key, $table_key) . $table_row)->applyFromArray($centerStyle);
+                    } else {
+                        continue;
+                    }
+                    $table_col += 1;
+                }
+                $table_row += 1;
+            }
+            if (count($table)) {
+                $sheet->setCellValue([1, $start_row + 2], $arr['datetime'])->mergeCells([1, $start_row + 2, 1, $table_row - 1])->getStyle([1, $start_row + 2, 1, $table_row - 1])->applyFromArray($centerStyle);
+            }
+
+            foreach ($sheet->getColumnIterator() as $column) {
+                $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+                $sheet->getStyle($column->getColumnIndex() . ($start_row + 2) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
+            }
+            if ($sheet_index < count($sheet_array) - 1) {
+                $spreadsheet->createSheet();
+                $sheet_index += 1;
+            }
         }
+        header("Content-Description: File Transfer");
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="Báo cáo.xlsx"');
+        header('Cache-Control: max-age=0');
+        header("Content-Transfer-Encoding: binary");
+        header('Expires: 0');
+        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('exported_files/Báo cáo.xlsx');
+        $href = '/exported_files/Báo cáo.xlsx';
+        return $this->success($href);
     }
 
     function findShift($record, $shifts)

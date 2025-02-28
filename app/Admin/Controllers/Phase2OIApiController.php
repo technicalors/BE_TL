@@ -2654,7 +2654,7 @@ class Phase2OIApiController extends Controller
         $lot_arr = [];
         foreach ($records as $key => $record) {
             $cell_ids = Cell::where('product_id', $record->product_id)->pluck('id')->toArray();
-            $cell_lots = DB::table('cell_lot')->whereIn('cell_id', $cell_ids)->orderBy('created_at', 'DESC')->get();
+            $cell_lots = DB::table('cell_lot')->whereIn('cell_id', $cell_ids)->orderBy('created_at', 'ASC')->get();
             if (count($cell_lots) == 0) {
                 $object = new stdClass();
                 $object->product_id = $record->product ? $record->product->id : '';
