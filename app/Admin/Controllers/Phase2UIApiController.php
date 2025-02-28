@@ -55,6 +55,13 @@ use Illuminate\Support\Facades\Cache;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpPresentation\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Chart\Chart;
+use PhpOffice\PhpSpreadsheet\Chart\DataSeries;
+use PhpOffice\PhpSpreadsheet\Chart\DataSeriesValues;
+use PhpOffice\PhpSpreadsheet\Chart\Legend;
+use PhpOffice\PhpSpreadsheet\Chart\PlotArea;
+use PhpOffice\PhpSpreadsheet\Chart\Title;
 use PhpOffice\PhpSpreadsheet\Style\Borders;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 
@@ -1759,82 +1766,7 @@ class Phase2UIApiController extends Controller
     public function exportPQCReportV2(Request $request)
     {
         $input = $request->all();
-        $sheet_array = [];
-        $lines = Line::where('factory_id', 2)->get();
-        $qc_history_query = QCHistory::with('testCriteriaHistories', 'infoCongDoan')->orderBy('created_at');
-        foreach ($input as $key => $value) {
-            $groupKey = '';
-            $range = [];
-            $groupedData = [];
-            switch ($key) {
-                case 'day':
-                    $groupKey = 'd/m/Y';
-                    $sheet_array[$key]['title'] = 'ngày';
-                    $start = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh')->startOfDay();
-                    $end = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh')->endOfDay();
-                    $range = collect(CarbonPeriod::create($start, $end)->toArray())->map(function ($date) {
-                        return $date->format('Y-m-d');
-                    })->toArray();
-                    break;
-                case 'week':
-                    $groupKey = 'W/Y';
-                    $sheet_array[$key]['title'] = 'tuần';
-                    $start = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh')->startOfWeek(Carbon::MONDAY);
-                    $end = $start->copy()->addWeeks(10)->endOfDay();
-                    $range = collect(range($start->weekOfYear, $end->weekOfYear))->map(function ($week) {
-                        return "Tuần " . $week;
-                    })->toArray();
-                    break;
-                case 'month':
-                    $groupKey = 'm/Y';
-                    $sheet_array[$key]['title'] = 'tháng';
-                    $start = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh')->startOfYear();
-                    $end = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh')->endOfYear();
-                    $range = collect(range($start->month, $end->month))->map(function ($month) {
-                        return "Tháng " . $month;
-                    })->toArray();
-                    break;
-                default:
-                    continue 2;
-                    break;
-            }
-            foreach ($lines as $line) {
-                $groupedData[$line->id] = [];
-                foreach ($range as $col) { // Nếu nhóm theo ngày
-                    $groupedData[$line->id][$col] = [];
-                }
-            }
-            // $groupByLine = QCHistory::with('testCriteriaHistories', 'infoCongDoan')->orderBy('created_at')
-            //     ->whereDate('created_at', '>=', $sheet_array[$key]['start_date'])
-            //     ->whereDate('created_at', '<=', $sheet_array[$key]['end_date'])
-            //     ->get()
-            //     ->groupBy(function ($qc_history) {
-            //         return $qc_history->infoCongDoan->line_id ?? '';
-            //     });
-            // foreach ($groupByLine as $line_id => $values) {
-            //     if (!$key) continue;
-            //     $groupByMachineAndProduct = $values->groupBy(function ($qcHistory) use ($groupKey) {
-            //         return ($qcHistory->infoCongDoan->machine_code ?? "") . ($qcHistory->infoCongDoan->product_id ?? "") . $groupKey;
-            //     });
-            //     $checked_counter = count($groupByMachineAndProduct);
-            //     $line = Line::find($line_id);
-            //     if (!$line) continue;
-            //     $sum_ng = 0;
-            //     foreach ($groupByMachineAndProduct as $detailQcHistories) {
-            //         foreach ($detailQcHistories as $qcHistory) {
-            //             $final_result = $qcHistory->testCriteriaHistories->pluck('result')->toArray();
-            //             if (count($final_result) >= 3) {
-            //                 if (in_array('NG', $final_result)) {
-            //                     $sum_ng += 1;
-            //                     break;
-            //                 }
-            //             }
-            //         }
-            //     }
-            // }
-            $sheet_array[$key] = $groupedData;
-        }
-        return $sheet_array;
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $centerStyle = [
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
@@ -1866,91 +1798,206 @@ class Phase2UIApiController extends Controller
                 ),
             ),
         ];
-        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet_index = 0;
-        // return $sheet_array;
-        foreach ($sheet_array as $arr) {
+        $lines = Line::where('factory_id', 2)->get();
+        foreach ($input as $key => $value) {
+            //Tạo sheet
             $sheet = $spreadsheet->getSheet($sheet_index);
-            $sheet->setTitle('Báo cáo ' . $arr['title']);
-            $start_row = 2;
-            $start_col = 1;
-
-            $header = ['Công đoạn', 'Tổng số lot kiểm tra', "Số lot OK", "Số lot NG", "Tỷ lệ NG (%)", "Lỗi phát sinh"];
-            array_unshift($header, ucfirst($arr['title']));
-            $table_key = [
-                'A' => 'date',
-                'B' => 'cong_doan',
-                'C' => 'sum_lot_kt',
-                'D' => 'sum_lot_ok',
-                'E' => 'sum_lot_ng',
-                'F' => 'sum_ty_le_ng',
-                'G' => 'loi_phat_sinh',
-            ];
-            $table = $arr['data'] ?? [];
-            foreach ($header as $key => $cell) {
-                if (!is_array($cell)) {
-                    $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row + 1])->getStyle([$start_col, $start_row, $start_col, $start_row + 1])->applyFromArray($headerStyle);
-                } else {
-                    $style = array_merge($headerStyle, array('fill' => [
-                        'fillType' => Fill::FILL_SOLID,
-                        'startColor' => array('argb' => 'EBF1DE')
-                    ]));
-                    $sheet->setCellValue([$start_col, $start_row], $key)->mergeCells([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->getStyle([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->applyFromArray($style);
-                    foreach ($cell as $val) {
-
-                        $sheet->setCellValue([$start_col, $start_row + 1], $val)->getStyle([$start_col, $start_row + 1])->applyFromArray($style);
-                        $start_col += 1;
+            //Tạo dữ liệu
+            $tong_so_lot_kiem_tra = 0;
+            $so_lot_ok = 0;
+            $so_lot_ng = 0;
+            $ty_le_ng = 0;
+            $muc_tieu = 0;
+            $range = [];
+            $groupedData = [];
+            switch ($key) {
+                case 'day':
+                    $type = 'Ngày';
+                    $start = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh')->startOfDay();
+                    $end = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh')->endOfDay();
+                    for ($date = $start; $date->lte($end); $date->addDay()) {
+                        $range[] = [
+                            'start' => $date->copy()->startOfDay(),
+                            'end' => $date->copy()->endOfDay(),
+                            'type' => 'Ngày',
+                            'key' => 'd/m/Y'
+                        ];
                     }
-                    continue;
-                }
-                $start_col += 1;
+                    break;
+                case 'week':
+                    $type = 'Tuần';
+                    $start = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh')->startOfWeek(Carbon::MONDAY);
+                    $end = $start->copy()->addWeeks(10)->endOfDay();
+                    for ($date = $start; $date->lte($end); $date->addWeek()) {
+                        $range[] = [
+                            'start' => $date->copy()->startOfWeek(Carbon::MONDAY),
+                            'end' => $date->copy()->endOfWeek(),
+                            'type' => 'Tuần',
+                            'key' => 'W/Y'
+                        ];
+                    }
+                    break;
+                case 'month':
+                    $type = 'Tháng';
+                    $start = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh')->startOfYear();
+                    $end = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh')->endOfYear();
+                    for ($date = $start; $date->lte($end); $date->addMonth()) {
+                        $range[] = [
+                            'start' => $date->copy()->startOfMonth(Carbon::MONDAY),
+                            'end' => $date->copy()->endOfMonth(),
+                            'type' => 'Tháng',
+                            'key' => 'm/Y'
+                        ];
+                    }
+                    break;
+                default:
+                    continue 2;
+                    break;
             }
+            $sheet->setTitle('Báo cáo ' . $type);
 
-            $sheet->setCellValue([1, 1], 'BÁO CÁO ' . mb_strtoupper($arr['title']))->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
-            $sheet->getRowDimension(1)->setRowHeight(40);
-            $table_col = 2;
-            $table_row = $start_row + 2;
-            foreach ($table as $key => $row) {
-                $table_col = 2;
-                foreach ((array)$row as $key => $cell) {
-                    if (in_array($key, $table_key)) {
-                        $value = '';
-                        if (is_numeric($key)) {
-                            switch ($cell) {
-                                case 0:
-                                    $value = "NG";
-                                    break;
-                                case 1:
-                                    $value = "OK";
-                                    break;
-                                default:
-                                    $value = "";
-                                    break;
-                            }
-                        } else {
-                            $value = $cell;
+            $line_title_index = 4;
+            $line_table_index = 14;
+            foreach ($lines as $line) {
+                if($line->id === 24){
+                    $muc_tieu = 0.1;
+                }elseif($line->id === 25){
+                    $muc_tieu = 1;
+                }elseif($line->id === 26){
+                    $muc_tieu = 1;
+                }elseif($line->id === 27){
+                    $muc_tieu = 1;
+                }elseif($line->id === 29){
+                    $muc_tieu = 0.5;
+                }elseif($line->id === 30){
+                    $muc_tieu = 0.5;
+                }
+                $groupedData[$line->id] = [];
+                $data = [];
+                foreach ($range as $value) { // Nếu nhóm theo ngày
+                    $date_key = $value['start']->copy()->format($value['key']);
+                    $infoData = InfoCongDoan::whereHas('qcHistory', function ($query) use ($value) {
+                        $query->whereBetween('created_at', [$value['start'], $value['end']]);
+                    })->where('line_id', $line->id)->with('qcHistory.testCriteriaHistories')->get();
+                    $tong_so_lot_kiem_tra = count($infoData);
+                    $so_lot_ok = $tong_so_lot_kiem_tra;
+                    $so_lot_ng = 0;
+                    foreach ($infoData as $info) {
+                        $final_result = $info->qcHistory->testCriteriaHistories->pluck('result')->toArray();
+                        if (count($final_result) >= 3 && in_array('NG', $final_result)) {
+                            $so_lot_ng += 1;
+                            continue;
                         }
-                        $sheet->setCellValue(array_search($key, $table_key) . $table_row, $value)->getStyle(array_search($key, $table_key) . $table_row)->applyFromArray($centerStyle);
-                    } else {
-                        continue;
                     }
-                    $table_col += 1;
+                    $so_lot_ok -= $so_lot_ng;
+                    $ty_le_ng = $tong_so_lot_kiem_tra ? number_format($so_lot_ng / $tong_so_lot_kiem_tra * 100, 2) : 0;
+                    $data[] = [
+                        'date_key' => $date_key,
+                        'tong_so_lot_kiem_tra' => $tong_so_lot_kiem_tra,
+                        'so_lot_ok' => $so_lot_ok,
+                        'so_lot_ng' => $so_lot_ng,
+                        'ty_le_ng' => $ty_le_ng,
+                        'muc_tieu' => $muc_tieu
+                    ];
                 }
-                $table_row += 1;
-            }
-            if (count($table)) {
-                $sheet->setCellValue([1, $start_row + 2], $arr['datetime'])->mergeCells([1, $start_row + 2, 1, $table_row - 1])->getStyle([1, $start_row + 2, 1, $table_row - 1])->applyFromArray($centerStyle);
-            }
+                $sheet->setCellValue([1, $line_title_index], 'Công đoạn ' . $line->name);
+                $header = [
+                    $type,
+                    'Tổng số lot kiểm tra',
+                    "Số lot OK",
+                    "Số lot NG",
+                    "Tỷ lệ NG (%)",
+                    "Mục tiêu"
+                ];
+                $sheet->fromArray(array_chunk($header, 1), null, 'A' . $line_table_index);
+                if (count($data) == 1) {
+                    $transposedData = [];
+                    foreach ($data[0] as $key => $value) {
+                        $transposedData[] = [$value]; // Mỗi giá trị sẽ thành một hàng
+                    }
+                } else {
+                    // **Dùng array_map nếu có nhiều phần tử**
+                    $transposedData = array_map(null, ...array_map('array_values', $data));
+                }
+                $sheet->fromArray($transposedData, null, 'B' . $line_table_index, true);
 
-            foreach ($sheet->getColumnIterator() as $column) {
-                $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
-                $sheet->getStyle($column->getColumnIndex() . ($start_row + 2) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
+                $startColumnIndex = Coordinate::columnIndexFromString("B");
+                $endColumn = Coordinate::stringFromColumnIndex($startColumnIndex + count($transposedData[0]) - 1);
+
+                // Trục X: Tháng
+                $rangeData = "B" . ($line_table_index) . ":" . $endColumn . ($line_table_index);
+                $xAxisTickValues = [new DataSeriesValues('String', "'Báo cáo $type'!" . $rangeData, null, count($transposedData[0]))];
+
+                // **Dữ liệu cột**
+                $rangeData = "B" . ($line_table_index + 2) . ":" . $endColumn . ($line_table_index + 2);
+                $dataSeriesValues1 = new DataSeriesValues('Number', "'Báo cáo $type'!" . $rangeData, null, count($transposedData[1]));
+                $rangeData = "B" . ($line_table_index + 3) . ":" . $endColumn . ($line_table_index + 3);
+                $dataSeriesValues2 = new DataSeriesValues('Number', "'Báo cáo $type'!" . $rangeData, null, count($transposedData[2]));
+
+                // **Dữ liệu đường**
+                $rangeData = "B" . ($line_table_index + 4) . ":" . $endColumn . ($line_table_index + 4);
+                $dataSeriesValues3 = new DataSeriesValues('Number', "'Báo cáo $type'!" . $rangeData, null, count($transposedData[3]));
+                $dataSeriesValues3->setLineWidth(2); // Độ dày đường
+                $dataSeriesValues3->setPointMarker('none');
+                $dataSeriesValues3->setFillColor('FF0000'); // Màu đỏ
+
+                $rangeData = "B" . ($line_table_index + 5) . ":" . $endColumn . ($line_table_index + 5);
+                $dataSeriesValues4 = new DataSeriesValues('Number', "'Báo cáo $type'!" . $rangeData, null, count($transposedData[4]));
+                $dataSeriesValues4->setLineWidth(2);
+                $dataSeriesValues4->setPointMarker('none');
+                $dataSeriesValues4->setFillColor('008000'); // Màu xanh lá
+
+                // **Tạo Series**
+                $series1 = new DataSeries(
+                    DataSeries::TYPE_BARCHART, // Cột
+                    DataSeries::GROUPING_CLUSTERED,
+                    range(0, 1),
+                    [],
+                    $xAxisTickValues,
+                    [$dataSeriesValues1, $dataSeriesValues2]
+                );
+
+                $series2 = new DataSeries(
+                    DataSeries::TYPE_LINECHART, // Đường kẻ
+                    DataSeries::GROUPING_STANDARD,
+                    range(2, 3),
+                    [],
+                    $xAxisTickValues,
+                    [$dataSeriesValues3, $dataSeriesValues4]
+                );
+
+                // **Gán trục y**
+                $series1->setPlotDirection(DataSeries::DIRECTION_COL);
+                $series2->setPlotDirection(DataSeries::DIRECTION_COL);
+
+                // **Tạo vùng dữ liệu**
+                $plotArea = new PlotArea(null, [$series1, $series2]);
+
+                // **Tạo biểu đồ**
+                $chart = new Chart(
+                    'chart1',
+                    null,
+                    new Legend(Legend::POSITION_BOTTOM, null, false),
+                    $plotArea,
+                    true,
+                    'gap',
+                );
+
+                // **Đặt vị trí biểu đồ**
+                $chart->setTopLeftPosition('A'.($line_title_index+1));
+                $chart->setBottomRightPosition('N'.($line_table_index - 1));
+
+                // Thêm biểu đồ vào sheet
+                $sheet->addChart($chart);
+                $line_title_index += 18;
+                $line_table_index += 18;
             }
-            if ($sheet_index < count($sheet_array) - 1) {
-                $spreadsheet->createSheet();
-                $sheet_index += 1;
-            }
+            $sheet->setCellValue('A1', 'BÁO CÁO ' . mb_strtoupper($type, 'UTF-8') . ' CÁC CÔNG ĐOẠN')->mergeCells("A1:K3")->getStyle("A1:K3")->applyFromArray($titleStyle);
+            $spreadsheet->createSheet();
+            $sheet_index++;
         }
+        $spreadsheet->removeSheetByIndex($sheet_index);
         header("Content-Description: File Transfer");
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="Báo cáo.xlsx"');
@@ -1958,6 +2005,7 @@ class Phase2UIApiController extends Controller
         header("Content-Transfer-Encoding: binary");
         header('Expires: 0');
         $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->setIncludeCharts(true);
         $writer->save('exported_files/Báo cáo.xlsx');
         $href = '/exported_files/Báo cáo.xlsx';
         return $this->success($href);
@@ -2367,7 +2415,7 @@ class Phase2UIApiController extends Controller
         return $this->success($href);
     }
 
-    
+
     public function getKPIPassRateChart(Request $request)
     {
         $dateType = $request->dateType;
