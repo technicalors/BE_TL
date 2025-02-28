@@ -2021,7 +2021,6 @@ class Phase2OIApiController extends Controller
                 return [$product_id . $machine_code . $test_criteria_name => $info_lot_id];
             })
             ->toArray();
-        Log::debug($detailHistory);
         foreach ($list as $item) {
 
             $chi_tieu_slug = Str::slug($item->chi_tieu);
@@ -2114,7 +2113,7 @@ class Phase2OIApiController extends Controller
         if (!$spec || trim($spec->value) === 'N/A') {
             return null;
         }
-        if ($test["phan_dinh"] = 'Nhập số') {
+        if ($test["phan_dinh"] === 'Nhập số') {
             try {
                 $extractValues = $this->detect_format($spec->value);
                 if ($extractValues) {
