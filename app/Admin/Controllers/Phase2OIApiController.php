@@ -2039,12 +2039,12 @@ class Phase2OIApiController extends Controller
                     //         $isExist = true;
                     //     }
                     // }
-                    if (isset($detailHistory[$infoCongDoan->product_id . $infoCongDoan->machine_code . $item->hang_muc])) {
-                        $isExist = true;
-                    };
-                    if ($isExist) {
-                        continue;
-                    }
+                    // if (isset($detailHistory[$infoCongDoan->product_id . $infoCongDoan->machine_code . $item->hang_muc])) {
+                    //     $isExist = true;
+                    // };
+                    // if ($isExist) {
+                    //     continue;
+                    // }
                 }
             }
             // array_push($data[$chi_tieu_slug]['data'], $item);
