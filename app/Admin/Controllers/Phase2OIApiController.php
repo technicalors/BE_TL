@@ -783,11 +783,11 @@ class Phase2OIApiController extends Controller
                     LineInventories::create(['quantity' => $sl_dat, 'line_id' => $infoCongDoan->line_id, 'product_id' => $infoCongDoan->product_id]);
                 }
                 //Update ProductionOrderHistory and ProductionOrderPriority
-                $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->where('component_id', $infoCongDoan->plan->component_id)->first();
+                $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->where('component_id', $infoCongDoan->plan->product_id)->first();
                 $producedInfoQuantity = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng;
                 if ($productionOrderHistory) {
                     $productionOrderHistory->update([
-                        'producted_quantity' => $productionOrderHistory->producted_quantity + $producedInfoQuantity,
+                        'produced_quantity' => $productionOrderHistory->producted_quantity + $producedInfoQuantity,
                     ]);
                 }
 
@@ -1642,11 +1642,11 @@ class Phase2OIApiController extends Controller
             ]);
             if ($infoCongDoan->plan) {
                 //Update ProductionOrderHistory and ProductionOrderPriority
-                $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->where('component_id', $infoCongDoan->plan->component_id)->first();
+                $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->where('component_id', $infoCongDoan->plan->product_id)->first();
                 $producedInfoQuantity = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng;
                 if ($productionOrderHistory) {
                     $productionOrderHistory->update([
-                        'producted_quantity' => $productionOrderHistory->producted_quantity + $producedInfoQuantity,
+                        'produced_quantity' => $productionOrderHistory->producted_quantity + $producedInfoQuantity,
                     ]);
                 }
 
