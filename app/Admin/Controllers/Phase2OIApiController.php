@@ -2652,9 +2652,16 @@ class Phase2OIApiController extends Controller
             })->get();
         $data = [];
         $lot_arr = [];
+        $month = Carbon::now()->subMonths(1)->month;
+        $year = Carbon::now()->subMonths(1)->year;
         foreach ($records as $key => $record) {
             $cell_ids = Cell::where('product_id', $record->product_id)->pluck('id')->toArray();
-            $cell_lots = DB::table('cell_lot')->whereIn('cell_id', $cell_ids)->whereMonth('created_at', date('m'))->orderBy('created_at', 'ASC')->get();
+            $cell_lots = DB::table('cell_lot')
+            ->whereIn('cell_id', $cell_ids)
+            ->whereYear('created_at', $year)
+            ->whereMonth('created_at', '>=', $month)
+            ->orderBy('created_at', 'ASC')
+            ->get();
             if (count($cell_lots) == 0) {
                 $object = new stdClass();
                 $object->product_id = $record->product ? $record->product->id : '';
