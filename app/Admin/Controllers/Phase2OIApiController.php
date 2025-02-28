@@ -2126,38 +2126,6 @@ class Phase2OIApiController extends Controller
             } catch (\Throwable $th) {
                 //throw $th;
             }
-
-            // if (str_contains($specValue, $plusOrMinus)) {
-            //     $arr = $this->extractNumbers($specValue);
-            //     if (empty($arr)) {
-            //         return $test;
-            //     }
-            //     $test["input"] = true;
-            //     $test["max"] = $arr['before'] + $arr['after'];
-            //     $test["min"] = $arr['before'] - $arr['after'];
-            //     $test['note'] = $spec->value;
-            //     return $test;
-            // } else if (str_contains($specValue, $approximate)) {
-            //     $arr = $this->extractNumbers($specValue);
-            //     if (empty($arr)) {
-            //         return $test;
-            //     }
-            //     $test["input"] = true;
-            //     $test["min"] = $arr['before'];
-            //     $test["max"] = $arr['after'];
-            //     $test['note'] = $specValue;
-            //     return $test;
-            // } else if (str_contains($specValue, $fromTo)) {
-            //     $arr = $this->extractNumbers($specValue);
-            //     if (empty($arr)) {
-            //         return $test;
-            //     }
-            //     $test["input"] = true;
-            //     $test["min"] = $arr['before'];
-            //     $test["max"] = $arr['after'];
-            //     $test['note'] = $specValue;
-            //     return $test;
-            // }
         }
 
         return $test;
@@ -2686,7 +2654,7 @@ class Phase2OIApiController extends Controller
         $lot_arr = [];
         foreach ($records as $key => $record) {
             $cell_ids = Cell::where('product_id', $record->product_id)->pluck('id')->toArray();
-            $cell_lots = DB::table('cell_lot')->whereIn('cell_id', $cell_ids)->orderBy('created_at', 'ASC')->get();
+            $cell_lots = DB::table('cell_lot')->whereIn('cell_id', $cell_ids)->orderBy('created_at', 'DESC')->get();
             if (count($cell_lots) == 0) {
                 $object = new stdClass();
                 $object->product_id = $record->product ? $record->product->id : '';
