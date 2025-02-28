@@ -473,7 +473,7 @@ class Phase2OIApiController extends Controller
                     'plan_id' => $plan->id
                 ]
             );
-            if($tracking){
+            if (isset($tracking)) {
                 $tracking->update([
                     'lot_id' => $info->lot_id,
                     'input' => 0,
