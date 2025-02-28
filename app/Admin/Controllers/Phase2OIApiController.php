@@ -349,8 +349,8 @@ class Phase2OIApiController extends Controller
             $plan = $info->plan;
             $info->ten_sp = $info->product->name ?? "";
             $info->ma_hang = $info->product_id;
-            $info->thoi_gian_bat_dau_kh = $plan->thoi_gian_bat_dau ? Carbon::parse($plan->thoi_gian_bat_dau)->format('d/m/Y H:i:s') : '';
-            $info->thoi_gian_ket_thuc_kh = $plan->thoi_gian_bat_dau ? Carbon::parse($plan->thoi_gian_ket_thuc)->format('d/m/Y H:i:s') : '';
+            $info->thoi_gian_bat_dau_kh = ($plan && $plan->thoi_gian_bat_dau) ? Carbon::parse($plan->thoi_gian_bat_dau)->format('d/m/Y H:i:s') : '';
+            $info->thoi_gian_ket_thuc_kh = ($plan && $plan->thoi_gian_bat_dau) ? Carbon::parse($plan->thoi_gian_ket_thuc)->format('d/m/Y H:i:s') : '';
             $info->sl_dau_ra_kh = $info->sl_kh;
             $info->thoi_gian_bat_dau = $info->thoi_gian_bat_dau ? Carbon::parse($info->thoi_gian_bat_dau)->format('d/m/Y H:i:s') : "";
             $info->thoi_gian_ket_thuc = $info->thoi_gian_ket_thuc ? Carbon::parse($info->thoi_gian_ket_thuc)->format('d/m/Y H:i:s') : "";
