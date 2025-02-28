@@ -2106,6 +2106,11 @@ class Phase2OIApiController extends Controller
         $reference = !empty($test->reference) ? explode(",", $test->reference) : [];
         $lines = array_merge($test->lines->pluck('id')->toArray(), $reference);
         $spec = Spec::whereIn("line_id", $lines)->where('slug', $hang_muc)->where("product_id", $product->id ?? "")->whereNotNull('name')->whereNotNull('value')->first();
+        // if($test->chi_tieu === 'Đặc tính'){
+        //     Log::info($test->hang_muc);
+        //     // Log::info($spec);
+        //     Log::info([$lines, $hang_muc, $product->id]);
+        // }
         if (!$spec || trim($spec->value) === 'N/A') {
             return null;
         }
