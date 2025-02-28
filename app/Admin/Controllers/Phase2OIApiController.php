@@ -782,19 +782,21 @@ class Phase2OIApiController extends Controller
                 } else {
                     LineInventories::create(['quantity' => $sl_dat, 'line_id' => $infoCongDoan->line_id, 'product_id' => $infoCongDoan->product_id]);
                 }
-                //Update ProductionOrderHistory and ProductionOrderPriority
-                $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->where('component_id', $infoCongDoan->plan->product_id)->first();
-                $producedInfoQuantity = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng;
-                if ($productionOrderHistory) {
-                    $productionOrderHistory->update([
-                        'produced_quantity' => $productionOrderHistory->producted_quantity + $producedInfoQuantity,
-                    ]);
-                }
+                if ($infoCongDoan->plan) {
+                    //Update ProductionOrderHistory and ProductionOrderPriority
+                    $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->where('component_id', $infoCongDoan->plan->product_id)->first();
+                    $producedInfoQuantity = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng;
+                    if ($productionOrderHistory) {
+                        $productionOrderHistory->update([
+                            'produced_quantity' => $productionOrderHistory->producted_quantity + $producedInfoQuantity,
+                        ]);
+                    }
 
-                $infos = InfoCongDoan::where('plan_id', $infoCongDoan->plan_id)->get();
-                $producedQuantity = $infos->sum('sl_dau_ra_hang_loat') - $infos->sum('sl_ng');
-                if ($producedQuantity >= $infoCongDoan->plan->sl_giao_sx) {
-                    $infoCongDoan->plan->update(['status_plan' => ProductionPlan::STATUS_COMPLETED]);
+                    $infos = InfoCongDoan::where('plan_id', $infoCongDoan->plan_id)->get();
+                    $producedQuantity = $infos->sum('sl_dau_ra_hang_loat') - $infos->sum('sl_ng');
+                    if ($producedQuantity >= $infoCongDoan->plan->sl_giao_sx) {
+                        $infoCongDoan->plan->update(['status_plan' => ProductionPlan::STATUS_COMPLETED]);
+                    }
                 }
                 if ($machine && $tracking) {
                     MachineStatus::deactive($machine->code);
