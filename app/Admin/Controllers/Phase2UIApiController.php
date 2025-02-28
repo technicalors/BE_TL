@@ -233,7 +233,7 @@ class Phase2UIApiController extends Controller
             $query->where('lot_id', 'like',  '%' . $request->product_id . '%');
         }
         if (isset($request->ten_sp)) {
-            $query->where('lot_id', 'like',  '%' . $request->ten_sp . '%');
+            $query->where('product_id', 'like',  '%' . $request->ten_sp . '%');
         }
         if (isset($request->khach_hang)) {
             $product_ids = Product::where('customer_id', $request->khach_hang)->pluck('id')->toArray();
@@ -1756,7 +1756,7 @@ class Phase2UIApiController extends Controller
         return $this->success($href);
     }
 
-    public function exportQCReport(Request $request)
+    public function exportPQCReportV2(Request $request)
     {
         $input = $request->all();
         $sheet_array = [];
@@ -1822,6 +1822,7 @@ class Phase2UIApiController extends Controller
                 $data[$line_id]['sum_ty_le_ng'] = $checked_counter ? number_format($sum_ng / $checked_counter * 100, 2) : 0;
                 $data[$line_id]['loi_phat_sinh'] = '';
             }
+
         }
     }
 
