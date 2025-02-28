@@ -473,11 +473,14 @@ class Phase2OIApiController extends Controller
                     'plan_id' => $plan->id
                 ]
             );
-            $tracking->update([
-                'lot_id' => $info->lot_id,
-                'input' => 0,
-                'output' => 0
-            ]);
+            if($tracking){
+                $tracking->update([
+                    'lot_id' => $info->lot_id,
+                    'input' => 0,
+                    'output' => 0
+                ]);
+            }
+            
             $this->updateAndReorderMachinePriorities($machine->code, $plan->product_id, $machine->line_id);
             DB::commit();
         } catch (\Throwable $th) {
