@@ -3782,6 +3782,9 @@ class ApiMobileController extends AdminController
 
         $setupTime = ProductionPlanController::getSetupTime($input['product_id'], $machine->line_id);
         $efficiency = ProductionPlanController::getEfficiency($input['product_id'], $machine->line_id);
+        if ($efficiency <= 0) {
+            throw new Exception("Không tìm thấy năng suất cho sản phẩm " . $input['product_id'] . " và công đoạn " . $machine->line->name, 1);
+        }
         $productionTime = ceil(($input['sl_giao_sx'] / $efficiency) * 60) + $setupTime;
 
         $machineShifts = ProductionPlanController::getMachineProductionShifts($machine->code, date('Y-m-d', strtotime('+1 day')));
@@ -3818,6 +3821,9 @@ class ApiMobileController extends AdminController
             $setupTime = ProductionPlanController::getSetupTime($input['product_id'], $machine->line_id);
             $productOrderHistory = ProductionOrderHistory::where('product_id', $input['product_id'])->where('line_id', $machine->line_id)->first();
             $efficiency = ProductionPlanController::getEfficiency($input['product_id'], $machine->line_id);
+            if ($efficiency <= 0) {
+                throw new Exception("Không tìm thấy năng suất cho sản phẩm " . $input['product_id'] . " ở công đoạn " . $machine->line->name, 1);
+            }
             $productionTime = ceil((($productOrderHistory->production_quantity ?? $model->sl_giao_sx) / $efficiency) * 60) + $setupTime;
             $machineShifts = ProductionPlanController::getMachineProductionShifts($machine->code, date('Y-m-d', strtotime('+1 day')));
             if (count($machineShifts) <= 0) {
