@@ -3796,16 +3796,15 @@ class ApiMobileController extends AdminController
         $times = ProductionPlanController::adjustShift($start_time, $end_time, $machineShifts);
         $input['thoi_gian_ket_thuc'] = $times['end_time'];
         $input['cong_doan_sx'] = $machine->line->name;
-        $input['lo_sx'] = Losx::generateUniqueIdV1();
-        Losx::create(['id' =>  $input['lo_sx'], 'product_order_id' => $input['lo_sx']]);
-        $input['ngay_sx'] = date('Y-m-d', strtotime($input['thoi_gian_bat_dau']));
-        $check = ProductionPlan::where('lo_sx', $input['lo_sx'])->where('cong_doan_sx', $input['cong_doan_sx'])->first();
-        if ($check) {
-            return $this->failure([], 'Trùng lô sản xuất');
+        $losx = Losx::where('product_id', $input['product_id'])->where('status', 1)->first();
+        if ($losx) {
+            $input['lo_sx'] = $losx->id;
         } else {
-            ProductionPlan::create($input);
-            return $this->success([], 'Thêm thành công');
+            return $this->failure([], 'Không tìm thấy lô sản xuất');
         }
+        $input['ngay_sx'] = date('Y-m-d', strtotime($input['thoi_gian_bat_dau']));
+        ProductionPlan::create($input);
+        return $this->success([], 'Thêm thành công');
     }
     public function updateProductPlan(Request $request)
     {
