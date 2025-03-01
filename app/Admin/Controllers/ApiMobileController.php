@@ -3796,7 +3796,7 @@ class ApiMobileController extends AdminController
         $times = ProductionPlanController::adjustShift($start_time, $end_time, $machineShifts);
         $input['thoi_gian_ket_thuc'] = $times['end_time'];
         $input['cong_doan_sx'] = $machine->line->name;
-        if ($machine->line_id == 24) {
+        if ($machine->line_id == 24 || $machine->line_id == 29) {
             $input['lo_sx'] = Losx::generateUniqueIdV1();
             Losx::create(['id' =>  $input['lo_sx'], 'product_order_id' => $input['lo_sx']]);
         } else {
