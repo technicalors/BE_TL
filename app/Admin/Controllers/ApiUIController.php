@@ -4574,7 +4574,7 @@ class ApiUIController extends AdminController
             // $plan->ngay_giao_hang = date('d/m/Y', strtotime($plan->ngay_giao_hang));
             $plan->cong_doan_sx = $plan->line->name ?? '';
             $plan->status = strtotime(date('Y-m-d')) >= strtotime($plan->ngay_sx) ? 'FIX' : 'PRE';
-            $plan->kqsx = InfoCongDoan::where('line_id', $plan->line_id)->where('lo_sx', $plan->lo_sx)->whereNotNull('thoi_gian_bat_dau')->sum('sl_dau_ra_hang_loat') -  InfoCongDoan::where('line_id', $plan->line_id)->whereNotNull('thoi_gian_bat_dau')->where('lo_sx', $plan->lo_sx)->sum('sl_ng');
+            $plan->kqsx = InfoCongDoan::where('line_id', $plan->line_id)->where('plan_id', $plan->id)->whereNotNull('thoi_gian_bat_dau')->sum('sl_dau_ra_hang_loat') -  InfoCongDoan::where('line_id', $plan->line_id)->whereNotNull('thoi_gian_bat_dau')->sum('sl_ng');
             // $plan->thoi_gian_ket_thuc = date('d/m/Y H:i:s', strtotime($plan->thoi_gian_ket_thuc));
             // $plan->thoi_gian_bat_dau =  date('d/m/Y H:i:s', strtotime($plan->thoi_gian_bat_dau));
         }
