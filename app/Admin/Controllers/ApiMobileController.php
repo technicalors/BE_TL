@@ -4378,4 +4378,20 @@ class ApiMobileController extends AdminController
         }
         return $this->success([], 'Update thành công');
     }
+    public function updateInventory(Request $request)
+    {
+        $input = $request->all();
+        foreach ($input as $key => $value) {
+            $product = Product::where('name', $key)->first();
+            if ($product && is_numeric($value)) {
+                $inventory = Inventory::where('product_id', $product->id)->first();
+                if (!$inventory) {
+                    Inventory::create(['product_id' => $product->id, 'sl_ton' => $value]);
+                } else {
+                    Inventory::where('product_id', $product->id)->update(['sl_ton' => $value]);
+                }
+            }
+        }
+        return $this->success([], 'Cập nhật thành công');
+    }
 }

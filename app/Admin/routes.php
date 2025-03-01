@@ -834,4 +834,5 @@ Route::group([
     //Test new api
     $router->post('convert-spec', [ProductController::class, 'convertSpec']);
     $router->post('create-prioritized-machines', [ProductionPlanController::class, 'createPrioritizedMachines']);
+    $router->post('update-inventory', [ApiMobileController::class, 'updateInventory']);
 });

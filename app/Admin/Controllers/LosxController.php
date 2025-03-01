@@ -33,8 +33,8 @@ class LosxController extends Controller
 
         $productionSteps = ProductionPlanController::getProductionSteps($losx->product_id);
         $quantity = $input['order_quantity'];
-        foreach ($productionSteps as $productionStep) {
-            if ($quantity > 0) {
+        foreach ($productionSteps as $key => $productionStep) {
+            if ($quantity > 0 && $key > 0) {
                 $calculatedQuantity = ProductionPlanController::calculateProductionOutput($losx->product_id, $productionStep->line_id, $quantity);
                 $quantity = $calculatedQuantity;
             }

@@ -302,8 +302,8 @@ class ProductOrderController extends Controller
 
                 $productionSteps = ProductionPlanController::getProductionSteps($productOrder->product_id);
                 $quantity = $productOrder->quantity;
-                foreach ($productionSteps as $productionStep) {
-                    if ($quantity > 0) {
+                foreach ($productionSteps as $key => $productionStep) {
+                    if ($quantity > 0 && $key > 0) {
                         $calculatedQuantity = ProductionPlanController::calculateProductionOutput($productOrder->product_id, $productionStep->line_id, $quantity);
                         $quantity = $calculatedQuantity;
                     }
@@ -327,8 +327,8 @@ class ProductOrderController extends Controller
                 $losx->update(['delivery_date' => $input['confirm_date'], 'order_quantity' => $productOrder->quantity + $losx->order_quantity]);
                 $productionSteps = ProductionPlanController::getProductionSteps($productOrder->product_id);
                 $quantity = $productOrder->quantity;
-                foreach ($productionSteps as $productionStep) {
-                    if ($quantity > 0) {
+                foreach ($productionSteps as $key => $productionStep) {
+                    if ($quantity > 0 && $key > 0) {
                         $calculatedQuantity = ProductionPlanController::calculateProductionOutput($productOrder->product_id, $productionStep->line_id, $quantity);
                         $quantity = $calculatedQuantity;
                     }
