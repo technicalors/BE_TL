@@ -437,6 +437,7 @@ class Phase2OIApiController extends Controller
         if (count($product_ids) === 0) {
             return $this->failure([], "Không tìm thấy sản phẩm");
         }
+        $product_ids[] = $roll->material_id;
         $plan = ProductionPlan::where('line_id', $machine->line_id)
             ->where('machine_id', $machine->code)
             ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
@@ -473,11 +474,14 @@ class Phase2OIApiController extends Controller
                     'plan_id' => $plan->id
                 ]
             );
-            $tracking->update([
-                'lot_id' => $info->lot_id,
-                'input' => 0,
-                'output' => 0
-            ]);
+            if (isset($tracking)) {
+                $tracking->update([
+                    'lot_id' => $info->lot_id,
+                    'input' => 0,
+                    'output' => 0
+                ]);
+            }
+            
             $this->updateAndReorderMachinePriorities($machine->code, $plan->product_id, $machine->line_id);
             DB::commit();
         } catch (\Throwable $th) {
@@ -782,19 +786,21 @@ class Phase2OIApiController extends Controller
                 } else {
                     LineInventories::create(['quantity' => $sl_dat, 'line_id' => $infoCongDoan->line_id, 'product_id' => $infoCongDoan->product_id]);
                 }
-                //Update ProductionOrderHistory and ProductionOrderPriority
-                $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->where('component_id', $infoCongDoan->plan->component_id)->first();
-                $producedInfoQuantity = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng;
-                if ($productionOrderHistory) {
-                    $productionOrderHistory->update([
-                        'producted_quantity' => $productionOrderHistory->producted_quantity + $producedInfoQuantity,
-                    ]);
-                }
+                if ($infoCongDoan->plan) {
+                    //Update ProductionOrderHistory and ProductionOrderPriority
+                    $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->where('component_id', $infoCongDoan->plan->product_id)->first();
+                    $producedInfoQuantity = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng;
+                    if ($productionOrderHistory) {
+                        $productionOrderHistory->update([
+                            'produced_quantity' => $productionOrderHistory->producted_quantity + $producedInfoQuantity,
+                        ]);
+                    }
 
-                $infos = InfoCongDoan::where('plan_id', $infoCongDoan->plan_id)->get();
-                $producedQuantity = $infos->sum('sl_dau_ra_hang_loat') - $infos->sum('sl_ng');
-                if ($producedQuantity >= $infoCongDoan->plan->sl_giao_sx) {
-                    $infoCongDoan->plan->update(['status_plan' => ProductionPlan::STATUS_COMPLETED]);
+                    $infos = InfoCongDoan::where('plan_id', $infoCongDoan->plan_id)->get();
+                    $producedQuantity = $infos->sum('sl_dau_ra_hang_loat') - $infos->sum('sl_ng');
+                    if ($producedQuantity >= $infoCongDoan->plan->sl_giao_sx) {
+                        $infoCongDoan->plan->update(['status_plan' => ProductionPlan::STATUS_COMPLETED]);
+                    }
                 }
                 if ($machine && $tracking) {
                     MachineStatus::deactive($machine->code);
@@ -1642,11 +1648,11 @@ class Phase2OIApiController extends Controller
             ]);
             if ($infoCongDoan->plan) {
                 //Update ProductionOrderHistory and ProductionOrderPriority
-                $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->where('component_id', $infoCongDoan->plan->component_id)->first();
+                $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->where('component_id', $infoCongDoan->plan->product_id)->first();
                 $producedInfoQuantity = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng;
                 if ($productionOrderHistory) {
                     $productionOrderHistory->update([
-                        'producted_quantity' => $productionOrderHistory->producted_quantity + $producedInfoQuantity,
+                        'produced_quantity' => $productionOrderHistory->producted_quantity + $producedInfoQuantity,
                     ]);
                 }
 
@@ -2016,7 +2022,6 @@ class Phase2OIApiController extends Controller
                 return [$product_id . $machine_code . $test_criteria_name => $info_lot_id];
             })
             ->toArray();
-        Log::debug($detailHistory);
         foreach ($list as $item) {
 
             $chi_tieu_slug = Str::slug($item->chi_tieu);
@@ -2101,10 +2106,15 @@ class Phase2OIApiController extends Controller
         $reference = !empty($test->reference) ? explode(",", $test->reference) : [];
         $lines = array_merge($test->lines->pluck('id')->toArray(), $reference);
         $spec = Spec::whereIn("line_id", $lines)->where('slug', $hang_muc)->where("product_id", $product->id ?? "")->whereNotNull('name')->whereNotNull('value')->first();
+        // if($test->chi_tieu === 'Đặc tính'){
+        //     Log::info($test->hang_muc);
+        //     // Log::info($spec);
+        //     Log::info([$lines, $hang_muc, $product->id]);
+        // }
         if (!$spec || trim($spec->value) === 'N/A') {
             return null;
         }
-        if ($test["phan_dinh"] = 'Nhập số') {
+        if ($test["phan_dinh"] === 'Nhập số') {
             try {
                 $extractValues = $this->detect_format($spec->value);
                 if ($extractValues) {
@@ -2117,38 +2127,6 @@ class Phase2OIApiController extends Controller
             } catch (\Throwable $th) {
                 //throw $th;
             }
-
-            // if (str_contains($specValue, $plusOrMinus)) {
-            //     $arr = $this->extractNumbers($specValue);
-            //     if (empty($arr)) {
-            //         return $test;
-            //     }
-            //     $test["input"] = true;
-            //     $test["max"] = $arr['before'] + $arr['after'];
-            //     $test["min"] = $arr['before'] - $arr['after'];
-            //     $test['note'] = $spec->value;
-            //     return $test;
-            // } else if (str_contains($specValue, $approximate)) {
-            //     $arr = $this->extractNumbers($specValue);
-            //     if (empty($arr)) {
-            //         return $test;
-            //     }
-            //     $test["input"] = true;
-            //     $test["min"] = $arr['before'];
-            //     $test["max"] = $arr['after'];
-            //     $test['note'] = $specValue;
-            //     return $test;
-            // } else if (str_contains($specValue, $fromTo)) {
-            //     $arr = $this->extractNumbers($specValue);
-            //     if (empty($arr)) {
-            //         return $test;
-            //     }
-            //     $test["input"] = true;
-            //     $test["min"] = $arr['before'];
-            //     $test["max"] = $arr['after'];
-            //     $test['note'] = $specValue;
-            //     return $test;
-            // }
         }
 
         return $test;
@@ -2675,9 +2653,16 @@ class Phase2OIApiController extends Controller
             })->get();
         $data = [];
         $lot_arr = [];
+        $month = Carbon::now()->subMonths(1)->month;
+        $year = Carbon::now()->subMonths(1)->year;
         foreach ($records as $key => $record) {
             $cell_ids = Cell::where('product_id', $record->product_id)->pluck('id')->toArray();
-            $cell_lots = DB::table('cell_lot')->whereIn('cell_id', $cell_ids)->orderBy('created_at', 'ASC')->get();
+            $cell_lots = DB::table('cell_lot')
+            ->whereIn('cell_id', $cell_ids)
+            // ->whereYear('created_at', $year)
+            // ->whereMonth('created_at', '>=', $month)
+            ->orderBy('created_at', 'ASC')
+            ->get();
             if (count($cell_lots) == 0) {
                 $object = new stdClass();
                 $object->product_id = $record->product ? $record->product->id : '';

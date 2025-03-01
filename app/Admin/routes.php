@@ -725,6 +725,7 @@ Route::group([
     $router->get('quality/oqc/data-chart', [Phase2UIApiController::class, 'getOQCDataChart']);
     $router->get('quality/oqc/data-summary', [Phase2UIApiController::class, 'getOQCDataSummary']);
     $router->get('quality/oqc/export-data-table', [Phase2UIApiController::class, 'exportOQCDataTable']);
+    
     $router->post('plan/generate', [ProductionPlanController::class, 'generateProductionPlan']);
     $router->get('plan/store/{order_id}', [ProductionPlanController::class, 'processProductionPlan']);
     $router->post('plan/create', [ProductionPlanController::class, 'createProductionPlan']);
