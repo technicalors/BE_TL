@@ -437,6 +437,7 @@ class Phase2OIApiController extends Controller
         if (count($product_ids) === 0) {
             return $this->failure([], "Không tìm thấy sản phẩm");
         }
+        $product_ids[] = $roll->material_id;
         $plan = ProductionPlan::where('line_id', $machine->line_id)
             ->where('machine_id', $machine->code)
             ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
