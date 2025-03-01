@@ -4589,7 +4589,7 @@ class ApiUIController extends AdminController
         foreach ($list as $plan) {
             $plan->sl_ke_hoach_manh = $plan ? (($plan->sl_thanh_pham && $plan->product->so_bat) ? $plan->product->so_bat * $plan->sl_thanh_pham : $plan->sl_giao_sx) : 0;
             $plan->sl_giao_sx = $plan->sl_giao_sx ? $plan->sl_giao_sx : ($plan->sl_thanh_pham * $plan->product->so_bat);
-            $plan->ten_san_pham = $plan->product->name ?? '';
+            $plan->ten_sp = $plan->product->name ?? '';
             $plan->ngay_giao_hang = date('d/m/Y', strtotime($plan->ngay_giao_hang));
             $plan->cong_doan_sx = $plan->line->name ?? $this->find_line_by_slug($plan->cong_doan_sx, $lines);
             $plan->status = strtotime(date('Y-m-d')) >= strtotime($plan->ngay_sx) ? 'FIX' : 'PRE';
