@@ -2659,8 +2659,8 @@ class Phase2OIApiController extends Controller
             $cell_ids = Cell::where('product_id', $record->product_id)->pluck('id')->toArray();
             $cell_lots = DB::table('cell_lot')
             ->whereIn('cell_id', $cell_ids)
-            ->whereYear('created_at', $year)
-            ->whereMonth('created_at', '>=', $month)
+            // ->whereYear('created_at', $year)
+            // ->whereMonth('created_at', '>=', $month)
             ->orderBy('created_at', 'ASC')
             ->get();
             if (count($cell_lots) == 0) {
