@@ -57,13 +57,16 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpPresentation\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Chart\Chart;
+use PhpOffice\PhpSpreadsheet\Chart\ChartColor;
 use PhpOffice\PhpSpreadsheet\Chart\DataSeries;
 use PhpOffice\PhpSpreadsheet\Chart\DataSeriesValues;
+use PhpOffice\PhpSpreadsheet\Chart\Layout;
 use PhpOffice\PhpSpreadsheet\Chart\Legend;
 use PhpOffice\PhpSpreadsheet\Chart\PlotArea;
 use PhpOffice\PhpSpreadsheet\Chart\Title;
 use PhpOffice\PhpSpreadsheet\Style\Borders;
 use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
 class Phase2UIApiController extends Controller
 {
@@ -1469,11 +1472,11 @@ class Phase2UIApiController extends Controller
                     } else {
                         $data[$testCriterion->id] = $transformData[$testCriterion->id];
                     }
-                    $row_data = array_filter($data[$testCriterion->id]);
-                    if (empty($row_data)) {
-                        unset($data[$testCriterion->id]);
-                        continue;
-                    };
+                    // $row_data = array_filter($data[$testCriterion->id]);
+                    // if (empty($row_data)) {
+                    //     unset($data[$testCriterion->id]);
+                    //     continue;
+                    // };
                     // Merge các ô trong cột "Tiêu chuẩn" (Cột 3)
                     // if ($testCriterion->tieu_chuan !== $current_tieu_chuan) {
                     //     if ($current_tieu_chuan !== null && $tieu_chuan_merge_start < $row_index - 1) {
@@ -1770,7 +1773,7 @@ class Phase2UIApiController extends Controller
         $centerStyle = [
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
                 'wrapText' => true
             ],
             'borders' => array(
@@ -1788,7 +1791,7 @@ class Phase2UIApiController extends Controller
             ]
         ]);
         $titleStyle = array_merge($centerStyle, [
-            'font' => ['size' => 16, 'bold' => true],
+            'font' => ['size' => 24, 'bold' => true],
         ]);
         $border = [
             'borders' => array(
@@ -1803,6 +1806,8 @@ class Phase2UIApiController extends Controller
         foreach ($input as $key => $value) {
             //Tạo sheet
             $sheet = $spreadsheet->getSheet($sheet_index);
+            $sheet->getColumnDimension('A')->setWidth(20);
+            $sheet->getColumnDimension('B')->setWidth(11);
             //Tạo dữ liệu
             $tong_so_lot_kiem_tra = 0;
             $so_lot_ok = 0;
@@ -1838,7 +1843,7 @@ class Phase2UIApiController extends Controller
                         ];
                     }
                     break;
-                case 'month':
+                case 'year':
                     $type = 'Tháng';
                     $start = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh')->startOfYear();
                     $end = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh')->endOfYear();
@@ -1855,23 +1860,23 @@ class Phase2UIApiController extends Controller
                     continue 2;
                     break;
             }
-            $sheet->setTitle('Báo cáo ' . $type);
+            $sheet->setTitle('Báo cáo ' . strtolower($type));
 
             $line_title_index = 4;
             $line_table_index = 14;
             foreach ($lines as $line) {
                 if($line->id === 24){
-                    $muc_tieu = 0.1;
+                    $muc_tieu = 0.001;
                 }elseif($line->id === 25){
-                    $muc_tieu = 1;
+                    $muc_tieu = 0.01;
                 }elseif($line->id === 26){
-                    $muc_tieu = 1;
+                    $muc_tieu = 0.01;
                 }elseif($line->id === 27){
-                    $muc_tieu = 1;
+                    $muc_tieu = 0.01;
                 }elseif($line->id === 29){
-                    $muc_tieu = 0.5;
+                    $muc_tieu = 0.005;
                 }elseif($line->id === 30){
-                    $muc_tieu = 0.5;
+                    $muc_tieu = 0.005;
                 }
                 $groupedData[$line->id] = [];
                 $data = [];
@@ -1901,7 +1906,8 @@ class Phase2UIApiController extends Controller
                         'muc_tieu' => $muc_tieu
                     ];
                 }
-                $sheet->setCellValue([1, $line_title_index], 'Công đoạn ' . $line->name);
+                $sheet->setCellValue([1, $line_title_index], 'Công đoạn ' . $line->name)->getStyle([1, $line_title_index])->applyFromArray(['font' => ['size' => 22, 'bold' => true]]);
+                $sheet->getRowDimension($line_title_index)->setRowHeight(27);
                 $header = [
                     $type,
                     'Tổng số lot kiểm tra',
@@ -1920,10 +1926,20 @@ class Phase2UIApiController extends Controller
                     // **Dùng array_map nếu có nhiều phần tử**
                     $transposedData = array_map(null, ...array_map('array_values', $data));
                 }
-                $sheet->fromArray($transposedData, null, 'B' . $line_table_index, true);
+                $sheet->fromArray($transposedData, null, 'B' . $line_table_index, true);//Gán dữ liệu vào bảng
+                $sheet->getStyle([1, $line_table_index, 1, $line_table_index + count($header) - 1])->applyFromArray(['font' => ['bold' => true]]);//In đậm header của bảng
+                
 
                 $startColumnIndex = Coordinate::columnIndexFromString("B");
                 $endColumn = Coordinate::stringFromColumnIndex($startColumnIndex + count($transposedData[0]) - 1);
+                
+                $sheet->getStyle([1, $line_table_index, $startColumnIndex + count($transposedData[0]) - 1, $line_table_index + count($header) - 1])->applyFromArray($border);//Tạo border cho bảng
+                $sheet->getStyle("B" . ($line_table_index + 4) . ":" . $endColumn . ($line_table_index + 4))->applyFromArray([
+                    'font' => [
+                        'color' => ['argb' => 'FF0000'], // Màu đỏ
+                    ]
+                ]);//Bôi đỏ chữ hàng Tỷ lệ NG
+                $sheet->getStyle("B" . ($line_table_index + 4) . ":" . $endColumn . ($line_table_index + 5))->getNumberFormat()->setFormatCode('0.0%');
 
                 // Trục X: Tháng
                 $rangeData = "B" . ($line_table_index) . ":" . $endColumn . ($line_table_index);
@@ -1932,8 +1948,10 @@ class Phase2UIApiController extends Controller
                 // **Dữ liệu cột**
                 $rangeData = "B" . ($line_table_index + 2) . ":" . $endColumn . ($line_table_index + 2);
                 $dataSeriesValues1 = new DataSeriesValues('Number', "'Báo cáo $type'!" . $rangeData, null, count($transposedData[1]));
+                $titleSeriesValues1 = new DataSeriesValues('Number', "'Báo cáo $type'!" . "A" . ($line_table_index + 2) . ":A" . ($line_table_index + 2));
                 $rangeData = "B" . ($line_table_index + 3) . ":" . $endColumn . ($line_table_index + 3);
                 $dataSeriesValues2 = new DataSeriesValues('Number', "'Báo cáo $type'!" . $rangeData, null, count($transposedData[2]));
+                $titleSeriesValues2 = new DataSeriesValues('Number', "'Báo cáo $type'!" . "A" . ($line_table_index + 3) . ":A" . ($line_table_index + 3));
 
                 // **Dữ liệu đường**
                 $rangeData = "B" . ($line_table_index + 4) . ":" . $endColumn . ($line_table_index + 4);
@@ -1941,19 +1959,21 @@ class Phase2UIApiController extends Controller
                 $dataSeriesValues3->setLineWidth(2); // Độ dày đường
                 $dataSeriesValues3->setPointMarker('none');
                 $dataSeriesValues3->setFillColor('FF0000'); // Màu đỏ
+                $titleSeriesValues3 = new DataSeriesValues('Number', "'Báo cáo $type'!" . "A" . ($line_table_index + 4) . ":A" . ($line_table_index + 4));
 
                 $rangeData = "B" . ($line_table_index + 5) . ":" . $endColumn . ($line_table_index + 5);
                 $dataSeriesValues4 = new DataSeriesValues('Number', "'Báo cáo $type'!" . $rangeData, null, count($transposedData[4]));
                 $dataSeriesValues4->setLineWidth(2);
                 $dataSeriesValues4->setPointMarker('none');
                 $dataSeriesValues4->setFillColor('008000'); // Màu xanh lá
+                $titleSeriesValues4 = new DataSeriesValues('Number', "'Báo cáo $type'!" . "A" . ($line_table_index + 5) . ":A" . ($line_table_index + 5));
 
                 // **Tạo Series**
                 $series1 = new DataSeries(
                     DataSeries::TYPE_BARCHART, // Cột
                     DataSeries::GROUPING_CLUSTERED,
                     range(0, 1),
-                    [],
+                    [$titleSeriesValues1, $titleSeriesValues2],
                     $xAxisTickValues,
                     [$dataSeriesValues1, $dataSeriesValues2]
                 );
@@ -1961,8 +1981,8 @@ class Phase2UIApiController extends Controller
                 $series2 = new DataSeries(
                     DataSeries::TYPE_LINECHART, // Đường kẻ
                     DataSeries::GROUPING_STANDARD,
-                    range(2, 3),
-                    [],
+                    range(0, 1),
+                    [$titleSeriesValues3, $titleSeriesValues4],
                     $xAxisTickValues,
                     [$dataSeriesValues3, $dataSeriesValues4]
                 );
@@ -1972,7 +1992,13 @@ class Phase2UIApiController extends Controller
                 $series2->setPlotDirection(DataSeries::DIRECTION_COL);
 
                 // **Tạo vùng dữ liệu**
-                $plotArea = new PlotArea(null, [$series1, $series2]);
+                $layout = new Layout();
+                $layout->setShowVal(true);
+                // $layout->setLabelFillColor(new ChartColor('FFFFFF'));
+                // $layout->setLabelBorderColor(new ChartColor('000000')); // Viền đen
+                $plotArea = new PlotArea($layout, [$series1], [$series2]);
+
+                $secondaryYAxisLabel  = new Title('');
 
                 // **Tạo biểu đồ**
                 $chart = new Chart(
@@ -1982,6 +2008,13 @@ class Phase2UIApiController extends Controller
                     $plotArea,
                     true,
                     'gap',
+                    null, // xAxisLabel
+                    null,  // yAxisLabel
+                    null, // xAxis
+                    null,  // yAxis
+                    null,  // majorGridlines
+                    null,  //minor Gridlines
+                    $secondaryYAxisLabel    // secondaryYAxisLabel
                 );
 
                 // **Đặt vị trí biểu đồ**
@@ -1993,7 +2026,7 @@ class Phase2UIApiController extends Controller
                 $line_title_index += 18;
                 $line_table_index += 18;
             }
-            $sheet->setCellValue('A1', 'BÁO CÁO ' . mb_strtoupper($type, 'UTF-8') . ' CÁC CÔNG ĐOẠN')->mergeCells("A1:K3")->getStyle("A1:K3")->applyFromArray($titleStyle);
+            $sheet->setCellValue('A1', 'BÁO CÁO ' . mb_strtoupper($type, 'UTF-8') . ' CÁC CÔNG ĐOẠN')->mergeCells("A1:M3")->getStyle("A1:M3")->applyFromArray($titleStyle);
             $spreadsheet->createSheet();
             $sheet_index++;
         }
