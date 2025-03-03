@@ -1472,11 +1472,11 @@ class Phase2UIApiController extends Controller
                     } else {
                         $data[$testCriterion->id] = $transformData[$testCriterion->id];
                     }
-                    // $row_data = array_filter($data[$testCriterion->id]);
-                    // if (empty($row_data)) {
-                    //     unset($data[$testCriterion->id]);
-                    //     continue;
-                    // };
+                    $row_data = array_filter($data[$testCriterion->id]);
+                    if (empty($row_data)) {
+                        unset($data[$testCriterion->id]);
+                        continue;
+                    };
                     // Merge các ô trong cột "Tiêu chuẩn" (Cột 3)
                     // if ($testCriterion->tieu_chuan !== $current_tieu_chuan) {
                     //     if ($current_tieu_chuan !== null && $tieu_chuan_merge_start < $row_index - 1) {
@@ -1777,7 +1777,7 @@ class Phase2UIApiController extends Controller
                 'wrapText' => true
             ],
             'borders' => array(
-                'outline' => array(
+                'allBorders' => array(
                     'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
                     'color' => array('argb' => '000000'),
                 ),
@@ -1807,7 +1807,6 @@ class Phase2UIApiController extends Controller
             //Tạo sheet
             $sheet = $spreadsheet->getSheet($sheet_index);
             $sheet->getColumnDimension('A')->setWidth(20);
-            $sheet->getColumnDimension('B')->setWidth(11);
             //Tạo dữ liệu
             $tong_so_lot_kiem_tra = 0;
             $so_lot_ok = 0;
@@ -1819,14 +1818,14 @@ class Phase2UIApiController extends Controller
             switch ($key) {
                 case 'day':
                     $type = 'Ngày';
-                    $start = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh')->startOfDay();
-                    $end = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh')->endOfDay();
+                    $start = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh')->startOfMonth();
+                    $end = Carbon::parse($value)->setTimezone('Asia/Ho_Chi_Minh')->endOfMonth();
                     for ($date = $start; $date->lte($end); $date->addDay()) {
                         $range[] = [
                             'start' => $date->copy()->startOfDay(),
                             'end' => $date->copy()->endOfDay(),
                             'type' => 'Ngày',
-                            'key' => 'd/m/Y'
+                            'key' => 'd'
                         ];
                     }
                     break;
@@ -1839,7 +1838,7 @@ class Phase2UIApiController extends Controller
                             'start' => $date->copy()->startOfWeek(Carbon::MONDAY),
                             'end' => $date->copy()->endOfWeek(),
                             'type' => 'Tuần',
-                            'key' => 'W/Y'
+                            'key' => 'W'
                         ];
                     }
                     break;
@@ -1852,7 +1851,7 @@ class Phase2UIApiController extends Controller
                             'start' => $date->copy()->startOfMonth(Carbon::MONDAY),
                             'end' => $date->copy()->endOfMonth(),
                             'type' => 'Tháng',
-                            'key' => 'm/Y'
+                            'key' => 'm'
                         ];
                     }
                     break;
@@ -1880,7 +1879,7 @@ class Phase2UIApiController extends Controller
                 }
                 $groupedData[$line->id] = [];
                 $data = [];
-                foreach ($range as $value) { // Nếu nhóm theo ngày
+                foreach ($range as $index => $value) { // Nếu nhóm theo ngày
                     $date_key = $value['start']->copy()->format($value['key']);
                     $infoData = InfoCongDoan::whereHas('qcHistory', function ($query) use ($value) {
                         $query->whereBetween('created_at', [$value['start'], $value['end']]);
@@ -1897,12 +1896,15 @@ class Phase2UIApiController extends Controller
                     }
                     $so_lot_ok -= $so_lot_ng;
                     $ty_le_ng = $tong_so_lot_kiem_tra ? number_format($so_lot_ng / $tong_so_lot_kiem_tra * 100, 2) : 0;
+                    $colName = Coordinate::stringFromColumnIndex(2 + $index);
+                    $rowIndex = $line_table_index + 1;
                     $data[] = [
-                        'date_key' => $date_key,
+                        'date_key' => (int) $date_key,
                         'tong_so_lot_kiem_tra' => $tong_so_lot_kiem_tra,
-                        'so_lot_ok' => $so_lot_ok,
+                        'so_lot_ok' => "=+" . $colName . $rowIndex . "-" . $colName . ($rowIndex + 2),
                         'so_lot_ng' => $so_lot_ng,
-                        'ty_le_ng' => $ty_le_ng,
+                        'ty_le_ng' => "=IF(". $colName . $rowIndex . ">0," . $colName . ($rowIndex + 2) . "/" . $colName . $rowIndex . ",0)",
+                        // 'ty_le_ng' => $ty_le_ng,
                         'muc_tieu' => $muc_tieu
                     ];
                 }
@@ -1926,6 +1928,7 @@ class Phase2UIApiController extends Controller
                     // **Dùng array_map nếu có nhiều phần tử**
                     $transposedData = array_map(null, ...array_map('array_values', $data));
                 }
+                // return $transposedData;
                 $sheet->fromArray($transposedData, null, 'B' . $line_table_index, true);//Gán dữ liệu vào bảng
                 $sheet->getStyle([1, $line_table_index, 1, $line_table_index + count($header) - 1])->applyFromArray(['font' => ['bold' => true]]);//In đậm header của bảng
                 
@@ -1933,7 +1936,7 @@ class Phase2UIApiController extends Controller
                 $startColumnIndex = Coordinate::columnIndexFromString("B");
                 $endColumn = Coordinate::stringFromColumnIndex($startColumnIndex + count($transposedData[0]) - 1);
                 
-                $sheet->getStyle([1, $line_table_index, $startColumnIndex + count($transposedData[0]) - 1, $line_table_index + count($header) - 1])->applyFromArray($border);//Tạo border cho bảng
+                $sheet->getStyle([1, $line_table_index, $startColumnIndex + count($transposedData[0]) - 1, $line_table_index + count($header) - 1])->applyFromArray($centerStyle);//Tạo border cho bảng
                 $sheet->getStyle("B" . ($line_table_index + 4) . ":" . $endColumn . ($line_table_index + 4))->applyFromArray([
                     'font' => [
                         'color' => ['argb' => 'FF0000'], // Màu đỏ
@@ -2018,8 +2021,9 @@ class Phase2UIApiController extends Controller
                 );
 
                 // **Đặt vị trí biểu đồ**
+                $endColumnChart = Coordinate::stringFromColumnIndex($startColumnIndex + count($transposedData[0]));
                 $chart->setTopLeftPosition('A'.($line_title_index+1));
-                $chart->setBottomRightPosition('N'.($line_table_index - 1));
+                $chart->setBottomRightPosition($endColumnChart.($line_table_index - 1));
 
                 // Thêm biểu đồ vào sheet
                 $sheet->addChart($chart);
