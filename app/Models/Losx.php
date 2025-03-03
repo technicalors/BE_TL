@@ -9,6 +9,10 @@ use Illuminate\Database\Eloquent\Model;
 class Losx extends Model
 {
     use HasFactory;
+    const STATUS_PENDING = 0;
+    const STATUS_IN_PROGRESS = 1;
+    const STATUS_COMPLETED = 2;
+    const STATUS_CANCELLED = 3;
     protected $table = 'losx';
     protected $fillable = [
         'id',

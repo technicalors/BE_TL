@@ -15,12 +15,15 @@ class LosxController extends Controller
     use API;
     public function getPriorities(Request $request)
     {
-        $query = Losx::with('productionOrderHistory.line')->where('status', 1)->orderBy('priority', 'ASC');
+        $query = Losx::with('productionOrderHistory.line')->where('status', '<>', 2)->orderBy('priority', 'ASC');
         $total = $query->count();
         if (isset($request->page) && isset($request->pageSize)) {
             $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);
         }
         $result = $query->with('product')->get();
+        foreach ($result as $key => $losx) {
+            $losx->produced_quantity = ($losx->productionOrderHistory && count($losx->productionOrderHistory) > 0) ? $losx->productionOrderHistory[0]->produced_quantity : 0;
+        }
         return $this->success(['data' => $result, 'total' => $total]);
     }
 
@@ -40,6 +43,14 @@ class LosxController extends Controller
             }
             ProductionOrderHistory::where('lo_sx', $losx->id)->where('line_id', $productionStep->line_id)->update(['order_quantity' => $quantity]);
         }
+        return $this->success('', 'Cập nhật thành công');
+    }
+    public function updateStatus(Request $request)
+    {
+        $input = $request->all();
+        $losx = Losx::find($input['id']);
+        $losx->status = $input['status'];
+        $losx->save();
         return $this->success('', 'Cập nhật thành công');
     }
 }

@@ -608,9 +608,9 @@ Route::group([
 
     Route::post('/import-parameters', [ParameterController::class, 'import']);
     $router->post('/import-spec', [App\Admin\Controllers\ProductController::class, 'importNewVersion']);
-    $router->get('/update-info-cong-doan', [App\Admin\Controllers\ApiUIController::class,'test']);
-    $router->get('convertQCLog', [App\Admin\Controllers\ApiUIController::class,'convertQCLog']);
-    $router->get('get-tem', [App\Admin\Controllers\StampController::class,'createTem']);
+    $router->get('/update-info-cong-doan', [App\Admin\Controllers\ApiUIController::class, 'test']);
+    $router->get('convertQCLog', [App\Admin\Controllers\ApiUIController::class, 'convertQCLog']);
+    $router->get('get-tem', [App\Admin\Controllers\StampController::class, 'createTem']);
     $router->get('/fix-data-machine-maintain', [ApiUIController::class, 'fixDataMachineMaintain']);
     $router->get('update-product-to-material-in-line-gap-dan', [ApiUIController::class, 'updateProductToMaterialInLineGapDan']);
     $router->get('create-infocongdoan-for-plan', [ApiUIController::class, 'createInfoCongDoanForPlan']);
@@ -662,7 +662,7 @@ Route::group([
     $router->delete('assignment/{id}', [Phase2OIApiController::class, 'deleteAssignment']);
     $router->patch('assignment/{id}', [Phase2OIApiController::class, 'updateAssignment']);
     $router->post('print-tem-selection-line', [Phase2OIApiController::class, 'printTemSelectionLine']);
-    $router->post('update-output-production', [Phase2OIApiController::class,'updateOutputProduction']);
+    $router->post('update-output-production', [Phase2OIApiController::class, 'updateOutputProduction']);
 
     //Chất lượng
     $router->get('qc-overall', [Phase2OIApiController::class, 'getQCOverall']);
@@ -688,7 +688,6 @@ Route::group([
     $router->get('overall-export', [Phase2OIApiController::class, 'overallExport']);
     $router->get('warehoure-export-customer', [Phase2OIApiController::class, 'warehouseExportCustomer']);
     $router->get('propose-warehoure-export-list', [Phase2OIApiController::class, 'getProposeWarehouseExportList']);
-    
 });
 //UI
 Route::group([
@@ -714,7 +713,7 @@ Route::group([
 
     $router->get('equipment/oee', [Phase2UIApiController::class, 'getOEEData']);
     $router->get('equipment/error-frequency', [Phase2UIApiController::class, 'getErrorFrequencyData']);
-    
+
     $router->get('quality/pqc/data-table', [Phase2UIApiController::class, 'getQualityDataTable']);
     $router->get('quality/pqc/data-detail', [Phase2UIApiController::class, 'getQualityDataDetail']);
     $router->get('quality/pqc/export-data-table', [Phase2UIApiController::class, 'exportQualityDataTable']);
@@ -725,7 +724,7 @@ Route::group([
     $router->get('quality/oqc/data-chart', [Phase2UIApiController::class, 'getOQCDataChart']);
     $router->get('quality/oqc/data-summary', [Phase2UIApiController::class, 'getOQCDataSummary']);
     $router->get('quality/oqc/export-data-table', [Phase2UIApiController::class, 'exportOQCDataTable']);
-    
+
     $router->post('plan/generate', [ProductionPlanController::class, 'generateProductionPlan']);
     $router->get('plan/store/{order_id}', [ProductionPlanController::class, 'processProductionPlan']);
     $router->post('plan/create', [ProductionPlanController::class, 'createProductionPlan']);
@@ -761,10 +760,11 @@ Route::group([
     Route::post('production-order-priorities/update', [ProductionOrderPriorityController::class, 'updateRecord']);
     Route::post('production-order-priorities/complete', [ProductionOrderPriorityController::class, 'complete']);
     Route::post('production-order-priorities/reorder', [ProductionOrderPriorityController::class, 'reorder']);
-    Route::post('production-order-history/update', [ProductionOrderHistoryController::class,'update']);
+    Route::post('production-order-history/update', [ProductionOrderHistoryController::class, 'update']);
 
     Route::get('losx-priorities', [LosxController::class, 'getPriorities']);
     Route::post('losx-update', [LosxController::class, 'update']);
+    Route::post('losx-update-status', [LosxController::class, 'updateStatus']);
 });
 
 //Masterdata

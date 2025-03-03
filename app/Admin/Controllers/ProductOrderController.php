@@ -296,7 +296,7 @@ class ProductOrderController extends Controller
                 $losx['product_id'] = $productOrder->product_id;
                 $losx['order_quantity'] = $productOrder->quantity;
                 $losx['priority'] = 1;
-                $losx['status'] = 1;
+                $losx['status'] = 0;
                 $losx['delivery_date'] = $input['confirm_date'];
                 $record = Losx::create($losx);
 
