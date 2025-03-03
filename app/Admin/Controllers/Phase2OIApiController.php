@@ -481,7 +481,7 @@ class Phase2OIApiController extends Controller
                     'output' => 0
                 ]);
             }
-            
+
             $this->updateAndReorderMachinePriorities($machine->code, $plan->product_id, $machine->line_id);
             DB::commit();
         } catch (\Throwable $th) {
@@ -517,6 +517,10 @@ class Phase2OIApiController extends Controller
         $scannedLot = Lot::find($request->scanned_lot);
         if (!$scannedLot) {
             return $this->failure('', 'Không tìm thấy lot');
+        }
+        $checkInfo = InfoCongDoan::where('input_lot_id', $request->scanned_lot)->first();
+        if ($checkInfo) {
+            return $this->failure('', 'Lot đã được sử dụng');
         }
         $plan = ProductionPlan::where('line_id', $machine->line_id)
             ->where('machine_id', $machine->code)
@@ -2658,11 +2662,11 @@ class Phase2OIApiController extends Controller
         foreach ($records as $key => $record) {
             $cell_ids = Cell::where('product_id', $record->product_id)->pluck('id')->toArray();
             $cell_lots = DB::table('cell_lot')
-            ->whereIn('cell_id', $cell_ids)
-            // ->whereYear('created_at', $year)
-            // ->whereMonth('created_at', '>=', $month)
-            ->orderBy('created_at', 'ASC')
-            ->get();
+                ->whereIn('cell_id', $cell_ids)
+                // ->whereYear('created_at', $year)
+                // ->whereMonth('created_at', '>=', $month)
+                ->orderBy('created_at', 'ASC')
+                ->get();
             if (count($cell_lots) == 0) {
                 $object = new stdClass();
                 $object->product_id = $record->product ? $record->product->id : '';
