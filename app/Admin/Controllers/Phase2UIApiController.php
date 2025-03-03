@@ -105,12 +105,13 @@ class Phase2UIApiController extends Controller
             "sl_ng" => 0,
         ];
         $sl_thuc_te = 0;
+        $overall['sl_dau_ra_kh'] = ProductionPlan::whereDate('ngay_sx', date('Y-m-d'))->sum('sl_giao_sx');
+        $infos = InfoCongDoan::whereDate('thoi_gian_bat_dau', date('Y-m-d'))->get();
         foreach ($infos as $item) {
             $overall["sl_dau_ra_thuc_te_ok"] += $item->sl_dau_ra_hang_loat - ($item->sl_tem_vang + $item->sl_ng);
             $sl_thuc_te += $item->sl_dau_ra_hang_loat - $item->sl_ng;
             $overall["sl_tem_vang"] += $item->sl_tem_vang;
             $overall["sl_ng"] += $item->sl_ng;
-            $overall['sl_dau_ra_kh'] += $item->lotPlan->quantity ?? 0;
         }
         $overall["sl_chenh_lech"] = ($overall["sl_dau_ra_thuc_te_ok"] + $overall["sl_tem_vang"] + $overall["sl_ng"]) - $overall['sl_dau_ra_kh'];
         $overall["ty_le"] = ($overall['sl_dau_ra_kh'] ? (int)(($sl_thuc_te / $overall['sl_dau_ra_kh']) * 100) : 0) . '%';
@@ -1864,17 +1865,17 @@ class Phase2UIApiController extends Controller
             $line_title_index = 4;
             $line_table_index = 14;
             foreach ($lines as $line) {
-                if($line->id === 24){
+                if ($line->id === 24) {
                     $muc_tieu = 0.001;
-                }elseif($line->id === 25){
+                } elseif ($line->id === 25) {
                     $muc_tieu = 0.01;
-                }elseif($line->id === 26){
+                } elseif ($line->id === 26) {
                     $muc_tieu = 0.01;
-                }elseif($line->id === 27){
+                } elseif ($line->id === 27) {
                     $muc_tieu = 0.01;
-                }elseif($line->id === 29){
+                } elseif ($line->id === 29) {
                     $muc_tieu = 0.005;
-                }elseif($line->id === 30){
+                } elseif ($line->id === 30) {
                     $muc_tieu = 0.005;
                 }
                 $groupedData[$line->id] = [];
@@ -1903,7 +1904,7 @@ class Phase2UIApiController extends Controller
                         'tong_so_lot_kiem_tra' => $tong_so_lot_kiem_tra,
                         'so_lot_ok' => "=+" . $colName . $rowIndex . "-" . $colName . ($rowIndex + 2),
                         'so_lot_ng' => $so_lot_ng,
-                        'ty_le_ng' => "=IF(". $colName . $rowIndex . ">0," . $colName . ($rowIndex + 2) . "/" . $colName . $rowIndex . ",0)",
+                        'ty_le_ng' => "=IF(" . $colName . $rowIndex . ">0," . $colName . ($rowIndex + 2) . "/" . $colName . $rowIndex . ",0)",
                         // 'ty_le_ng' => $ty_le_ng,
                         'muc_tieu' => $muc_tieu
                     ];
@@ -1929,19 +1930,19 @@ class Phase2UIApiController extends Controller
                     $transposedData = array_map(null, ...array_map('array_values', $data));
                 }
                 // return $transposedData;
-                $sheet->fromArray($transposedData, null, 'B' . $line_table_index, true);//Gán dữ liệu vào bảng
-                $sheet->getStyle([1, $line_table_index, 1, $line_table_index + count($header) - 1])->applyFromArray(['font' => ['bold' => true]]);//In đậm header của bảng
-                
+                $sheet->fromArray($transposedData, null, 'B' . $line_table_index, true); //Gán dữ liệu vào bảng
+                $sheet->getStyle([1, $line_table_index, 1, $line_table_index + count($header) - 1])->applyFromArray(['font' => ['bold' => true]]); //In đậm header của bảng
+
 
                 $startColumnIndex = Coordinate::columnIndexFromString("B");
                 $endColumn = Coordinate::stringFromColumnIndex($startColumnIndex + count($transposedData[0]) - 1);
-                
-                $sheet->getStyle([1, $line_table_index, $startColumnIndex + count($transposedData[0]) - 1, $line_table_index + count($header) - 1])->applyFromArray($centerStyle);//Tạo border cho bảng
+
+                $sheet->getStyle([1, $line_table_index, $startColumnIndex + count($transposedData[0]) - 1, $line_table_index + count($header) - 1])->applyFromArray($centerStyle); //Tạo border cho bảng
                 $sheet->getStyle("B" . ($line_table_index + 4) . ":" . $endColumn . ($line_table_index + 4))->applyFromArray([
                     'font' => [
                         'color' => ['argb' => 'FF0000'], // Màu đỏ
                     ]
-                ]);//Bôi đỏ chữ hàng Tỷ lệ NG
+                ]); //Bôi đỏ chữ hàng Tỷ lệ NG
                 $sheet->getStyle("B" . ($line_table_index + 4) . ":" . $endColumn . ($line_table_index + 5))->getNumberFormat()->setFormatCode('0.0%');
 
                 // Trục X: Tháng
@@ -2022,8 +2023,8 @@ class Phase2UIApiController extends Controller
 
                 // **Đặt vị trí biểu đồ**
                 $endColumnChart = Coordinate::stringFromColumnIndex($startColumnIndex + count($transposedData[0]));
-                $chart->setTopLeftPosition('A'.($line_title_index+1));
-                $chart->setBottomRightPosition($endColumnChart.($line_table_index - 1));
+                $chart->setTopLeftPosition('A' . ($line_title_index + 1));
+                $chart->setBottomRightPosition($endColumnChart . ($line_table_index - 1));
 
                 // Thêm biểu đồ vào sheet
                 $sheet->addChart($chart);
