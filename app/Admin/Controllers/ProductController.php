@@ -1518,17 +1518,6 @@ class ProductController extends Controller
         $request->validate([
             'file' => 'required|mimes:xlsx',
         ]);
-        $extension = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
-        if ($extension == 'csv') {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
-        } elseif ($extension == 'xlsx') {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
-        } else {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
-        }
-        $spreadsheet = $reader->load($_FILES['file']['tmp_name']);
-        $sheet = $spreadsheet->getActiveSheet();
-        $allDataInSheet = $sheet->toArray(null, true, true, true);
         try {
             Excel::import(new ProductImport(), $request->file('file'));
         } catch (\Exception $e) {

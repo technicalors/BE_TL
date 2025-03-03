@@ -3,6 +3,7 @@
 namespace App\Admin\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Imports\MaterialImport;
 use App\Models\Material;
 use App\Traits\API;
 use Encore\Admin\Controllers\AdminController;
@@ -11,6 +12,7 @@ use Encore\Admin\Grid;
 use Encore\Admin\Show;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 
 class MaterialController extends Controller
 {
@@ -106,14 +108,14 @@ class MaterialController extends Controller
     public function import(Request $request)
     {
         $request->validate([
-            'file' => 'required|mimes:xlsx',
+            'files' => 'required|mimes:xlsx',
         ]);
-        // try {
-        //     Excel::import(new MoldsImport, $request->file('file'));
-        // } catch (\Exception $e) {
-        //     // Handle the exception and return an appropriate response
-        //     return $this->failure(['error' => $e->getMessage()], 'File import failed', 422);
-        // }
+        try {
+            Excel::import(new MaterialImport, $request->file('files'));
+        } catch (\Exception $e) {
+            // Handle the exception and return an appropriate response
+            return $this->failure(['error' => $e->getMessage()], 'File import failed', 422);
+        }
         return $this->success('', 'Upload thành công');
     }
 

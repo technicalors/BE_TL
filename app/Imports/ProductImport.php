@@ -25,6 +25,7 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use Maatwebsite\Excel\Concerns\WithStartRow;
 use Maatwebsite\Excel\Imports\HeadingRowFormatter;
+
 class ProductImport implements ToCollection, WithHeadingRow, WithStartRow, WithCalculatedFormulas, WithMultipleSheets
 {
     protected $fields;
@@ -51,7 +52,7 @@ class ProductImport implements ToCollection, WithHeadingRow, WithStartRow, WithC
     // Hàm này xác định hàng bắt đầu lấy dữ liệu (data row)
     public function startRow(): int
     {
-        return 3;
+        return 5;
     }
     public function collection(Collection $collection)
     {
@@ -63,12 +64,37 @@ class ProductImport implements ToCollection, WithHeadingRow, WithStartRow, WithC
 
     function importRow(array $row)
     {
-        if(!empty($row['ma_hang'])){
-            $this->product = Product::updateOrCreate(['id' => $row['ma_hang']], ['name' => $row['ten_san_pham'], 'ver'=> $row['ver'], 'his' => $row['his']]);
+        if (empty($row['id'])) {
+            return;
         }
-        if($this->product){
-            ProductCustomer::updateOrCreate(['product_id' => $this->product->id, 'customer_id' => $row['ma_khach_hang']]);
-            Customer::updateOrCreate(['id' => $row['ma_khach_hang']], ['name' => $row['ten_khach_hang']]);
+        try {
+            $product = Product::find($row['id']);
+            if (!$product) {
+                $product = new Product();
+                $product->id = $row['id'];
+                $product->name = $row['name'];
+                $product->his = $row['his'];
+                $product->ver = $row['ver'];
+                $product->save();
+            }
+            $customer = Customer::find($row['customer_id']);
+            if (!$customer) {
+                $customer = new Customer();
+                $customer->id = $row['customer_id'];
+                $customer->name = $row['customer_name'];
+                $customer->save();
+            }
+            if ($product && $customer) {
+                $productCustomer = ProductCustomer::where('product_id', $product->id)->where('customer_id', $customer->id)->first();
+                if (!$productCustomer) {
+                    $productCustomer = new ProductCustomer();
+                    $productCustomer->product_id = $product->id;
+                    $productCustomer->customer_id = $customer->id;
+                    $productCustomer->save();
+                }
+            }
+        } catch (Exception $e) {
+            Log::error($e->getMessage());
         }
     }
 }

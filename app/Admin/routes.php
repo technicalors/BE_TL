@@ -527,7 +527,7 @@ Route::group([
     $router->delete('material/delete/{id}', [App\Admin\Controllers\MaterialController::class, 'delete']);
     $router->post('materials/delete', [App\Admin\Controllers\MaterialController::class, 'deleteMultiple']);
     $router->get('material/export', [App\Admin\Controllers\MaterialController::class, 'exportLine']);
-    $router->post('material/import', [App\Admin\Controllers\MaterialController::class, 'importLine']);
+    $router->post('material/import', [App\Admin\Controllers\MaterialController::class, 'import']);
 
     $router->get('customer/list', [App\Admin\Controllers\CustomerApiController::class, 'list']);
     $router->patch('customer/update/{id}', [App\Admin\Controllers\CustomerApiController::class, 'update']);
