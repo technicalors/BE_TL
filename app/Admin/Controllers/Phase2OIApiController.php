@@ -583,14 +583,16 @@ class Phase2OIApiController extends Controller
                 'sl_kh' => $plan->sl_giao_sx,
                 'plan_id' => $plan->id
             ]);
-            if ($scannedLot) {
-                $sl_dat = $scannedLot->so_luong;
-                $line_inventory = LineInventories::where('product_id', $scannedLot->product_id)->where('line_id', $scannedLot->final_line_id)->first();
+            if ($machine->code != 'IN_8_MAU_01') {
+                if ($scannedLot) {
+                    $sl_dat = $scannedLot->so_luong;
+                    $line_inventory = LineInventories::where('product_id', $scannedLot->product_id)->where('line_id', $scannedLot->final_line_id)->first();
 
-                if ($line_inventory) {
-                    $line_inventory->update(['quantity' => $line_inventory->quantity - $sl_dat]);
-                } else {
-                    LineInventories::create(['quantity' => $sl_dat, 'line_id' => $infoCongDoan->line_id, 'product_id' => $infoCongDoan->product_id]);
+                    if ($line_inventory) {
+                        $line_inventory->update(['quantity' => $line_inventory->quantity - $sl_dat]);
+                    } else {
+                        LineInventories::create(['quantity' => $sl_dat, 'line_id' => $infoCongDoan->line_id, 'product_id' => $infoCongDoan->product_id]);
+                    }
                 }
             }
             if (isset($tracking)) {
