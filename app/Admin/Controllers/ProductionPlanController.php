@@ -1358,9 +1358,9 @@ class ProductionPlanController extends AdminController
                 $productionTime = ceil(($remainQuantityOrder / $efficiency) * 60) + $setupTime;
 
                 $machinePriorityOrder = $this->getPrioritizedMachine($history->line_id, $productionOrderPriority->product_id, $machine_load_factors, $productionTime);
-                if (empty($machinePriorityOrder)) {
-                    continue;
-                }
+                // if (empty($machinePriorityOrder)) {
+                //     continue;
+                // }
                 $machineShifts = $this->getMachineProductionShifts($machinePriorityOrder->machine_id, date('Y-m-d', strtotime('+1 day')));
                 Log::debug([$history->line_id, $machinePriorityOrder->machine_id, $machineShifts]);
                 if (count($machineShifts) <= 0) {
