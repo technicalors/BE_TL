@@ -457,9 +457,7 @@ class Phase2UIApiController extends Controller
     function parseReportTable3($val, $lo_sx, $date, $machine_code)
 
     {
-        $sl_kh = (int)$val->sum(function ($item) {
-            return $item->lotPlan->quantity;
-        });
+        $sl_kh = (int)$val[0]->plan->sl_giao_sx;
         $sl_dau_vao = (int)$val->sum('sl_dau_vao_hang_loat');
         $sl_dau_ra = (int)$val->sum('sl_dau_ra_hang_loat');
         $sl_tem_vang = (int)$val->sum('sl_tem_vang');
@@ -485,17 +483,17 @@ class Phase2UIApiController extends Controller
             $tg_hang_loat += $start->diffInMinutes($end); // Tính tổng phút
 
             $start = Carbon::parse($item->thoi_gian_bat_dau);
-            $end = Carbon::parse($item->lotPlan->start_time);
+            $end = Carbon::parse($item->plan->thoi_gian_bat_dau);
             $lead_time += $start->diffInMinutes($end); // Tính tổng phút
 
-            $start = Carbon::parse($item->lotPlan->start_time);
-            $end = Carbon::parse($item->lotPlan->end_time);
+            $start = Carbon::parse($item->plan->thoi_gian_bat_dau);
+            $end = Carbon::parse($item->plan->thoi_gian_ket_thuc);
             $tg_sx_kh += $start->diffInMinutes($end); // Tính tổng phút
 
             $start = Carbon::parse($item->thoi_gian_bat_dau);
             $end = Carbon::parse($item->thoi_gian_ket_thuc);
             $tg_sx_in_hours = $start->diffInHours($end); // Tính tổng phút
-            $sl_muc_tieu += ($tg_sx_in_hours / 3600) * ($item->lotPlan->plan->UPH ?? 0);
+            $sl_muc_tieu += ($tg_sx_in_hours / 3600) * ($item->plan->UPH ?? 0);
         });
         $ty_le_ng = ($sl_dau_ra > 0 ? number_format($sl_ng / $sl_dau_ra, 2) * 100 : 0) . '%';
         $ty_le_hao_phi_tg = ($tg_sx > 0 ? number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0) . '%';
@@ -518,7 +516,7 @@ class Phase2UIApiController extends Controller
             'tg_vao_hang' => number_format($tg_vao_hang / 60, 2),
             'ty_le_hao_phi_tg' => $ty_le_hao_phi_tg,
             'ty_le_hoan_thanh' => $ty_le_hoan_thanh,
-            'so_nhan_su' => $val[0]->lotPlan->plan->nhan_luc ?? "",
+            'so_nhan_su' => $val[0]->plan->nhan_luc ?? "",
         ];
         return $item;
     }
@@ -677,7 +675,7 @@ class Phase2UIApiController extends Controller
 
     public function exportReportProduceHistory(Request $request)
     {
-        $query = InfoCongDoan::with('product', 'lotPlan')
+        $query = InfoCongDoan::with('product', 'lotPlan','plan')
             ->whereNotNull('thoi_gian_bat_dau')
             ->whereNotNull('thoi_gian_bam_may')
             ->whereNotNull('thoi_gian_ket_thuc')
