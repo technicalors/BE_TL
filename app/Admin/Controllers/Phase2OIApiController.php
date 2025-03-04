@@ -423,21 +423,21 @@ class Phase2OIApiController extends Controller
                 return $this->failure([], "Máy này đang sản xuất");
             }
         }
-        $roll = RollMaterial::with(['material.products', 'warehouse_inventory'])->find($request->roll_id);
-        if (!$roll) {
-            return $this->failure([], "Không tìm thấy cuộn");
-        }
-        if (!$roll->warehouse_inventory || $roll->warehouse_inventory->quantity <= 0) {
-            return $this->failure([], "Cuộn đã quét rồi");
-        }
-        if (!$roll->material) {
-            return $this->failure([], "Không tìm thấy NVL: " . ($roll->material_id ?? ""));
-        }
-        $product_ids = $roll->material->products->pluck('id')->toArray() ?? [];
-        if (count($product_ids) === 0) {
-            return $this->failure([], "Không tìm thấy sản phẩm");
-        }
-        $product_ids[] = $roll->material_id;
+        // $roll = RollMaterial::with(['material.products', 'warehouse_inventory'])->find($request->roll_id);
+        // if (!$roll) {
+        //     return $this->failure([], "Không tìm thấy cuộn");
+        // }
+        // if (!$roll->warehouse_inventory || $roll->warehouse_inventory->quantity <= 0) {
+        //     return $this->failure([], "Cuộn đã quét rồi");
+        // }
+        // if (!$roll->material) {
+        //     return $this->failure([], "Không tìm thấy NVL: " . ($roll->material_id ?? ""));
+        // }
+        // $product_ids = $roll->material->products->pluck('id')->toArray() ?? [];
+        // if (count($product_ids) === 0) {
+        //     return $this->failure([], "Không tìm thấy sản phẩm");
+        // }
+        // $product_ids[] = $roll->material_id;
         $plan = ProductionPlan::where('line_id', $machine->line_id)
             ->where('machine_id', $machine->code)
             ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
@@ -448,9 +448,9 @@ class Phase2OIApiController extends Controller
         if (!$plan) {
             return $this->failure([], 'Không tìm thấy KHSX');
         }
-        if (!in_array($plan->product_id, $product_ids)) {
-            return $this->failure([], "Mã cuộn không phù hợp");
-        }
+        // if (!in_array($plan->product_id, $product_ids)) {
+        //     return $this->failure([], "Mã cuộn không phù hợp");
+        // }
         try {
             DB::beginTransaction();
             if ($plan->status_plan == ProductionPlan::STATUS_PENDING) {
