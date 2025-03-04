@@ -524,7 +524,7 @@ class Phase2OIApiController extends Controller
         if (!$plan) {
             return $this->failure([], 'Không tìm thấy KHSX');
         }
-        if ($machine->id != 'IN_8_MAU_01') {
+        if ($machine->code != 'IN_8_MAU_01') {
             $scannedLot = Lot::find($request->scanned_lot);
             if (!$scannedLot) {
                 return $this->failure('', 'Không tìm thấy lot');
