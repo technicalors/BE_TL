@@ -564,7 +564,7 @@ class Phase2UIApiController extends Controller
         $ty_le_hao_phi_tg = ($tg_sx > 0 ? number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0) . '%';
         $A = ($tg_sx > 0 ? number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0);
         $Q = ($sl_dau_ra > 0 ? number_format($sl_ok / ($sl_dau_ra ?? 1), 2) * 100 : 0);
-        $P = ($sl_muc_tieu > 0 ? number_format($sl_dau_ra / ($sl_muc_tieu ?? 1), 2) * 100 : 0);
+        $P = $sl_muc_tieu ;
         $OEE = number_format(($A * $P * $Q) / 10000, 2);
         $power = $value->sum('powerM');
         $row = [
