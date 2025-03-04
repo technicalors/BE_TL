@@ -303,7 +303,7 @@ class Phase2DBApiController extends Controller
                     ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
                     ->first();
                 $tm = [
-                    "cong_doan" => mb_strtoupper($machine->line->name, 'UTF-8'),
+                    "cong_doan" => mb_strtoupper($machine->line->name ?? "", 'UTF-8'),
                     'machine_code' => $machine->code,
                     'machine_name' => $machine->code,
                     "product" => $plan ? $plan->product?->name : '',
