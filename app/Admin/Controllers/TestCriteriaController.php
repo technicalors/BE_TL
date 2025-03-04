@@ -115,7 +115,7 @@ class TestCriteriaController extends AdminController
             $line_arr[Str::slug($line->name)] = $line->id;
         }
 
-        $query = TestCriteria::with('line', 'ref_line')->orderBy('chi_tieu');
+        $query = TestCriteria::with('line')->orderBy('chi_tieu');
         if (isset($request->line)) {
             $line = Line::where('name', 'like', "%$request->line%")->pluck('id')->toArray();
             $query->whereHas('lines', function ($query) use ($line) {
@@ -135,6 +135,10 @@ class TestCriteriaController extends AdminController
             $query->offset($page * $pageSize)->limit($pageSize);
         }
         $test_criterias = $query->with('lines')->get()->sortBy('id', SORT_NATURAL)->values();
+        foreach ($test_criterias as $key => $value) {
+            $ref = Line::whereIn('id', explode(',', $value->reference ?? ''))->pluck('name')->toArray();
+            $value->ref_line = ['name'=>implode(', ', $ref)];
+        }
         $frequency = [TestCriteria::MOT_MAU_TREN_MOT_CUON, TestCriteria::MOT_MAU_TREN_MOT_CA];
         return $this->success(['data' => $test_criterias, 'total' => $total, 'frequency' => $frequency]);
     }

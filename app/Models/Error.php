@@ -21,26 +21,26 @@ class Error extends Model
         return $this->belongsTo(Line::class, 'line_id');
     }
 
-    static function validateUpdate($input, $is_update = true)
+    static function validateUpdate($input, $id = null)
     {
         $validated = Validator::make(
             $input,
             [
-                'id'=>$is_update ? 'required' : 'required|unique:errors',
-                'noi_dung'=>'required',
+                'id'=>'required|unique:errors,id'. ($id ? ",$id" : ""),
+                // 'noi_dung'=>'required',
                 'line_id' => 'required',
-                'nguyen_nhan'=>'required', 
-                'khac_phuc'=>'required',
-                'phong_ngua'=>'required',
+                // 'nguyen_nhan'=>'required', 
+                // 'khac_phuc'=>'required',
+                // 'phong_ngua'=>'required',
             ],
             [
                 'id.required' => 'Không có mã lỗi',
                 'id.unique' => 'Mã lỗi đã tồn tại',
-                'noi_dung.required'=>'Không có nội dung', 
+                // 'noi_dung.required'=>'Không có nội dung', 
                 'line_id.required'=>'Không tìm thấy công đoạn',
-                'nguyen_nhan.required'=>'Không có nguyên nhân',
-                'khac_phuc.required'=>'Không có khắc phục', 
-                'phong_ngua.required'=>'Không có phòng ngừa', 
+                // 'nguyen_nhan.required'=>'Không có nguyên nhân',
+                // 'khac_phuc.required'=>'Không có khắc phục', 
+                // 'phong_ngua.required'=>'Không có phòng ngừa', 
             ]
         );
         return $validated;
