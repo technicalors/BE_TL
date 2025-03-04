@@ -93,27 +93,18 @@ class ErrorController extends AdminController
     }
 
     public function getErrors(Request $request){
-        $query = Error::with('line')->orderBy('created_at', 'DESC');
+        $query = Error::query();
         if(isset($request->id)){
             $query->where('id', 'like', "%$request->id%");
         }
         if(isset($request->name)){
             $query->where('name', 'like', "%$request->name%");
         }
-        $errors = $query->get();
+        $errors = $query->with('line')->get()->sortBy('id', SORT_NATURAL)->values();
         return $this->success($errors);
     }
     public function updateErrors(Request $request){
-        $line_arr = [];
-        $lines = Line::all();
-        foreach($lines as $line){
-            $line_arr[Str::slug($line->name)] = $line->id;
-        }
-
         $input = $request->all();
-        if(isset($line_arr[Str::slug($input['line'])])){
-            $query->where('line_id', $line_arr[Str::slug($request->line)]);
-        }
         $validated = Error::validateUpdate($input);
         if ($validated->fails()) {
             return $this->failure('', $validated->errors()->first());
@@ -129,16 +120,7 @@ class ErrorController extends AdminController
     }
 
     public function createErrors(Request $request){
-        $line_arr = [];
-        $lines = Line::all();
-        foreach($lines as $line){
-            $line_arr[Str::slug($line->name)] = $line->id;
-        }
-
         $input = $request->all();
-        if(isset($line_arr[Str::slug($input['line'])])){
-            $input['line_id'] = $line_arr[Str::slug($input['line'])];
-        }
         $validated = Error::validateUpdate($input, false);
         if ($validated->fails()) {
             return $this->failure('', $validated->errors()->first());
@@ -156,14 +138,14 @@ class ErrorController extends AdminController
     }
 
     public function exportErrors(Request $request){
-        $query = Error::with('line')->orderBy('created_at', 'DESC');
+        $query = Error::query();
         if(isset($request->id)){
             $query->where('id', 'like', "%$request->id%");
         }
         if(isset($request->name)){
             $query->where('name', 'like', "%$request->name%");
         }
-        $errors = $query->get();
+        $errors = $query->with('line')->get()->sortBy('id', SORT_NATURAL);
         foreach($errors as $error){
             $error->line_name = $error->line->name;
         }
@@ -264,24 +246,25 @@ class ErrorController extends AdminController
         $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
         $data = [];
-        $line_arr = [];
-        $lines = Line::all();
-        foreach($lines as $line){
-            $line_arr[Str::slug($line->name)] = $line->id;
-        }
         foreach ($allDataInSheet as $key => $row) {
             //Lấy dứ liệu từ dòng thứ 2
             if ($key > 2) {
                 $input = [];
-                $input['id'] = $row['A'];
-                $input['noi_dung'] = $row['B'];
-                if(isset($line_arr[Str::slug($row['C'])])){
-                    $input['line_id'] = $line_arr[Str::slug($row['C'])];
+                $input['id'] = $row['B'];
+                $input['noi_dung'] = $row['D'];
+                if(isset($row['E'])){
+                    $line = Line::where('name', $row['E'])->first();
+                    if($line){
+                        $input['line_id'] = $line->id;
+                    }else{
+                        continue;
+                    }
                 }
-                $input['nguyen_nhan'] = $row['D'];
-                $input['khac_phuc'] = $row['E'];
-                $input['phong_ngua'] = $row['F'];
-                $validated = Error::validateUpdate($input);
+                $input['nguyen_nhan'] = $row['F'];
+                $input['khac_phuc'] = $row['G'];
+                $input['phong_ngua'] = $row['H'];
+                // return $input;
+                $validated = Error::validateUpdate($input, $input['id']);
                 if ($validated->fails()) {
                     return $this->failure('', 'Lỗi dòng thứ '.($key).': '.$validated->errors()->first());
                 }
