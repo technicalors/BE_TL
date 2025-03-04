@@ -2,71 +2,46 @@
 
 namespace App\Admin\Controllers;
 
-use App\Exports\ProductionPlan\ProductionPlanExport;
 use App\Helpers\ExcelStyleHelper;
-use App\Helpers\QueryHelper;
 use App\Http\Controllers\Controller;
 use App\Imports\InfoCongDoanImport;
 use App\Imports\WarehouseLocationImport;
-use App\Models\Bom;
-use App\Models\Customer;
 use App\Models\CustomUser;
 use App\Models\Error;
 use App\Models\ErrorHistory;
 use App\Models\ErrorMachine;
 use App\Models\Factory;
 use App\Models\InfoCongDoan;
-use App\Models\Inventory;
 use App\Models\Line;
-use App\Models\LineInventories;
 use App\Models\Losx;
 use App\Models\Lot;
 use App\Models\LotPlan;
 use App\Models\Machine;
-use App\Models\MachineLoadFactor;
 use App\Models\MachineLog;
-use App\Models\MachinePriorityOrder;
-use App\Models\MachineShift;
-use App\Models\NumberMachineOrder;
 use App\Models\Product;
-use App\Models\ProductionOrderPriority;
 use App\Models\ProductionPlan;
-use App\Models\ProductOrder;
 use App\Models\QCHistory;
 use App\Models\Shift;
 use App\Models\Spec;
-use App\Models\TestCriteria;
 use App\Models\TestCriteriaHistory;
 use App\Traits\API;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
-use DateTime;
-use DateTimeZone;
 use Exception;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use stdClass;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpPresentation\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Chart\Chart;
-use PhpOffice\PhpSpreadsheet\Chart\ChartColor;
 use PhpOffice\PhpSpreadsheet\Chart\DataSeries;
 use PhpOffice\PhpSpreadsheet\Chart\DataSeriesValues;
 use PhpOffice\PhpSpreadsheet\Chart\Layout;
 use PhpOffice\PhpSpreadsheet\Chart\Legend;
 use PhpOffice\PhpSpreadsheet\Chart\PlotArea;
 use PhpOffice\PhpSpreadsheet\Chart\Title;
-use PhpOffice\PhpSpreadsheet\Style\Borders;
-use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
 class Phase2UIApiController extends Controller
 {
@@ -564,7 +539,7 @@ class Phase2UIApiController extends Controller
         $ty_le_hao_phi_tg = ($tg_sx > 0 ? number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0) . '%';
         $A = ($tg_sx > 0 ? number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0);
         $Q = ($sl_dau_ra > 0 ? number_format($sl_ok / ($sl_dau_ra ?? 1), 2) * 100 : 0);
-        $P = $sl_muc_tieu ;
+        $P = ($sl_muc_tieu > 0 ? number_format($sl_dau_ra / $sl_muc_tieu, 2) * 100 : 0);
         $OEE = number_format(($A * $P * $Q) / 10000, 2);
         $power = $value->sum('powerM');
         $row = [

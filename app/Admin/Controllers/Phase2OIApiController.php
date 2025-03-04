@@ -14,25 +14,19 @@ use App\Models\Customer;
 use App\Models\CustomUser;
 use App\Models\Error;
 use App\Models\ErrorHistory;
-use App\Models\ErrorLot;
-use App\Models\Factory;
 use App\Models\InfoCongDoan;
 use App\Models\Line;
 use App\Models\LineInventories;
 use App\Models\Lot;
 use App\Models\LotErrorLog;
 use App\Models\LotPlan;
-use App\Models\LSXLog;
 use App\Models\Machine;
 use App\Models\MachinePriorityOrder;
 use App\Models\MachineStatus;
-use App\Models\Material;
 use App\Models\OddBin;
 use App\Models\Product;
 use App\Models\ProductionOrderHistory;
-use App\Models\ProductionOrderPriority;
 use App\Models\ProductionPlan;
-use App\Models\QCDetailHistory;
 use App\Models\QCHistory;
 use App\Models\RollMaterial;
 use App\Models\Spec;
@@ -40,28 +34,17 @@ use App\Models\TestCriteria;
 use App\Models\TestCriteriaDetailHistory;
 use App\Models\TestCriteriaHistory;
 use App\Models\Tracking;
-use App\Models\User;
 use App\Models\WareHouseExportPlan;
-use App\Models\WarehouseHistories;
-use App\Models\WarehouseInventory;
 use App\Models\WareHouseLog;
-use App\Models\Workers;
 use App\Models\YellowStampHistory;
 use App\Traits\API;
 use Carbon\Carbon;
-use Encore\Admin\Controllers\AdminController;
-use Encore\Admin\Form;
-use Encore\Admin\Grid;
-use Encore\Admin\Show;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use PhpParser\Node\Expr\Assign;
 use GuzzleHttp\Client;
-use Illuminate\Support\Facades\Http;
 use stdClass;
 
 class Phase2OIApiController extends Controller
@@ -525,7 +508,7 @@ class Phase2OIApiController extends Controller
         if (!$plan) {
             return $this->failure([], 'Không tìm thấy KHSX');
         }
-        if ($machine->code != 'IN_8_MAU_01') {
+        if ($machine->code != 'IN_8_MAU_01' || $machine->code != 'LINER_01') {
             $scannedLot = Lot::find($request->scanned_lot);
             if (!$scannedLot) {
                 return $this->failure('', 'Không tìm thấy lot');
@@ -584,7 +567,7 @@ class Phase2OIApiController extends Controller
                 'sl_kh' => $plan->sl_giao_sx,
                 'plan_id' => $plan->id
             ]);
-            if ($machine->code != 'IN_8_MAU_01') {
+            if ($machine->code != 'IN_8_MAU_01' || $machine->code != 'LINER_01') {
                 if ($scannedLot) {
                     $sl_dat = $scannedLot->so_luong;
                     $line_inventory = LineInventories::where('product_id', $scannedLot->product_id)->where('line_id', $scannedLot->final_line_id)->first();
@@ -2666,9 +2649,9 @@ class Phase2OIApiController extends Controller
         $year = Carbon::now()->subMonths(1)->year;
         foreach ($records as $key => $record) {
             // $cell_ids = Cell::where('product_id', $record->product_id)->pluck('id')->toArray();
-            $cell_lots = CellLot::whereHas('lot', function ($subQuery) use($record) { 
-                    $subQuery->where('product_id', $record->product_id);
-                })
+            $cell_lots = CellLot::whereHas('lot', function ($subQuery) use ($record) {
+                $subQuery->where('product_id', $record->product_id);
+            })
                 // ->whereYear('created_at', $year)
                 // ->whereMonth('created_at', '>=', $month)
                 ->orderBy('created_at', 'ASC')
