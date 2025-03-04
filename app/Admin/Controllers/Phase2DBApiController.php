@@ -306,7 +306,7 @@ class Phase2DBApiController extends Controller
                     "cong_doan" => mb_strtoupper($plan->line->name, 'UTF-8'),
                     'machine_code' => $machine->code,
                     'machine_name' => $machine->code,
-                    "product" => $plan ? $plan->product->name : '',
+                    "product" => $plan ? $plan->product?->name : '',
                     "sl_dau_ra_kh" => $plan->sl_giao_sx ?? 0,
                     "sl_thuc_te" => 0,
                     "sl_muc_tieu" =>  $sumLotPlan ?? 0,
