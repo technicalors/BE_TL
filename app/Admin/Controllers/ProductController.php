@@ -366,7 +366,7 @@ class ProductController extends Controller
             TimeWastage::query()->delete();
             LineProductivity::query()->delete();
             Spec::query()->delete();
-            MachinePriorityOrder::query()->delete();
+            // MachinePriorityOrder::query()->delete();
             MachinePriorityOrderAttribute::query()->delete();
             MachinePriorityOrderAttributeValue::query()->delete();
             foreach ($allDataInSheet as $index => $row) {
@@ -1024,10 +1024,12 @@ class ProductController extends Controller
                     throw new Exception("Mã máy ở " . $key . $rowIndex . " không tồn tại", 404);
                 }
                 $previousMachinePriorityOrder = MachinePriorityOrder::where('product_id', $productId)->where('line_id', $line_id)->orderBy('priority', 'DESC')->first();
-                $machinePriorityOrder = MachinePriorityOrder::create([
+                $machinePriorityOrder = MachinePriorityOrder::firstOrCreate([
                     'product_id' => $productId,
                     'line_id' => $line_id,
                     'machine_id' => $machine_id,
+                ],
+                [
                     'priority' => (int)($previousMachinePriorityOrder->priority ?? 0) + 1,
                 ]);
             }
