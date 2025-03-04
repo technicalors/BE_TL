@@ -548,17 +548,17 @@ class Phase2UIApiController extends Controller
             $tg_hang_loat += $start->diffInMinutes($end); // Tính tổng phút
 
             $start = Carbon::parse($item->thoi_gian_bat_dau);
-            $end = Carbon::parse($item->lotPlan->start_time);
+            $end = Carbon::parse($item->plan->thoi_gian_bat_dau);
             $lead_time += $start->diffInMinutes($end); // Tính tổng phút
 
-            $start = Carbon::parse($item->lotPlan->start_time);
-            $end = Carbon::parse($item->lotPlan->end_time);
+            $start = Carbon::parse($item->plan->thoi_gian_bat_dau);
+            $end = Carbon::parse($item->plan->thoi_gian_ket_thuc);
             $tg_sx_kh += $start->diffInMinutes($end); // Tính tổng phút
 
             $start = Carbon::parse($item->thoi_gian_bat_dau);
             $end = Carbon::parse($item->thoi_gian_ket_thuc);
             $tg_sx_in_hours = $start->diffInHours($end); // Tính tổng phút
-            $sl_muc_tieu += ($tg_sx_in_hours / 3600) * ($item->lotPlan->plan->UPH ?? 0);
+            $sl_muc_tieu += ($tg_sx_in_hours / 3600) * ($item->plan->UPH ?? 0);
         });
         $ty_le_ng = ($sl_dau_ra > 0 ? number_format($sl_ng / $sl_dau_ra, 2) * 100 : 0) . '%';
         $ty_le_hao_phi_tg = ($tg_sx > 0 ? number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0) . '%';
