@@ -782,9 +782,10 @@ class Phase2OIApiController extends Controller
                     //Update ProductionOrderHistory and ProductionOrderPriority
                     $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->where('component_id', $infoCongDoan->plan->product_id)->first();
                     $producedInfoQuantity = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng;
+                    return ($productionOrderHistory->produced_quantity + $producedInfoQuantity);
                     if ($productionOrderHistory) {
                         $productionOrderHistory->update([
-                            'produced_quantity' => $productionOrderHistory->producted_quantity + $producedInfoQuantity,
+                            'produced_quantity' => $productionOrderHistory->produced_quantity + $producedInfoQuantity,
                         ]);
                     }
 
@@ -1644,7 +1645,7 @@ class Phase2OIApiController extends Controller
                 $producedInfoQuantity = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng;
                 if ($productionOrderHistory) {
                     $productionOrderHistory->update([
-                        'produced_quantity' => $productionOrderHistory->producted_quantity + $producedInfoQuantity,
+                        'produced_quantity' => $productionOrderHistory->produced_quantity + $producedInfoQuantity,
                     ]);
                 }
 

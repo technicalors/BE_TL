@@ -1365,7 +1365,7 @@ class ProductionPlanController extends AdminController
                 Log::debug([$history->line_id, $machinePriorityOrder->machine_id, $machineShifts]);
                 if (count($machineShifts) <= 0) {
                     if ($history->line_id == 29) {
-                        continue;
+                        throw new Exception("Máy " . $machinePriorityOrder->machine_id . " chưa được phân ca ngày " . date('d-m-Y', strtotime('+1 day')), 1);
                     } else {
                         throw new Exception("Máy " . $machinePriorityOrder->machine_id . " chưa được phân ca ngày " . date('d-m-Y', strtotime('+1 day')), 1);
                     }
