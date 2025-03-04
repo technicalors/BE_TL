@@ -292,8 +292,8 @@ class Phase2DBApiController extends Controller
         }
         $machines = $query->get();
         $data = [];
-        $machine_ids = ProductionPlan::whereDate('ngay_sx', date('Y-m-d'))->whereNotIn('line_id', [25, 29])->pluck('machine_id')->toArray();
-        $machines = Machine::whereIn('code', $machine_ids)->get();
+        // $machine_ids = ProductionPlan::whereDate('ngay_sx', date('Y-m-d'))->whereNotIn('line_id', [25, 29])->pluck('machine_id')->toArray();
+        // $machines = Machine::whereIn('code', $machine_ids)->get();
         foreach ($machines as $machine) {
             $info = InfoCongDoan::where("line_id", $machine->line_id)->where('machine_code', $machine->code)->with(["lotPlan", "lot.plan.product"])->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->orderBy('thoi_gian_bat_dau', 'DESC')->first();
             $tracking = Tracking::where('machine_id', $machine->code)->first();
