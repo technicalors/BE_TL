@@ -1644,7 +1644,7 @@ class Phase2OIApiController extends Controller
                 $producedInfoQuantity = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng;
                 if ($productionOrderHistory) {
                     $productionOrderHistory->update([
-                        'produced_quantity' => $productionOrderHistory->producted_quantity + $producedInfoQuantity,
+                        'produced_quantity' => $productionOrderHistory->produced_quantity + $producedInfoQuantity,
                     ]);
                 }
 
