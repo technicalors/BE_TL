@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Assignment;
 use App\Models\Bom;
 use App\Models\Cell;
+use App\Models\CellLot;
 use App\Models\CheckSheetLog;
 use App\Models\Customer;
 use App\Models\CustomUser;
@@ -2660,9 +2661,10 @@ class Phase2OIApiController extends Controller
         $month = Carbon::now()->subMonths(1)->month;
         $year = Carbon::now()->subMonths(1)->year;
         foreach ($records as $key => $record) {
-            $cell_ids = Cell::where('product_id', $record->product_id)->pluck('id')->toArray();
-            $cell_lots = DB::table('cell_lot')
-                ->whereIn('cell_id', $cell_ids)
+            // $cell_ids = Cell::where('product_id', $record->product_id)->pluck('id')->toArray();
+            $cell_lots = CellLot::whereHas('lot', function ($subQuery) use($record) { 
+                    $subQuery->where('product_id', $record->product_id);
+                })
                 // ->whereYear('created_at', $year)
                 // ->whereMonth('created_at', '>=', $month)
                 ->orderBy('created_at', 'ASC')

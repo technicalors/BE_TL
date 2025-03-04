@@ -1383,18 +1383,23 @@ class Phase2UIApiController extends Controller
                 'machine_code' => $history->infoCongDoan->machine_code ?? null,
                 'line_id' => $history->infoCongDoan->line_id ?? null,
                 'product_id' => $history->infoCongDoan->product_id ?? null,
+                'date' => Carbon::parse($history->created_at ?? null)->format('Y-m-d'),
             ];
         })->toArray();
         $lineMachines = array_map('unserialize', array_values(array_unique(array_map('serialize', $lineMachines))));
         usort($lineMachines, function ($a, $b) {
             if ($a['line_id'] === $b['line_id']) {
                 if ($a['machine_code'] === $b['machine_code']) {
+                    if ($a['product_id'] === $b['product_id']) {
+                        return strtotime($a['date']) <=> strtotime($b['date']); // Sắp xếp theo date nếu các giá trị trước giống nhau
+                    }
                     return strcmp($a['product_id'], $b['product_id']); // So sánh product_id nếu line_id và machine_code giống nhau
                 }
                 return strcmp($a['machine_code'], $b['machine_code']); // So sánh machine_code nếu line_id giống nhau
             }
             return $a['line_id'] <=> $b['line_id']; // So sánh line_id
         });
+        // return $lineMachines;
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet_index = 0;
         foreach ($lineMachines as $lineMachine) {
@@ -1405,9 +1410,9 @@ class Phase2UIApiController extends Controller
                 continue;
             }
             $sheet = $spreadsheet->getSheet($sheet_index);
-            $sheet->setTitle($line->name . ($machine ? " - " . $machine->code : ''));
+            $sheet->setTitle(($line->name != 'OQC' ? $machine->code : "OQC") . "-" . $product->id . "-" . Carbon::parse($lineMachine['date'])->format('dmy'));
             $lineQcHistoriesQuery = clone $query;
-            $qcHistories = $lineQcHistoriesQuery->whereHas('infoCongDoan', function ($infoQuery) use ($line, $machine, $product) {
+            $qcHistories = $lineQcHistoriesQuery->whereDate('created_at', $lineMachine['date'])->whereHas('infoCongDoan', function ($infoQuery) use ($line, $machine, $product) {
                 $infoQuery->where('line_id', $line->id)->where('machine_code', $machine->code ?? null)->where('product_id', $product->id);
             })->get();
             $infos = $this->parseQCData($qcHistories);
@@ -1450,8 +1455,6 @@ class Phase2UIApiController extends Controller
             $groupTestCriteria = $line->testCriteria->groupBy('so_chi_tieu')->sortKeys();
             $data = [];
             $row_index = 9; // Dòng bắt đầu ghi dữ liệu
-            $current_tieu_chuan = null;
-            $tieu_chuan_merge_start = $row_index;
             foreach ($groupTestCriteria as $so_chi_tieu => $testCriteria) {
                 $start_index = $row_index; // Dòng bắt đầu của nhóm chỉ tiêu kiểm tra
                 // $current_tieu_chuan = null;

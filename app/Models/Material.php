@@ -13,6 +13,25 @@ class Material extends Model
     protected $fillable = ['id', 'name', 'material', 'color', 'quantitative', 'thickness', 'meter_per_roll', 'sheet_per_pallet'];
     protected $casts = ["id" => "string"];
 
+    static function validate($input, $id = null)
+    {
+        $validated = Validator::make(
+            $input,
+            [
+                'id'=>'required|unique:material,id,'. ($id ?? ""),
+                'name' => 'required',
+                'material' => 'required',
+            ],
+            [
+                'id.required' => 'Không có mã NVL',
+                'id.unique' => 'Mã NVL đã tồn tại',
+                'name.required' => 'Không có tên NVL',
+                'material.required' => 'Không có chất liệu',
+            ]
+        );
+        return $validated;
+    }
+
     public function bom()
     {
         return $this->hasOne(Bom::class, 'material_id', 'id');
