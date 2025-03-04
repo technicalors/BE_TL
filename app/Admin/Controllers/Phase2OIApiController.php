@@ -508,7 +508,7 @@ class Phase2OIApiController extends Controller
         if (!$plan) {
             return $this->failure([], 'Không tìm thấy KHSX');
         }
-        if ($machine->code != 'IN_8_MAU_01' && $machine->code != 'LINER_01') {
+        if ($machine->code != 'IN_8_MAU_01') {
             $scannedLot = Lot::find($request->scanned_lot);
             if (!$scannedLot) {
                 return $this->failure('', 'Không tìm thấy lot');
@@ -567,7 +567,7 @@ class Phase2OIApiController extends Controller
                 'sl_kh' => $plan->sl_giao_sx,
                 'plan_id' => $plan->id
             ]);
-            if ($machine->code != 'IN_8_MAU_01' && $machine->code != 'LINER_01') {
+            if ($machine->code != 'IN_8_MAU_01') {
                 if ($scannedLot) {
                     $sl_dat = $scannedLot->so_luong;
                     $line_inventory = LineInventories::where('product_id', $scannedLot->product_id)->where('line_id', $scannedLot->final_line_id)->first();
