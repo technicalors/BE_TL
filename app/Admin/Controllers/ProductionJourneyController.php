@@ -38,7 +38,7 @@ class ProductionJourneyController extends Controller
         $result = $query->with('line', 'product')->get();
         foreach ($result as $key => $value) {
             $value->product_name = $value->product->name;
-            $value->line_name = $value->line->name;
+            $value->line_name = $value->line->name ?? "";
         }
         return $this->success(['data'=>$result, 'total'=>$total]);
     }

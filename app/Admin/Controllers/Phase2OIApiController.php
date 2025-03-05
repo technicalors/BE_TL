@@ -610,7 +610,7 @@ class Phase2OIApiController extends Controller
         // if(!$scannedLot){
         //     return $this->failure('', 'Không tìm thấy lot');
         // }
-        $check = InfoCongDoan::whereDate('created_at', date('Y-m-d'))->where('machine_code', $machine->code)->where('line_id', $line->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
+        $check = InfoCongDoan::where('machine_code', $machine->code)->where('line_id', $line->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
         if ($check) {
             return $this->failure([], "Chưa hoàn thành lot trước đó");
         }

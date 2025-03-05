@@ -37,6 +37,9 @@ class BomController extends Controller
         }
         $query->with('material', 'product');
         $result = $query->get();
+        foreach ($result as $key => $value) {
+            $value->material_name = $value->material->name ?? "";
+        }
         return $this->success(['data' => $result, 'total' => $total]);
     }
 
@@ -54,7 +57,7 @@ class BomController extends Controller
         } catch (\Throwable $th) {
             DB::rollBack();
         }
-        return $this->success('', 'Tạo thành công');
+        return $this->success($bom, 'Tạo thành công');
     }
 
     public function update(Request $request, $id)
@@ -71,7 +74,7 @@ class BomController extends Controller
         } catch (\Throwable $th) {
             DB::rollBack();
         }
-        return $this->success('', 'Cập nhật thành công');
+        return $this->success($bom, 'Cập nhật thành công');
     }
 
     public function delete(Request $request, $id)
