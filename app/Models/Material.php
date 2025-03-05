@@ -10,8 +10,9 @@ class Material extends Model
 {
     use HasFactory;
     protected $table = "material";
+    public $incrementing = false;
     protected $fillable = ['id', 'name', 'material', 'color', 'quantitative', 'thickness', 'meter_per_roll', 'sheet_per_pallet'];
-    protected $casts = ["id" => "string"];
+    // protected $casts = ["id" => "string"];
 
     static function validate($input, $id = null)
     {

@@ -559,6 +559,7 @@ Route::group([
     $router->post('boms/delete', [App\Admin\Controllers\BomController::class, 'deleteMultiple']);
     $router->get('bom/export', [App\Admin\Controllers\BomController::class, 'exportLine']);
     $router->post('bom/import', [App\Admin\Controllers\BomController::class, 'importLine']);
+    $router->post('bom/save-all', [App\Admin\Controllers\BomController::class, 'saveAll']);
 
 
     $router->get('update-du-lieu', [ApiMobileController::class, 'updateDuLieu']);
@@ -786,6 +787,7 @@ Route::group([
     Route::apiResource('qc-criteria', QCCriteriaController::class);
 
     Route::apiResource('product-customer', ProductCustomerController::class);
+    Route::post('product-customer/save-all', [ProductCustomerController::class, 'saveAll']);
 
     Route::apiResource('excel-headers', ExcelHeaderController::class);
     Route::post('excel-headers/import', [ExcelHeaderController::class, 'import']);
