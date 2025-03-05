@@ -124,7 +124,7 @@ class ProductCustomerController extends Controller
             $value['product_id'] = $input['product_id'];
             $validated = ProductCustomer::validate($value);
             if ($validated->fails()) {
-                continue;
+                return $this->failure('', $validated->errors()->first());
             }
             $data[] = $value;
         }

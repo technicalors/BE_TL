@@ -22,4 +22,22 @@ class MachineProductionMode extends Model
     {
         return $this->belongsTo(Machine::class, 'machine_id', 'code');
     }
+
+    static function validate($input, $id = null)
+    {
+        $validated = Validator::make(
+            $input ?? [],
+            [
+                'machine_id'=>'required|exists:machines,code',
+                'product_id'=>'required|exists:products,id', 
+            ],
+            [
+                'machine_id.required'=>'Không có mã máy', 
+                'machine_id.exists'=>'Không tồn tại mã máy',
+                'product_id.required'=>'Không có mã sản phẩm', 
+                'product_id.exists'=>'Không tồn tại sản phẩm',
+            ]
+        );
+        return $validated;
+    }
 }

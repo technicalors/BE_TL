@@ -777,14 +777,17 @@ Route::group([
     Route::post('stamps/import', [StampController::class, 'import']);
 
     Route::apiResource('machine-priority-orders', MachinePriorityOrderController::class);
+    Route::post('machine-priority-orders/save-all', [MachinePriorityOrderController::class, 'saveAll']);
     Route::post('machine-priority-orders/delete', [MachinePriorityOrderController::class, 'deleteManyMachinePriorityOrders']);
 
     Route::apiResource('production-journey', ProductionJourneyController::class);
-    Route::post('product-journey/delete', [ProductionJourneyController::class, 'deleteManyMachinePriorityOrders']);
+    Route::post('production-journey/save-all', [ProductionJourneyController::class, 'saveAll']);
 
     Route::apiResource('machine-production-mode', MachineProductionModeController::class);
+    Route::post('machine-production-mode/save-all', [MachineProductionModeController::class, 'saveAll']);
 
     Route::apiResource('qc-criteria', QCCriteriaController::class);
+    Route::post('qc-criteria/save-all', [QCCriteriaController::class, 'saveAll']);
 
     Route::apiResource('product-customer', ProductCustomerController::class);
     Route::post('product-customer/save-all', [ProductCustomerController::class, 'saveAll']);

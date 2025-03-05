@@ -28,7 +28,7 @@ class ProductCustomer extends Model
             $input,
             [
                 'product_id'=>'required|exists:products,id',
-                'customer_id'=>'required|exists:material,id',
+                'customer_id'=>'required|exists:customer,id',
             ],
             [
                 'product_id.required'=>'Không có sản phẩm',
