@@ -69,7 +69,10 @@ class BomController extends Controller
         }
         try {
             DB::beginTransaction();
-            $bom = Bom::find($id)->update($input);
+            $bom = Bom::find($id);
+            if($bom){
+                $bom->update($input);
+            }
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
