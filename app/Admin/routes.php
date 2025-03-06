@@ -702,15 +702,16 @@ Route::group([
 
     Route::apiResource('maintenance-categories', MaintenanceCategoryController::class);
     Route::apiResource('maintenance-items', MaintenanceItemController::class);
+    
+    $router->get('maintenance-plans/calendar-table', [MaintenancePlanController::class, 'calendarTable']);
+    $router->get('maintenance-plans/detail/list', [MaintenancePlanController::class, 'detail']);
+    $router->post('maintenance-plans/import', [MaintenanceScheduleController::class, 'import']);
     Route::apiResource('maintenance-plans', MaintenancePlanController::class);
+    
     Route::apiResource('maintenance-schedules', MaintenanceScheduleController::class);
     Route::apiResource('maintenance-logs', MaintenanceLogController::class);
     Route::apiResource('maintenance-log-images', MaintenanceLogImageController::class);
     $router->post('maintenance-log-images/upload', [MaintenanceLogImageController::class, 'upload']);
-
-    $router->get('maintenance-plans/list/plan', [MaintenancePlanController::class, 'list']);
-    $router->get('maintenance-plans/detail/list', [MaintenancePlanController::class, 'detail']);
-    $router->post('maintenance-plans/import', [MaintenanceScheduleController::class, 'import']);
 
     $router->get('equipment/oee', [Phase2UIApiController::class, 'getOEEData']);
     $router->get('equipment/error-frequency', [Phase2UIApiController::class, 'getErrorFrequencyData']);

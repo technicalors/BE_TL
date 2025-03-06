@@ -5998,7 +5998,7 @@ class ApiUIController extends AdminController
                 'start_date' => $schedule->maintenanceLog ? date('d/m/Y', strtotime($schedule->maintenanceLog->log_date)) : "",
                 'log' => $schedule->maintenanceLog ? $schedule->maintenanceLog : "",
                 'images' => $images,
-                'remark' => $schedule->maintenanceLog ? $schedule->maintenanceLog->remark : "",
+                'note' => $schedule->maintenanceLog ? $schedule->maintenanceLog->note : "",
                 'result' => $schedule->maintenanceLog ? $schedule->maintenanceLog->result : "",
             ];
         }
@@ -6053,7 +6053,7 @@ class ApiUIController extends AdminController
             'F' => 'planning_date',
             'G' => 'start_date',
             'H' => 'result',
-            'I' => 'remark',
+            'I' => 'note',
         ];
         foreach ($header as $key => $cell) {
             if (!is_array($cell)) {

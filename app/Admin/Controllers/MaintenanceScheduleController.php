@@ -22,6 +22,9 @@ class MaintenanceScheduleController extends Controller
     public function index()
     {
         $data = MaintenanceSchedule::all();
+        foreach ($data as $key => $value) {
+            $value->maintenance_schedule_id = $value->id;
+        }
         return $this->success($data);
     }
 
@@ -48,7 +51,7 @@ class MaintenanceScheduleController extends Controller
                 $newMaintenanceLog = MaintenanceLog::create([
                     'maintenance_schedule_id' => $id,
                     'log_date' => $request->get('start_date') ?? now(),
-                    'remark' => $request->get('remark') ?? '',
+                    'note' => $request->get('note') ?? '',
                     'result' => $request->get('result') ?? ''
                 ]);
                 $logImages = MaintenanceLogImage::where('maintenance_log_id', $maintenanceLog->id)->get();
@@ -62,7 +65,7 @@ class MaintenanceScheduleController extends Controller
                 $maintenanceLog = MaintenanceLog::create([
                     'maintenance_schedule_id' => $id,
                     'log_date' => $request->get('start_date') ?? now(),
-                    'remark' => $request->get('remark') ?? '',
+                    'note' => $request->get('note') ?? '',
                     'result' => $request->get('result') ?? ''
                 ]);
             }
