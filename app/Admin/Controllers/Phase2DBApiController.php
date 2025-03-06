@@ -163,7 +163,7 @@ class Phase2DBApiController extends Controller
         foreach ($machines as $machine) {
             $info = InfoCongDoan::where("line_id", $machine->line_id)->where('machine_code', $machine->code)->with(["lotPlan", "lot.plan.product"])
                 ->where(function ($query) {
-                    $query->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->orWhereDate('status', InfoCongDoan::STATUS_INPROGRESS);
+                    $query->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->orWhere('status', InfoCongDoan::STATUS_INPROGRESS);
                 })->orderBy('thoi_gian_bat_dau', 'DESC')->first();
             $tracking = Tracking::where('machine_id', $machine->code)->first();
             if (!$info) {
