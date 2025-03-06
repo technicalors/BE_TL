@@ -220,8 +220,7 @@ class Phase2DBApiController extends Controller
                     ->where('machine_code', $machine->code)
                     ->where('product_id', $info->product_id)
                     ->where('lo_sx', $info->lo_sx)
-                    ->whereIn('status', [InfoCongDoan::STATUS_INPROGRESS, InfoCongDoan::STATUS_COMPLETED])
-                    ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->sum('sl_dau_ra_hang_loat');
+                    ->whereIn('status', [InfoCongDoan::STATUS_INPROGRESS, InfoCongDoan::STATUS_COMPLETED])->sum('sl_dau_ra_hang_loat');
 
                 // $plan = $info->lot->getPlanByLine($info->line_id);
                 $product = $info->product ?? null;
