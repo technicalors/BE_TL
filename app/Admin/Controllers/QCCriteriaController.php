@@ -45,12 +45,12 @@ class QCCriteriaController extends Controller
     public function store(Request $request)
     {
         $input = $request->all();
-        // $validated = QCCriteria::validate($input);
-        // if ($validated->fails()) {
-        //     return $this->failure('', $validated->errors()->first());
-        // }
+        $validated = QCCriteria::validate($input);
+        if ($validated->fails()) {
+            return $this->failure('', $validated->errors()->first());
+        }
         $qcCriteria = QCCriteria::create($input);
-
+        $qcCriteria->line_name = $qcCriteria->line->name ?? "";
         return $this->success($qcCriteria);
     }
 
@@ -72,11 +72,12 @@ class QCCriteriaController extends Controller
             return $this->failure('', 'qcCriteria not found');
         }
         $input = $request->all();
-        // $validated = QCCriteria::validate($input);
-        // if ($validated->fails()) {
-        //     return $this->failure('', $validated->errors()->first());
-        // }
-        $qcCriteria->update($request->all());
+        $validated = QCCriteria::validate($input);
+        if ($validated->fails()) {
+            return $this->failure('', $validated->errors()->first());
+        }
+        $qcCriteria->update($input);
+        $qcCriteria->line_name = $qcCriteria->line->name ?? "";
         return $this->success($qcCriteria);
     }
 
@@ -93,11 +94,6 @@ class QCCriteriaController extends Controller
         return $this->success('','qcCriteria deleted');
     }
 
-    public function deleteManyQCCriteria(Request $request){
-        $qcCriteria = QCCriteria::whereIn('id', $request->ids)->delete();
-        return $this->success('','qcCriteria deleted'); 
-    }
-
     public function import(Request $request)
     {
         $request->validate([
@@ -111,5 +107,25 @@ class QCCriteriaController extends Controller
         } catch (\Exception $e) {
             return $this->failure($e, 'Import failed');
         }
+    }
+
+    public function saveAll(Request $request){
+        $input = $request->all();
+        if(!isset($input['product_id'])){
+            return $this->failure('', 'Không tìm thấy mã sản phẩm');
+        }
+        $data = [];
+        foreach($input['data'] ?? [] as $value){
+            $value['product_id'] = $input['product_id'];
+            $validated = QCCriteria::validate($value);
+            if ($validated->fails()) {
+                return $this->failure('', $validated->errors()->first());
+            }
+            $data[] = $value;
+        }
+        foreach ($data as $key => $value) {
+            QCCriteria::updateOrCreate(['product_id' => $value['product_id'], 'line_id' => $value['line_id']], $value);
+        }
+        return $this->success($data);
     }
 }

@@ -21,4 +21,22 @@ class ProductCustomer extends Model
     {
         return $this->belongsTo(Customer::class, 'customer_id');
     }
+
+    static function validate($input, $id = null)
+    {
+        $validated = Validator::make(
+            $input,
+            [
+                'product_id'=>'required|exists:products,id',
+                'customer_id'=>'required|exists:customer,id',
+            ],
+            [
+                'product_id.required'=>'Không có sản phẩm',
+                'customer_id.required'=>'Không có khách hàng',
+                'product_id.exists'=>'Không tồn tại sản phẩm',
+                'customer_id.exists'=>'Không tồn tại khách hàng',
+            ]
+        );
+        return $validated;
+    }
 }

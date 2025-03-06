@@ -30,6 +30,7 @@ use Carbon\CarbonPeriod;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use stdClass;
@@ -432,7 +433,7 @@ class Phase2UIApiController extends Controller
     function parseReportTable3($val, $lo_sx, $date, $machine_code)
 
     {
-        $sl_kh = (int)$val[0]->plan->sl_giao_sx;
+        $sl_kh = $val[0]->plan->sl_giao_sx ?? 0;
         $sl_dau_vao = (int)$val->sum('sl_dau_vao_hang_loat');
         $sl_dau_ra = (int)$val->sum('sl_dau_ra_hang_loat');
         $sl_tem_vang = (int)$val->sum('sl_tem_vang');
@@ -458,11 +459,11 @@ class Phase2UIApiController extends Controller
             $tg_hang_loat += $start->diffInMinutes($end); // Tính tổng phút
 
             $start = Carbon::parse($item->thoi_gian_bat_dau);
-            $end = Carbon::parse($item->plan->thoi_gian_bat_dau);
+            $end = Carbon::parse($item->plan->thoi_gian_bat_dau ?? null);
             $lead_time += $start->diffInMinutes($end); // Tính tổng phút
 
-            $start = Carbon::parse($item->plan->thoi_gian_bat_dau);
-            $end = Carbon::parse($item->plan->thoi_gian_ket_thuc);
+            $start = Carbon::parse($item->plan->thoi_gian_bat_dau ?? null);
+            $end = Carbon::parse($item->plan->thoi_gian_ket_thuc ?? null);
             $tg_sx_kh += $start->diffInMinutes($end); // Tính tổng phút
 
             $start = Carbon::parse($item->thoi_gian_bat_dau);
@@ -523,24 +524,31 @@ class Phase2UIApiController extends Controller
             $tg_hang_loat += $start->diffInMinutes($end); // Tính tổng phút
 
             $start = Carbon::parse($item->thoi_gian_bat_dau);
-            $end = Carbon::parse($item->plan->thoi_gian_bat_dau);
+            $end = Carbon::parse($item->plan->thoi_gian_bat_dau ?? null);
             $lead_time += $start->diffInMinutes($end); // Tính tổng phút
 
-            $start = Carbon::parse($item->plan->thoi_gian_bat_dau);
-            $end = Carbon::parse($item->plan->thoi_gian_ket_thuc);
+            $start = Carbon::parse($item->plan->thoi_gian_bat_dau ?? null);
+            $end = Carbon::parse($item->plan->thoi_gian_ket_thuc ?? null);
             $tg_sx_kh += $start->diffInMinutes($end); // Tính tổng phút
 
             $start = Carbon::parse($item->thoi_gian_bat_dau);
             $end = Carbon::parse($item->thoi_gian_ket_thuc);
             $tg_sx_in_hours = $start->diffInHours($end); // Tính tổng phút
-            $sl_muc_tieu += ($tg_sx_in_hours / 3600) * ($item->plan->UPH ?? 1);
+            $sl_muc_tieu += ($tg_sx_in_hours / 3600) * ($item->plan->UPH ?? 0);
         });
-        $ty_le_ng = ($sl_dau_ra > 0 ? number_format($sl_ng / $sl_dau_ra, 2) * 100 : 0) . '%';
-        $ty_le_hao_phi_tg = ($tg_sx > 0 ? number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0) . '%';
-        $A = ($tg_sx > 0 ? number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0);
-        $Q = ($sl_dau_ra > 0 ? number_format($sl_ok / ($sl_dau_ra ?? 1), 2) * 100 : 0);
-        $P = ($sl_muc_tieu > 0 ? number_format($sl_dau_ra / $sl_muc_tieu, 2) * 100 : 0);
-        $OEE = number_format(($A * $P * $Q) / 10000, 2);
+        try {
+            //code...
+            $ty_le_ng = ($sl_dau_ra > 0 ? number_format($sl_ng / $sl_dau_ra, 2) * 100 : 0) . '%';
+            $ty_le_hao_phi_tg = ($tg_sx > 0 ? number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0) . '%';
+            $A = ($tg_sx > 0 ? (int) number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0);
+            $Q = ($sl_dau_ra > 0 ? (int) number_format($sl_ok / ($sl_dau_ra ?? 1), 2) * 100 : 0);
+            $P = ($sl_muc_tieu > 0 ? (int) number_format($sl_dau_ra / $sl_muc_tieu, 2) * 100 : 0);
+            $OEE = number_format(($A * $P * $Q) / 10000, 2);
+        } catch (\Throwable $th) {
+            
+            Log::debug([$sl_dau_ra / $sl_muc_tieu]);
+            throw $th;
+        }
         $power = $value->sum('powerM');
         $row = [
             'ngay_sx' => $date,
@@ -605,23 +613,23 @@ class Phase2UIApiController extends Controller
             $tg_hang_loat += $start->diffInMinutes($end); // Tính tổng phút
 
             $start = Carbon::parse($item->thoi_gian_bat_dau);
-            $end = Carbon::parse($item->lotPlan->start_time);
+            $end = Carbon::parse($item->plan->start_time ?? null);
             $lead_time += $start->diffInMinutes($end); // Tính tổng phút
 
-            $start = Carbon::parse($item->lotPlan->start_time);
-            $end = Carbon::parse($item->lotPlan->end_time);
+            $start = Carbon::parse($item->plan->start_time ?? null);
+            $end = Carbon::parse($item->plan->end_time ?? null);
             $tg_sx_kh += $start->diffInMinutes($end); // Tính tổng phút
 
             $start = Carbon::parse($item->thoi_gian_bat_dau);
             $end = Carbon::parse($item->thoi_gian_ket_thuc);
             $tg_sx_in_hours = $start->diffInHours($end); // Tính tổng phút
-            $sl_muc_tieu += ($tg_sx_in_hours / 3600) * ($item->lotPlan->plan->UPH ?? 0);
+            $sl_muc_tieu += ($tg_sx_in_hours / 3600) * ($item->plan->UPH ?? 0);
         });
         $ty_le_ng = ($sl_dau_ra > 0 ? number_format($sl_ng / $sl_dau_ra, 2) * 100 : 0) . '%';
         $ty_le_hao_phi_tg = ($tg_sx > 0 ? number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0) . '%';
-        $A = ($tg_sx > 0 ? number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0);
-        $Q = ($sl_dau_ra > 0 ? number_format($sl_ok / $sl_dau_ra, 2) * 100 : 0);
-        $P = ($sl_muc_tieu > 0 ? number_format($sl_dau_ra / $sl_muc_tieu, 2) * 100 : 0);
+        $A = ($tg_sx > 0 ? (int) number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0);
+        $Q = ($sl_dau_ra > 0 ? (int) number_format($sl_ok / $sl_dau_ra, 2) * 100 : 0);
+        $P = ($sl_muc_tieu > 0 ? (int) number_format($sl_dau_ra / $sl_muc_tieu, 2) * 100 : 0);
         $OEE = number_format(($A * $P * $Q) / 10000, 2);
         $power = $value->sum('powerM');
         $row = [
@@ -650,7 +658,7 @@ class Phase2UIApiController extends Controller
 
     public function exportReportProduceHistory(Request $request)
     {
-        $query = InfoCongDoan::with('product', 'lotPlan', 'plan')
+        $query = InfoCongDoan::with('product', 'plan')
             ->whereNotNull('thoi_gian_bat_dau')
             ->whereNotNull('thoi_gian_bam_may')
             ->whereNotNull('thoi_gian_ket_thuc')
@@ -703,9 +711,9 @@ class Phase2UIApiController extends Controller
                 if ($k == 0) {
                     $plan = $item->plan;
                     $obj['product_id'] = $plan_product->product_id;
-                    $obj['product_name'] = $plan_product->product->name;
+                    $obj['product_name'] = $plan_product->product->name ?? "";
                     $obj['lo_sx'] = $item->lo_sx;
-                    $obj['so_bat'] = $plan_product->product->so_bat;
+                    $obj['so_bat'] = $plan_product->product->so_bat ?? "";
                 }
                 $obj['ngay_sx_gan_nhat_' . $item->line_id] = $item->ngay_sx_gan_nhat_;
                 $obj['sl_dau_vao_' . $item->line_id] = $item->sl_dau_vao_;

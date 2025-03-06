@@ -4,6 +4,7 @@ namespace App\Admin\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bom;
+use App\Models\Material;
 use App\Traits\API;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -35,8 +36,12 @@ class BomController extends Controller
             // return $request->page - 1;
             $query->offset((($request->page - 1) ?? 0) * $request->pageSize)->limit($request->pageSize);
         }
-        $query->with('material', 'product');
+        $query->with(['material', 'product']);
         $result = $query->get();
+        
+        foreach ($result as $key => $value) {
+            $value->material_name = $value->material->name ?? "";
+        }
         return $this->success(['data' => $result, 'total' => $total]);
     }
 
@@ -49,12 +54,14 @@ class BomController extends Controller
         }
         try {
             DB::beginTransaction();
-            $bom = Bom::create($input);
+            $bom = Bom::updateOrCreate(['product_id'=>$input['product_id'], 'material_id'=>$input['material_id']], $input);
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
+            return $this->failure($th, 'Đã xảy ra lỗi');
         }
-        return $this->success('', 'Tạo thành công');
+        $bom->material_name = $bom->material->name ?? "";
+        return $this->success($bom, 'Tạo thành công');
     }
 
     public function update(Request $request, $id)
@@ -66,12 +73,17 @@ class BomController extends Controller
         }
         try {
             DB::beginTransaction();
-            $bom = Bom::find($id)->update($input);
+            $bom = Bom::find($id);
+            if($bom){
+                $bom->updateOrCreate(['product_id'=>$input['product_id'], 'material_id'=>$input['material_id']], $input);
+            }
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
+            return $this->failure($th, 'Đã xảy ra lỗi');
         }
-        return $this->success('', 'Cập nhật thành công');
+        $bom->material_name = $bom->material->name ?? "";
+        return $this->success($bom, 'Cập nhật thành công');
     }
 
     public function delete(Request $request, $id)
@@ -122,5 +134,25 @@ class BomController extends Controller
     public function export(Request $request)
     {
         return $this->success('', 'Export thành công');
+    }
+
+    public function saveAll(Request $request){
+        $input = $request->all();
+        if(!isset($input['product_id'])){
+            return $this->failure('', 'Không tìm thấy mã sản phẩm');
+        }
+        $data = [];
+        foreach($input['data'] ?? [] as $value){
+            $value['product_id'] = $input['product_id'];
+            $validated = Bom::validate($value);
+            if ($validated->fails()) {
+                return $this->failure('', $validated->errors()->first());
+            }
+            $data[] = $value;
+        }
+        foreach ($data as $key => $value) {
+            Bom::updateOrCreate(['product_id' => $value['product_id'], 'material_id' => $value['material_id']], $value);
+        }
+        return $this->success($data);
     }
 }

@@ -610,7 +610,7 @@ class Phase2OIApiController extends Controller
         // if(!$scannedLot){
         //     return $this->failure('', 'Không tìm thấy lot');
         // }
-        $check = InfoCongDoan::whereDate('created_at', date('Y-m-d'))->where('machine_code', $machine->code)->where('line_id', $line->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
+        $check = InfoCongDoan::where('machine_code', $machine->code)->where('line_id', $line->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
         if ($check) {
             return $this->failure([], "Chưa hoàn thành lot trước đó");
         }
@@ -2140,6 +2140,9 @@ class Phase2OIApiController extends Controller
         // Định dạng 4: Khoảng dùng dấu '~'
         $pattern4 = "/(-?\d+(\.\d+)?)~(-?\d+(\.\d+)?)/";
 
+        // Định dạng 5: So sánh ('≥', '≤', '>', '<')
+        $pattern5 = "/(≥|<=|≤|>=|>|<)\s*(-?\d+(\.\d+)?)/";
+
         // Loại bỏ phần mô tả nếu có trước giá trị số
         $input = trim(preg_replace("/.*?:\s*/", "", $input));
 
@@ -2176,6 +2179,41 @@ class Phase2OIApiController extends Controller
                 "min" => (float)$matches[1],
                 "max" => (float)$matches[3]
             ];
+        } elseif (preg_match($pattern5, $input, $matches)) {
+            $operator = $matches[1];
+            $value = (float)$matches[2];
+    
+            // Xử lý theo từng dấu so sánh
+            switch ($operator) {
+                case "≥":
+                case ">=":
+                    return [
+                        "type" => "Format 5 (Greater than or equal)",
+                        "min" => $value,
+                        "max" => PHP_INT_MAX // Không có giá trị tối đa
+                    ];
+                case "≤":
+                case "<=":
+                    return [
+                        "type" => "Format 5 (Less than or equal)",
+                        "min" => PHP_INT_MIN, // Không có giá trị tối thiểu
+                        "max" => $value
+                    ];
+                case ">":
+                    return [
+                        "type" => "Format 5 (Greater than)",
+                        "min" => $value + 0.0001, // Lớn hơn giá trị nên cộng 1 lượng nhỏ
+                        "max" => PHP_INT_MAX
+                    ];
+                case "<":
+                    return [
+                        "type" => "Format 5 (Less than)",
+                        "min" => PHP_INT_MIN,
+                        "max" => $value - 0.0001 // Nhỏ hơn giá trị nên trừ 1 lượng nhỏ
+                    ];
+                default:
+                    return null;
+            }
         } else {
             return null;
         }

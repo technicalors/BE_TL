@@ -14,18 +14,18 @@ class MachineProductionModeController extends Controller
 {
     use API;
     public function index(Request $request)
-    {   
+    {
         $query = MachineProductionMode::orderBy('product_id')->orderBy('machine_id');
-        if(!empty($request->product_id)){
+        if (!empty($request->product_id)) {
             $query->where('product_id', 'like', '%' . $request->product_id . '%');
         }
-        if(!empty($request->product_name)){
-            $query->whereHas('product', function($q)use($request){
+        if (!empty($request->product_name)) {
+            $query->whereHas('product', function ($q) use ($request) {
                 $q->where('name', 'like', "%$request->product_name%");
             });
         }
         $total = $query->count();
-        if(!empty($request->page) && !empty($request->pageSize)){
+        if (!empty($request->page) && !empty($request->pageSize)) {
             $page = ($request->page - 1) ?? 0;
             $pageSize = $request->pageSize;
             $query->offset($page * $pageSize)->limit($pageSize);
@@ -33,20 +33,18 @@ class MachineProductionModeController extends Controller
         $result = $query->with('machine', 'product')->get();
         foreach ($result as $key => $value) {
             $value->product_name = $value->product->name;
-            $value->machine_name = $value->machine->name;
         }
-        return $this->success(['data'=>$result, 'total'=>$total]);
+        return $this->success(['data' => $result, 'total' => $total]);
     }
 
     public function store(Request $request)
     {
         $input = $request->all();
-        // $validated = machineProductionMode::validate($input);
-        // if ($validated->fails()) {
-        //     return $this->failure('', $validated->errors()->first());
-        // }
+        $validated = machineProductionMode::validate($input);
+        if ($validated->fails()) {
+            return $this->failure('', $validated->errors()->first());
+        }
         $machineProductionMode = MachineProductionMode::create($input);
-
         return $this->success($machineProductionMode);
     }
 
@@ -67,11 +65,11 @@ class MachineProductionModeController extends Controller
         if (!$machineProductionMode) {
             return $this->failure('', 'MachineProductionMode not found');
         }
-        // $input = $request->all();
-        // $validated = machineProductionMode::validate($input);
-        // if ($validated->fails()) {
-        //     return $this->failure('', $validated->errors()->first());
-        // }
+        $input = $request->all();
+        $validated = machineProductionMode::validate($input);
+        if ($validated->fails()) {
+            return $this->failure('', $validated->errors()->first());
+        }
         $machineProductionMode->update($request->all());
         return $this->success($machineProductionMode);
     }
@@ -86,12 +84,7 @@ class MachineProductionModeController extends Controller
 
         $machineProductionMode->delete();
 
-        return $this->success('','MachineProductionMode deleted');
-    }
-
-    public function deleteManymachineProductionModes(Request $request){
-        $machineProductionMode = MachineProductionMode::whereIn('id', $request->ids)->delete();
-        return $this->success('','MachineProductionMode deleted'); 
+        return $this->success('', 'MachineProductionMode deleted');
     }
 
     public function import(Request $request)
@@ -107,5 +100,26 @@ class MachineProductionModeController extends Controller
         } catch (\Exception $e) {
             return $this->failure($e, 'Import failed');
         }
+    }
+
+    public function saveAll(Request $request)
+    {
+        $input = $request->all();
+        if (!isset($input['product_id'])) {
+            return $this->failure('', 'Không tìm thấy mã sản phẩm');
+        }
+        $data = [];
+        foreach ($input['data'] ?? [] as $value) {
+            $value['product_id'] = $input['product_id'];
+            $validated = MachineProductionMode::validate($value);
+            if ($validated->fails()) {
+                return $this->failure('', $validated->errors()->first());
+            }
+            $data[] = $value;
+        }
+        foreach ($data as $key => $value) {
+            MachineProductionMode::updateOrCreate(['id' => $value['id'] ?? null], $value);
+        }
+        return $this->success($data);
     }
 }

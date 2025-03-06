@@ -21,4 +21,22 @@ class ProductionJourney extends Model
     {
         return $this->belongsTo(Line::class, 'line_id');
     }
+
+    static function validate($input, $id = null)
+    {
+        $validated = Validator::make(
+            $input,
+            [
+                'product_id'=>'required|exists:products,id',
+                'line_id'=>'required|exists:lines,id',
+            ],
+            [
+                'product_id.required'=>'Không có sản phẩm',
+                'line_id.required'=>'Không có công đoạn',
+                'product_id.exists'=>'Không tồn tại sản phẩm',
+                'line_id.exists'=>'Không tồn tại công đoạn',
+            ]
+        );
+        return $validated;
+    }
 }

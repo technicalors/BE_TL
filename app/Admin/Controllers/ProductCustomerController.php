@@ -21,7 +21,7 @@ class ProductCustomerController extends Controller
             $query->where('customer_id', $request->customer_id);
         }
         if(!empty($request->product_id)){
-            $query->where('product_id', 'like', '%' . $request->product_id . '%');
+            $query->where('product_id', $request->product_id);
         }
         if(!empty($request->product_name)){
             $query->whereHas('product', function($q)use($request){
@@ -36,8 +36,8 @@ class ProductCustomerController extends Controller
         }
         $result = $query->with('customer', 'product')->get();
         foreach ($result as $key => $value) {
-            $value->product_name = $value->product->name;
-            $value->customer_name = $value->customer->name;
+            $value->product_name = $value->product->name ?? "";
+            $value->customer_name = $value->customer->name ?? "";
         }
         return $this->success(['data'=>$result, 'total'=>$total]);
     }
@@ -45,12 +45,12 @@ class ProductCustomerController extends Controller
     public function store(Request $request)
     {
         $input = $request->all();
-        // $validated = ProductCustomer::validate($input);
-        // if ($validated->fails()) {
-        //     return $this->failure('', $validated->errors()->first());
-        // }
+        $validated = ProductCustomer::validate($input);
+        if ($validated->fails()) {
+            return $this->failure('', $validated->errors()->first());
+        }
         $productCustomer = ProductCustomer::updateOrCreate($input);
-
+        $productCustomer->customer_name = $productCustomer->customer->name ?? "";
         return $this->success($productCustomer);
     }
 
@@ -72,11 +72,12 @@ class ProductCustomerController extends Controller
             return $this->failure('', 'productCustomer not found');
         }
         $input = $request->all();
-        // $validated = ProductCustomer::validate($input);
-        // if ($validated->fails()) {
-        //     return $this->failure('', $validated->errors()->first());
-        // }
+        $validated = ProductCustomer::validate($input);
+        if ($validated->fails()) {
+            return $this->failure('', $validated->errors()->first());
+        }
         $productCustomer->update($request->all());
+        $productCustomer->customer_name = $productCustomer->customer->name ?? "";
         return $this->success($productCustomer);
     }
 
@@ -111,5 +112,25 @@ class ProductCustomerController extends Controller
         } catch (\Exception $e) {
             return $this->failure($e, 'Import failed');
         }
+    }
+
+    public function saveAll(Request $request){
+        $input = $request->all();
+        if(!isset($input['product_id'])){
+            return $this->failure('', 'Không tìm thấy mã sản phẩm');
+        }
+        $data = [];
+        foreach($input['data'] ?? [] as $value){
+            $value['product_id'] = $input['product_id'];
+            $validated = ProductCustomer::validate($value);
+            if ($validated->fails()) {
+                return $this->failure('', $validated->errors()->first());
+            }
+            $data[] = $value;
+        }
+        foreach ($data as $key => $value) {
+            ProductCustomer::updateOrCreate($value);
+        }
+        return $this->success($data);
     }
 }

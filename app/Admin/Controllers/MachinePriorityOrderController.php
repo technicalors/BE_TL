@@ -4,6 +4,7 @@ namespace App\Admin\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Imports\StampsImport;
+use App\Models\Machine;
 use App\Models\Material;
 use App\Models\MachinePriorityOrder;
 use App\Traits\API;
@@ -48,12 +49,14 @@ class MachinePriorityOrderController extends Controller
     public function store(Request $request)
     {
         $input = $request->all();
+        $machine = Machine::where('code', $input['machine_id'])->first();
+        $input['line_id'] = $machine->line_id ?? "";
         $validated = MachinePriorityOrder::validate($input);
         if ($validated->fails()) {
             return $this->failure('', $validated->errors()->first());
         }
-        $machinePriorityOrder = MachinePriorityOrder::create($input);
-
+        $machinePriorityOrder = MachinePriorityOrder::updateOrCreate(['product_id' => $input['product_id'], 'line_id' => $input['line_id'], 'machine_id' => $input['machine_id']], $input);
+        $machinePriorityOrder->line_name = $machinePriorityOrder->line->name ?? "";
         return $this->success($machinePriorityOrder);
     }
 
@@ -75,11 +78,14 @@ class MachinePriorityOrderController extends Controller
             return $this->failure('', 'MachinePriorityOrder not found');
         }
         $input = $request->all();
+        $machine = Machine::where('code', $input['machine_id'])->first();
+        $input['line_id'] = $machine->line_id ?? "";
         $validated = MachinePriorityOrder::validate($input);
         if ($validated->fails()) {
             return $this->failure('', $validated->errors()->first());
         }
-        $machinePriorityOrder->update($request->all());
+        $machinePriorityOrder->update($input);
+        $machinePriorityOrder->line_name = $machinePriorityOrder->line->name ?? "";
         return $this->success($machinePriorityOrder);
     }
 
@@ -114,5 +120,30 @@ class MachinePriorityOrderController extends Controller
         } catch (\Exception $e) {
             return $this->failure($e, 'Import failed');
         }
+    }
+
+    public function saveAll(Request $request){
+        $input = $request->all();
+        if(!isset($input['product_id'])){
+            return $this->failure('', 'Không tìm thấy mã sản phẩm');
+        }
+        $data = [];
+        foreach($input['data'] ?? [] as $value){
+            $value['product_id'] = $input['product_id'];
+            if(!isset($value['machine_id'])){
+                return $this->failure('', 'Không tìm thấy mã máy');
+            }
+            $machine = Machine::where('code', $value['machine_id'])->first();
+            $value['line_id'] = $machine->line_id ?? "";
+            $validated = MachinePriorityOrder::validate($value);
+            if ($validated->fails()) {
+                return $this->failure('', $validated->errors()->first());
+            }
+            $data[] = $value;
+        }
+        foreach ($data as $key => $value) {
+            MachinePriorityOrder::updateOrCreate(['product_id' => $value['product_id'], 'line_id' => $value['line_id'], 'machine_id' => $value['machine_id']], $value);
+        }
+        return $this->success($data);
     }
 }

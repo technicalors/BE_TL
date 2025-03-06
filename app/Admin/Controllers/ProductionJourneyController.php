@@ -38,7 +38,7 @@ class ProductionJourneyController extends Controller
         $result = $query->with('line', 'product')->get();
         foreach ($result as $key => $value) {
             $value->product_name = $value->product->name;
-            $value->line_name = $value->line->name;
+            $value->line_name = $value->line->name ?? "";
         }
         return $this->success(['data'=>$result, 'total'=>$total]);
     }
@@ -46,48 +46,73 @@ class ProductionJourneyController extends Controller
     public function store(Request $request)
     {
         $input = $request->all();
-        $machinePriorityOrder = ProductionJourney::create($input);
-
-        return $this->success($machinePriorityOrder);
+        $validated = ProductionJourney::validate($input);
+        if ($validated->fails()) {
+            return $this->failure('', $validated->errors()->first());
+        }
+        $productionJourney = ProductionJourney::updateOrCreate(['product_id' => $input['product_id'], 'line_id' => $input['line_id']], $input);
+        $productionJourney->line_name = $productionJourney->line->name ?? "";
+        return $this->success($productionJourney);
     }
 
     public function show($id)
     {
-        $machinePriorityOrder = ProductionJourney::find($id);
+        $productionJourney = ProductionJourney::find($id);
 
-        if (!$machinePriorityOrder) {
+        if (!$productionJourney) {
             return $this->success('', 'ProductionJourney not found');
         }
 
-        return $this->success($machinePriorityOrder);
+        return $this->success($productionJourney);
     }
 
     public function update(Request $request, $id)
     {
-        $machinePriorityOrder = ProductionJourney::find($id);
-        if (!$machinePriorityOrder) {
+        $input = $request->all();
+        $productionJourney = ProductionJourney::find($id);
+        if (!$productionJourney) {
             return $this->failure('', 'ProductionJourney not found');
         }
+        $validated = ProductionJourney::validate($input);
+        if ($validated->fails()) {
+            return $this->failure('', $validated->errors()->first());
+        }
         $input = $request->all();
-        $machinePriorityOrder->update($request->all());
-        return $this->success($machinePriorityOrder);
+        $productionJourney->update($input);
+        $productionJourney->line_name = $productionJourney->line->name ?? "";
+        return $this->success($productionJourney);
     }
 
     public function destroy($id)
     {
-        $machinePriorityOrder = ProductionJourney::find($id);
+        $productionJourney = ProductionJourney::find($id);
 
-        if (!$machinePriorityOrder) {
+        if (!$productionJourney) {
             return $this->failure('', 'ProductionJourney not found');
         }
 
-        $machinePriorityOrder->delete();
+        $productionJourney->delete();
 
         return $this->success('','ProductionJourney deleted');
     }
 
-    public function deleteManyMachinePriorityOrders(Request $request){
-        $machinePriorityOrder = ProductionJourney::whereIn('id', $request->ids)->delete();
-        return $this->success('','ProductionJourney deleted'); 
+    public function saveAll(Request $request){
+        $input = $request->all();
+        if(!isset($input['product_id'])){
+            return $this->failure('', 'Không tìm thấy mã sản phẩm');
+        }
+        $data = [];
+        foreach($input['data'] ?? [] as $value){
+            $value['product_id'] = $input['product_id'];
+            $validated = ProductionJourney::validate($value);
+            if ($validated->fails()) {
+                return $this->failure('', $validated->errors()->first());
+            }
+            $data[] = $value;
+        }
+        foreach ($data as $key => $value) {
+            ProductionJourney::updateOrCreate(['product_id' => $value['product_id'], 'line_id' => $value['line_id']], $value);
+        }
+        return $this->success($data);
     }
 }
