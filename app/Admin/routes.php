@@ -2,6 +2,7 @@
 
 use App\Admin\Controllers\ApiMobileController;
 use App\Admin\Controllers\ApiUIController;
+use App\Admin\Controllers\BomController;
 use App\Admin\Controllers\CheckSheetApiController;
 use App\Admin\Controllers\ErrorMachineApiController;
 use App\Admin\Controllers\ExcelHeaderController;
@@ -552,14 +553,14 @@ Route::group([
     $router->get('user-info/export', [App\Admin\Controllers\UserInfoController::class, 'exportLine']);
     $router->post('user-info/import', [App\Admin\Controllers\UserInfoController::class, 'import']);
 
-    $router->get('bom/list', [App\Admin\Controllers\BomController::class, 'list']);
-    $router->patch('bom/update/{id}', [App\Admin\Controllers\BomController::class, 'update']);
-    $router->post('bom/create', [App\Admin\Controllers\BomController::class, 'create']);
-    $router->delete('bom/delete/{id}', [App\Admin\Controllers\BomController::class, 'delete']);
-    $router->post('boms/delete', [App\Admin\Controllers\BomController::class, 'deleteMultiple']);
-    $router->get('bom/export', [App\Admin\Controllers\BomController::class, 'exportLine']);
-    $router->post('bom/import', [App\Admin\Controllers\BomController::class, 'importLine']);
-    $router->post('bom/save-all', [App\Admin\Controllers\BomController::class, 'saveAll']);
+    $router->get('bom/list', [BomController::class, 'list']);
+    $router->patch('bom/update/{id}', [BomController::class, 'update']);
+    $router->post('bom/create', [BomController::class, 'create']);
+    $router->delete('bom/delete/{id}', [BomController::class, 'delete']);
+    $router->post('boms/delete', [BomController::class, 'deleteMultiple']);
+    $router->get('bom/export', [BomController::class, 'exportLine']);
+    $router->post('bom/import', [BomController::class, 'importLine']);
+    $router->post('bom/save-all', [BomController::class, 'saveAll']);
 
 
     $router->get('update-du-lieu', [ApiMobileController::class, 'updateDuLieu']);
@@ -702,7 +703,7 @@ Route::group([
 
     Route::apiResource('maintenance-categories', MaintenanceCategoryController::class);
     Route::apiResource('maintenance-items', MaintenanceItemController::class);
-    
+
     $router->get('maintenance-plans/calendar-table', [MaintenancePlanController::class, 'calendarTable']);
     $router->get('maintenance-plans/detail/list', [MaintenancePlanController::class, 'detail']);
     $router->post('maintenance-plans/import', [MaintenanceScheduleController::class, 'import']);
