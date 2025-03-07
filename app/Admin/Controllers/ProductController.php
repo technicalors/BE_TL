@@ -13,6 +13,7 @@ use App\Models\Machine;
 use App\Models\MachinePriorityOrder;
 use App\Models\MachinePriorityOrderAttribute;
 use App\Models\MachinePriorityOrderAttributeValue;
+use App\Models\MachineProductionMode;
 use App\Models\Material;
 use App\Models\MaterialWastage;
 use App\Models\Product;
@@ -243,8 +244,6 @@ class ProductController extends Controller
         return back();
     }
 
-    private $spec_counter = 0;
-
     private function importSpec($currRow, $titleRow1, $titleRow2, $product)
     {
         $title = [];
@@ -305,12 +304,10 @@ class ProductController extends Controller
                     $input['product_id'] = $product->id;
                     $input['slug'] = Str::slug($input['name']);
                     $input['line_id'] = $id;
-                    $input['id'] = $this->spec_counter + 1;
                     $spec_data[] = $input;
                     if ($input['slug'] === 'so-bat' && $input['value']) {
                         $product->update(['so_bat' => $input['value']]);
                     }
-                    $this->spec_counter++;
                 }
             }
         }
@@ -344,31 +341,13 @@ class ProductController extends Controller
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
         $product_data = [];
         $material_data = [];
-        $bom_data = [];
-        $production_journeys_data = [];
-        $material_wastages_data = [];
-        $time_wastages_data = [];
-        $line_productivities_data = [];
-        $assigned_machine_personnels_data = [];
-        $line_standards_data = [];
-        $production_modes_data = [];
         $product = null;
         $material = null;
         $titleRow1 = $allDataInSheet[3];
         $titleRow2 = $allDataInSheet[4];
         try {
+            Spec::truncate();
             DB::beginTransaction();
-            Product::query()->delete();
-            Material::query()->delete();
-            Bom::query()->delete();
-            ProductionJourney::query()->delete();
-            MaterialWastage::query()->delete();
-            TimeWastage::query()->delete();
-            LineProductivity::query()->delete();
-            Spec::query()->delete();
-            // MachinePriorityOrder::query()->delete();
-            MachinePriorityOrderAttribute::query()->delete();
-            MachinePriorityOrderAttributeValue::query()->delete();
             foreach ($allDataInSheet as $index => $row) {
                 if ($index < 5) {
                     continue;
@@ -379,10 +358,6 @@ class ProductController extends Controller
                     $product = $this->importProduct(array_intersect_key($row, array_flip($this->product_columns)));
                     // $production_journey = ProductionJourney::create(['product_id' => $product->id], array_intersect_key($row, array_flip($this->production_journey_column)));
                     $this->importSpec($row, $titleRow1, $titleRow2, $product);
-                    $material_wastages_data = array_intersect_key($row, array_flip($this->material_wastage_columns));
-                    $time_wastages_data = array_intersect_key($row, array_flip($this->time_wastage_columns));
-                    $this->importMaterialWastages($material_wastages_data, $product->id);
-                    $this->importTimeWastages($time_wastages_data, $product->id);
                 }
                 if ($product) {
                     $this->importMachinePriorityOrder($row, $titleRow2, $product->id, $index);
@@ -391,20 +366,12 @@ class ProductController extends Controller
                 if (trim($row['I'])) {
                     $material = $this->importMaterial(array_intersect_key($row, array_flip($this->material_columns)));
                     if ($material && $product) {
-                        Bom::create(['product_id' => $product->id, 'material_id' => $row['I'], 'ratio' => $row['K'], 'priority' => $row['H']]);
+                        Bom::updateOrInsert(['product_id' => $product->id, 'material_id' => $row['I']], ['ratio' => $row['K'], 'priority' => $row['H']]);
                     }
                 }
                 if (trim($row['F'])) {
-                    Customer::updateOrCreate(['id' => $row['F']], ['name' => $row['G']]);
+                    Customer::updateOrInsert(['id' => $row['F']], ['name' => $row['G']]);
                 }
-                // $bom_data[] = array_intersect_key($row, array_flip($this->bom_columns));
-                // $production_journeys_data[] = array_intersect_key($row, array_flip($this->production_journey_column));
-                // $material_wastages_data[] = array_intersect_key($row, array_flip($this->material_wastage_columns));
-                // $time_wastages_data[] = array_intersect_key($row, array_flip($this->time_wastage_columns));
-                // $line_productivities_data[] = array_intersect_key($row, array_flip($this->line_productivity_columns));
-                // $assigned_machine_personnels_data[] = array_intersect_key($row, array_flip($this->assigned_machine_personnel_columns));
-                // $line_standards_data[] = array_intersect_key($row, array_flip($this->line_standard_columns));
-                // $production_modes_data[] = array_intersect_key($row, array_flip($this->production_mode_columns));
             }
             DB::commit();
         } catch (\Exception $th) {
@@ -437,7 +404,7 @@ class ProductController extends Controller
         $input['weight'] = $product_data['AO'];
         $input['paper_norm'] = $product_data['AP'];
         $product[] = $input;
-        $product = Product::firstOrCreate(['id' => $input['id']], $input);
+        $product = Product::updateOrCreate(['id' => $input['id']], $input);
         return $product;
     }
 
@@ -467,12 +434,7 @@ class ProductController extends Controller
         $input['meter_per_roll'] = $material_data['P'];
         $input['sheet_per_pallet'] = $material_data['Q'];
         if (!empty($input['id'])) {
-            $material = Material::find($input['id']);
-            if ($material) {
-                $material->update($input);
-            } else {
-                $material = Material::create($input);
-            }
+            $material = Material::updateOrInsert(['id'=>$input['id']], $input);
             return $material;
         }
         return null;
@@ -997,7 +959,6 @@ class ProductController extends Controller
 
     public function importMachinePriorityOrder($row, $title, $productId, $rowIndex)
     {
-        $machinePriorityOrderAttributeValues = [];
         $machinePriorityOrder = null;
         foreach ($row as $key => $value) {
             $line_id = null;
@@ -1014,9 +975,6 @@ class ProductController extends Controller
             } else if ($key === 'OB') {
                 $line_id = 26;
                 $machine_id = $value;
-            } else {
-                $line_id = null;
-                $machine_id = null;
             }
             if ($line_id && $machine_id) {
                 $check = Machine::where('code', $machine_id)->exists();
@@ -1024,7 +982,7 @@ class ProductController extends Controller
                     throw new Exception("Mã máy ở " . $key . $rowIndex . " không tồn tại", 404);
                 }
                 $previousMachinePriorityOrder = MachinePriorityOrder::where('product_id', $productId)->where('line_id', $line_id)->orderBy('priority', 'DESC')->first();
-                $machinePriorityOrder = MachinePriorityOrder::firstOrCreate([
+                $machinePriorityOrder = MachinePriorityOrder::updateOrInsert([
                     'product_id' => $productId,
                     'line_id' => $line_id,
                     'machine_id' => $machine_id,
@@ -1032,22 +990,19 @@ class ProductController extends Controller
                 [
                     'priority' => (int)($previousMachinePriorityOrder->priority ?? 0) + 1,
                 ]);
-            }
-            if ($machinePriorityOrder && trim($value)) {
-                $machinePriorityOrderAttribute = MachinePriorityOrderAttribute::firstOrCreate([
-                    'name' => $title[$key] ?? "",
-                    'slug' => Str::slug($title[$key] ?? ""),
-                ]);
-                if ($machinePriorityOrderAttribute) {
-                    $machinePriorityOrderAttributeValues[] = [
-                        'machine_priority_order_attribute_id' => $machinePriorityOrderAttribute->id,
-                        'machine_priority_order_id' => $machinePriorityOrder->id,
-                        'value' => $value
+                if ($machinePriorityOrder && trim($value)) {
+                    $machineProductionMode = [
+                        'product_id' => $productId,
+                        'machine_id' => $machine_id,
+                        'parameter_name' => $title[$key],
+                        'standard_value' => $value
                     ];
+                    MachineProductionMode::updateOrInsert($machineProductionMode);
                 }
             }
+            
         }
-        MachinePriorityOrderAttributeValue::insert($machinePriorityOrderAttributeValues);
+        
     }
 
     /**
