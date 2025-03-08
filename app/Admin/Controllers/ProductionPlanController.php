@@ -1438,7 +1438,7 @@ class ProductionPlanController extends AdminController
                 ];
             }
         }
-        $productionOrderPriorities = Losx::with('productionOrderHistory')->where('status', 1)->orderBy('priority', 'asc')->get();
+        $productionOrderPriorities = Losx::with('productionOrderHistory')->whereNotIn('id',$plans->pluck('lo_sx')->toArray())->where('status', 1)->orderBy('priority', 'asc')->get();
         foreach ($productionOrderPriorities as $productionOrderPriority) {
             $sortedHistories = $productionOrderPriority->productionOrderHistory->sortByDesc('updated_at');
             foreach ($sortedHistories as $key => $history) {
