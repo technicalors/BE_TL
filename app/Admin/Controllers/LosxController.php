@@ -15,7 +15,7 @@ class LosxController extends Controller
     use API;
     public function getPriorities(Request $request)
     {
-        $query = Losx::with('productionOrderHistory.line')->where('status', '<>', 2)->orderBy('priority', 'ASC');
+        $query = Losx::with('productionOrderHistory.line')->where('status', '<>', 2)->orderBy('status','ASC')->orderBy('priority', 'ASC');
         $total = $query->count();
         if (isset($request->page) && isset($request->pageSize)) {
             $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);
