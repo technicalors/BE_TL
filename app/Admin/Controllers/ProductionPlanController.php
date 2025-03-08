@@ -1343,7 +1343,7 @@ class ProductionPlanController extends AdminController
     {
         $productionPlans = [];
         $machine_load_factors = [];
-        $plans = ProductionPlan::where('ngay_sx', date('Y-m-d'))->get();
+        $plans = ProductionPlan::where('ngay_sx', date('Y-m-d'))->whereIn('status_plan',[ProductionPlan::STATUS_COMPLETED,ProductionPlan::STATUS_PENDING])->get();
         foreach ($plans as $plan) {
             $losx = Losx::find($plan->lo_sx);
             if ($losx->status != 1) {
