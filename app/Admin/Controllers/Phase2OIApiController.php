@@ -2590,6 +2590,7 @@ class Phase2OIApiController extends Controller
         $data['nguoi_qc'] = $user_qc->name ?? "";
         $data['tinh_trang_loi'] = implode(', ', $errors);
         $data['ghi_chu'] = $ghi_chu;
+        $data['machine_code'] = $infoCongDoan->machine_code;
         return $data;
     }
 
