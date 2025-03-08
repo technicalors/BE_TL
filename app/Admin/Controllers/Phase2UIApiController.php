@@ -15,6 +15,7 @@ use App\Models\InfoCongDoan;
 use App\Models\Line;
 use App\Models\Losx;
 use App\Models\Lot;
+use App\Models\LotErrorLog;
 use App\Models\LotPlan;
 use App\Models\Machine;
 use App\Models\MachineLog;
@@ -145,11 +146,13 @@ class Phase2UIApiController extends Controller
                     $user_pqc = $errorHistory->user->name;
                 }
             }
+            $so_dau_noi = LotErrorLog::where('lot_id', $item->lot_id)->where('machine_code', $item->machine_code)->where('line_id', $item->line_id)->count();
             $tm = [
                 "ngay_sx" => date('d/m/Y H:i:s', strtotime($item->created_at)),
                 'ca_sx' => $ca_sx,
                 'xuong' => 'Giấy',
                 "cong_doan" => $item->line->name,
+                "line_id" => $item->line_id,
                 "machine" => $item->machine_code ?? "",
                 "machine_id" => $item->machine_code ?? "",
                 "khach_hang" => $item->product->customer->name ?? "",
@@ -168,6 +171,7 @@ class Phase2UIApiController extends Controller
                 "thoi_gian_chay_san_luong" => number_format($d / 60, 2),
                 "sl_ng" => $sl_ng_pqc + $sl_ng_sxkt,
                 "sl_tem_vang" => $item->sl_tem_vang,
+                'so_dau_noi' => $so_dau_noi,
                 "sl_dau_ra_ok" => $item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang,
                 "ti_le_ng" => number_format($item->sl_dau_ra_hang_loat > 0 ? ($item->sl_ng / $item->sl_dau_ra_hang_loat) : 0, 2) * 100,
                 "sl_dau_ra_hang_loat" => $item->sl_dau_ra_hang_loat ?? 0,
@@ -298,6 +302,7 @@ class Phase2UIApiController extends Controller
                     $user_pqc = $errorHistory->user->name;
                 }
             }
+            $so_dau_noi = LotErrorLog::where('lot_id', $item->lot_id)->where('machine_code', $item->machine_code)->where('line_id', $item->line_id)->count();
             $tm = [
                 "stt" => $index + 1,
                 "ngay_sx" => date('d/m/Y H:i:s', strtotime($item->created_at)),
@@ -326,6 +331,7 @@ class Phase2UIApiController extends Controller
                 "sl_dau_ra_hang_loat" => $item->sl_dau_ra_hang_loat ?? 0,
                 "sl_dau_ra_ok" => $item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang,
                 "sl_tem_vang" => $item->sl_tem_vang,
+                'so_dau_noi' => $so_dau_noi,
                 "sl_ng" => $sl_ng_pqc + $sl_ng_sxkt,
                 "chenh_lech" => $item->sl_dau_vao_hang_loat - $item->sl_dau_ra_hang_loat,
                 "ty_le_dat" => $item->sl_dau_ra_hang_loat > 0 ? number_format(($item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang) / $item->sl_dau_ra_hang_loat) : '-',
@@ -368,7 +374,7 @@ class Phase2UIApiController extends Controller
             'Kế hoạch' => ['Thời gian bắt đầu', 'Thời gian kết thúc', 'Số lượng đầu vào', 'Số lượng đầu ra'],
             'Thực tế' => [
                 'Vào hàng' => ['Thời gian bắt đầu vào hàng', 'Thời gian kết thúc vào hàng', 'Số lượng đầu vào vào hàng', 'Số lượng đầu ra vào hàng'],
-                'Sản xuất sản lượng' => ['Thời gian bắt đầu sản xuất sản lượng', 'Thời gian kết thúc sản xuất sản lượng', 'Số lượng đầu vào thực tế', 'Số lượng đầu ra thực tế', 'Số lượng đầu ra OK', 'Số lượng tem vàng', 'Số lượng NG']
+                'Sản xuất sản lượng' => ['Thời gian bắt đầu sản xuất sản lượng', 'Thời gian kết thúc sản xuất sản lượng', 'Số lượng đầu vào thực tế', 'Số lượng đầu ra thực tế', 'Số lượng đầu ra OK', 'Số lượng tem vàng', 'Số dấu nối', 'Số lượng NG']
             ],
             'Chênh lệch',
             "tỷ lệ đạt",
@@ -545,7 +551,7 @@ class Phase2UIApiController extends Controller
             $P = ($sl_muc_tieu > 0 ? (int) number_format($sl_dau_ra / $sl_muc_tieu, 2) * 100 : 0);
             $OEE = number_format(($A * $P * $Q) / 10000, 2);
         } catch (\Throwable $th) {
-            
+
             Log::debug([$sl_dau_ra / $sl_muc_tieu]);
             throw $th;
         }
