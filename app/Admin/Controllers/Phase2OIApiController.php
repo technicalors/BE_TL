@@ -559,7 +559,7 @@ class Phase2OIApiController extends Controller
             ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
             ->orderBy('status_plan', 'DESC')
             ->orderBy('thoi_gian_bat_dau');
-            if (!$scannedLot) {
+            if ($scannedLot) {
                 $plan_query->where('product_id', $scannedLot->product_id);
             }
             $plan = $plan_query->first();
