@@ -12,7 +12,7 @@ class MaintenanceLog extends Model
     protected $fillable = [
         'maintenance_schedule_id',
         'log_date',
-        'remark',
+        'note',
         'result'
     ];
 

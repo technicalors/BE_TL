@@ -23,20 +23,27 @@ class MaintenanceLogController extends Controller
 
     public function store(Request $request)
     {
-        $maintenanceLog = MaintenanceLog::create($request->all());
-        return response()->json($maintenanceLog, 201);
+        $input = $request->all();
+        $maintenanceLog = MaintenanceLog::updateOrCreate(['maintenance_schedule_id' => $input['maintenance_schedule_id'], $input]);
+        return $this->success($maintenanceLog, 'Ghi nhận thành công');
     }
 
     public function update(Request $request, $id)
     {
+        $input = $request->all();
         $maintenanceLog = MaintenanceLog::findOrFail($id);
-        $maintenanceLog->update($request->all());
-        return response()->json($maintenanceLog, 200);
+        if(isset($input['complete']) && $input['complete'] === true){
+            $input['date'] = date('Y-m-d');
+            $input['result'] = 'OK';
+            $input['note'] = '';
+        }
+        $maintenanceLog->update($input);
+        return $this->success($maintenanceLog, 'Cập nhật thành công');
     }
 
     public function destroy($id)
     {
-        MaintenanceLog::destroy($id);
-        return response()->json(null, 204);
+        $maintenanceLog = MaintenanceLog::destroy($id);
+        return $this->success($maintenanceLog, 'Xoá thành công');
     }
 }

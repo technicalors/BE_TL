@@ -5998,7 +5998,7 @@ class ApiUIController extends AdminController
                 'start_date' => $schedule->maintenanceLog ? date('d/m/Y', strtotime($schedule->maintenanceLog->log_date)) : "",
                 'log' => $schedule->maintenanceLog ? $schedule->maintenanceLog : "",
                 'images' => $images,
-                'remark' => $schedule->maintenanceLog ? $schedule->maintenanceLog->remark : "",
+                'note' => $schedule->maintenanceLog ? $schedule->maintenanceLog->note : "",
                 'result' => $schedule->maintenanceLog ? $schedule->maintenanceLog->result : "",
             ];
         }
@@ -6053,7 +6053,7 @@ class ApiUIController extends AdminController
             'F' => 'planning_date',
             'G' => 'start_date',
             'H' => 'result',
-            'I' => 'remark',
+            'I' => 'note',
         ];
         foreach ($header as $key => $cell) {
             if (!is_array($cell)) {
@@ -6366,8 +6366,8 @@ class ApiUIController extends AdminController
         DB::beginTransaction();
         try {
             $productionPlan = ProductionPlan::find($id);
-            $tracking = Tracking::where('machine_id', $productionPlan->machine_id)->first();
-            if (!is_null($tracking->lot_id) && $request->status_plan == 3) {
+            $check = InfoCongDoan::where('plan_id', $productionPlan->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
+            if ($check && $request->status_plan == 3) {
                 return $this->failure([], 'Máy đang chạy không thể dừng');
             }
             ProductionPlan::find($id)->update(['status_plan' => $request->status_plan]);
