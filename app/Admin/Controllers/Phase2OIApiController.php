@@ -407,28 +407,31 @@ class Phase2OIApiController extends Controller
                 return $this->failure([], "Máy này đang sản xuất");
             }
         }
-        // $roll = RollMaterial::with(['material.products', 'warehouse_inventory'])->find($request->roll_id);
-        // if (!$roll) {
-        //     return $this->failure([], "Không tìm thấy cuộn");
-        // }
+        $roll = RollMaterial::with(['material.products', 'warehouse_inventory'])->find($request->roll_id);
+        if (!$roll) {
+            return $this->failure([], "Không tìm thấy cuộn");
+        }
         // if (!$roll->warehouse_inventory || $roll->warehouse_inventory->quantity <= 0) {
         //     return $this->failure([], "Cuộn đã quét rồi");
         // }
         // if (!$roll->material) {
         //     return $this->failure([], "Không tìm thấy NVL: " . ($roll->material_id ?? ""));
         // }
-        // $product_ids = $roll->material->products->pluck('id')->toArray() ?? [];
+        $product_ids = $roll->material->products->pluck('id')->toArray() ?? [];
         // if (count($product_ids) === 0) {
         //     return $this->failure([], "Không tìm thấy sản phẩm");
         // }
-        // $product_ids[] = $roll->material_id;
-        $plan = ProductionPlan::where('line_id', $machine->line_id)
+        $product_ids[] = $roll->material_id;
+        $plan_query = ProductionPlan::where('line_id', $machine->line_id)
             ->where('machine_id', $machine->code)
             ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
             ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
             ->orderBy('status_plan', 'DESC')
-            ->orderBy('thoi_gian_bat_dau')
-            ->first();
+            ->orderBy('thoi_gian_bat_dau');
+        if(count($product_ids) > 0){
+            $plan_query->whereIn('product_id', $product_ids);
+        }
+        $plan = $plan_query->first();
         if (!$plan) {
             return $this->failure([], 'Không tìm thấy KHSX');
         }
@@ -498,24 +501,25 @@ class Phase2OIApiController extends Controller
                 return $this->failure([], "Máy này đang sản xuất lot khác");
             }
         }
-        $plan = ProductionPlan::where('line_id', $machine->line_id)
-            ->where('machine_id', $machine->code)
-            ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
-            ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
-            ->orderBy('status_plan', 'DESC')
-            ->orderBy('thoi_gian_bat_dau')
-            ->first();
-        if (!$plan) {
-            return $this->failure([], 'Không tìm thấy KHSX');
-        }
         if ($machine->code != 'IN_8_MAU_01' && $machine->code != 'DC_1') {
             $scannedLot = Lot::find($request->scanned_lot);
             if (!$scannedLot) {
                 return $this->failure('', 'Không tìm thấy lot');
             }
-            $checkInfo = InfoCongDoan::where('input_lot_id', $request->scanned_lot)->first();
-            if ($checkInfo && $machine->line_id != 24) {
-                return $this->failure('', 'Lot đã được sử dụng');
+            // $checkInfo = InfoCongDoan::where('input_lot_id', $request->scanned_lot)->first();
+            // if ($checkInfo && $machine->line_id != 24) {
+            //     return $this->failure('', 'Lot đã được sử dụng');
+            // }
+            $plan = ProductionPlan::where('line_id', $machine->line_id)
+            ->where('machine_id', $machine->code)
+            ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
+            ->where('product_id', $scannedLot->product_id)
+            ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
+            ->orderBy('status_plan', 'DESC')
+            ->orderBy('thoi_gian_bat_dau')
+            ->first();
+            if (!$plan) {
+                return $this->failure([], 'Không tìm thấy KHSX');
             }
             $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $plan->product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
             $requestValue = $hanh_trinh_san_xuat[$request->line_id] ?? 0;
@@ -546,6 +550,21 @@ class Phase2OIApiController extends Controller
                         return $this->failure([$previousLineLot, $plan], 'Không khớp mã sản phẩm');
                     }
                 }
+            }
+        }else{
+            $scannedLot = Lot::find($request->scanned_lot);
+            $plan_query = ProductionPlan::where('line_id', $machine->line_id)
+            ->where('machine_id', $machine->code)
+            ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
+            ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
+            ->orderBy('status_plan', 'DESC')
+            ->orderBy('thoi_gian_bat_dau');
+            if (!$scannedLot) {
+                $plan_query->where('product_id', $scannedLot->product_id);
+            }
+            $plan = $plan_query->first();
+            if (!$plan) {
+                return $this->failure([], 'Không tìm thấy KHSX');
             }
         }
         try {

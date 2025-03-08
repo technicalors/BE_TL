@@ -366,11 +366,11 @@ class ProductController extends Controller
                 if (trim($row['I'])) {
                     $material = $this->importMaterial(array_intersect_key($row, array_flip($this->material_columns)));
                     if ($material && $product) {
-                        Bom::updateOrInsert(['product_id' => $product->id, 'material_id' => $row['I']], ['ratio' => $row['K'], 'priority' => $row['H']]);
+                        Bom::firstOrCreate(['product_id' => $product->id, 'material_id' => $row['I']], ['ratio' => $row['K'], 'priority' => $row['H']]);
                     }
                 }
                 if (trim($row['F'])) {
-                    Customer::updateOrInsert(['id' => $row['F']], ['name' => $row['G']]);
+                    Customer::firstOrCreate(['id' => $row['F']], ['name' => $row['G']]);
                 }
             }
             DB::commit();
@@ -404,7 +404,7 @@ class ProductController extends Controller
         $input['weight'] = $product_data['AO'];
         $input['paper_norm'] = $product_data['AP'];
         $product[] = $input;
-        $product = Product::updateOrCreate(['id' => $input['id']], $input);
+        $product = Product::firstOrCreate(['id' => $input['id']], $input);
         return $product;
     }
 
@@ -434,7 +434,7 @@ class ProductController extends Controller
         $input['meter_per_roll'] = $material_data['P'];
         $input['sheet_per_pallet'] = $material_data['Q'];
         if (!empty($input['id'])) {
-            $material = Material::updateOrInsert(['id'=>$input['id']], $input);
+            $material = Material::firstOrCreate(['id'=>$input['id']], $input);
             return $material;
         }
         return null;
@@ -982,7 +982,7 @@ class ProductController extends Controller
                     throw new Exception("Mã máy ở " . $key . $rowIndex . " không tồn tại", 404);
                 }
                 $previousMachinePriorityOrder = MachinePriorityOrder::where('product_id', $productId)->where('line_id', $line_id)->orderBy('priority', 'DESC')->first();
-                $machinePriorityOrder = MachinePriorityOrder::updateOrInsert([
+                $machinePriorityOrder = MachinePriorityOrder::firstOrCreate([
                     'product_id' => $productId,
                     'line_id' => $line_id,
                     'machine_id' => $machine_id,
@@ -997,7 +997,7 @@ class ProductController extends Controller
                         'parameter_name' => $title[$key],
                         'standard_value' => $value
                     ];
-                    MachineProductionMode::updateOrInsert($machineProductionMode);
+                    MachineProductionMode::firstOrCreate($machineProductionMode);
                 }
             }
             
