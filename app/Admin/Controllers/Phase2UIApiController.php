@@ -1774,24 +1774,9 @@ class Phase2UIApiController extends Controller
                 ),
             ),
         ];
-        $headerStyle = array_merge($centerStyle, [
-            'font' => ['bold' => true],
-            'fill' => [
-                'fillType' => Fill::FILL_SOLID,
-                'startColor' => array('argb' => 'EBF1DE')
-            ]
-        ]);
         $titleStyle = array_merge($centerStyle, [
             'font' => ['size' => 24, 'bold' => true],
         ]);
-        $border = [
-            'borders' => array(
-                'allBorders' => array(
-                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                    'color' => array('argb' => '000000'),
-                ),
-            ),
-        ];
         $sheet_index = 0;
         $lines = Line::where('factory_id', 2)->get();
         foreach ($input as $key => $value) {
@@ -1800,9 +1785,7 @@ class Phase2UIApiController extends Controller
             $sheet->getColumnDimension('A')->setWidth(20);
             //Tạo dữ liệu
             $tong_so_lot_kiem_tra = 0;
-            $so_lot_ok = 0;
             $so_lot_ng = 0;
-            $ty_le_ng = 0;
             $muc_tieu = 0;
             $range = [];
             $groupedData = [];
@@ -1874,19 +1857,23 @@ class Phase2UIApiController extends Controller
                     $date_key = $value['start']->copy()->format($value['key']);
                     $infoData = InfoCongDoan::whereHas('qcHistory', function ($query) use ($value) {
                         $query->whereBetween('created_at', [$value['start'], $value['end']]);
-                    })->where('line_id', $line->id)->with('qcHistory.testCriteriaHistories')->get();
+                    })->where('line_id', $line->id)->with('qcHistory.testCriteriaHistories')
+                    ->get()
+                    ->groupBy(function ($infoCongDoan) {
+                        return ($infoCongDoan->machine_code ?? "") . ($infoCongDoan->product_id ?? "") . Carbon::parse($infoCongDoan->qcHistory->created_at ?? null)->format('Y-m-d');
+                    });
                     $tong_so_lot_kiem_tra = count($infoData);
-                    $so_lot_ok = $tong_so_lot_kiem_tra;
                     $so_lot_ng = 0;
                     foreach ($infoData as $info) {
-                        $final_result = $info->qcHistory->testCriteriaHistories->pluck('result')->toArray();
-                        if (count($final_result) >= 3 && in_array('NG', $final_result)) {
-                            $so_lot_ng += 1;
-                            continue;
+                        foreach ($info as $key => $value) {
+                            $final_result = $value->qcHistory->testCriteriaHistories->pluck('result')->toArray();
+                            if (count($final_result) >= 3 && in_array('NG', $final_result)) {
+                                $so_lot_ng += 1;
+                                continue 2;
+                            }
                         }
+                        
                     }
-                    $so_lot_ok -= $so_lot_ng;
-                    $ty_le_ng = $tong_so_lot_kiem_tra ? number_format($so_lot_ng / $tong_so_lot_kiem_tra * 100, 2) : 0;
                     $colName = Coordinate::stringFromColumnIndex(2 + $index);
                     $rowIndex = $line_table_index + 1;
                     $data[] = [
