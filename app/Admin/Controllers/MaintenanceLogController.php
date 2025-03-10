@@ -5,6 +5,7 @@ namespace App\Admin\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\MaintenanceLog;
 use App\Traits\API;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class MaintenanceLogController extends Controller
@@ -24,7 +25,12 @@ class MaintenanceLogController extends Controller
     public function store(Request $request)
     {
         $input = $request->all();
-        $maintenanceLog = MaintenanceLog::updateOrCreate(['maintenance_schedule_id' => $input['maintenance_schedule_id']], $input);
+        if(isset($input['complete']) && $input['complete'] === true){
+            $input['date'] = Carbon::now();
+            $input['result'] = 'OK';
+            $input['note'] = '';
+        }
+        $maintenanceLog = MaintenanceLog::create($input);
         return $this->success($maintenanceLog, 'Ghi nhận thành công');
     }
 
