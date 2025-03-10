@@ -1049,17 +1049,20 @@ class Phase2OIApiController extends Controller
             $stt++;
             $errorLog = [];
             $index = 0;
+            $quantity = 0;
             foreach ($item->log ?? [] as $key => $value) {
                 $errorLog[] = [
                     'key' => $index,
                     'error_id' => $key,
                     'quantity' => $value,
                 ];
+                $quantity += $value;
                 $index++;
             }
             $errorList[] = [
                 'key' => $stt,
                 'stt' => $stt,
+                'quantity' => $quantity,
                 'date' => Carbon::parse($item->created_at)->format('d/m/Y H:i:s'),
                 'user_name' => CustomUser::find($item->user_id)->name ?? "",
                 'log' => $errorLog
@@ -1102,6 +1105,9 @@ class Phase2OIApiController extends Controller
         $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $machine->line->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
         if ($infoCongDoan) {
             try {
+                if(empty($request->log)){
+                    return $this->failure([], "Chưa nhập dấu nối");
+                }
                 DB::beginTransaction();
                 $log = LotErrorLog::create([
                     'lot_id' => $infoCongDoan->lot_id,
