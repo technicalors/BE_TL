@@ -147,7 +147,7 @@ class MaintenancePlanController extends Controller
                 'category_name' => $schedule->maintenanceItem->maintenanceCategory->name ?? "",
                 'category_id' => $schedule->maintenanceItem->maintenanceCategory->id ?? "",
                 'planning_date' => date('d/m/Y', strtotime($schedule->due_date)),
-                'start_date' => $schedule->maintenanceLog ? date('d/m/Y', strtotime($schedule->maintenanceLog->log_date)) : "",
+                'log_date' => $schedule->maintenanceLog ? $schedule->maintenanceLog->log_date : null,
                 'log_id' => $schedule->maintenanceLog->id ?? null,
                 'images' => $images,
                 'note' => $schedule->maintenanceLog ? $schedule->maintenanceLog->note : "",

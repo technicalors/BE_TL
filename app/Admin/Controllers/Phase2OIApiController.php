@@ -503,7 +503,7 @@ class Phase2OIApiController extends Controller
                 return $this->failure([], "Máy này đang sản xuất lot khác");
             }
         }
-        if ($machine->code != 'IN_8_MAU_01' && $machine->code != 'DC_1') {
+        if ($machine->code != 'IN_8_MAU_01') {
             $scannedLot = Lot::find($request->scanned_lot);
             if (!$scannedLot) {
                 return $this->failure('', 'Không tìm thấy lot');

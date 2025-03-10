@@ -24,7 +24,7 @@ class MaintenanceLogController extends Controller
     public function store(Request $request)
     {
         $input = $request->all();
-        $maintenanceLog = MaintenanceLog::updateOrCreate(['maintenance_schedule_id' => $input['maintenance_schedule_id'], $input]);
+        $maintenanceLog = MaintenanceLog::updateOrCreate(['maintenance_schedule_id' => $input['maintenance_schedule_id']], $input);
         return $this->success($maintenanceLog, 'Ghi nhận thành công');
     }
 
