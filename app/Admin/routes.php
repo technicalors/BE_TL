@@ -711,8 +711,10 @@ Route::group([
     
     Route::apiResource('maintenance-schedules', MaintenanceScheduleController::class);
     Route::apiResource('maintenance-logs', MaintenanceLogController::class);
+    $router->post('maintenance-log/complete-all', [MaintenanceLogController::class, 'completeAll']);
     Route::apiResource('maintenance-log-images', MaintenanceLogImageController::class);
     $router->post('maintenance-log-images/upload', [MaintenanceLogImageController::class, 'upload']);
+    
 
     $router->get('equipment/oee', [Phase2UIApiController::class, 'getOEEData']);
     $router->get('equipment/error-frequency', [Phase2UIApiController::class, 'getErrorFrequencyData']);

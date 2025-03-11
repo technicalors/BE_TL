@@ -26,9 +26,11 @@ class MaintenanceLogController extends Controller
     {
         $input = $request->all();
         if(isset($input['complete']) && $input['complete'] === true){
-            $input['date'] = Carbon::now();
+            $input['log_date'] = Carbon::now()->setTimezone('Asia/Ho_Chi_Minh');
             $input['result'] = 'OK';
             $input['note'] = '';
+        }else{
+            $input['log_date'] = Carbon::parse($input['log_date'])->setTimezone('Asia/Ho_Chi_Minh');
         }
         $maintenanceLog = MaintenanceLog::create($input);
         return $this->success($maintenanceLog, 'Ghi nhận thành công');
@@ -39,9 +41,11 @@ class MaintenanceLogController extends Controller
         $input = $request->all();
         $maintenanceLog = MaintenanceLog::findOrFail($id);
         if(isset($input['complete']) && $input['complete'] === true){
-            $input['date'] = date('Y-m-d');
+            $input['log_date'] = Carbon::now()->setTimezone('Asia/Ho_Chi_Minh');
             $input['result'] = 'OK';
             $input['note'] = '';
+        }else{
+            $input['log_date'] = Carbon::parse($input['log_date'])->setTimezone('Asia/Ho_Chi_Minh');
         }
         $maintenanceLog->update($input);
         return $this->success($maintenanceLog, 'Cập nhật thành công');
@@ -51,5 +55,16 @@ class MaintenanceLogController extends Controller
     {
         $maintenanceLog = MaintenanceLog::destroy($id);
         return $this->success($maintenanceLog, 'Xoá thành công');
+    }
+
+    public function completeAll(Request $request){
+        $input = $request->all();
+        foreach ($input['data'] as $key => $value) {
+            $log = MaintenanceLog::firstOrCreate(
+                ['maintenance_schedule_id' => $value['maintenance_schedule_id']],
+                ['log_date'=>Carbon::now()->setTimezone('Asia/Ho_Chi_Minh'), 'result' => 'OK', 'note' => ""]
+            );
+        }
+        return $this->success('');
     }
 }
