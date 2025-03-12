@@ -115,6 +115,7 @@ class TemplateController extends Controller
             'file' => 'required|mimes:xlsx',
         ]);
         DB::beginTransaction();
+        Template::query()->update(['status' => 1]);
         try {
             Excel::import(new TemplateImport, $request->file('file'));
             DB::commit();
