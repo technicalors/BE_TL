@@ -1078,7 +1078,7 @@ class Phase2OIApiController extends Controller
         if ($error) {
             return $this->success($error);
         } else {
-            return $this->failure([], "Không tìm thấy mã lỗi ở công đoạn này");
+            return $this->failure([], "Không tìm thấy mã lỗi");
         }
     }
 
@@ -2145,7 +2145,7 @@ class Phase2OIApiController extends Controller
         }
         if ($test["phan_dinh"] === 'Nhập số') {
             try {
-                $extractValues = $this->detect_format($spec->value);
+                $extractValues = $this->detect_format($spec->value, $product);
                 if ($extractValues) {
                     foreach ($extractValues as $key => $value) {
                         $test[$key] = $value;
@@ -2161,9 +2161,9 @@ class Phase2OIApiController extends Controller
         return $test;
     }
 
-    function detect_format($input)
+    function detect_format($input, $product = null)
     {
-        $input = str_replace([',', ' '], ['.', ''], $input);
+        $input = str_replace([',', ' ', ($product->name ?? '')], ['.', '', ''], $input);
 
         // Định dạng 1: '12.5+1.5/-1.25'
         $pattern1 = "/(-?\d+(\.\d+)?)([+-]\d+(\.\d+)?)?\/(-?\d+(\.\d+)?)/";
