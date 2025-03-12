@@ -1357,7 +1357,7 @@ class Phase2OIApiController extends Controller
                 return $value > $line->id;
             })->keys();
         if(count($nextLineIds)){
-            $next_line = Line::where('ordering', '>', $nextLineIds[0])->orderBy('ordering')->first();
+            $next_line = Line::find($nextLineIds[0]);
         }else{
             $next_line = null;
         }
