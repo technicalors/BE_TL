@@ -2093,7 +2093,7 @@ class Phase2UIApiController extends Controller
                 'ten_san_pham' => $qc_history->infoCongDoan->product->name ?? "",
                 'lo_sx' => $qc_history->infoCongDoan->lo_sx,
                 'lot_id' => $qc_history->infoCongDoan->lot_id,
-                'sl_dau_vao_hang_loat' => $qc_history->infoCongDoan->sl_dau_vao_hang_loat ?? 0,
+                'sl_dau_vao_hang_loat' => $qc_history->infoCongDoan->sl_dau_ra_hang_loat ?? 0,
                 'sl_dau_ra_ok' => ($qc_history->infoCongDoan->sl_dau_ra_hang_loat ?? 0) - ($qc_history->infoCongDoan->sl_tem_vang ?? 0) - ($qc_history->infoCongDoan->sl_ng ?? 0),
                 'sl_ng' => $qc_history->infoCongDoan->sl_ng ?? 0,
                 'sl_tem_vang' => $qc_history->infoCongDoan->sl_tem_vang ?? 0,

@@ -139,7 +139,7 @@ class MaintenancePlanController extends Controller
                     $images[] = [
                         'uid' => $image->id,
                         'name' => 'Pic' . ($imgIndex + 1) . '.png',
-                        'image_path' => $image->image_path,
+                        'url' => $image->image_path,
                         'status' =>  'done'
                     ];
                 }
