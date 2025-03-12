@@ -1352,9 +1352,10 @@ class Phase2OIApiController extends Controller
         $material = $infoCongDoan->material;
         $line = $infoCongDoan->line;
         $product_journey = Spec::where('product_id', $infoCongDoan->product_id)->where('slug', 'hanh-trinh-san-xuat')->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
+        $currnetLineIndex = $hanh_trinh_san_xuat[$request->line_id] ?? 0;
         $nextLineIds = collect($product_journey)
-            ->filter(function ($value, $lineId) use ($line) {
-                return $value > $line->id;
+            ->filter(function ($value, $lineId) use ($currnetLineIndex) {
+                return $value > $currnetLineIndex;
             })->keys();
             Log::debug([$product_journey, $nextLineIds]);
         if(count($nextLineIds) > 0){
