@@ -23,6 +23,7 @@ use App\Models\LotPlan;
 use App\Models\Machine;
 use App\Models\MachinePriorityOrder;
 use App\Models\MachineStatus;
+use App\Models\Material;
 use App\Models\OddBin;
 use App\Models\Product;
 use App\Models\ProductionOrderHistory;
@@ -331,7 +332,14 @@ class Phase2OIApiController extends Controller
         $infos = $info_query->get();
         foreach ($infos as $key => $info) {
             $plan = $info->plan;
-            $info->ten_sp = $info->product->name ?? "";
+            $product_name = $info->product->name ?? "";
+            if($info->line_id == 24){
+                $material = Material::find($info->product_id);
+                if($material){
+                    $product_name = $material->name ?? "";
+                }
+            }
+            $info->ten_sp = $product_name;
             $info->ma_hang = $info->product_id;
             $info->thoi_gian_bat_dau_kh = ($plan && $plan->thoi_gian_bat_dau) ? Carbon::parse($plan->thoi_gian_bat_dau)->format('d/m/Y H:i:s') : '';
             $info->thoi_gian_ket_thuc_kh = ($plan && $plan->thoi_gian_bat_dau) ? Carbon::parse($plan->thoi_gian_ket_thuc)->format('d/m/Y H:i:s') : '';
