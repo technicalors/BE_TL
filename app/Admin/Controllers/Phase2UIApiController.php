@@ -1246,14 +1246,14 @@ class Phase2UIApiController extends Controller
             if (count($qc_history->errorHistories ?? []) > 0) {
                 foreach (($qc_history->errorHistories ?? []) as $error) {
                     if (str_contains($error->error_id, 'NVL')) {
-                        if (!isset($data[$error->error_id . $date])) {
-                            $data[$error->error_id . $date] = [
+                        if (!isset($data[$error->error_id])) {
+                            $data[$error->error_id] = [
                                 'error' => $error->error_id,
-                                'date' => $date,
+                                // 'date' => $date,
                                 'value' => 0
                             ];
                         }
-                        $data[$error->error_id . $date]['value'] += $error->quantity;
+                        $data[$error->error_id]['value'] += $error->quantity;
                     }
                 }
             }
