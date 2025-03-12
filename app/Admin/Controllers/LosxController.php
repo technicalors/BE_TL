@@ -15,7 +15,23 @@ class LosxController extends Controller
     use API;
     public function getPriorities(Request $request)
     {
-        $query = Losx::with('productionOrderHistory.line')->where('status', '<>', 2)->orderBy('status','ASC')->orderBy('priority', 'ASC');
+        // Subquery: Lấy created_at mới nhất cho từng product_id
+
+        $sub = Losx::selectRaw('product_id, MAX(created_at) as latest_created_at')
+            ->groupBy('product_id');
+        if ($request->product_id) {
+            $sub->where('product_id', $request->product_id);
+        }
+        // Xây dựng query: gọi with() trên query builder trước khi get()
+        $query = Losx::with('productionOrderHistory.line')
+            ->select('Losx.*')
+            ->joinSub($sub, 'latest', function ($join) {
+                $join->on('Losx.product_id', '=', 'latest.product_id')
+                    ->on('Losx.created_at', '=', 'latest.latest_created_at');
+            })
+            ->orderByRaw("FIELD(status, 1, 3, 2)")
+            ->orderBy('priority', 'ASC');
+        // Lấy kết quả
         $total = $query->count();
         if (isset($request->page) && isset($request->pageSize)) {
             $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);
