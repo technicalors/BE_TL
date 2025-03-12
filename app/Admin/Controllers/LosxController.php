@@ -24,10 +24,10 @@ class LosxController extends Controller
         }
         // Xây dựng query: gọi with() trên query builder trước khi get()
         $query = Losx::with('productionOrderHistory.line')
-            ->select('Losx.*')
+            ->select('losx.*') // Sử dụng tên bảng "losx" theo định nghĩa trong model
             ->joinSub($sub, 'latest', function ($join) {
-                $join->on('Losx.product_id', '=', 'latest.product_id')
-                    ->on('Losx.created_at', '=', 'latest.latest_created_at');
+                $join->on('losx.product_id', '=', 'latest.product_id')
+                    ->on('losx.created_at', '=', 'latest.latest_created_at');
             })
             ->orderByRaw("FIELD(status, 1, 3, 2)")
             ->orderBy('priority', 'ASC');
