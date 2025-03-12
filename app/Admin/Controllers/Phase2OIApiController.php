@@ -1351,7 +1351,16 @@ class Phase2OIApiController extends Controller
         $product = $infoCongDoan->product;
         $material = $infoCongDoan->material;
         $line = $infoCongDoan->line;
-        $next_line = Line::where('ordering', '>', $line->ordering)->orderBy('ordering')->first();
+        $product_journey = Spec::where('product_id', $infoCongDoan->product_id)->where('slug', 'hanh-trinh-san-xuat')->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
+        $nextLineIds = collect($product_journey)
+            ->filter(function ($value, $lineId) use ($line) {
+                return $value > $line->id;
+            })->keys();
+        if(count($nextLineIds)){
+            $next_line = Line::where('ordering', '>', $nextLineIds[0])->orderBy('ordering')->first();
+        }else{
+            $next_line = null;
+        }
         $user = CustomUser::find($infoCongDoan->user_id ?? "");
         $lotErrorLog = LotErrorLog::where('lot_id', $request->lot_id)->orderBy('line_id')->get();
         $log = [];
