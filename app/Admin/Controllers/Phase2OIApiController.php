@@ -1356,7 +1356,8 @@ class Phase2OIApiController extends Controller
             ->filter(function ($value, $lineId) use ($line) {
                 return $value > $line->id;
             })->keys();
-        if(count($nextLineIds)){
+            Log::debug([$product_journey, $nextLineIds]);
+        if(count($nextLineIds) > 0){
             $next_line = Line::find($nextLineIds[0]);
         }else{
             $next_line = null;
