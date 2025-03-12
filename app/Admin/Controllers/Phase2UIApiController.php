@@ -1258,6 +1258,10 @@ class Phase2UIApiController extends Controller
                 }
             }
         }
+        $total = array_sum(array_column($data, 'value'));
+        foreach ($data as &$item) {
+            $item['value'] = ($total > 0) ? round(($item['value'] / $total) * 100, 2) : 0;
+        }
         return $data;
     }
 
