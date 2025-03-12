@@ -346,8 +346,8 @@ class ProductController extends Controller
         $titleRow1 = $allDataInSheet[3];
         $titleRow2 = $allDataInSheet[4];
         try {
-            Spec::truncate();
             DB::beginTransaction();
+            Spec::query()->delete();
             foreach ($allDataInSheet as $index => $row) {
                 if ($index < 5) {
                     continue;

@@ -15,6 +15,7 @@ use App\Models\InfoCongDoan;
 use App\Models\Line;
 use App\Models\Losx;
 use App\Models\Lot;
+use App\Models\LotErrorLog;
 use App\Models\LotPlan;
 use App\Models\Machine;
 use App\Models\MachineLog;
@@ -145,11 +146,13 @@ class Phase2UIApiController extends Controller
                     $user_pqc = $errorHistory->user->name;
                 }
             }
+            $so_dau_noi = LotErrorLog::where('lot_id', $item->lot_id)->where('machine_code', $item->machine_code)->where('line_id', $item->line_id)->count();
             $tm = [
                 "ngay_sx" => date('d/m/Y H:i:s', strtotime($item->created_at)),
                 'ca_sx' => $ca_sx,
                 'xuong' => 'Giấy',
                 "cong_doan" => $item->line->name,
+                "line_id" => $item->line_id,
                 "machine" => $item->machine_code ?? "",
                 "machine_id" => $item->machine_code ?? "",
                 "khach_hang" => $item->product->customer->name ?? "",
@@ -158,16 +161,17 @@ class Phase2UIApiController extends Controller
                 "material_id" => $item->product->material_id ?? '',
                 "lo_sx" => $item->lo_sx,
                 "lot_id" => $item->lot_id,
-                "thoi_gian_bat_dau_kh" => $item->lotPlan ? date('d/m/Y H:i:s', strtotime($item->lotPlan->start_time)) : '',
-                "thoi_gian_ket_thuc_kh" => $item->lotPlan ? date('d/m/Y H:i:s', strtotime($item->lotPlan->end_time)) : '',
-                "sl_dau_vao_kh" => $item->lotPlan->quantity ?? 0,
-                "sl_dau_ra_kh" => $item->lotPlan->quantity ?? 0,
+                "thoi_gian_bat_dau_kh" => $item->plan ? date('d/m/Y H:i:s', strtotime($item->plan->thoi_gian_bat_dau)) : '',
+                "thoi_gian_ket_thuc_kh" => $item->plan ? date('d/m/Y H:i:s', strtotime($item->plan->thoi_gian_ket_thuc)) : '',
+                "sl_dau_vao_kh" => $item->plan->sl_giao_sx ?? 0,
+                "sl_dau_ra_kh" => $item->plan->sl_giao_sx ?? 0,
                 "thoi_gian_bat_dau" => $item->thoi_gian_bat_dau ? date('d/m/Y H:i:s', strtotime($item->thoi_gian_bat_dau)) : '-',
                 "thoi_gian_bam_may" => $item->thoi_gian_bam_may ? date('d/m/Y H:i:s', strtotime($item->thoi_gian_bam_may)) : '-',
                 "thoi_gian_ket_thuc" => $item->thoi_gian_ket_thuc ? date('d/m/Y H:i:s', strtotime($item->thoi_gian_ket_thuc)) : '-',
                 "thoi_gian_chay_san_luong" => number_format($d / 60, 2),
                 "sl_ng" => $sl_ng_pqc + $sl_ng_sxkt,
                 "sl_tem_vang" => $item->sl_tem_vang,
+                'so_dau_noi' => $so_dau_noi,
                 "sl_dau_ra_ok" => $item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang,
                 "ti_le_ng" => number_format($item->sl_dau_ra_hang_loat > 0 ? ($item->sl_ng / $item->sl_dau_ra_hang_loat) : 0, 2) * 100,
                 "sl_dau_ra_hang_loat" => $item->sl_dau_ra_hang_loat ?? 0,
@@ -298,6 +302,7 @@ class Phase2UIApiController extends Controller
                     $user_pqc = $errorHistory->user->name;
                 }
             }
+            $so_dau_noi = LotErrorLog::where('lot_id', $item->lot_id)->where('machine_code', $item->machine_code)->where('line_id', $item->line_id)->count();
             $tm = [
                 "stt" => $index + 1,
                 "ngay_sx" => date('d/m/Y H:i:s', strtotime($item->created_at)),
@@ -312,10 +317,10 @@ class Phase2UIApiController extends Controller
                 "material_id" => $item->product->boms[0]->material_id ?? '',
                 "lo_sx" => $item->lo_sx,
                 "lot_id" => $item->lot_id,
-                "thoi_gian_bat_dau_kh" => $item->lotPlan ? date('d/m/Y H:i:s', strtotime($item->lotPlan->start_time)) : '',
-                "thoi_gian_ket_thuc_kh" => $item->lotPlan ? date('d/m/Y H:i:s', strtotime($item->lotPlan->end_time)) : '',
-                "sl_dau_vao_kh" => $item->lotPlan->quantity ?? 0,
-                "sl_dau_ra_kh" => $item->lotPlan->quantity ?? 0,
+                "thoi_gian_bat_dau_kh" => $item->plan ? date('d/m/Y H:i:s', strtotime($item->plan->thoi_gian_bat_dau)) : '',
+                "thoi_gian_ket_thuc_kh" => $item->plan ? date('d/m/Y H:i:s', strtotime($item->plan->thoi_gian_ket_thuc)) : '',
+                "sl_dau_vao_kh" => $item->plan->sl_giao_sx ?? 0,
+                "sl_dau_ra_kh" => $item->plan->sl_giao_sx ?? 0,
                 "thoi_gian_bat_dau_vao_hang" => $item->thoi_gian_bat_dau ? date('d/m/Y H:i:s', strtotime($item->thoi_gian_bat_dau)) : '-',
                 "thoi_gian_ket_thuc_vao_hang" => $item->thoi_gian_bam_may ? date('d/m/Y H:i:s', strtotime($item->thoi_gian_bam_may)) : '-',
                 "sl_dau_vao_chay_thu" => $item->sl_dau_vao_chay_thu ?? 0,
@@ -326,9 +331,10 @@ class Phase2UIApiController extends Controller
                 "sl_dau_ra_hang_loat" => $item->sl_dau_ra_hang_loat ?? 0,
                 "sl_dau_ra_ok" => $item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang,
                 "sl_tem_vang" => $item->sl_tem_vang,
+                'so_dau_noi' => $so_dau_noi,
                 "sl_ng" => $sl_ng_pqc + $sl_ng_sxkt,
                 "chenh_lech" => $item->sl_dau_vao_hang_loat - $item->sl_dau_ra_hang_loat,
-                "ty_le_dat" => $item->sl_dau_ra_hang_loat > 0 ? number_format(($item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang) / $item->sl_dau_ra_hang_loat) : '-',
+                "ty_le_dat" => $item->sl_dau_ra_hang_loat > 0 ? number_format(($item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang) / $item->sl_dau_ra_hang_loat * 100, 2) : '-',
                 "thoi_gian_chay_san_luong" => number_format($d / 60, 2),
                 "leadtime" => $item->thoi_gian_ket_thuc ? number_format((strtotime($item->thoi_gian_ket_thuc) - strtotime($item->thoi_gian_bat_dau)) / 3600, 2) : '-',
                 'dien_nang' => $item->powerM ? number_format($item->powerM) : '',
@@ -368,10 +374,10 @@ class Phase2UIApiController extends Controller
             'Kế hoạch' => ['Thời gian bắt đầu', 'Thời gian kết thúc', 'Số lượng đầu vào', 'Số lượng đầu ra'],
             'Thực tế' => [
                 'Vào hàng' => ['Thời gian bắt đầu vào hàng', 'Thời gian kết thúc vào hàng', 'Số lượng đầu vào vào hàng', 'Số lượng đầu ra vào hàng'],
-                'Sản xuất sản lượng' => ['Thời gian bắt đầu sản xuất sản lượng', 'Thời gian kết thúc sản xuất sản lượng', 'Số lượng đầu vào thực tế', 'Số lượng đầu ra thực tế', 'Số lượng đầu ra OK', 'Số lượng tem vàng', 'Số lượng NG']
+                'Sản xuất sản lượng' => ['Thời gian bắt đầu sản xuất sản lượng', 'Thời gian kết thúc sản xuất sản lượng', 'Số lượng đầu vào thực tế', 'Số lượng đầu ra thực tế', 'Số lượng đầu ra OK', 'Số lượng tem vàng', 'Số dấu nối', 'Số lượng NG']
             ],
             'Chênh lệch',
-            "tỷ lệ đạt",
+            "Tỷ lệ đạt",
             'T/T Thực tế (Phút)',
             'Leadtime',
             'Điện năng tiêu thụ',
@@ -545,7 +551,7 @@ class Phase2UIApiController extends Controller
             $P = ($sl_muc_tieu > 0 ? (int) number_format($sl_dau_ra / $sl_muc_tieu, 2) * 100 : 0);
             $OEE = number_format(($A * $P * $Q) / 10000, 2);
         } catch (\Throwable $th) {
-            
+
             Log::debug([$sl_dau_ra / $sl_muc_tieu]);
             throw $th;
         }
@@ -1768,24 +1774,9 @@ class Phase2UIApiController extends Controller
                 ),
             ),
         ];
-        $headerStyle = array_merge($centerStyle, [
-            'font' => ['bold' => true],
-            'fill' => [
-                'fillType' => Fill::FILL_SOLID,
-                'startColor' => array('argb' => 'EBF1DE')
-            ]
-        ]);
         $titleStyle = array_merge($centerStyle, [
             'font' => ['size' => 24, 'bold' => true],
         ]);
-        $border = [
-            'borders' => array(
-                'allBorders' => array(
-                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                    'color' => array('argb' => '000000'),
-                ),
-            ),
-        ];
         $sheet_index = 0;
         $lines = Line::where('factory_id', 2)->get();
         foreach ($input as $key => $value) {
@@ -1794,9 +1785,7 @@ class Phase2UIApiController extends Controller
             $sheet->getColumnDimension('A')->setWidth(20);
             //Tạo dữ liệu
             $tong_so_lot_kiem_tra = 0;
-            $so_lot_ok = 0;
             $so_lot_ng = 0;
-            $ty_le_ng = 0;
             $muc_tieu = 0;
             $range = [];
             $groupedData = [];
@@ -1868,19 +1857,23 @@ class Phase2UIApiController extends Controller
                     $date_key = $value['start']->copy()->format($value['key']);
                     $infoData = InfoCongDoan::whereHas('qcHistory', function ($query) use ($value) {
                         $query->whereBetween('created_at', [$value['start'], $value['end']]);
-                    })->where('line_id', $line->id)->with('qcHistory.testCriteriaHistories')->get();
+                    })->where('line_id', $line->id)->with('qcHistory.testCriteriaHistories')
+                    ->get()
+                    ->groupBy(function ($infoCongDoan) {
+                        return ($infoCongDoan->machine_code ?? "") . ($infoCongDoan->product_id ?? "") . Carbon::parse($infoCongDoan->qcHistory->created_at ?? null)->format('Y-m-d');
+                    });
                     $tong_so_lot_kiem_tra = count($infoData);
-                    $so_lot_ok = $tong_so_lot_kiem_tra;
                     $so_lot_ng = 0;
                     foreach ($infoData as $info) {
-                        $final_result = $info->qcHistory->testCriteriaHistories->pluck('result')->toArray();
-                        if (count($final_result) >= 3 && in_array('NG', $final_result)) {
-                            $so_lot_ng += 1;
-                            continue;
+                        foreach ($info as $key => $value) {
+                            $final_result = $value->qcHistory->testCriteriaHistories->pluck('result')->toArray();
+                            if (count($final_result) >= 3 && in_array('NG', $final_result)) {
+                                $so_lot_ng += 1;
+                                continue 2;
+                            }
                         }
+                        
                     }
-                    $so_lot_ok -= $so_lot_ng;
-                    $ty_le_ng = $tong_so_lot_kiem_tra ? number_format($so_lot_ng / $tong_so_lot_kiem_tra * 100, 2) : 0;
                     $colName = Coordinate::stringFromColumnIndex(2 + $index);
                     $rowIndex = $line_table_index + 1;
                     $data[] = [

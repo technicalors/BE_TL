@@ -172,7 +172,7 @@ class Phase2DBApiController extends Controller
                     ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
                     ->first();
                 $tm = [
-                    "cong_doan" => mb_strtoupper($plan->line->name, 'UTF-8'),
+                    "cong_doan" => mb_strtoupper($plan->line->name ?? "", 'UTF-8'),
                     'machine_code' => $machine->code,
                     'machine_name' => $machine->code,
                     "product" => $plan ? $plan->product->name : '',
@@ -181,7 +181,7 @@ class Phase2DBApiController extends Controller
                     // "sl_thuc_te" => $info->sl_dau_ra_hang_loat - $info->sl_ng,
                     "sl_thuc_te" => 0,
                     // "sl_muc_tieu" =>  $lotPlan->quantity ?? 0,
-                    "sl_muc_tieu" =>  $sumLotPlan ?? 0,
+                    "sl_muc_tieu" =>  0,
                     "ti_le_ng" => 0,
                     "ti_le_ht" => 0,
                     "status" => 0,

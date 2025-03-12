@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\MaintenancePlan;
 use App\Models\MaintenanceSchedule;
 use App\Traits\API;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class MaintenancePlanController extends Controller
@@ -25,7 +26,9 @@ class MaintenancePlanController extends Controller
                 $q->whereIn('line_id', $lineId);
             });
         }
-        $schedules = $query->get()->groupBy('machine_code');
+        $schedules = $query->get()->groupBy(function($item){
+            return $item->machine_code . date('Y-m-d', strtotime($item->due_date));
+        });
         $data = [];
         foreach ($schedules as $machine_code => $schedule) {
             $schedule->sortBy('due_date');
@@ -35,12 +38,13 @@ class MaintenancePlanController extends Controller
                 return $item->maintenanceLog->log_date;
             });
             $data[] = [
-                'machine_code' => $machine_code,
-                'machine_name' => $machine_code,
+                'machine_code' => $schedule[0]->machine_code ?? "",
+                'machine_name' => $schedule[0]->machine_code ?? "",
                 'line_name' => $schedule[0]->machine->line->name ?? "",
                 'item_number' => $schedule->count(),
                 'planning_date' => date('d/m/Y', strtotime($schedule[0]->due_date)),
-                'start_date' => isset($logs->first()->maintenanceLog) ? date('d/m/Y', strtotime($logs->first()->maintenanceLog->log_date)) : "",
+                'due_date' => $schedule[0]->due_date,
+                'log_date' => isset($logs->first()->maintenanceLog) ? date('d/m/Y', strtotime($logs->first()->maintenanceLog->log_date)) : "",
             ];
         }
         return $this->success($data);
@@ -114,13 +118,17 @@ class MaintenancePlanController extends Controller
     public function detail(Request $request)
     {
         $query = MaintenanceSchedule::with('machine.line', 'maintenancePlan', 'maintenanceItem.maintenanceCategory', 'maintenanceLog.maintenanceLogImages');
-        if(isset($request->date) && count($request->date) === 2) {
-            $query->whereDate('due_date', '>=', date('Y-m-d', strtotime($request->date[0])))->whereDate('due_date', '<=', date('Y-m-d', strtotime($request->date[1])));;
+        if(isset($request->due_date)){
+            $query->whereDate('due_date', Carbon::parse($request->due_date));
         }else{
-            $query->whereDate('due_date', now());
+            if(isset($request->date) && count($request->date) === 2) {
+                $query->whereDate('due_date', '>=', date('Y-m-d', strtotime($request->date[0])))->whereDate('due_date', '<=', date('Y-m-d', strtotime($request->date[1])));;
+            }else{
+                $query->whereDate('due_date', now());
+            }
         }
         if (isset($request->machine_code)) {
-            $query->whereIn('machine_code', $request->machine_code);
+            $query->where('machine_code', $request->machine_code);
         }
         $schedules = $query->get();
         $data = [];
@@ -147,7 +155,7 @@ class MaintenancePlanController extends Controller
                 'category_name' => $schedule->maintenanceItem->maintenanceCategory->name ?? "",
                 'category_id' => $schedule->maintenanceItem->maintenanceCategory->id ?? "",
                 'planning_date' => date('d/m/Y', strtotime($schedule->due_date)),
-                'start_date' => $schedule->maintenanceLog ? date('d/m/Y', strtotime($schedule->maintenanceLog->log_date)) : "",
+                'log_date' => $schedule->maintenanceLog ? $schedule->maintenanceLog->log_date : null,
                 'log_id' => $schedule->maintenanceLog->id ?? null,
                 'images' => $images,
                 'note' => $schedule->maintenanceLog ? $schedule->maintenanceLog->note : "",
