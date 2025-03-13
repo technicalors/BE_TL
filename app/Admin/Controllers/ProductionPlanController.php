@@ -1358,7 +1358,6 @@ class ProductionPlanController extends AdminController
                 $remainQuantityOrder = $productionOrderHistory->order_quantity - $productionOrderHistory->produced_quantity;
                 $efficiency = $this->getEfficiency($productionOrderHistory->product_id, $productionOrderHistory->line_id);
                 if ($efficiency <= 0) {
-                    continue;
                     throw new Exception("Không tìm thấy năng suất cho sản phẩm " . $productionOrderHistory->product_id . " và công đoạn " . $productionOrderHistory->line->name, 1);
                 }
                 $productionTime = ceil(($remainQuantityOrder / $efficiency) * 60) + $setupTime;
@@ -1450,7 +1449,6 @@ class ProductionPlanController extends AdminController
                 }
                 $efficiency = $this->getEfficiency($productionOrderPriority->product_id, $history->line_id);
                 if ($efficiency <= 0) {
-                    continue;
                     throw new Exception("Không tìm thấy năng suất cho sản phẩm " . $productionOrderPriority->product_id . " và công đoạn " . $history->line->name, 1);
                 }
                 $productionTime = ceil(($remainQuantityOrder / $efficiency) * 60) + $setupTime;
