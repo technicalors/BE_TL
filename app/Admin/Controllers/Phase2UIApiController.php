@@ -1246,17 +1246,21 @@ class Phase2UIApiController extends Controller
             if (count($qc_history->errorHistories ?? []) > 0) {
                 foreach (($qc_history->errorHistories ?? []) as $error) {
                     if (str_contains($error->error_id, 'NVL')) {
-                        if (!isset($data[$error->error_id . $date])) {
-                            $data[$error->error_id . $date] = [
+                        if (!isset($data[$error->error_id])) {
+                            $data[$error->error_id] = [
                                 'error' => $error->error_id,
-                                'date' => $date,
+                                // 'date' => $date,
                                 'value' => 0
                             ];
                         }
-                        $data[$error->error_id . $date]['value'] += $error->quantity;
+                        $data[$error->error_id]['value'] += $error->quantity;
                     }
                 }
             }
+        }
+        $total = array_sum(array_column($data, 'value'));
+        foreach ($data as &$item) {
+            $item['value'] = ($total > 0) ? round(($item['value'] / $total) * 100, 2) : 0;
         }
         return $data;
     }
@@ -2089,7 +2093,7 @@ class Phase2UIApiController extends Controller
                 'ten_san_pham' => $qc_history->infoCongDoan->product->name ?? "",
                 'lo_sx' => $qc_history->infoCongDoan->lo_sx,
                 'lot_id' => $qc_history->infoCongDoan->lot_id,
-                'sl_dau_vao_hang_loat' => $qc_history->infoCongDoan->sl_dau_vao_hang_loat ?? 0,
+                'sl_dau_vao_hang_loat' => $qc_history->infoCongDoan->sl_dau_ra_hang_loat ?? 0,
                 'sl_dau_ra_ok' => ($qc_history->infoCongDoan->sl_dau_ra_hang_loat ?? 0) - ($qc_history->infoCongDoan->sl_tem_vang ?? 0) - ($qc_history->infoCongDoan->sl_ng ?? 0),
                 'sl_ng' => $qc_history->infoCongDoan->sl_ng ?? 0,
                 'sl_tem_vang' => $qc_history->infoCongDoan->sl_tem_vang ?? 0,
