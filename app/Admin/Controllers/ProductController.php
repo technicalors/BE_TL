@@ -244,6 +244,8 @@ class ProductController extends Controller
         return back();
     }
 
+    private $specId = 1;
+
     private function importSpec($currRow, $titleRow1, $titleRow2, $product)
     {
         $title = [];
@@ -259,17 +261,23 @@ class ProductController extends Controller
             $line_id = [];
             if (in_array($key, $this->excelColumnRange("DW", "EU", "AD", "AR", "BC", "BL", "BU", "CF", "CP", "DB"))) {
                 $line_id = [24]; //Gap dan lien hoan
-            } else if (in_array($key, $this->excelColumnRange("GI", "HF", "AE", "AS", "BD", "BM", "BV", "CG", "CQ", "DC"))) {
+            } 
+            else if (in_array($key, $this->excelColumnRange("GI", "HF", "AE", "AS", "BD", "BM", "BV", "CG", "CQ", "DC"))) {
                 $line_id = [27]; //Dan liner
-            } else if (in_array($key, $this->excelColumnRange("EV", "GH", "AF", "AU", "BE", "BN", "BW", "CH", "CS", "DE"))) {
+            } 
+            else if (in_array($key, $this->excelColumnRange("EV", "GH", "AF", "AU", "BE", "BN", "BW", "CH", "CS", "DE"))) {
                 $line_id = [25]; //In flexo
-            } else if (in_array($key, $this->excelColumnRange("IF", "JO", "AI", "AY", "BH", "BQ", "BZ", "CK", "CW", "DG"))) {
+            } 
+            else if (in_array($key, $this->excelColumnRange("IF", "JY", "AI", "AY", "BH", "BQ", "BZ", "CK", "CW", "DG"))) {
                 $line_id = [26]; //Duc cat
-            } else if (in_array($key, $this->excelColumnRange("JP", "LI", "AN", "CD", "DA"))) {
+            } 
+            else if (in_array($key, $this->excelColumnRange("", "", "AN", "CD", "DA"))) {
                 $line_id = [29]; //Chon Phase2 
-            } else if (in_array($key, $this->excelColumnRange("LJ", "MA"))) {
-                $line_id = [30]; //OQC Phase2
-            } else if (in_array($key, $this->excelColumnRange("MB", "MF", "CE", "CO"))) {
+            } 
+            // else if (in_array($key, $this->excelColumnRange("LJ", "MA"))) {
+            //     $line_id = [30]; //OQC Phase2
+            // } 
+            else if (in_array($key, $this->excelColumnRange("JZ", "KD", "CE", "CO"))) {
                 $line_id = [24, 27, 25, 26, 29, 30];
             }
 
@@ -300,6 +308,7 @@ class ProductController extends Controller
                     } else {
                         $input['name'] = $title[$key];
                     }
+                    $input['id'] = $this->specId;
                     $input['value'] = $item;
                     $input['product_id'] = $product->id;
                     $input['slug'] = Str::slug($input['name']);
@@ -308,6 +317,7 @@ class ProductController extends Controller
                     if ($input['slug'] === 'so-bat' && $input['value']) {
                         $product->update(['so_bat' => $input['value']]);
                     }
+                    $this->specId += 1;
                 }
             }
         }
@@ -966,15 +976,18 @@ class ProductController extends Controller
             if ($key === 'MK') {
                 $line_id = 24;
                 $machine_id = $value;
-            } else if ($key === 'MQ') {
+            } else if ($key === 'KO') {
                 $line_id = 25;
                 $machine_id = $value;
-            } else if ($key === 'NR') {
+            } else if ($key === 'LP') {
                 $line_id = 27;
                 $machine_id = $value;
-            } else if ($key === 'OB') {
+            } else if ($key === 'LZ') {
                 $line_id = 26;
                 $machine_id = $value;
+            } else if ($key === 'ME'){
+                $line_id = '';
+                $machine_id = '';
             }
             if ($line_id && $machine_id) {
                 $check = Machine::where('code', $machine_id)->exists();

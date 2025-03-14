@@ -2059,6 +2059,7 @@ class Phase2OIApiController extends Controller
                 return [$product_id . $machine_code . $test_criteria_name => $info_lot_id];
             })
             ->toArray();
+        // return $list;
         foreach ($list as $item) {
 
             $chi_tieu_slug = Str::slug($item->chi_tieu);
@@ -2140,7 +2141,11 @@ class Phase2OIApiController extends Controller
         $approximate = "~";
         $fromTo = "-";
         $hang_muc = Str::slug($test->hang_muc);
+        $base_line_ids = $test->lines->pluck('id')->toArray();
         $reference = !empty($test->reference) ? explode(",", $test->reference) : [];
+        if(in_array(29, $base_line_ids) || in_array(30, $base_line_ids)){
+            $reference = array_merge($reference, [26]); //Nếu chỉ tiêu thuộc công đoạn Chọn hoặc OQC thì tham chiếu công đoạn Bế (Giai đoạn 2)
+        }
         $lines = array_merge($test->lines->pluck('id')->toArray(), $reference);
         $spec = Spec::whereIn("line_id", $lines)->where('slug', $hang_muc)->where("product_id", $product->id ?? "")->whereNotNull('name')->whereNotNull('value')->first();
         // if($test->chi_tieu === 'Đặc tính'){
