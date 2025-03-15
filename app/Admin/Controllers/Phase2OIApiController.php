@@ -2047,11 +2047,10 @@ class Phase2OIApiController extends Controller
             });
         }
         $qcHistories = $query->where('info_cong_doan_id', '!=', $infoCongDoan->id)->get();
-        $detailHistory = $qcHistories->map(function ($qcHistory) {
-            return $qcHistory->testCriteriaHistories->flatMap->testCriteriaDetailHistories ?? collect([]);
-        })
-            ->flatten()
-            ->mapWithKeys(function ($detailHistory) {
+        // return $qcHistories;
+        $detailHistories = TestCriteriaDetailHistory::whereHas('testCriteriaHistory', function($subQuery) use($qcHistories){
+            $subQuery->whereIn('q_c_history_id', $qcHistories->pluck('id')->toArray());
+        })->with('testCriteriaHistory.qcHistory.infoCongDoan')->get()->mapWithKeys(function ($detailHistory) {
                 $product_id = $detailHistory->testCriteriaHistory->qcHistory->infoCongDoan->product_id ?? null;
                 $machine_code = $detailHistory->testCriteriaHistory->qcHistory->infoCongDoan->machine_code ?? null;
                 $test_criteria_name = $detailHistory->testCriteria->hang_muc ?? null;
@@ -2059,7 +2058,7 @@ class Phase2OIApiController extends Controller
                 return [$product_id . $machine_code . $test_criteria_name => $info_lot_id];
             })
             ->toArray();
-        // return $list;
+        // return $detailHistories;
         foreach ($list as $item) {
 
             $chi_tieu_slug = Str::slug($item->chi_tieu);
@@ -2080,7 +2079,7 @@ class Phase2OIApiController extends Controller
                     //         $isExist = true;
                     //     }
                     // }
-                    if (isset($detailHistory[$infoCongDoan->product_id . $infoCongDoan->machine_code . $item->hang_muc])) {
+                    if (isset($detailHistories[$infoCongDoan->product_id . $infoCongDoan->machine_code . $item->hang_muc])) {
                         $isExist = true;
                     };
                     if ($isExist) {
