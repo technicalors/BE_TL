@@ -4521,8 +4521,8 @@ class ApiUIController extends AdminController
         $input = $request->all();
         $query = ProductionPlan::with('product', 'material', 'line')->orderBy('line_id', 'ASC')->orderBy('status_plan', 'ASC')->orderBy('thoi_gian_bat_dau', 'ASC');
         if (isset($input['date']) && count($input['date'])) {
-            $query->whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($input['date'][0])))
-                ->whereDate('ngay_sx', '<=', date('Y-m-d', strtotime($input['date'][1])));
+            $query->whereDate('thoi_gian_bat_dau', '>=', date('Y-m-d', strtotime($input['date'][0])))
+                ->whereDate('thoi_gian_bat_dau', '<=', date('Y-m-d', strtotime($input['date'][1])));
         }
         if (isset($input['line_id'])) {
             if (is_array($input['line_id'])) {
