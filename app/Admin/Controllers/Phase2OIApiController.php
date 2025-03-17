@@ -1901,6 +1901,7 @@ class Phase2OIApiController extends Controller
             $item['sl_ng'] = $infoCongDoan->sl_ng ?? 0;
             $item['qc_status'] = $value->eligible_to_end ?? 0;
             $item['status'] = $infoCongDoan->status ?? 0;
+            $item['sl_kh'] = $infoCongDoan->sl_dau_vao_hang_loat ?? 0;
             $data[] = $item;
         }
         return $this->success($data);
@@ -2129,7 +2130,7 @@ class Phase2OIApiController extends Controller
         }
         if ($counter >= 3) {
             $infoCongDoan->qcHistory && $infoCongDoan->qcHistory->update(['eligible_to_end' => 1]);
-            // $infoCongDoan->update(['sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_ng]);
+            $infoCongDoan->update(['sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_ng]);
         }
         return $this->success($data);
     }
