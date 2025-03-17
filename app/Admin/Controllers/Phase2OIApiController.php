@@ -2116,7 +2116,6 @@ class Phase2OIApiController extends Controller
         }
         $data = $this->filterTestCriteria($infoCongDoan);
         $criteria_type = ['kich-thuoc', 'dac-tinh', 'ngoai-quan'];
-        $counter = 0;
         foreach ($criteria_type as $key => $type) {
             $value = $data[$type] ?? [];
             if ((empty($data[$type]) || empty($value['data'])) && $infoCongDoan->qcHistory) {
@@ -2125,6 +2124,11 @@ class Phase2OIApiController extends Controller
                     ['result' => 'OK']
                 );
                 $data[$type] = ['data' => [], 'result' => 'OK'];
+            }
+        }
+        $counter = 0;
+        foreach ($data as $key => $value) {
+            if(isset($value['result']) && $value['result'] === 'OK'){
                 $counter++;
             }
         }
