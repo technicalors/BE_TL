@@ -3846,6 +3846,7 @@ class ApiMobileController extends AdminController
             $end_time = date('Y-m-d H:i:s', strtotime('+' . $productionTime . ' minutes', strtotime($input['thoi_gian_bat_dau'])));
             $times = ProductionPlanController::adjustShift($start_time, $end_time, $machineShifts);
             $model->thoi_gian_ket_thuc = $times['end_time'];
+            $model->ngay_sx = $input['thoi_gian_bat_dau'];
             $model->fill($input);
             $model->save();
             DB::commit();
