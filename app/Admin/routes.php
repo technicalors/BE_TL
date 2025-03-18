@@ -5,6 +5,7 @@ use App\Admin\Controllers\ApiUIController;
 use App\Admin\Controllers\BomController;
 use App\Admin\Controllers\CheckSheetApiController;
 use App\Admin\Controllers\ErrorMachineApiController;
+use App\Admin\Controllers\ErrorMachineController;
 use App\Admin\Controllers\ExcelHeaderController;
 use App\Admin\Controllers\ExportFileController;
 use App\Admin\Controllers\InfoCongDoanController;
@@ -821,6 +822,7 @@ Route::group([
 
     Route::apiResource('shift-breaks', ShiftBreakController::class);
     Route::apiResource('line-inventory', LineInventoryController::class);
+    Route::apiResource('error-machines', ErrorMachineController::class);
 });
 
 //OI

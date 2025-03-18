@@ -426,7 +426,8 @@ class ProductOrderController extends Controller
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
-            return $this->failure('', $th->getMessage());
+            // return $this->failure('', $th->getMessage());
+            throw $th;
         }
         return $this->success('', 'Cập nhật thành công');
     }

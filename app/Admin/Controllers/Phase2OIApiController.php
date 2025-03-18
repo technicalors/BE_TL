@@ -2540,7 +2540,7 @@ class Phase2OIApiController extends Controller
         if (!$line) {
             return $this->failure([], "Không tìm thấy công đoạn");
         }
-        $query = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->where('status', InfoCongDoan::STATUS_INPROGRESS);
+        $query = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id);
         $machine = Machine::where('code', $request->machine_code ?? null)->first();
         if ($machine) {
             $query->where('machine_code', $machine->code);
