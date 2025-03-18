@@ -41,12 +41,12 @@ class PowerConsumeController extends Controller
     public function dailyConsumption(Request $request)
     {
         $query = DailyPowerConsume::select(
-            'device_id',
+            'machine_code',
             DB::raw('DATE(`date`) as date'),
             DB::raw('HOUR(`date`) as hour'),
             DB::raw('SUM(`end_value` - `start_value`) as total_consumption')
         )
-            ->groupBy('device_id', DB::raw('DATE(`date`)'), DB::raw('HOUR(`date`)'))
+            ->groupBy('machine_code', DB::raw('DATE(`date`)'), DB::raw('HOUR(`date`)'))
             ->orderBy('date', 'asc')
             ->orderBy('hour', 'asc');
 
