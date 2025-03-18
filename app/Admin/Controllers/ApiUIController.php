@@ -6423,4 +6423,36 @@ class ApiUIController extends AdminController
         }
         return 'ok';
     }
+
+    public function getProductionMonitor(Request $request){
+        $input = $request->all();
+        $query = InfoCongDoan::where('line_id', '!=', 30)->orderBy('lo_sx');
+        if(isset($input['start_date']) && isset($input['end_date'])){
+            $query->whereDate('thoi_gian_bat_dau', '>=', $input['start_date'])->whereDate('thoi_gian_bat_dau', '<=', $input['end_date']);
+        }
+        if(isset($input['machine_code'])){
+            $query->where('machine_code', 'like', '%'.$input['machine_code'].'%');
+        }
+        if(isset($input['product_order_id'])){
+            $query->where('machine_code', $input['product_order_id']);
+        }
+        $result = $query->with('lo_sx')->get()->groupBy(function($item){
+            return $item->machine_code.$item->lo_sx;
+        });
+        $data = [];
+        foreach ($result as $key => $value) {
+            $info = isset($value[0]) ? $value[0] : null;
+            $row = [
+                'product_order_id' => $info->lo_sx->product_order_id ?? "",
+                'lo_sx' => $info->lo_sx,
+                'machine_code' => $info->machine_code,
+                'line_name' => $info->line->name,
+                'sum_san_luong' => $value->sum('sl_dau_ra_hang_loat'),
+                'sum_tem_vang' => $value->sum('sl_tem_vang'),
+                'sum_ng' => $value->sum('sl_ng'),
+                'producton_time' => '',
+            ];
+        }
+        return $this->success($result);
+    }
 }

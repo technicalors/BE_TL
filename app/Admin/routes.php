@@ -620,6 +620,7 @@ Route::group([
     $router->post('filter-file-to-plan', [ApiUIController::class, 'filterFileToPlan']);
     $router->post('random-info', [ApiUIController::class, 'randomInfo']);
     $router->get('/get-tracking-info-cong-doan', [ApiUIController::class, 'trackingProduction']);
+    $router->get('/production-monitor', [ApiUIController::class, 'getProductionMonitor']);
 
     $router->get('/machine-parameter-logs', [MaterialParameterLogController::class, 'index']);
     $router->put('/machine-parameter-logs', [MaterialParameterLogController::class, 'update']);
@@ -627,6 +628,7 @@ Route::group([
     $router->get('/delete-overtime-machine-log', [Phase2UIApiController::class, 'deleteOvertimeMachineLog']);
     $router->get('/clear-fake-data', [Phase2UIApiController::class, 'clearFakeData']);
     $router->get('/update-line-select-info', [Phase2UIApiController::class, 'updateLineSelectInfo']);
+
 });
 //Dashboard
 Route::group([
@@ -823,7 +825,7 @@ Route::group([
 
     Route::apiResource('shift-breaks', ShiftBreakController::class);
     Route::apiResource('line-inventory', LineInventoryController::class);
-    
+
     Route::apiResource('error-machines', ErrorMachineController::class);
     Route::post('error-machines/export', [ErrorMachineController::class, 'export']);
     Route::post('error-machines/import', [ErrorMachineController::class, 'import']);
