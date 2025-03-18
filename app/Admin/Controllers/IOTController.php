@@ -226,7 +226,7 @@ class IOTController extends AdminController
                 }
 
                 if (empty($powerDaily)) {
-                    $power = DailyPowerConsume::create([
+                    $powerDaily = DailyPowerConsume::create([
                         'device_id' => $request->device_id,
                         'machine_code' => $machine_code,
                         'start_value' => $request->value,
@@ -235,8 +235,8 @@ class IOTController extends AdminController
                     ]);
                 } else {
                     // Lưu bản ghi mới nhất mỗi phút
-                    if (Carbon::parse($power->updated_at)->diffInMinutes(Carbon::now()) >= 1) {
-                        if (Carbon::parse($power->updated_at)->diffInMinutes($power->created_at) >= 10) {
+                    if (Carbon::parse($powerDaily->updated_at)->diffInMinutes(Carbon::now()) >= 1) {
+                        if (Carbon::parse($powerDaily->updated_at)->diffInMinutes($powerDaily->created_at) >= 10) {
                             DailyPowerConsume::create([
                                 'device_id' => $request->device_id,
                                 'machine_code' => $machine_code,
@@ -245,8 +245,8 @@ class IOTController extends AdminController
                                 'date' => date('Y-m-d H:i:s'),
                             ]);
                         } else {
-                            $power->end_value = $request->value;
-                            $power->save();
+                            $powerDaily->end_value = $request->value;
+                            $powerDaily->save();
                         }
                     }
                 }
