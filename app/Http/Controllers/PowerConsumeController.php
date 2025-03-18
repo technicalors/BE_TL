@@ -32,7 +32,7 @@ class PowerConsumeController extends Controller
             $year = Carbon::parse($request->datetime)->format('Y');
             $query->whereMonth('date', $month)->whereYear('date', $year);
         }
-            
+
         $result = $query->get();
 
         return $this->success($result);
@@ -41,11 +41,14 @@ class PowerConsumeController extends Controller
     public function dailyConsumption(Request $request)
     {
         $query = DailyPowerConsume::select(
+            'device_id',
             DB::raw('DATE(`date`) as date'),
+            DB::raw('HOUR(`date`) as hour'),
             DB::raw('SUM(`end_value` - `start_value`) as total_consumption')
         )
-            ->groupBy(DB::raw('DATE(`date`)'))
-            ->orderBy('date', 'asc');
+            ->groupBy('device_id', DB::raw('DATE(`date`)'), DB::raw('HOUR(`date`)'))
+            ->orderBy('date', 'asc')
+            ->orderBy('hour', 'asc');
 
         if (isset($request->machine_code)) {
             $query->where('machine_code', $request->machine_code);
@@ -56,7 +59,7 @@ class PowerConsumeController extends Controller
             $year = Carbon::parse($request->datetime)->format('Y');
             $query->whereMonth('date', $month)->whereYear('date', $year);
         }
-            
+
         $result = $query->get();
 
         return $this->success($result);

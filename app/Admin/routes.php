@@ -751,6 +751,7 @@ Route::group([
     Route::post('fc-plants-import', [FcPlantController::class, 'import']);
 
     Route::get('monthly-consumption', [PowerConsumeController::class, 'monthlyConsumption']);
+    Route::get('daily-consumption', [PowerConsumeController::class, 'dailyConsumption']);
 
     Route::get('warehouse-export-plans', [WarehouseExportPlanController::class, 'index']);
     Route::post('warehouse-export-plans/update', [WarehouseExportPlanController::class, 'update']);
