@@ -987,7 +987,13 @@ class Phase2UIApiController extends Controller
             $Q = $tong_sl > 0 ? ($tong_sl_dat / $tong_sl) * 100 : 0;
             $P = ($uph && $tg_tsl >= 0) ? ($tong_sl / ($tg_tsl / 3600) / ($uph / count($info_cds))) * 100 : 0;
             $OEE = (int)round(($A * $Q * $P) / 10000);
-            $res[] = ['line' => $line->name, 'A' => $A, 'Q' => $Q, 'P' => $P, 'OEE' => $OEE];
+            $res[] = [
+                'line' => $line->name, 
+                'A' => $A > 100 ? 100 : $A, 
+                'Q' => $Q > 100 ? 100 : $Q, 
+                'P' => $P > 100 ? 100 : $P, 
+                'OEE' => $OEE > 100 ? 100 : $OEE
+            ];
         }
         return $this->success($res);
     }

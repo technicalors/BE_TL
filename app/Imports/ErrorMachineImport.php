@@ -51,7 +51,7 @@ class ErrorMachineImport implements ToCollection, WithHeadingRow, WithStartRow
     
             $error_machine = ErrorMachine::where('code', Str::slug($row['code']))->first();
             // Log::debug($error_machine);
-            if($error_machine){
+            if(!$error_machine){
                 $error_machine->update([
                     'type' => array_search(trim($row['type'] ?? ''), ErrorMachine::ERROR_TYPE) ?: null,
                     'line_id' => $line->id,
@@ -60,7 +60,7 @@ class ErrorMachineImport implements ToCollection, WithHeadingRow, WithStartRow
                     'khac_phuc' => trim($row['khac_phuc'] ?? ''),
                     'phong_ngua' => trim($row['phong_ngua'] ?? ''),
                 ]);
-                // Log::debug($error_machine);
+                Log::debug($error_machine);
             } else {
                 $error_machine = ErrorMachine::create([
                     'code' => Str::slug($row['code']),
@@ -71,7 +71,7 @@ class ErrorMachineImport implements ToCollection, WithHeadingRow, WithStartRow
                     'khac_phuc' => trim($row['khac_phuc'] ?? ''),
                     'phong_ngua' => trim($row['phong_ngua'] ?? ''),
                 ]);
-                Log::debug($error_machine);
+                // Log::debug($error_machine);
             }
             // ErrorMachine::updateOrCreate(
             //     ['code' => Str::slug($row['code'])],

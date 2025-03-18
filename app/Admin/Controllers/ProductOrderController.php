@@ -57,7 +57,6 @@ class ProductOrderController extends Controller
         $result = $query->with('product.materials.warehouse_inventories', 'customer', 'material', 'numberProductOrder')->get();
         $lines = Line::where("display", "1")
             ->where('factory_id', 2)
-            ->where('id', '!=', 29)
             ->orderBy('ordering', 'ASC')
             ->get();
         $except = ['kho-thanh-pham', 'oqc', 'iqc', 'kho-thanh-pham', 'kho-bao-on', 'u'];
