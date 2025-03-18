@@ -2,12 +2,17 @@
 
 namespace App\Admin\Controllers;
 
+use App\Exports\MasterData\ErrorMachineExport;
 use App\Http\Controllers\Controller;
+use App\Imports\ErrorMachineImport;
 use App\Models\Bom;
 use App\Models\ErrorMachine;
 use App\Traits\API;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ErrorMachineController extends Controller
 {
@@ -32,6 +37,17 @@ class ErrorMachineController extends Controller
             $value->type = ErrorMachine::ERROR_TYPE[$value->type];
         }
         return $this->success(['data' => $result, 'total' => $total]);
+    }
+
+    public function show($id)
+    {
+        $stamp = ErrorMachine::find($id);
+
+        if (!$stamp) {
+            return $this->success('', 'Error Machine not found');
+        }
+
+        return $this->success($stamp);
     }
 
     public function store(Request $request)
@@ -97,17 +113,37 @@ class ErrorMachineController extends Controller
         $request->validate([
             'file' => 'required|mimes:xlsx',
         ]);
-        // try {
-        //     Excel::import(new MoldsImport, $request->file('file'));
-        // } catch (\Exception $e) {
-        //     // Handle the exception and return an appropriate response
-        //     return $this->failure(['error' => $e->getMessage()], 'File import failed', 422);
-        // }
-        return $this->success('', 'Upload thành công');
+        try {
+            Excel::import(new ErrorMachineImport, $request->file('file'));
+            return $this->success('', 'Upload thành công');
+        } catch (\Exception $e) {
+            return $this->failure(['error' => $e->getMessage()], 'Upload thất bại', 422);
+        }
     }
 
     public function export(Request $request)
     {
-        return $this->success('', 'Export thành công');
+        # Set file path
+        $timestamp = date('YmdHi');
+        $file = "LoiMay_$timestamp.xlsx";
+        $filePath = "export/$file";
+        $result = Excel::store(new ErrorMachineExport(), $filePath, 'excel');
+
+        if (empty($result)) return $this->failure([], 'THAO TÁC THẤT BẠI', 500);
+        # Generate file base64
+        $fileContent = Storage::disk('excel')->get($filePath);
+        $fileType = File::mimeType(storage_path("app/excel/$filePath"));
+        $base64 = base64_encode($fileContent);
+        $fileBase64Uri = "data:$fileType;base64,$base64";
+
+        # Delete if needed
+        Storage::disk('excel')->delete($filePath);
+
+        # Return
+        return $this->success([
+            'file' => $file,
+            'type' => $fileType,
+            'data' => $fileBase64Uri,
+        ]);
     }
 }

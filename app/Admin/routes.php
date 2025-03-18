@@ -822,7 +822,10 @@ Route::group([
 
     Route::apiResource('shift-breaks', ShiftBreakController::class);
     Route::apiResource('line-inventory', LineInventoryController::class);
+    
     Route::apiResource('error-machines', ErrorMachineController::class);
+    Route::post('error-machines/export', [ErrorMachineController::class, 'export']);
+    Route::post('error-machines/import', [ErrorMachineController::class, 'import']);
 });
 
 //OI
