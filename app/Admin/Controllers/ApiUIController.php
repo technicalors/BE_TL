@@ -6436,14 +6436,14 @@ class ApiUIController extends AdminController
         if(isset($input['product_order_id'])){
             $query->where('machine_code', $input['product_order_id']);
         }
-        $result = $query->with('lo_sx')->get()->groupBy(function($item){
+        $result = $query->with('losx')->get()->groupBy(function($item){
             return $item->machine_code.$item->lo_sx;
         });
         $data = [];
         foreach ($result as $key => $value) {
             $info = isset($value[0]) ? $value[0] : null;
             $row = [
-                'product_order_id' => $info->lo_sx->product_order_id ?? "",
+                'product_order_id' => $info->losx->product_order_id ?? "",
                 'lo_sx' => $info->lo_sx,
                 'machine_code' => $info->machine_code,
                 'line_name' => $info->line->name,
@@ -6452,7 +6452,8 @@ class ApiUIController extends AdminController
                 'sum_ng' => $value->sum('sl_ng'),
                 'producton_time' => '',
             ];
+            $data[] = $row;
         }
-        return $this->success($result);
+        return $this->success($data);
     }
 }
