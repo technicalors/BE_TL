@@ -207,7 +207,7 @@ class IOTController extends AdminController
                 $machine = Machine::where('device_id', $request->device_id)->first();
                 $machine_code = $machine->code ?? null;
                 $power = PowerConsume::query()->where('device_id', $request->device_id)->whereDate('date', '=', date('Y-m-d'))->first();
-                $powerDaily = DailyPowerConsume::query()->where('device_id', $request->device_id)->whereDate('date', '=', date('Y-m-d'))->whereHour('date', '=', date('H'))->orderByDesc('updated_at')->first();
+                $powerDaily = DailyPowerConsume::query()->where('device_id', $request->device_id)->whereDate('date', '=', date('Y-m-d'))->orderByDesc('updated_at')->first();
 
                 if (empty($power)) {
                     $power = PowerConsume::create([
