@@ -14,6 +14,7 @@ use App\Models\MachineLog;
 use App\Models\MachineParameterLogs;
 use App\Models\MachineParameters;
 use App\Models\MachineStatus;
+use App\Models\Material;
 use App\Models\PowerConsume;
 use App\Models\ThongSoMay;
 use App\Models\Tracking;
@@ -40,6 +41,12 @@ class IOTController extends AdminController
         $status = MachineStatus::getStatus($machine->code);
         $info_cong_doan = InfoCongDoan::where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
         $sl_bat = $info_cong_doan->product->so_bat ?? 1;
+        if($info_cong_doan->line_id == 24){
+            $material = Material::with('products')->find($info_cong_doan->product_id);
+            if($material && count($material->products ?? []) === 1){
+                $sl_bat = $material->products[0]->so_bat ?? 1;
+            }
+        }
         $tracking = Tracking::getData($machine->code);
         if ($info_cong_doan) {
             $status = MachineStatus::getStatus($machine->code);
