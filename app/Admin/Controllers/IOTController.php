@@ -3,6 +3,7 @@
 namespace App\Admin\Controllers;
 
 use App\Events\ProductionUpdated;
+use App\Models\DailyPowerConsume;
 use App\Models\InfoCongDoan;
 use App\Models\IOTLog;
 use App\Models\LogWarningParameter;
@@ -206,6 +207,8 @@ class IOTController extends AdminController
                 $machine = Machine::where('device_id', $request->device_id)->first();
                 $machine_code = $machine->code ?? null;
                 $power = PowerConsume::query()->where('device_id', $request->device_id)->whereDate('date', '=', date('Y-m-d'))->first();
+                $powerDaily = DailyPowerConsume::query()->where('device_id', $request->device_id)->whereDate('date', '=', date('Y-m-d'))->whereHour('date', date('H'))->orderByDesc('updated_at')->first();
+
                 if (empty($power)) {
                     $power = PowerConsume::create([
                         'device_id' => $request->device_id,
@@ -219,6 +222,32 @@ class IOTController extends AdminController
                     if (Carbon::parse($power->updated_at)->diffInMinutes(Carbon::now()) >= 1) {
                         $power->end_value = $request->value;
                         $power->save();
+                    }
+                }
+
+                if (empty($powerDaily)) {
+                    $power = DailyPowerConsume::create([
+                        'device_id' => $request->device_id,
+                        'machine_code' => $machine_code,
+                        'start_value' => $request->value,
+                        'end_value' => $request->value,
+                        'date' => date('Y-m-d H:i:s'),
+                    ]);
+                } else {
+                    // Lưu bản ghi mới nhất mỗi phút
+                    if (Carbon::parse($power->updated_at)->diffInMinutes(Carbon::now()) >= 1) {
+                        if (Carbon::parse($power->updated_at)->diffInMinutes($power->created_at) >= 10) {
+                            DailyPowerConsume::create([
+                                'device_id' => $request->device_id,
+                                'machine_code' => $machine_code,
+                                'start_value' => $request->value,
+                                'end_value' => $request->value,
+                                'date' => date('Y-m-d H:i:s'),
+                            ]);
+                        } else {
+                            $power->end_value = $request->value;
+                            $power->save();
+                        }
                     }
                 }
                 return response()->json(['result' => $power, 'message' => 'Successfully'], 200);
