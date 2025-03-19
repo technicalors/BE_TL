@@ -2497,9 +2497,11 @@ class Phase2OIApiController extends Controller
         }
         try {
             DB::beginTransaction();
+            $sl_dau_ra = $infoCongDoan->sl_dau_ra_hang_loat;
+            $sl_ng = $infoCongDoan->sl_ng;
             $sl_tem_vang = $infoCongDoan->sl_tem_vang;
             $sl_tem_vang += $request->sl_tem_vang;
-            $sl_con_lai = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $sl_tem_vang;
+            $sl_con_lai = $sl_dau_ra - $sl_ng - $sl_tem_vang;
             if ($sl_con_lai < 0) {
                 return $this->failure([], "Số lượng Tem vàng vượt quá số lượng sản xuất");
             } elseif ($sl_con_lai > 0) {
