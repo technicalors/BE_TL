@@ -1821,14 +1821,14 @@ class Phase2OIApiController extends Controller
         if (!$infoCongDoan->thoi_gian_bam_may) {
             $infoCongDoan->update([
                 'thoi_gian_bam_may' => date('Y-m-d H:i:s'),
-                'sl_dau_vao_chay_thu' => $request->output,
-                'sl_dau_ra_chay_thu' => $request->output,
+                'sl_dau_vao_chay_thu' => $request->input ?? 0,
+                'sl_dau_ra_chay_thu' => $request->output ?? 0,
             ]);
             return $this->success('', 'Đã cập nhật sản lượng vào hàng');
         } else {
             $infoCongDoan->update([
-                'sl_dau_vao_hang_loat' => $request->output,
-                'sl_dau_ra_hang_loat' => $request->output,
+                'sl_dau_vao_hang_loat' => $request->input ?? 0,
+                'sl_dau_ra_hang_loat' => $request->output ?? 0,
             ]);
             return $this->success('', 'Đã cập nhật sản lượng sản xuất');
         }
@@ -2117,8 +2117,7 @@ class Phase2OIApiController extends Controller
         $data = $this->filterTestCriteria($infoCongDoan);
         $criteria_type = ['kich-thuoc', 'dac-tinh', 'ngoai-quan'];
         foreach ($criteria_type as $key => $type) {
-            $value = $data[$type] ?? [];
-            if ((empty($data[$type]) || empty($value['data'])) && $infoCongDoan->qcHistory) {
+            if ((empty($data[$type]) || empty($data[$type]['data'])) && $infoCongDoan->qcHistory) {
                 TestCriteriaHistory::firstOrCreate(
                     ['q_c_history_id' => $infoCongDoan->qcHistory->id, 'type' => $type, 'user_id' => $infoCongDoan->qcHistory->user_id],
                     ['result' => 'OK']

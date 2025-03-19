@@ -410,6 +410,7 @@ Route::group([
     $router->post('/upload-ke-hoach-xuat-kho', [ApiMobileController::class, 'uploadKHXK']);
     $router->get('/production-plan/list', [ApiUIController::class, 'getListProductionPlan']);
     $router->put('/production-plan/status-plan/{id}', [ApiUIController::class, 'updateStatusPlan']);
+    $router->post('/production-plan/update-status-from-oi', [ApiUIController::class, 'updateStatusPlanFromOI']);
     $router->get('/warehouse/list-export-plan', [ApiMobileController::class, 'getListWareHouseExportPlan']);
     $router->post('/upload-info-cong-doan', [Phase2UIApiController::class, 'uploadInfoCongDoan']);
     $router->post('/upload-warehouse-location', [Phase2UIApiController::class, 'uploadWarehouseLocation']);

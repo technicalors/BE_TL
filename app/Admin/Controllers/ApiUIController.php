@@ -4523,6 +4523,8 @@ class ApiUIController extends AdminController
         if (isset($input['date']) && count($input['date'])) {
             $query->whereDate('thoi_gian_bat_dau', '>=', date('Y-m-d', strtotime($input['date'][0])))
                 ->whereDate('thoi_gian_bat_dau', '<=', date('Y-m-d', strtotime($input['date'][1])));
+        } else {
+            $query->whereDate('thoi_gian_bat_dau', date('Y-m-d'));
         }
         if (isset($input['line_id'])) {
             if (is_array($input['line_id'])) {
@@ -4565,6 +4567,7 @@ class ApiUIController extends AdminController
         $list_query = $this->productionPlanQuery($request);
         $list = $list_query->get();
         foreach ($list as $plan) {
+            $spec = Spec::where('product_id', $plan->product_id)->where('line_id', $plan->line_id)->get();
             $plan->sl_ke_hoach_manh = $plan->sl_giao_sx;
             $plan->ten_san_pham = $plan->product->name ?? '';
             // if ($plan->line_id == 24) {
@@ -4577,6 +4580,20 @@ class ApiUIController extends AdminController
             $plan->kqsx = InfoCongDoan::where('line_id', $plan->line_id)->where('plan_id', $plan->id)->whereNotNull('thoi_gian_bat_dau')->sum('sl_dau_ra_hang_loat') -  InfoCongDoan::where('line_id', $plan->line_id)->where('plan_id', $plan->id)->whereNotNull('thoi_gian_bat_dau')->sum('sl_ng');
             // $plan->thoi_gian_ket_thuc = date('d/m/Y H:i:s', strtotime($plan->thoi_gian_ket_thuc));
             // $plan->thoi_gian_bat_dau =  date('d/m/Y H:i:s', strtotime($plan->thoi_gian_bat_dau));
+            $plan->uph_thuc_te = 0;
+            $plan->sl_dau_ra = $plan->infoCongDoan->sum('sl_dau_ra_hang_loat');
+            $plan->sl_ng = $plan->infoCongDoan->sum('sl_ng');
+            $plan->sl_tem_vang = $plan->infoCongDoan->sum('sl_tem_vang');
+            $plan->sl_dau_ra_ok = $plan->sl_dau_ra - $plan->sl_ng;
+            $hao_phi_sx = $spec->first(function ($record) {
+                return $record->name == 'Hao phí sản xuất các công đoạn (%)';
+            }) ?? null;
+            $plan->hao_phi_cong_doan = ($hao_phi_sx->value ?? 0) . '%';
+            // $hao_phi_vao_hang = $spec->first(function ($record) {
+            //     return $record->name == 'Hao phí vào hàng các công đoạn';
+            // }) ?? null;
+            $hao_phi = ($plan->sl_ng);
+            $plan->hao_phi = ($plan->sl_dau_ra_hang_loat ? round(($hao_phi / $plan->sl_dau_ra_hang_loat) * 100) : 0) . '%';
         }
         return $this->success($list);
     }
@@ -6366,11 +6383,36 @@ class ApiUIController extends AdminController
         DB::beginTransaction();
         try {
             $productionPlan = ProductionPlan::find($id);
-            $check = InfoCongDoan::where('plan_id', $productionPlan->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
-            if ($check && $request->status_plan == 3) {
-                return $this->failure([], 'Máy đang chạy không thể dừng');
+            // $check = InfoCongDoan::where('plan_id', $productionPlan->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
+            // if ($check && $request->status_plan == 3) {
+            //     return $this->failure([], 'Máy đang chạy không thể dừng');
+            // }
+            $productionPlan->update(['status_plan' => $request->status_plan]);
+            DB::commit();
+            return $this->success([], 'Thao tác thành công');
+        } catch (\Exception $e) {
+            Log::error($e->getMessage());
+            DB::rollBack();
+            return $this->failure(['msg' => $e->getMessage()], 'Thao tác thất bại');
+        }
+    }
+
+    function updateStatusPlanFromOI(Request $request)
+    {
+        $input = $request->all();
+        DB::beginTransaction();
+        try {
+            foreach ($input as $key => $value) {
+                $productionPlan = ProductionPlan::find($value['plan_id']);
+                $productionPlan->update(['status_plan' => $value['status_plan']]);
+                if ($productionPlan->status_plan === 3) {
+                    $current_info = InfoCongDoan::where('plan_id', $productionPlan->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
+                    if ($current_info) {
+                        $current_info->update(['status' => 2]);
+                        Tracking::where('lot_id', $current_info->lot_id)->where('machine_id', $current_info->machine_code)->update(['lot_id' => null, 'input' => 0, 'output' => 0]);
+                    }
+                }
             }
-            ProductionPlan::find($id)->update(['status_plan' => $request->status_plan]);
             DB::commit();
             return $this->success([], 'Thao tác thành công');
         } catch (\Exception $e) {
@@ -6424,20 +6466,25 @@ class ApiUIController extends AdminController
         return 'ok';
     }
 
-    public function getProductionMonitor(Request $request){
+    public function getProductionMonitor(Request $request)
+    {
         $input = $request->all();
         $query = InfoCongDoan::where('line_id', '!=', 30)->orderBy('lo_sx');
-        if(isset($input['start_date']) && isset($input['end_date'])){
+        if (isset($input['start_date']) && isset($input['end_date'])) {
             $query->whereDate('thoi_gian_bat_dau', '>=', $input['start_date'])->whereDate('thoi_gian_bat_dau', '<=', $input['end_date']);
+        } else {
+            $query->whereDate('thoi_gian_bat_dau', date('Y-m-d'));
         }
-        if(isset($input['machine_code'])){
-            $query->where('machine_code', 'like', '%'.$input['machine_code'].'%');
+        if (isset($input['machine_code'])) {
+            $query->where('machine_code', 'like', '%' . $input['machine_code'] . '%');
         }
-        if(isset($input['product_order_id'])){
-            $query->where('machine_code', $input['product_order_id']);
+        if (isset($input['product_order_id'])) {
+            $query->whereHas('losx', function ($q) use ($input) {
+                $q->where('product_order_id', 'like', '%' . $input['product_order_id'] . '%');
+            });
         }
-        $result = $query->with('losx')->get()->groupBy(function($item){
-            return $item->machine_code.$item->lo_sx;
+        $result = $query->with('losx')->get()->groupBy(function ($item) {
+            return $item->machine_code . $item->lo_sx;
         });
         $data = [];
         foreach ($result as $key => $value) {
