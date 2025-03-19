@@ -6484,12 +6484,13 @@ class ApiUIController extends AdminController
             });
         }
         $result = $query->with('losx')->get()->groupBy(function ($item) {
-            return $item->machine_code . $item->lo_sx;
+            return $item->machine_code . $item->lo_sx . $item->product_id;
         });
         $data = [];
         foreach ($result as $key => $value) {
             $info = isset($value[0]) ? $value[0] : null;
             $row = [
+                'product_name' => $info->product->name ?? "",
                 'product_order_id' => $info->losx->product_order_id ?? "",
                 'lo_sx' => $info->lo_sx,
                 'machine_code' => $info->machine_code,

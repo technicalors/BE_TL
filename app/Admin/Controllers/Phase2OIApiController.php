@@ -333,9 +333,9 @@ class Phase2OIApiController extends Controller
         foreach ($infos as $key => $info) {
             $plan = $info->plan;
             $product_name = $info->product->name ?? "";
-            if($info->line_id == 24){
+            if ($info->line_id == 24) {
                 $material = Material::find($info->product_id);
-                if($material){
+                if ($material) {
                     $product_name = $material->name ?? "";
                 }
             }
@@ -413,41 +413,40 @@ class Phase2OIApiController extends Controller
                     'output' => 0
                 ]);
             }
-            if ($tracking->lot_id) {
-                return $this->failure([], "Máy này đang sản xuất");
-            }
         }
-        $roll = RollMaterial::with(['material.products', 'warehouse_inventory'])->find($request->roll_id);
-        if (!$roll) {
-            return $this->failure([], "Không tìm thấy cuộn");
-        }
-        // if (!$roll->warehouse_inventory || $roll->warehouse_inventory->quantity <= 0) {
-        //     return $this->failure([], "Cuộn đã quét rồi");
-        // }
-        // if (!$roll->material) {
-        //     return $this->failure([], "Không tìm thấy NVL: " . ($roll->material_id ?? ""));
-        // }
-        $product_ids = $roll->material->products->pluck('id')->toArray() ?? [];
-        // if (count($product_ids) === 0) {
-        //     return $this->failure([], "Không tìm thấy sản phẩm");
-        // }
-        $product_ids[] = $roll->material_id;
-        $plan_query = ProductionPlan::where('line_id', $machine->line_id)
+        $plan = ProductionPlan::where('line_id', $machine->line_id)
             ->where('machine_id', $machine->code)
             ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
             ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
             ->orderBy('status_plan', 'DESC')
-            ->orderBy('thoi_gian_bat_dau');
-        if (count($product_ids) > 0) {
-            $plan_query->whereIn('product_id', $product_ids);
-        }
-        $plan = $plan_query->first();
+            ->orderBy('thoi_gian_bat_dau')
+            ->first();
         if (!$plan) {
             return $this->failure([], 'Không tìm thấy KHSX');
         }
-        // if (!in_array($plan->product_id, $product_ids)) {
-        //     return $this->failure([], "Mã cuộn không phù hợp");
-        // }
+        $checker = Bom::where('product_id', $plan->product_id)->whereColumn('product_id', '=', 'material_id')->get();
+        if (count($checker) === 0) {
+            $roll = RollMaterial::with(['material.products', 'warehouse_inventory'])->find($request->roll_id);
+            if (!$roll) {
+                return $this->failure([], "Không tìm thấy cuộn");
+            }
+            // if (!$roll->warehouse_inventory || $roll->warehouse_inventory->quantity <= 0) {
+            //     return $this->failure([], "Cuộn đã quét rồi");
+            // }
+            // if (!$roll->material) {
+            //     return $this->failure([], "Không tìm thấy NVL: " . ($roll->material_id ?? ""));
+            // }
+            $product_ids = $roll->material->products->pluck('id')->toArray() ?? [];
+            // if (count($product_ids) === 0) {
+            //     return $this->failure([], "Không tìm thấy sản phẩm");
+            // }
+            $product_ids[] = $roll->material_id;
+
+            if (!in_array($plan->product_id, $product_ids)) {
+                return $this->failure([], "Mã cuộn không phù hợp");
+            }
+        }
+
         try {
             DB::beginTransaction();
             if ($plan->status_plan == ProductionPlan::STATUS_PENDING) {
@@ -812,11 +811,12 @@ class Phase2OIApiController extends Controller
                 }
                 if ($infoCongDoan->plan) {
                     //Update ProductionOrderHistory and ProductionOrderPriority
-                    $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->where('component_id', $infoCongDoan->plan->product_id)->first();
-                    $producedInfoQuantity = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng;
+                    $allInfoOfLosx = InfoCongDoan::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->get();
+                    $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->where('component_id', $infoCongDoan->product_id)->first();
+                    $producedInfoQuantity = $allInfoOfLosx->sum('sl_dau_ra_hang_loat') - $allInfoOfLosx->sum('sl_ng');
                     if ($productionOrderHistory) {
                         $productionOrderHistory->update([
-                            'produced_quantity' => $productionOrderHistory->produced_quantity + $producedInfoQuantity,
+                            'produced_quantity' => $producedInfoQuantity,
                         ]);
                     }
 
@@ -834,7 +834,6 @@ class Phase2OIApiController extends Controller
                         'output' => 0
                     ]);
                 }
-                // $infoCongDoan->plan && $infoCongDoan->plan->update(['status_plan' => ProductionPlan::STATUS_COMPLETED]);
                 DB::commit();
                 return $this->success($this->formatTemTrang($infoCongDoan, $request), "Kết thúc sản xuất thành công");
             } catch (\Throwable $th) {
@@ -1113,7 +1112,7 @@ class Phase2OIApiController extends Controller
         $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $machine->line->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
         if ($infoCongDoan) {
             try {
-                if(empty($request->log)){
+                if (empty($request->log)) {
                     return $this->failure([], "Chưa nhập dấu nối");
                 }
                 DB::beginTransaction();
@@ -1366,9 +1365,9 @@ class Phase2OIApiController extends Controller
                 return $value > $currnetLineIndex;
             })->keys();
         Log::debug([$product_journey, $nextLineIds]);
-        if(count($nextLineIds) > 0){
+        if (count($nextLineIds) > 0) {
             $next_line = Line::find($nextLineIds[0]);
-        }else{
+        } else {
             $next_line = null;
         }
         $user = CustomUser::find($infoCongDoan->user_id ?? "");
@@ -1685,11 +1684,12 @@ class Phase2OIApiController extends Controller
             ]);
             if ($infoCongDoan->plan) {
                 //Update ProductionOrderHistory and ProductionOrderPriority
-                $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->where('component_id', $infoCongDoan->plan->product_id)->first();
-                $producedInfoQuantity = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng;
+                $allInfoOfLosx = InfoCongDoan::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->get();
+                $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->where('component_id', $infoCongDoan->product_id)->first();
+                $producedInfoQuantity = $allInfoOfLosx->sum('sl_dau_ra_hang_loat') - $allInfoOfLosx->sum('sl_ng');
                 if ($productionOrderHistory) {
                     $productionOrderHistory->update([
-                        'produced_quantity' => $productionOrderHistory->produced_quantity + $producedInfoQuantity,
+                        'produced_quantity' => $producedInfoQuantity,
                     ]);
                 }
 
@@ -2049,15 +2049,15 @@ class Phase2OIApiController extends Controller
         }
         $qcHistories = $query->where('info_cong_doan_id', '!=', $infoCongDoan->id)->get();
         // return $qcHistories;
-        $detailHistories = TestCriteriaDetailHistory::whereHas('testCriteriaHistory', function($subQuery) use($qcHistories){
+        $detailHistories = TestCriteriaDetailHistory::whereHas('testCriteriaHistory', function ($subQuery) use ($qcHistories) {
             $subQuery->whereIn('q_c_history_id', $qcHistories->pluck('id')->toArray());
         })->with('testCriteriaHistory.qcHistory.infoCongDoan')->get()->mapWithKeys(function ($detailHistory) {
-                $product_id = $detailHistory->testCriteriaHistory->qcHistory->infoCongDoan->product_id ?? null;
-                $machine_code = $detailHistory->testCriteriaHistory->qcHistory->infoCongDoan->machine_code ?? null;
-                $test_criteria_name = $detailHistory->testCriteria->hang_muc ?? null;
-                $info_lot_id = $detailHistory->testCriteriaHistory->qcHistory->infoCongDoan->lot_id ?? null;
-                return [$product_id . $machine_code . $test_criteria_name => $info_lot_id];
-            })
+            $product_id = $detailHistory->testCriteriaHistory->qcHistory->infoCongDoan->product_id ?? null;
+            $machine_code = $detailHistory->testCriteriaHistory->qcHistory->infoCongDoan->machine_code ?? null;
+            $test_criteria_name = $detailHistory->testCriteria->hang_muc ?? null;
+            $info_lot_id = $detailHistory->testCriteriaHistory->qcHistory->infoCongDoan->lot_id ?? null;
+            return [$product_id . $machine_code . $test_criteria_name => $info_lot_id];
+        })
             ->toArray();
         // return $detailHistories;
         foreach ($list as $item) {
@@ -2127,7 +2127,7 @@ class Phase2OIApiController extends Controller
         }
         $counter = 0;
         foreach ($data as $key => $value) {
-            if(isset($value['result']) && $value['result'] === 'OK'){
+            if (isset($value['result']) && $value['result'] === 'OK') {
                 $counter++;
             }
         }
@@ -2146,7 +2146,7 @@ class Phase2OIApiController extends Controller
         $hang_muc = Str::slug($test->hang_muc);
         $base_line_ids = $test->lines->pluck('id')->toArray();
         $reference = !empty($test->reference) ? explode(",", $test->reference) : [];
-        if(in_array(29, $base_line_ids) || in_array(30, $base_line_ids)){
+        if (in_array(29, $base_line_ids) || in_array(30, $base_line_ids)) {
             $reference = array_merge($reference, [26]); //Nếu chỉ tiêu thuộc công đoạn Chọn hoặc OQC thì tham chiếu công đoạn Bế (Giai đoạn 2)
         }
         $lines = array_merge($test->lines->pluck('id')->toArray(), $reference);
