@@ -34,7 +34,7 @@ class ErrorMachineController extends Controller
         $query->with('line');
         $result = $query->get();
         foreach ($result as $key => $value) {
-            $value->type = ErrorMachine::ERROR_TYPE[$value->type];
+            $value->type = ErrorMachine::ERROR_TYPE[$value->type] ?? "";
         }
         return $this->success(['data' => $result, 'total' => $total]);
     }
