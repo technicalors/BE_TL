@@ -983,16 +983,17 @@ class Phase2UIApiController extends Controller
                 $tong_sl_dat += $info->sl_dau_ra_hang_loat - $info->sl_ng;
                 $uph += $plan ? $plan->UPH : 0;
             }
-            $A = $tong_tg > 0 ? ($tg_tsl / $tong_tg) * 100 : 0;
-            $Q = $tong_sl > 0 ? ($tong_sl_dat / $tong_sl) * 100 : 0;
-            $P = ($uph && $tg_tsl >= 0) ? ($tong_sl / ($tg_tsl / 3600) / ($uph / count($info_cds))) * 100 : 0;
+            $A = $tong_tg > 0 ? round(($tg_tsl / $tong_tg) * 100) : 0;
+            $Q = $tong_sl > 0 ? round(($tong_sl_dat / $tong_sl) * 100) : 0;
+            $P = ($uph && $tg_tsl >= 0) ? round(($tong_sl / ($tg_tsl / 3600) / ($uph / count($info_cds))) * 100) : 0;
             $OEE = (int)round(($A * $Q * $P) / 10000);
+
             $res[] = [
                 'line' => $line->name, 
-                'A' => $A > 100 ? 100 : $A, 
-                'Q' => $Q > 100 ? 100 : $Q, 
-                'P' => $P > 100 ? 100 : $P, 
-                'OEE' => $OEE > 100 ? 100 : $OEE
+                'A' => min(100, $A), 
+                'Q' => min(100, $Q), 
+                'P' => min(100, $P), 
+                'OEE' => min(100, $OEE)
             ];
         }
         return $this->success($res);
