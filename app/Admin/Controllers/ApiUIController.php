@@ -6483,6 +6483,11 @@ class ApiUIController extends AdminController
                 $q->where('product_order_id', 'like', '%' . $input['product_order_id'] . '%');
             });
         }
+        if (isset($input['product_name'])) {
+            $query->whereHas('product', function ($q) use ($input) {
+                $q->where('name', 'like', '%' . $input['product_name'] . '%');
+            });
+        }
         $result = $query->with('losx')->get()->groupBy(function ($item) {
             return $item->machine_code . $item->lo_sx . $item->product_id;
         });

@@ -1814,7 +1814,8 @@ class Phase2OIApiController extends Controller
         }
         if ($request->line_id == 29) {
             $infoCongDoan->update([
-                'sl_dau_ra_hang_loat' => $request->output,
+                'sl_dau_vao_hang_loat' => $request->input ?? 0,
+                'sl_dau_ra_hang_loat' => $request->output ?? 0,
             ]);
             return $this->success('', 'Đã cập nhật sản lượng sản xuất');
         }
