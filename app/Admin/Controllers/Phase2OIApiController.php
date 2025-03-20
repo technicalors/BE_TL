@@ -503,7 +503,7 @@ class Phase2OIApiController extends Controller
                 return $this->failure([], "Chưa nhập kiểm tra checksheet");
             }
             $tracking = Tracking::where('machine_id', $machine->code)->first();
-            if (!$tracking) {
+            if ($machine->is_iot == 1 && !$tracking) {
                 return $this->failure([], "Máy này chưa được sử dụng");
             }
             if ($tracking->lot_id && $tracking->lot_id !== $request->lot_id) {
@@ -741,7 +741,7 @@ class Phase2OIApiController extends Controller
             return $this->failure([], "Không tìm thấy máy");
         }
         $tracking = Tracking::where('machine_id', $machine->code)->first();
-        if (!$tracking && $machine->is_iot == 1) {
+        if ($machine->is_iot == 1 && !$tracking) {
             return $this->failure([], "Máy này chưa được sử dụng");
         }
         $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
@@ -954,7 +954,7 @@ class Phase2OIApiController extends Controller
                 return $this->failure([], "Chưa nhập kiểm tra checksheet");
             }
             $tracking = Tracking::where('machine_id', $machine->code)->first();
-            if (!$tracking) {
+            if ($machine->is_iot == 1 && !$tracking) {
                 return $this->failure([], "Máy này chưa được sử dụng");
             }
             if ($tracking->lot_id && $tracking->lot_id !== $request->lot_id) {
@@ -1106,7 +1106,7 @@ class Phase2OIApiController extends Controller
             return $this->failure([], "Không tìm thấy máy");
         }
         $tracking = Tracking::where('machine_id', $machine->code)->first();
-        if (!$tracking) {
+        if ($machine->is_iot == 1 && !$tracking) {
             return $this->failure([], "Máy này chưa được sử dụng");
         }
         $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $machine->line->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
@@ -1193,7 +1193,7 @@ class Phase2OIApiController extends Controller
             return $this->failure([], "Không tìm thấy máy");
         }
         $tracking = Tracking::where('machine_id', $machine->code)->first();
-        if (!$tracking && $machine->is_iot == 1) {
+        if ($machine->is_iot == 1 && !$tracking) {
             return $this->failure([], "Máy này chưa được sử dụng");
         }
         $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
