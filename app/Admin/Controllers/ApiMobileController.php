@@ -4387,7 +4387,7 @@ class ApiMobileController extends AdminController
     {
         $input = $request->all();
         foreach ($input as $key => $value) {
-            $product = Product::where('name', $key)->first();
+            $product = Product::where('id', $key)->first();
             if ($product && is_numeric($value)) {
                 $inventory = Inventory::where('product_id', $product->id)->first();
                 if (!$inventory) {
