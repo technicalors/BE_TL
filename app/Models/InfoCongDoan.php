@@ -173,4 +173,8 @@ class InfoCongDoan extends Model
     {
         return $this->hasMany(Assignment::class, 'lot_id', 'lot_id');
     }
+    public function losx()
+    {
+        return $this->belongsTo(Losx::class, 'lo_sx', 'id');
+    }
 }

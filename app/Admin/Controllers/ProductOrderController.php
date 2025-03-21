@@ -45,7 +45,10 @@ class ProductOrderController extends Controller
             $query->where('product_id', 'like', "%$request->product_id%");
         }
         if (isset($request->khach_hang)) {
-            $query->where('customer_id', 'like', "%$request->customer_id%");
+            $query->where('customer_id', 'like', "%$request->khach_hang%");
+        }
+        if (isset($request->customer_id)) {
+            $query->where('customer_id', $request->customer_id);
         }
         $total = $query->count();
         if (isset($request->page) && isset($request->pageSize)) {
@@ -57,7 +60,6 @@ class ProductOrderController extends Controller
         $result = $query->with('product.materials.warehouse_inventories', 'customer', 'material', 'numberProductOrder')->get();
         $lines = Line::where("display", "1")
             ->where('factory_id', 2)
-            ->where('id', '!=', 29)
             ->orderBy('ordering', 'ASC')
             ->get();
         $except = ['kho-thanh-pham', 'oqc', 'iqc', 'kho-thanh-pham', 'kho-bao-on', 'u'];
@@ -94,6 +96,7 @@ class ProductOrderController extends Controller
             $value->ton_kho_nvl = $value->product->materials->sum(function ($material) {
                 return $material->warehouse_inventories->sum('quantity') ?? 0;
             });
+            $value->customer_name = $value->customer->name ?? '';
         }
         return $this->success(['data' => $result, 'total' => $total]);
     }

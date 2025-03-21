@@ -3,6 +3,7 @@
 namespace App\Admin\Controllers;
 
 use App\Events\ProductionUpdated;
+use App\Models\DailyPowerConsume;
 use App\Models\InfoCongDoan;
 use App\Models\IOTLog;
 use App\Models\LogWarningParameter;
@@ -13,6 +14,7 @@ use App\Models\MachineLog;
 use App\Models\MachineParameterLogs;
 use App\Models\MachineParameters;
 use App\Models\MachineStatus;
+use App\Models\Material;
 use App\Models\PowerConsume;
 use App\Models\ThongSoMay;
 use App\Models\Tracking;
@@ -39,6 +41,12 @@ class IOTController extends AdminController
         $status = MachineStatus::getStatus($machine->code);
         $info_cong_doan = InfoCongDoan::where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
         $sl_bat = $info_cong_doan->product->so_bat ?? 1;
+        if($info_cong_doan->line_id == 24){
+            $material = Material::with('products')->find($info_cong_doan->product_id);
+            if($material && count($material->products ?? []) === 1){
+                $sl_bat = $material->products[0]->so_bat ?? 1;
+            }
+        }
         $tracking = Tracking::getData($machine->code);
         if ($info_cong_doan) {
             $status = MachineStatus::getStatus($machine->code);
@@ -206,6 +214,8 @@ class IOTController extends AdminController
                 $machine = Machine::where('device_id', $request->device_id)->first();
                 $machine_code = $machine->code ?? null;
                 $power = PowerConsume::query()->where('device_id', $request->device_id)->whereDate('date', '=', date('Y-m-d'))->first();
+                $powerDaily = DailyPowerConsume::query()->where('device_id', $request->device_id)->whereDate('date', '=', date('Y-m-d'))->orderByDesc('updated_at')->first();
+
                 if (empty($power)) {
                     $power = PowerConsume::create([
                         'device_id' => $request->device_id,
@@ -219,6 +229,32 @@ class IOTController extends AdminController
                     if (Carbon::parse($power->updated_at)->diffInMinutes(Carbon::now()) >= 1) {
                         $power->end_value = $request->value;
                         $power->save();
+                    }
+                }
+
+                if (empty($powerDaily)) {
+                    $powerDaily = DailyPowerConsume::create([
+                        'device_id' => $request->device_id,
+                        'machine_code' => $machine_code,
+                        'start_value' => $request->value,
+                        'end_value' => $request->value,
+                        'date' => date('Y-m-d H:i:s'),
+                    ]);
+                } else {
+                    // Lưu bản ghi mới nhất mỗi phút
+                    if (Carbon::parse($powerDaily->updated_at)->diffInMinutes(Carbon::now()) >= 1) {
+                        if (Carbon::parse($powerDaily->updated_at)->diffInMinutes($powerDaily->created_at) >= 10) {
+                            DailyPowerConsume::create([
+                                'device_id' => $request->device_id,
+                                'machine_code' => $machine_code,
+                                'start_value' => $request->value,
+                                'end_value' => $request->value,
+                                'date' => date('Y-m-d H:i:s'),
+                            ]);
+                        } else {
+                            $powerDaily->end_value = $request->value;
+                            $powerDaily->save();
+                        }
                     }
                 }
                 return response()->json(['result' => $power, 'message' => 'Successfully'], 200);

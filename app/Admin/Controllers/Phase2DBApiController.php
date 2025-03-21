@@ -210,23 +210,9 @@ class Phase2DBApiController extends Controller
                 // }
 
                 // Fix DB
-                $plan = ProductionPlan::query()
-                    ->where('line_id', $machine->line_id)
-                    ->where('machine_id', $machine->code)
-                    ->where('product_id', $info->product_id)
-                    ->whereDate('thoi_gian_bat_dau', '<=', date('Y-m-d'))
-                    ->whereDate('thoi_gian_ket_thuc', '>=', date('Y-m-d'))
-                    ->get();
-                $sumLotPlan = $plan->sum('sl_giao_sx');
-                $sumInfoActure = InfoCongDoan::query()
-                    // ->where('line_id', $machine->line_id)
-                    // ->where('machine_code', $machine->code)
-                    // ->where('product_id', $info->product_id)
-                    // ->where('lo_sx', $info->lo_sx)
-                    ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
-                    ->whereIn('plan_id', $plan->pluck('id')->toArray())
-                    ->whereIn('status', [InfoCongDoan::STATUS_INPROGRESS, InfoCongDoan::STATUS_COMPLETED])
-                    ->sum('sl_dau_ra_hang_loat');
+                $plan = ProductionPlan::find($info->plan_id);
+                $sumLotPlan = $plan->sl_giao_sx ?? 0;
+                $sumInfoActure = InfoCongDoan::where('plan_id', $plan->id)->sum('sl_dau_ra_hang_loat');
 
                 // $plan = $info->lot->getPlanByLine($info->line_id);
                 $product = $info->product ?? null;
@@ -304,7 +290,7 @@ class Phase2DBApiController extends Controller
         // $machine_ids = ProductionPlan::whereDate('ngay_sx', date('Y-m-d'))->whereNotIn('line_id', [25, 29])->pluck('machine_id')->toArray();
         // $machines = Machine::whereIn('code', $machine_ids)->get();
         foreach ($machines as $machine) {
-            $info = InfoCongDoan::where("line_id", $machine->line_id)->where('machine_code', $machine->code)->with(["lotPlan", "lot.plan.product"])->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->orderBy('thoi_gian_bat_dau', 'DESC')->first();
+            $info = InfoCongDoan::where("line_id", $machine->line_id)->where('machine_code', $machine->code)->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->orderBy('thoi_gian_bat_dau', 'DESC')->first();
             $tracking = Tracking::where('machine_id', $machine->code)->first();
             if (!$info) {
                 $plan = ProductionPlan::where('line_id', $machine->line_id)
@@ -332,16 +318,10 @@ class Phase2DBApiController extends Controller
                 // }
 
                 // Fix DB
-                $sumLotPlan = (int)ProductionPlan::query()->where('line_id', $machine->line_id)
-                    ->where('machine_id', $machine->code)
-                    ->where('product_id', $info->product_id)
-                    ->whereDate('ngay_sx', date('Y-m-d'))->sum('sl_giao_sx');
+                $plan = ProductionPlan::find($info->plan_id);
+                $sumLotPlan = $plan->sl_giao_sx;
 
-                $sumInfoActure = (int)InfoCongDoan::query()->where('line_id', $machine->line_id)
-                    ->where('machine_code', $machine->code)
-                    ->where('product_id', $info->product_id)
-                    ->whereIn('status', [InfoCongDoan::STATUS_INPROGRESS, InfoCongDoan::STATUS_COMPLETED])
-                    ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->sum('sl_dau_ra_hang_loat');
+                $sumInfoActure = (int)InfoCongDoan::where('plan_id', $plan->id)->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->sum('sl_dau_ra_hang_loat');
 
                 // $plan = $info->lot->getPlanByLine($info->line_id);
                 $product = $info->product ?? null;
