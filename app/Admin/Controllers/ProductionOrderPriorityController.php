@@ -8,6 +8,7 @@ use App\Imports\ProductOrderImport;
 use App\Models\Inventory;
 use App\Models\Line;
 use App\Models\LineInventories;
+use App\Models\Losx;
 use App\Models\Lot;
 use App\Models\MachinePriorityOrder;
 use App\Models\NumberMachineOrder;
@@ -98,11 +99,18 @@ class ProductionOrderPriorityController extends Controller
         $input = $request->all();
         try {
             DB::beginTransaction();
-            $records = ProductionOrderPriority::all();
+            $keys = array_keys($input);
+            $records = Losx::whereIn('id', $keys)->get();
             foreach ($records as $value) {
-                $target = $input[$value->production_order_id];
+                $target = $input[$value->id] ?? 0;
                 $value->priority = $target;
                 $value->save();
+            }
+            $i = 1;
+            foreach ($records as $o) {
+                $o->priority = $i;
+                $o->save();
+                $i++;
             }
             DB::commit();
         } catch (\Throwable $th) {

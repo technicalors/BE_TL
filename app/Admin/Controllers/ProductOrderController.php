@@ -325,7 +325,7 @@ class ProductOrderController extends Controller
                     $inp['inventory_quantity'] = 0;
                     ProductionOrderHistory::create($inp);
                 }
-            } elseif ($input['type'] == 2) {
+            } else if ($input['type'] == 2) {
                 $losx = Losx::where('product_id', $productOrder->product_id)->orderBy('created_at', 'DESC')->first();
                 $losx->update(['delivery_date' => $input['confirm_date'], 'order_quantity' => $productOrder->quantity + $losx->order_quantity]);
                 $productionSteps = ProductionPlanController::getProductionSteps($productOrder->product_id);
@@ -338,7 +338,7 @@ class ProductOrderController extends Controller
                     $productOrderHistory = ProductionOrderHistory::where('lo_sx', $losx->id)->where('line_id', $productionStep->line_id)->first();
                     ProductionOrderHistory::where('lo_sx', $losx->id)->where('line_id', $productionStep->line_id)->update(['order_quantity' => $quantity + $productOrderHistory->order_quantity]);
                 }
-            }
+            }  
             // $new_order_quantity = $productOrder->quantity;
             // $fc_order_quantity = $productOrder->fc_quantity;
             // $inventory = Inventory::where('product_id', $productOrder->product_id)->first();
@@ -415,7 +415,10 @@ class ProductOrderController extends Controller
             //         ProductionOrderHistory::where('product_id', $productOrder->product_id)->where('line_id', $productionStep->line_id)->update(['order_quantity' => $order_quantity, 'production_quantity' => $production_quantity]);
             //     }
             // }
-
+            Inventory::updateOrCreate(['product_id' => $productOrder->product_id], ['sl_ton' => $input['sl_ton']]);
+            foreach (($input['ton'] ?? []) as $key => $value) {
+                LineInventories::updateOrCreate(['line_id' => $value['line_id'], 'product_id' => $productOrder->product_id], ['quantity' => $value['value']]);
+            }
             $records = Losx::where('status', 1)->orderBy(DB::raw('DATE(delivery_date)'), 'asc')
                 ->orderBy('product_id', 'asc')
                 ->get();

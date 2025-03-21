@@ -108,6 +108,11 @@ class Product extends Model
 
     public function inventory()
     {
-        return $this->hasOne(Inventory::class,'product_id');
+        return $this->hasOne(Inventory::class, 'product_id');
+    }
+
+    public function lineInventory()
+    {
+        return $this->hasMany(LineInventories::class, 'product_id');
     }
 }
