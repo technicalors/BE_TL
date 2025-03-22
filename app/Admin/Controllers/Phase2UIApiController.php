@@ -1002,7 +1002,7 @@ class Phase2UIApiController extends Controller
     function adjustValue($value)
     {
         // return $value;
-        return ($value == 100) ? rand(80, 90) : $value;
+        return ($value > 80) ? rand(60, 80) : $value;
     }
 
     //Lấy dữ liệu biểu đồ tần suất lỗi máy

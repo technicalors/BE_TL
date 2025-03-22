@@ -6442,7 +6442,7 @@ class ApiUIController extends AdminController
         return $this->success($records);
     }
 
-    public function updateFinishedProductInventory(Request $request)
+    public function  updateFinishedProductInventory(Request $request)
     {
         $import_logs = WareHouseLog::with('lot')->where('type', 1)->get()->groupBy(function ($item) {
             return $item->lot->product_id ?? "";
