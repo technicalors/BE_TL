@@ -1368,7 +1368,7 @@ class Phase2OIApiController extends Controller
         if (count($nextLineIds) > 0) {
             $next_line = Line::find($nextLineIds[0]);
         } else {
-            $next_line = null;
+            $next_line = Line::where('ordering', '>', $line->ordering)->orderBy('ordering')->first();
         }
         $user = CustomUser::find($infoCongDoan->user_id ?? "");
         $lotErrorLog = LotErrorLog::where('lot_id', $request->lot_id)->orderBy('line_id')->get();
