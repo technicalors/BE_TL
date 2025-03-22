@@ -1292,17 +1292,7 @@ class ProductionPlanController extends AdminController
             ->where('product_id', $product_id)
             ->orderBy('priority', 'asc')
             ->get();
-        // if ($line_id == 29) {
-        //     $priority = 1;
-        //     $machinePriorityOrders = Machine::where('line_id', $line_id)
-        //         ->get()->sortBy('code', SORT_NATURAL)->map(function ($machine) use (&$priority, $product_id) {
-        //             $machine->machine_id = $machine->code;
-        //             $machine->priority = $priority;
-        //             $machine->product_id = $product_id;
-        //             $priority++;
-        //             return $machine;
-        //         });
-        // }
+
 
         $acceptableMachines = [];      // Những máy đáp ứng điều kiện (chưa sử dụng hoặc có đủ chỗ cho maxProductionMinutes)
         $nonAcceptableMachines = [];   // Những máy đã sử dụng nhưng không đáp ứng điều kiện

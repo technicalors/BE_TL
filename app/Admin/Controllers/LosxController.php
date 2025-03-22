@@ -36,7 +36,7 @@ class LosxController extends Controller
         if (isset($request->page) && isset($request->pageSize)) {
             $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);
         }
-        $result = $query->with('product')->get();
+        $result = $query->with('product.lineInventory')->get();
         foreach ($result as $key => $losx) {
             $losx->produced_quantity = ($losx->productionOrderHistory && count($losx->productionOrderHistory) > 0) ? $losx->productionOrderHistory[0]->produced_quantity : 0;
         }
