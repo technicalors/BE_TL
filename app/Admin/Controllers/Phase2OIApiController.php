@@ -2182,7 +2182,7 @@ class Phase2OIApiController extends Controller
 
     function detect_format($input, $product = null)
     {
-        $input = str_replace([',', ' ', ($product->name ?? '')], ['.', '', ''], $input);
+        $input = str_replace([',', ($product->name ?? '')], ['.', ''], $input);
 
         // Định dạng 1: '12.5+1.5/-1.25'
         $pattern1 = "/(-?\d+(\.\d+)?)([+-]\d+(\.\d+)?)?\/(-?\d+(\.\d+)?)/";
