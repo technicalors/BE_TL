@@ -2191,7 +2191,7 @@ class Phase2OIApiController extends Controller
         $pattern2 = "/(-?\d+(\.\d+)?)\s*±\s*(-?\d+(\.\d+)?)/";
 
         // Định dạng 3: Khoảng dùng dấu '-'
-        $pattern3 = "/(-?\d+(\.\d+)?)-(-?\d+(\.\d+)?)/";
+        $pattern3 = "/(-?\d+(\.\d+)?)\s*-\s*(-?\d+(\.\d+)?)/";
 
         // Định dạng 4: Khoảng dùng dấu '~'
         $pattern4 = "/(-?\d+(\.\d+)?)\s*~\s*(-?\d+(\.\d+)?)/";
