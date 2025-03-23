@@ -2194,7 +2194,7 @@ class Phase2OIApiController extends Controller
         $pattern3 = "/(-?\d+(\.\d+)?)-(-?\d+(\.\d+)?)/";
 
         // Định dạng 4: Khoảng dùng dấu '~'
-        $pattern4 = "/(-?\d+(\.\d+)?)~(-?\d+(\.\d+)?)/";
+        $pattern4 = "/(-?\d+(\.\d+)?)\s*~\s*(-?\d+(\.\d+)?)/";
 
         // Định dạng 5: So sánh ('≥', '≤', '>', '<')
         $pattern5 = "/(≥|<=|≤|>=|>|<)\s*(-?\d+(\.\d+)?)/";
@@ -2273,19 +2273,6 @@ class Phase2OIApiController extends Controller
         } else {
             return null;
         }
-    }
-
-    function extractNumbers($string)
-    {
-        // Tìm số trước và sau các ký tự ±, -, ~
-        preg_match('/([\d\.]+)\s*[±\-\~]\s*([\d\.]+)/u', $string, $matches);
-        if (empty($matches) || empty($matches[1]) || empty($matches[2]) || !is_numeric($matches[1]) || !is_numeric($matches[2])) {
-            return null;
-        }
-        return [
-            'before' => $matches[1], // Số trước ký tự
-            'after' => $matches[2],  // Số sau ký tự
-        ];
     }
 
     //Lưu kết quả QC
