@@ -29,7 +29,7 @@ class LosxController extends Controller
                 $join->on('losx.product_id', '=', 'latest.product_id')
                     ->on('losx.created_at', '=', 'latest.latest_created_at');
             })
-            ->orderByRaw("FIELD(status, 1, 3, 2)")
+            ->orderByRaw("FIELD(status, 1,0, 3, 2)")
             ->orderBy('priority', 'ASC');
         // Lấy kết quả
         $total = $query->count();
