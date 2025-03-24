@@ -1827,6 +1827,12 @@ class Phase2OIApiController extends Controller
             ]);
             return $this->success('', 'Đã cập nhật sản lượng vào hàng');
         } else {
+            if(!isset($request->input)){ 
+                return $this->failure('', 'Chưa nhập sản lượng đầu vào');
+            }
+            if(!isset($request->output)){ 
+                return $this->failure('', 'Chưa nhập sản lượng đầu ra');
+            }
             $infoCongDoan->update([
                 'sl_dau_vao_hang_loat' => $request->input ?? 0,
                 'sl_dau_ra_hang_loat' => $request->output ?? 0,
