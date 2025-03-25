@@ -1159,6 +1159,13 @@ class Phase2UIApiController extends Controller
                     }
                 }
                 $item['final_qc_result'] = $final_qc_result;
+                $yellowStampHistories = $qc_history->yellowStampHistories;
+                $noi_dung_tem_vang = "";
+                foreach ($yellowStampHistories as $yellowStampHistory) {
+                    $noi_dung_tem_vang .= $yellowStampHistory->errors . ",";
+                }
+                $noi_dung_tem_vang = rtrim($noi_dung_tem_vang, ",");
+                $item['noi_dung_tem_vang'] = $noi_dung_tem_vang;
             }
             $index++;
             $record[] = $item;
@@ -1511,6 +1518,7 @@ class Phase2UIApiController extends Controller
                 'sl_dau_ra_ok' => 'Số lượng OK',
                 'sl_ng' => 'Số lượng NG',
                 'sl_tem_vang' => 'Số lượng tem vàng',
+                'noi_dung_tem_vang' => 'Nội dung hàng tem vàng',
                 'user_sxkt' => 'Công nhân sản xuất',
                 'user_pqc' => 'QC kiểm tra',
                 'note' => 'Ghi chú'
@@ -2067,7 +2075,6 @@ class Phase2UIApiController extends Controller
         $query = $this->pqcHistoryQuery($request);
         $totalPage = $query->count();
         $records = $query->offset($page * $pageSize)->limit($pageSize)->get();
-        $result = $this->parseErrorData($records);
         $error_query  = Error::where('noi_dung', '<>', '')->join('lines', 'lines.id', '=', 'errors.line_id')->select('errors.*', 'lines.ordering as ordering')->orderBy('ordering')->orderBy('id');
         if (isset($request->error_ids)) {
             $error_query->whereIn('errors.id', $request->error_ids);
@@ -2079,6 +2086,7 @@ class Phase2UIApiController extends Controller
             $columns['Lỗi KV'][$key]['title'] = $item->noi_dung;
             $columns['Lỗi KV'][$key]['key'] = 'kv' . $item->id;
         }
+        $result = $this->parseErrorData($records, $columns);
         return $this->success(['data' => $result, "totalPage" => $totalPage, 'columns' => $columns]);
     }
 
@@ -2111,18 +2119,27 @@ class Phase2UIApiController extends Controller
                 'sl_tem_vang' => $qc_history->infoCongDoan->sl_tem_vang ?? 0,
             ];
 
+            $errorHistories = $qc_history->errorHistories->groupBy('error_id')
+            ->mapWithKeys(function ($items, $key) {
+                return ['ng' . $key => $items->sum('quantity')];
+            })
+            ->toArray();
+            $yellowStampHistories = $qc_history->yellowStampHistories->groupBy('errors')
+            ->mapWithKeys(function ($items, $key) {
+                return ['kv' . $key => $items->sum('sl_tem_vang')];
+            })
+            ->toArray();
             if (!empty($columns)) {
-                $errors = [];
-                foreach (($qc_history->errorHistories ?? []) as $error_id => $value) {
-                    $errors['ng' . $value->error_id] = $value->quantity;
-                }
                 $errorColumns = collect($columns)->flatten(1)->all();
                 foreach ($errorColumns as $error_id => $value) {
-                    $item[$value['key']] = $errors[$value['key']] ?? '';
-                }
-            } else {
-                foreach (($qc_history->errorHistories ?? []) as $error_id => $value) {
-                    $item['ng' . $value->error_id] = $value->quantity;
+                    if(isset($errorHistories[$value['key']])) {
+                        // Log::debug([$value['key'] , $errorHistories[$value['key']]]);
+                        $item[$value['key']] = $errorHistories[$value['key']];
+                    } else if(isset($yellowStampHistories[$value['key']])) {
+                        $item[$value['key']] = $errorHistories[$value['key']];
+                    }else{
+                        $item[$value['key']] = '';
+                    }
                 }
             }
             $index++;
@@ -2147,6 +2164,7 @@ class Phase2UIApiController extends Controller
             $columns['Lỗi KV'][$key]['key'] = 'kv' . $item->id;
         }
         $result = $this->parseErrorData($records, $columns);
+        return $result;
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $start_row = 2;
