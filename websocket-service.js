@@ -63,8 +63,6 @@ const deviceFieldConfig = {
     PM01_TEnergy: "PM01:Active_Energy",
     Env01_Temper: "ENV01:TEMPER",
     Temper_PV: "TEM_CHIL:Temper_PV",
-
-
   },
   "40a1abc0-45bc-11ef-b8c3-a13625245eca": {
     PLC_UV1: "PLC:UV1",
@@ -166,6 +164,7 @@ const deviceFieldConfig = {
     PLC_AP02: "PLC:AP02",
     PLC_AP03: "PLC:AP03",
     PM01_TEnergy: "PM01:Active_Energy",
+
   },
 };
 
