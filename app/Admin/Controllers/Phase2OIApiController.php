@@ -510,7 +510,7 @@ class Phase2OIApiController extends Controller
                 return $this->failure([], "Máy này đang sản xuất lot khác");
             }
         }
-        if ($machine->code != 'IN_8_MAU_01') {
+        if ($machine->code != 'IN_8_MAU_01' && $machine->line_id != 26) {
             $scannedLot = Lot::find($request->scanned_lot);
             if (!$scannedLot) {
                 return $this->failure('', 'Không tìm thấy lot');
@@ -598,7 +598,7 @@ class Phase2OIApiController extends Controller
                 'sl_kh' => $plan->sl_giao_sx,
                 'plan_id' => $plan->id
             ]);
-            if ($machine->code != 'IN_8_MAU_01' && $machine->code != 'DC_1') {
+            if ($machine->code != 'IN_8_MAU_01' && $machine->code != 'DC_1' && $machine->line_id != 26) {
                 if ($scannedLot) {
                     $sl_dat = $scannedLot->so_luong;
                     $line_inventory = LineInventories::where('product_id', $scannedLot->product_id)->where('line_id', $scannedLot->final_line_id)->first();
@@ -1827,10 +1827,10 @@ class Phase2OIApiController extends Controller
             ]);
             return $this->success('', 'Đã cập nhật sản lượng vào hàng');
         } else {
-            if(!isset($request->input)){ 
+            if (!isset($request->input)) {
                 return $this->failure('', 'Chưa nhập sản lượng đầu vào');
             }
-            if(!isset($request->output)){ 
+            if (!isset($request->output)) {
                 return $this->failure('', 'Chưa nhập sản lượng đầu ra');
             }
             $infoCongDoan->update([
@@ -2140,7 +2140,7 @@ class Phase2OIApiController extends Controller
         }
         if ($counter >= 3) {
             $infoCongDoan->qcHistory && $infoCongDoan->qcHistory->update(['eligible_to_end' => 1]);
-            if(!$infoCongDoan->sl_dau_ra_hang_loat){
+            if (!$infoCongDoan->sl_dau_ra_hang_loat) {
                 $infoCongDoan->update(['sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_ng]);
             }
         }
