@@ -64,7 +64,7 @@ class ErrorMachineController extends Controller
         } catch (\Throwable $th) {
             DB::rollBack();
         }
-        return $this->success('', 'Tạo thành công');
+        return $this->success($error_machine, 'Tạo thành công');
     }
 
     public function update(Request $request, $id)
@@ -81,7 +81,7 @@ class ErrorMachineController extends Controller
         } catch (\Throwable $th) {
             DB::rollBack();
         }
-        return $this->success('', 'Cập nhật thành công');
+        return $this->success($error_machine, 'Cập nhật thành công');
     }
 
     public function destroy(Request $request, $id)

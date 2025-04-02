@@ -32,14 +32,15 @@ class ErrorMachine extends Model
         $validated = Validator::make(
             $input,
             [
-                'code'=>'required|unique:error_machine,code'. ($id ? ",$id" : ""),
+                // 'code'=>'required|unique:error_machine,code'. ($id ? ",$id" : ""),
+                'code'=>'required',
                 'noi_dung'=>'required',
                 'line_id' => 'required',
                 'type' => 'required'
             ],
             [
                 'code.required' => 'Không có mã lỗi',
-                'code.unique' => 'Mã lỗi đã tồn tại',
+                // 'code.unique' => 'Mã lỗi đã tồn tại',
                 'noi_dung.required'=>'Không có nội dung', 
                 'line_id.required'=>'Không tìm thấy công đoạn',
                 'type.required'=>'Không có loại lỗi',
