@@ -24,6 +24,7 @@ use App\Models\Machine;
 use App\Models\MachinePriorityOrder;
 use App\Models\MachineStatus;
 use App\Models\Material;
+use App\Models\NGTracking;
 use App\Models\OddBin;
 use App\Models\Product;
 use App\Models\ProductionOrderHistory;
@@ -1827,10 +1828,10 @@ class Phase2OIApiController extends Controller
             ]);
             return $this->success('', 'Đã cập nhật sản lượng vào hàng');
         } else {
-            if(!isset($request->input)){ 
+            if (!isset($request->input)) {
                 return $this->failure('', 'Chưa nhập sản lượng đầu vào');
             }
-            if(!isset($request->output)){ 
+            if (!isset($request->output)) {
                 return $this->failure('', 'Chưa nhập sản lượng đầu ra');
             }
             $infoCongDoan->update([
@@ -1839,6 +1840,140 @@ class Phase2OIApiController extends Controller
             ]);
             return $this->success('', 'Đã cập nhật sản lượng sản xuất');
         }
+    }
+
+    public function changeStatusNGTracking(Request $request)
+    {
+        $info = InfoCongDoan::find($request->info_cong_doan_id);
+        if (!$info) {
+            return $this->failure('', 'Không tìm thấy lot đang chạy');
+        }
+        if (!$info->sl_dau_ra_hang_loat) {
+            return $this->failure('', 'Lot chưa chạy sản xuất hàng loạt');
+        }
+        $tracking = Tracking::where('machine_id', $info->machine_code)->where('lot_id', $info->lot_id)->first();
+        if (!$tracking) {
+            return $this->failure('', 'Không ghi nhận IOT tại máy này');
+        }
+        $ng_tracking = NGTracking::where('info_cong_doan_id', $info->id)->orderBy('created_at', 'DESC')->first();
+        if (!$ng_tracking) {
+            return $this->failure('', 'Chưa thể ghi nhận sản lượng NG');
+        }
+        if($ng_tracking->status === NGTracking::COMPLETE_STATUS){
+            $ng_tracking = NGTracking::create([
+                'status' => 0,
+                'user_id' => $request->user()->id,
+                'info_cong_doan_id' => $info->id,
+            ]);
+        }
+        $status = $ng_tracking->status;
+        $message = '';
+        //Kiểm tra trạng thái được yêu cầu cho ng_tracking
+        if(isset($request->status)){
+            $status = $request->status;
+            if($status === NGTracking::TRACKING_STATUS){
+                if($ng_tracking->status === 0){
+                    $message = 'Bắt đầu ghi nhận sản lượng NG';
+                }else{
+                    $message = 'Tiếp tục ghi nhận sản lượng NG';
+                }
+            } else if($status === NGTracking::STOPPED_STATUS || $status === NGTracking::PAUSING_STATUS){
+                $message = 'Đã dừng ghi nhận sản lượng NG';
+            } else if($status === NGTracking::COMPLETE_STATUS){
+                $message = 'Đã lưu sản lượng NG';
+            }
+        }
+        $ng_tracking->update([
+            'user_id' => $request->user()->id,
+            'status' => $status
+        ]);
+        return $this->success($ng_tracking, $message);
+    }
+
+    public function checkNGTracking(Request $request)
+    {
+        $ng_tracking = NGTracking::where('info_cong_doan_id', $request->info_cong_doan_id)->orderBy('created_at', 'DESC')->first();
+        if (!$ng_tracking) {
+            //Chưa ghi nhận ng
+            return $this->success('');
+        } else {
+            if ($ng_tracking->ng_quantity > 0) {
+                //Đã hoàn tất ghi nhận NG trước đó, có thể cho phép ghi nhận ng lần nữa
+                return $this->success($ng_tracking);
+            } else {
+                //Chưa hoàn tất ghi nhận NG, trả về tín hiệu cho phép kết thúc
+                return $this->success($ng_tracking);
+            }
+        }
+    }
+
+    public function getNGTrackingResultList(Request $request)
+    {
+        $infoCongDoan = InfoCongDoan::find($request->info_cong_doan_id);
+        $lotErrorLog = LotErrorLog::where('lot_id', $infoCongDoan->lot_id)->where('line_id', $infoCongDoan->line_id)->where('machine_code', $infoCongDoan->machine_code)->get();
+        $errorList = [];
+        $stt = 0;
+        foreach ($lotErrorLog as $item) {
+            $stt++;
+            $errorLog = [];
+            $index = 0;
+            $quantity = 0;
+            foreach ($item->log ?? [] as $key => $value) {
+                $errorLog[] = [
+                    'key' => $index,
+                    'error_id' => $key,
+                    'quantity' => $value,
+                ];
+                $quantity += $value;
+                $index++;
+            }
+            $errorList[] = [
+                'key' => $stt,
+                'stt' => $stt,
+                'type'=>'Dấu nối',
+                'quantity' => $quantity,
+                'date' => Carbon::parse($item->created_at)->format('d/m/Y H:i:s'),
+                'user_name' => CustomUser::find($item->user_id)->name ?? "",
+                'log' => $errorLog
+            ];
+        }
+
+        $qc_history = $infoCongDoan->qcHistory;
+
+        $groupErrorHistories = ErrorHistory::where('q_c_history_id', $qc_history->id ?? null)->get()->groupBy(function($item){
+            return Carbon::parse($item->created_at)->format('Y-m-d H:i');
+        });
+        foreach ($groupErrorHistories as $errorHistories) {
+            if(count($errorHistories) <= 0){
+                continue;
+            }
+            $stt++;
+            $errorLog = [];
+            $quantity = 0;
+            foreach ($errorHistories ?? [] as $index => $item) {
+                $errorLog[] = [
+                    'key' => $index,
+                    'error_id' => $item->error_id,
+                    'quantity' => $item->quantity,
+                ];
+                $quantity += $item->quantity;
+            }
+            $errorList[] = [
+                'key' => $stt,
+                'stt' => $stt,
+                'type'=>'Lỗi NG',
+                'quantity' => $quantity,
+                'date' => Carbon::parse($errorHistories[0]->created_at ?? null)->format('d/m/Y H:i:s'),
+                'user_name' => CustomUser::find($errorHistories[0]->user_id ?? null)->name ?? "",
+                'log' => $errorLog
+            ];
+        }
+
+        usort($errorList, function ($a, $b) {
+            return strtotime($a['date']) <=> strtotime($b['date']);
+        });
+
+        return $this->success(['errorList' => $errorList]);
     }
     //============================Chất lượng============================
     //Số liệu tổng quan Chất lượng
@@ -2140,7 +2275,7 @@ class Phase2OIApiController extends Controller
         }
         if ($counter >= 3) {
             $infoCongDoan->qcHistory && $infoCongDoan->qcHistory->update(['eligible_to_end' => 1]);
-            if(!$infoCongDoan->sl_dau_ra_hang_loat){
+            if (!$infoCongDoan->sl_dau_ra_hang_loat) {
                 $infoCongDoan->update(['sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_ng]);
             }
         }
@@ -2380,7 +2515,7 @@ class Phase2OIApiController extends Controller
         if (!$line) {
             return $this->failure([], "Không tìm thấy công đoạn");
         }
-        if ($request->line_id === '29') {
+        if ($request->line_id === '30') {
             $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
         } else {
             $machine = Machine::where('code', $request->machine_code)->first();
@@ -2401,7 +2536,14 @@ class Phase2OIApiController extends Controller
         }
         $qcHistory = QCHistory::where('info_cong_doan_id', $infoCongDoan->id)->first();
         if (!$qcHistory) {
-            return $this->failure([], 'Chưa vào QC');
+            $qcHistory = QCHistory::create([
+                'info_cong_doan_id'=>$infoCongDoan->id,
+                'user_id' => $request->user()->id,
+                'eligible_to_end' => 0,
+                'scanned_time' => now(),
+                'line_id' => $infoCongDoan->line_id,
+                'machine_id' => $infoCongDoan->machine_code,
+            ]);
         }
         try {
             DB::beginTransaction();

@@ -669,6 +669,9 @@ Route::group([
     $router->patch('assignment/{id}', [Phase2OIApiController::class, 'updateAssignment']);
     $router->post('print-tem-selection-line', [Phase2OIApiController::class, 'printTemSelectionLine']);
     $router->post('update-output-production', [Phase2OIApiController::class, 'updateOutputProduction']);
+    $router->post('change-status-ng-tracking', [Phase2OIApiController::class, 'changeStatusNGTracking']);
+    $router->post('check-ng-tracking', [Phase2OIApiController::class, 'checkNGTracking']);
+    $router->get('get-ng-tracking-result-list', [Phase2OIApiController::class, 'getNGTrackingResultList']);
 
     //Chất lượng
     $router->get('qc-overall', [Phase2OIApiController::class, 'getQCOverall']);

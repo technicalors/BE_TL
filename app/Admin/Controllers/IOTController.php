@@ -15,6 +15,7 @@ use App\Models\MachineParameterLogs;
 use App\Models\MachineParameters;
 use App\Models\MachineStatus;
 use App\Models\Material;
+use App\Models\NGTracking;
 use App\Models\PowerConsume;
 use App\Models\ThongSoMay;
 use App\Models\Tracking;
@@ -75,6 +76,27 @@ class IOTController extends AdminController
                 }
                 if ($request->output > $tracking->output && ((($request->output - $tracking->output) * $sl_bat) > $info_cong_doan->sl_dau_ra_hang_loat)) {
                     $info_cong_doan->sl_dau_ra_hang_loat = ($request->output - $tracking->output) * $sl_bat;
+
+                    //Khi bắt đầu ghi nhận sản lượng hàng loạt thì cho phép ghi nhận sl NG
+                    $ng_tracking = NGTracking::where('info_cong_doan_id', $info_cong_doan->id)->orderBy('created_at', 'DESC')->first();
+                    if(!$ng_tracking || $ng_tracking->status === NGTracking::COMPLETE_STATUS){
+                        $ng_tracking = NGTracking::create([
+                            'status' => 0,
+                            'info_cong_doan_id' => $info_cong_doan->id,
+                        ]);
+                    }
+                    if($ng_tracking->status === 1){
+                        if($ng_tracking->start_quantity === 0){
+                            $ng_tracking->update(['start_quantity'=>$request->output]);
+                        }else{
+                            $ng_quantity = ($request->output - $ng_tracking->start_quantity) * $sl_bat;
+                            $ng_tracking->update([
+                                'end_quantity'=>$request->output,
+                                'ng_quantity'=>$ng_quantity,
+                            ]);
+                        }
+                    }
+                    
                 }
             }
             $info_cong_doan->save();
