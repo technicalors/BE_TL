@@ -1848,9 +1848,6 @@ class Phase2OIApiController extends Controller
         if (!$info) {
             return $this->failure('', 'Không tìm thấy lot đang chạy');
         }
-        if (!$info->sl_dau_ra_hang_loat) {
-            return $this->failure('', 'Lot chưa chạy sản xuất hàng loạt');
-        }
         $tracking = Tracking::where('machine_id', $info->machine_code)->where('lot_id', $info->lot_id)->first();
         if (!$tracking) {
             return $this->failure('', 'Không ghi nhận IOT tại máy này');
