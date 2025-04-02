@@ -62,7 +62,7 @@ const deviceFieldConfig = {
     PLC_AP03: "PLC:AP03",
     PM01_TEnergy: "PM01:Active_Energy",
     Env01_Temper: "ENV01:TEMPER",
-    Env01_Humi: "ENV01:HUMI",
+    Temper_PV: "TEM_CHIL:Temper_PV",
   },
   "40a1abc0-45bc-11ef-b8c3-a13625245eca": {
     PLC_UV1: "PLC:UV1",
@@ -415,19 +415,24 @@ async function connectWebSocket(deviceId) {
           parsedData.data["ENVI:TEMPER"] && parsedData.data["ENVI:TEMPER"][0]
             ? parsedData.data["ENVI:TEMPER"][0][1]
             : null;
-
-        if (envHumi !== null && envTemper !== null) {
+        const envTemperPV =
+          parsedData.data["TEM_CHIL:Temper_PV"] &&
+          parsedData.data["TEM_CHIL:Temper_PV"][0]
+            ? parsedData.data["TEM_CHIL:Temper_PV"][0][1]
+            : null;
+        if (envHumi !== null && envTemper !== null && envTemperPV !== null) {
           // Tạo payload chung cho 2 device
           const forwardPayload = {
             Env01_Humi: envHumi,
             Env01_Temper: envTemper,
+            Temper_PV: envTemperPV,
           };
 
           // Đẩy dữ liệu cho device 886...
           dataQueues["40a1abc0-45bc-11ef-b8c3-a13625245eca"].push({
             data: {
               ...forwardPayload,
-              device_id: "40a1abc0-45bc-11ef-b8c3-a13625245eca", 
+              device_id: "40a1abc0-45bc-11ef-b8c3-a13625245eca",
             },
             apiUrl: MACHINE_INFO_API_URL,
           });
@@ -454,19 +459,24 @@ async function connectWebSocket(deviceId) {
           parsedData.data["ENV01:TEMPER"] && parsedData.data["ENV01:TEMPER"][0]
             ? parsedData.data["ENV01:TEMPER"][0][1]
             : null;
-
-        if (envHumi01 !== null && envTemper01 !== null) {
+        const envTemperPV01 =
+          parsedData.data["TEM_CHIL:Temper_PV"] &&
+          parsedData.data["TEM_CHIL:Temper_PV"][0]
+            ? parsedData.data["TEM_CHIL:Temper_PV"][0][1]
+            : null;
+        if (envHumi01 !== null && envTemper01 !== null && envTemperPV01 !== null) {
           // Tạo payload chung cho 2 device
           const forwardPayload = {
             Env01_Humi: envHumi01,
             Env01_Temper: envTemper01,
+            Temper_PV: envTemperPV01,
           };
 
           // Đẩy dữ liệu cho device 886...
           dataQueues["f7f77560-45bd-11ef-b8c3-a13625245eca"].push({
             data: {
               ...forwardPayload,
-              device_id: "f7f77560-45bd-11ef-b8c3-a13625245eca", 
+              device_id: "f7f77560-45bd-11ef-b8c3-a13625245eca",
             },
             apiUrl: MACHINE_INFO_API_URL,
           });
