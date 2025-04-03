@@ -41,15 +41,15 @@ class IOTController extends AdminController
         $machine = Machine::where('device_id', $request->device_id)->first();
         $status = MachineStatus::getStatus($machine->code);
         $info_cong_doan = InfoCongDoan::where('machine_code', $machine->code)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
-        $sl_bat = $info_cong_doan->product->so_bat ?? 1;
-        if($info_cong_doan->line_id == 24){
-            $material = Material::with('products')->find($info_cong_doan->product_id);
-            if($material && count($material->products ?? []) === 1){
-                $sl_bat = $material->products[0]->so_bat ?? 1;
-            }
-        }
-        $tracking = Tracking::getData($machine->code);
         if ($info_cong_doan) {
+            $sl_bat = $info_cong_doan->product->so_bat ?? 1;
+            if ($info_cong_doan->line_id == 24) {
+                $material = Material::with('products')->find($info_cong_doan->product_id);
+                if ($material && count($material->products ?? []) === 1) {
+                    $sl_bat = $material->products[0]->so_bat ?? 1;
+                }
+            }
+            $tracking = Tracking::getData($machine->code);
             $status = MachineStatus::getStatus($machine->code);
             if ($status == 0) { //chạy thử/vào hàng
                 if (is_null($tracking->input) || $tracking->input == 0) {
@@ -79,24 +79,23 @@ class IOTController extends AdminController
 
                     //Khi bắt đầu ghi nhận sản lượng hàng loạt thì cho phép ghi nhận sl NG
                     $ng_tracking = NGTracking::where('info_cong_doan_id', $info_cong_doan->id)->orderBy('created_at', 'DESC')->first();
-                    if(!$ng_tracking || $ng_tracking->status === NGTracking::COMPLETE_STATUS){
+                    if (!$ng_tracking || $ng_tracking->status === NGTracking::COMPLETE_STATUS) {
                         $ng_tracking = NGTracking::create([
                             'status' => 0,
                             'info_cong_doan_id' => $info_cong_doan->id,
                         ]);
                     }
-                    if($ng_tracking->status === 1){
-                        if($ng_tracking->start_quantity === 0){
-                            $ng_tracking->update(['start_quantity'=>$request->output]);
-                        }else{
+                    if ($ng_tracking->status === 1) {
+                        if ($ng_tracking->start_quantity === 0) {
+                            $ng_tracking->update(['start_quantity' => $request->output]);
+                        } else {
                             $ng_quantity = ($request->output - $ng_tracking->start_quantity) * $sl_bat;
                             $ng_tracking->update([
-                                'end_quantity'=>$request->output,
-                                'ng_quantity'=>$ng_quantity,
+                                'end_quantity' => $request->output,
+                                'ng_quantity' => $ng_quantity,
                             ]);
                         }
                     }
-                    
                 }
             }
             $info_cong_doan->save();
@@ -168,13 +167,13 @@ class IOTController extends AdminController
                         $arr[$parameter] = $value / $count;
                     }
                 }
-                $logsWithNumOut = array_values(array_filter($logs, function($log) {
+                $logsWithNumOut = array_values(array_filter($logs, function ($log) {
                     return isset($log['output']);
                 }));
                 if (count($logsWithNumOut) > 1) {
                     $startValue = (float)$logsWithNumOut[0]['output'];
                     $endValue = (float)$logsWithNumOut[count($logsWithNumOut) - 1]['output'];
-                    $productionSpeed = ($endValue - $startValue) / 5; 
+                    $productionSpeed = ($endValue - $startValue) / 5;
                     $arr['speed'] = $productionSpeed;
                 } else {
                     // Không đủ dữ liệu để tính tốc độ, có thể gán null hoặc bỏ qua

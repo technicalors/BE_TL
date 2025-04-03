@@ -685,6 +685,7 @@ Route::group([
     $router->post('check-eligible-for-printing', [Phase2OIApiController::class, 'checkEligibleForPrinting']);
     $router->post('print-tem-vang', [Phase2OIApiController::class, 'printTemVang']);
     $router->post('scan-oqc', [Phase2OIApiController::class, 'scanOQC']);
+    $router->post('update-khoanh-vung', [Phase2OIApiController::class, 'updateKhoangVung']);
 
     //Thiết bị
     $router->get('machine-overall', [Phase2OIApiController::class, 'getMachineOverall']);

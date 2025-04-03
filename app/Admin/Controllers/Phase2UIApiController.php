@@ -30,6 +30,7 @@ use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -2076,26 +2077,19 @@ class Phase2UIApiController extends Controller
         $query = $this->pqcHistoryQuery($request);
         $totalPage = $query->count();
         $records = $query->offset($page * $pageSize)->limit($pageSize)->get();
-        $error_query  = Error::where('noi_dung', '<>', '')->join('lines', 'lines.id', '=', 'errors.line_id')->select('errors.*', 'lines.ordering as ordering')->orderBy('ordering')->orderBy('id');
-        if (isset($request->error_ids)) {
-            $error_query->whereIn('errors.id', $request->error_ids);
-        }
-        $list = $error_query->get();
-        foreach ($list as $key => $item) {
-            $columns['Lỗi NG'][$key]['title'] = $item->noi_dung;
-            $columns['Lỗi NG'][$key]['key'] = 'ng' . $item->id;
-            $columns['Lỗi KV'][$key]['title'] = $item->noi_dung;
-            $columns['Lỗi KV'][$key]['key'] = 'kv' . $item->id;
-        }
-        $result = $this->parseErrorData($records, $columns);
+        list($result, $columns) = $this->parseErrorData($records);
         return $this->success(['data' => $result, "totalPage" => $totalPage, 'columns' => $columns]);
     }
 
-    public function parseErrorData($qc_histories, $columns = [])
+    public function parseErrorData($qc_histories)
     {
         $record = [];
         $shifts = Shift::all();
         $index = 0;
+        $columns = [
+            'Lỗi NG' => [],
+            'Lỗi KV' => [],
+        ];
         foreach ($qc_histories as $key => $qc_history) {
             if (!$qc_history->infoCongDoan) {
                 continue;
@@ -2120,52 +2114,68 @@ class Phase2UIApiController extends Controller
                 'sl_tem_vang' => $qc_history->infoCongDoan->sl_tem_vang ?? 0,
             ];
 
-            $errorHistories = $qc_history->errorHistories->groupBy('error_id')
-            ->mapWithKeys(function ($items, $key) {
-                return ['ng' . $key => $items->sum('quantity')];
-            })
-            ->toArray();
-            $yellowStampHistories = $qc_history->yellowStampHistories->groupBy('errors')
-            ->mapWithKeys(function ($items, $key) {
-                return ['kv' . $key => $items->sum('sl_tem_vang')];
-            })
-            ->toArray();
-            if (!empty($columns)) {
-                $errorColumns = collect($columns)->flatten(1)->all();
-                foreach ($errorColumns as $error_id => $value) {
-                    if(isset($errorHistories[$value['key']])) {
-                        // Log::debug([$value['key'] , $errorHistories[$value['key']]]);
-                        $item[$value['key']] = $errorHistories[$value['key']];
-                    } else if(isset($yellowStampHistories[$value['key']])) {
-                        $item[$value['key']] = $errorHistories[$value['key']];
-                    }else{
-                        $item[$value['key']] = '';
-                    }
+            $errorHistories = $qc_history->errorHistories->map(function ($value) use(&$columns, &$item) {
+                if(!isset($columns['Lỗi NG']['ng' . $value->error_id])){
+                    $columns['Lỗi NG']['ng' . $value->error_id] = [
+                        'key'=>'ng' . $value->error_id,
+                        'title'=>$value->error->noi_dung ?? "",
+                    ];
                 }
-            }
+                if(!isset($item['ng' . $value->error_id])){
+                    $item['ng' . $value->error_id] = $value->quantity;
+                }else{
+                    $item['ng' . $value->error_id] +=  $value->quantity;
+                }
+                return $value;
+            });
+            
+            $yellowStampHistories = $qc_history->yellowStampHistories->map(function ($value) use(&$columns, &$item) {
+                $total_quantity = $value->sl_tem_vang;
+                $errors = explode(',', $value->errors);
+                foreach ($errors as $key => $err) {
+                    $quantity = $total_quantity;
+                    if(!isset($columns['Lỗi KV']['kv' . $err])){
+                        $error = Error::find($err);
+                        $columns['Lỗi KV']['kv' . $err] = [
+                            'key'=>'kv' . $err,
+                            'title'=>$error->noi_dung ?? "",
+                        ];
+                    }
+                    if(!isset($item['kv' . $err])){
+                        $item['kv' . $err] = $quantity;
+                    }else{
+                        $item['kv' . $err] += $quantity;
+                    }
+                    $total_quantity -= $quantity;
+                }
+                
+                return $value;
+            });
+            
+            // if (!empty($columns)) {
+            //     $errorColumns = collect($columns)->flatten(1)->all();
+            //     foreach ($errorColumns as $error_id => $value) {
+            //         if(isset($errorHistories[$value['key']])) {
+            //             // Log::debug([$value['key'] , $errorHistories[$value['key']]]);
+            //             $item[$value['key']] = $errorHistories[$value['key']];
+            //         } else if(isset($yellowStampHistories[$value['key']])) {
+            //             $item[$value['key']] = $errorHistories[$value['key']];
+            //         }else{
+            //             $item[$value['key']] = '';
+            //         }
+            //     }
+            // }
             $index++;
             $record[] = $item;
         }
-        return $record;
+        return [$record, $columns];
     }
 
     public function exportQCErrorList(Request $request)
     {
         $query = $this->pqcHistoryQuery($request);
         $records = $query->get();
-        $error_query  = Error::where('noi_dung', '<>', '')->join('lines', 'lines.id', '=', 'errors.line_id')->select('errors.*', 'lines.ordering as ordering')->orderBy('ordering')->orderBy('id');
-        if (isset($request->error_ids)) {
-            $error_query->whereIn('errors.id', $request->error_ids);
-        }
-        $list = $error_query->get();
-        foreach ($list as $key => $item) {
-            $columns['Lỗi NG'][$key]['title'] = $item->noi_dung;
-            $columns['Lỗi NG'][$key]['key'] = 'ng' . $item->id;
-            $columns['Lỗi KV'][$key]['title'] = $item->noi_dung;
-            $columns['Lỗi KV'][$key]['key'] = 'kv' . $item->id;
-        }
-        $result = $this->parseErrorData($records, $columns);
-        return $result;
+        list($result, $columns) = $this->parseErrorData($records);
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $start_row = 2;
@@ -2223,6 +2233,22 @@ class Phase2UIApiController extends Controller
                 return $col['title'];
             }, $column);
         }
+        
+        foreach ($result as $k => $item) {
+            // Sắp xếp lại lỗi NG
+            $sorted_ng = $this->sortErrorColumns($item, $columns['Lỗi NG']);
+
+            // Sắp xếp lại lỗi KV
+            $sorted_kv = $this->sortErrorColumns($item, $columns['Lỗi KV']);
+            $info_item = Arr::except($item, array_merge(
+                array_keys($sorted_ng),
+                array_keys($sorted_kv)
+            ));
+            
+            $result[$k] = array_merge($info_item, $sorted_ng, $sorted_kv);
+        }
+        // return $result;
+        
         foreach ($header1 as $key => $cell) {
             if (!is_array($cell)) {
                 $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row + 1])->getStyle([$start_col, $start_row, $start_col, $start_row + 1])->applyFromArray($headerStyle);
@@ -2253,6 +2279,17 @@ class Phase2UIApiController extends Controller
         $writer->save('exported_files/Báo cáo số lỗi.xlsx');
         $href = '/exported_files/Báo cáo số lỗi.xlsx';
         return $this->success($href);
+    }
+
+    function sortErrorColumns(array $item, array $columns): array {
+        $sorted = [];
+    
+        foreach ($columns as $col) {
+            $key = $col['key'];
+            $sorted[$key] = $item[$key] ?? '';
+        }
+    
+        return $sorted;
     }
 
     //Danh sách lot OQC
