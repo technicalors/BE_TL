@@ -511,7 +511,7 @@ class Phase2OIApiController extends Controller
                 return $this->failure([], "Máy này đang sản xuất lot khác");
             }
         }
-        if ($machine->code != 'IN_8_MAU_01' && $machine->line_id != 26) {
+        if ($machine->code != 'IN_8_MAU_01' && $machine->line_id != 26 && $machine->code != 'IN_2_MAU_01') {
             $scannedLot = Lot::find($request->scanned_lot);
             if (!$scannedLot) {
                 return $this->failure('', 'Không tìm thấy lot');
@@ -1855,7 +1855,7 @@ class Phase2OIApiController extends Controller
         if (!$ng_tracking) {
             return $this->failure('', 'Chưa thể ghi nhận sản lượng NG');
         }
-        if($ng_tracking->status === NGTracking::COMPLETE_STATUS){
+        if ($ng_tracking->status === NGTracking::COMPLETE_STATUS) {
             $ng_tracking = NGTracking::create([
                 'status' => 0,
                 'user_id' => $request->user()->id,
@@ -1865,17 +1865,17 @@ class Phase2OIApiController extends Controller
         $status = $ng_tracking->status;
         $message = '';
         //Kiểm tra trạng thái được yêu cầu cho ng_tracking
-        if(isset($request->status)){
+        if (isset($request->status)) {
             $status = $request->status;
-            if($status === NGTracking::TRACKING_STATUS){
-                if($ng_tracking->status === 0){
+            if ($status === NGTracking::TRACKING_STATUS) {
+                if ($ng_tracking->status === 0) {
                     $message = 'Bắt đầu ghi nhận sản lượng NG';
-                }else{
+                } else {
                     $message = 'Tiếp tục ghi nhận sản lượng NG';
                 }
-            } else if($status === NGTracking::STOPPED_STATUS || $status === NGTracking::PAUSING_STATUS){
+            } else if ($status === NGTracking::STOPPED_STATUS || $status === NGTracking::PAUSING_STATUS) {
                 $message = 'Đã dừng ghi nhận sản lượng NG';
-            } else if($status === NGTracking::COMPLETE_STATUS){
+            } else if ($status === NGTracking::COMPLETE_STATUS) {
                 $message = 'Đã lưu sản lượng NG';
             }
         }
@@ -1909,60 +1909,64 @@ class Phase2OIApiController extends Controller
         $lotErrorLog = LotErrorLog::where('lot_id', $infoCongDoan->lot_id)->where('line_id', $infoCongDoan->line_id)->where('machine_code', $infoCongDoan->machine_code)->get();
         $errorList = [];
         $stt = 0;
-        foreach ($lotErrorLog as $item) {
-            $stt++;
-            $errorLog = [];
-            $index = 0;
-            $quantity = 0;
-            foreach ($item->log ?? [] as $key => $value) {
-                $errorLog[] = [
-                    'key' => $index,
-                    'error_id' => $key,
-                    'quantity' => $value,
+
+        if (isset($request->type) && $request->type === 'dau_noi') {
+            foreach ($lotErrorLog as $item) {
+                $stt++;
+                $errorLog = [];
+                $index = 0;
+                $quantity = 0;
+                foreach ($item->log ?? [] as $key => $value) {
+                    $errorLog[] = [
+                        'key' => $index,
+                        'error_id' => $key,
+                        'quantity' => $value,
+                    ];
+                    $quantity += $value;
+                    $index++;
+                }
+                $errorList[] = [
+                    'key' => $stt,
+                    'stt' => $stt,
+                    'type' => 'Dấu nối',
+                    'quantity' => $quantity,
+                    'date' => Carbon::parse($item->created_at)->format('d/m/Y H:i:s'),
+                    'user_name' => CustomUser::find($item->user_id)->name ?? "",
+                    'log' => $errorLog
                 ];
-                $quantity += $value;
-                $index++;
             }
-            $errorList[] = [
-                'key' => $stt,
-                'stt' => $stt,
-                'type'=>'Dấu nối',
-                'quantity' => $quantity,
-                'date' => Carbon::parse($item->created_at)->format('d/m/Y H:i:s'),
-                'user_name' => CustomUser::find($item->user_id)->name ?? "",
-                'log' => $errorLog
-            ];
         }
 
-        $qc_history = $infoCongDoan->qcHistory;
-
-        $groupErrorHistories = ErrorHistory::where('q_c_history_id', $qc_history->id ?? null)->get()->groupBy(function($item){
-            return Carbon::parse($item->created_at)->format('Y-m-d H:i');
-        });
-        foreach ($groupErrorHistories as $errorHistories) {
-            if(count($errorHistories) <= 0){
-                continue;
-            }
-            $stt++;
-            $errorLog = [];
-            $quantity = 0;
-            foreach ($errorHistories ?? [] as $index => $item) {
-                $errorLog[] = [
-                    'key' => $index,
-                    'error_id' => $item->error_id,
-                    'quantity' => $item->quantity,
+        if (isset($request->type) && $request->type === 'loi_ng') {
+            $qc_history = $infoCongDoan->qcHistory;
+            $groupErrorHistories = ErrorHistory::where('q_c_history_id', $qc_history->id ?? null)->get()->groupBy(function ($item) {
+                return Carbon::parse($item->created_at)->format('Y-m-d H:i');
+            });
+            foreach ($groupErrorHistories as $errorHistories) {
+                if (count($errorHistories) <= 0) {
+                    continue;
+                }
+                $stt++;
+                $errorLog = [];
+                $quantity = 0;
+                foreach ($errorHistories ?? [] as $index => $item) {
+                    $errorLog[] = [
+                        'key' => $index,
+                        'error_id' => $item->error_id,
+                        'quantity' => $item->quantity,
+                    ];
+                    $quantity += $item->quantity;
+                }
+                $errorList[] = [
+                    'key' => $stt,
+                    'stt' => $stt,
+                    'type' => 'Lỗi NG',
+                    'quantity' => $quantity,
+                    'date' => Carbon::parse($errorHistories[0]->created_at ?? null)->format('d/m/Y H:i:s'),
+                    'user_name' => CustomUser::find($errorHistories[0]->user_id ?? null)->name ?? "",
+                    'log' => $errorLog
                 ];
-                $quantity += $item->quantity;
             }
-            $errorList[] = [
-                'key' => $stt,
-                'stt' => $stt,
-                'type'=>'Lỗi NG',
-                'quantity' => $quantity,
-                'date' => Carbon::parse($errorHistories[0]->created_at ?? null)->format('d/m/Y H:i:s'),
-                'user_name' => CustomUser::find($errorHistories[0]->user_id ?? null)->name ?? "",
-                'log' => $errorLog
-            ];
         }
 
         usort($errorList, function ($a, $b) {
@@ -2533,7 +2537,7 @@ class Phase2OIApiController extends Controller
         $qcHistory = QCHistory::where('info_cong_doan_id', $infoCongDoan->id)->first();
         if (!$qcHistory) {
             $qcHistory = QCHistory::create([
-                'info_cong_doan_id'=>$infoCongDoan->id,
+                'info_cong_doan_id' => $infoCongDoan->id,
                 'user_id' => $request->user()->id,
                 'eligible_to_end' => 0,
                 'scanned_time' => now(),

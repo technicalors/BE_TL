@@ -148,6 +148,7 @@ class Phase2UIApiController extends Controller
             }
             $so_dau_noi = LotErrorLog::where('lot_id', $item->lot_id)->where('machine_code', $item->machine_code)->where('line_id', $item->line_id)->count();
             $tm = [
+                'info_cong_doan_id'=> $item->id,
                 "ngay_sx" => date('d/m/Y H:i:s', strtotime($item->created_at)),
                 'ca_sx' => $ca_sx,
                 'xuong' => 'Giấy',
