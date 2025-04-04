@@ -2556,7 +2556,7 @@ class Phase2OIApiController extends Controller
             return $this->failure([], "Không tìm thấy công đoạn");
         }
         if ($request->line_id === '30') {
-            $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
+            $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->first();
         } else {
             $machine = Machine::where('code', $request->machine_code)->first();
             if (!$machine) {
@@ -2588,6 +2588,12 @@ class Phase2OIApiController extends Controller
         try {
             DB::beginTransaction();
             $sl_ng = $infoCongDoan->sl_ng ?? 0;
+            $sl_dau_ra_hang_loat = $infoCongDoan->sl_dau_ra_hang_loat ?? 0;
+            if($sl_dau_ra_hang_loat == 0){
+                return $this->failure([], "Không có sl đầu ra hàng loạt");
+
+            }
+            $sl_tem_vang = $infoCongDoan->sl_tem_vang ?? 0;
             $permission = [];
             foreach ($request->user()->roles as $role) {
                 $tm = ($role->permissions()->pluck("slug"));
@@ -2608,7 +2614,7 @@ class Phase2OIApiController extends Controller
                 ]);
                 $sl_ng += ($value ?? 0);
             }
-            $sl_con_lai = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_tem_vang - $sl_ng;
+            $sl_con_lai = $sl_dau_ra_hang_loat - $sl_tem_vang - $sl_ng;
             if ($sl_con_lai < 0) {
                 return $this->failure([], "Số lượng NG vượt quá số lượng sản xuất");
             } elseif ($sl_con_lai === 0) {
@@ -2643,6 +2649,7 @@ class Phase2OIApiController extends Controller
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
+            throw $th;
             return $this->failure($th, "Lỗi lưu kết quả QC");
         }
         return $this->success('', "Đã lưu kết quả quản lý lỗi");
