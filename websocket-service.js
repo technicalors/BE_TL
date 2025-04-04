@@ -1,7 +1,7 @@
 const WebSocket = require("ws");
 const axios = require("axios");
 // Cấu hình API và WebSocket
-const base_url = "http://127.0.0.1:8000/api/iot";
+const base_url = "https://backtl.ors.vn/api/iot";
 const LOGIN_API_URL = "http://103.77.215.18:3030/api/auth/login";
 const WEBSOCKET_URL = "ws://103.77.215.18:3030/api/ws/plugins/telemetry";
 const PRODUCTION_API_URL = base_url + "/update-quantity";
