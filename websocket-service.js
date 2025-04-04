@@ -200,7 +200,7 @@ async function pushDataToMESAPI(data, apiUrl) {
       await pushDataToMESAPI(data, apiUrl); // Thử lại với token mới
     } else {
       console.error(
-        `Error pushing data of ${data?.device_id} to API ${apiUrl}:`,
+        `Error pushing data to API ${apiUrl}:`,
         error?.response?.data?.message ?? ""
       );
     }
@@ -406,93 +406,93 @@ async function connectWebSocket(deviceId) {
       parsedData.data.device_id = deviceId;
       // const data = parsedData.data;
       enqueueData(deviceId, parsedData.data);
-      // if (deviceId === "9032a0e0-45bc-11ef-b8c3-a13625245eca") {
-      //   const envHumi =
-      //     parsedData.data["ENVI:HUMI"] && parsedData.data["ENVI:HUMI"][0]
-      //       ? parsedData.data["ENVI:HUMI"][0][1]
-      //       : null;
-      //   const envTemper =
-      //     parsedData.data["ENVI:TEMPER"] && parsedData.data["ENVI:TEMPER"][0]
-      //       ? parsedData.data["ENVI:TEMPER"][0][1]
-      //       : null;
-      //   const envTemperPV =
-      //     parsedData.data["TEM_CHIL:Temper_PV"] &&
-      //     parsedData.data["TEM_CHIL:Temper_PV"][0]
-      //       ? parsedData.data["TEM_CHIL:Temper_PV"][0][1]
-      //       : null;
-      //   if (envHumi !== null && envTemper !== null && envTemperPV !== null) {
-      //     // Tạo payload chung cho 2 device
-      //     const forwardPayload = {
-      //       Env01_Humi: envHumi,
-      //       Env01_Temper: envTemper,
-      //       Temper_PV: envTemperPV,
-      //     };
+      if (deviceId === "9032a0e0-45bc-11ef-b8c3-a13625245eca") {
+        const envHumi =
+          parsedData.data["ENVI:HUMI"] && parsedData.data["ENVI:HUMI"][0]
+            ? parsedData.data["ENVI:HUMI"][0][1]
+            : null;
+        const envTemper =
+          parsedData.data["ENVI:TEMPER"] && parsedData.data["ENVI:TEMPER"][0]
+            ? parsedData.data["ENVI:TEMPER"][0][1]
+            : null;
+        const envTemperPV =
+          parsedData.data["TEM_CHIL:Temper_PV"] &&
+          parsedData.data["TEM_CHIL:Temper_PV"][0]
+            ? parsedData.data["TEM_CHIL:Temper_PV"][0][1]
+            : null;
+        if (envHumi !== null && envTemper !== null && envTemperPV !== null) {
+          // Tạo payload chung cho 2 device
+          const forwardPayload = {
+            Env01_Humi: envHumi,
+            Env01_Temper: envTemper,
+            Temper_PV: envTemperPV,
+          };
 
-      //     // Đẩy dữ liệu cho device 886...
-      //     dataQueues["40a1abc0-45bc-11ef-b8c3-a13625245eca"].push({
-      //       data: {
-      //         ...forwardPayload,
-      //         device_id: "40a1abc0-45bc-11ef-b8c3-a13625245eca",
-      //       },
-      //       apiUrl: MACHINE_INFO_API_URL,
-      //     });
-      //     processQueue("40a1abc0-45bc-11ef-b8c3-a13625245eca");
+          // Đẩy dữ liệu cho device 886...
+          dataQueues["40a1abc0-45bc-11ef-b8c3-a13625245eca"].push({
+            data: {
+              ...forwardPayload,
+              device_id: "40a1abc0-45bc-11ef-b8c3-a13625245eca",
+            },
+            apiUrl: MACHINE_INFO_API_URL,
+          });
+          processQueue("40a1abc0-45bc-11ef-b8c3-a13625245eca");
 
-      //     // Đẩy dữ liệu cho device a43...
-      //     dataQueues["7cda31d0-45bb-11ef-b8c3-a13625245eca"].push({
-      //       data: {
-      //         ...forwardPayload,
-      //         device_id: "7cda31d0-45bb-11ef-b8c3-a13625245eca",
-      //       },
-      //       apiUrl: MACHINE_INFO_API_URL,
-      //     });
-      //     processQueue("7cda31d0-45bb-11ef-b8c3-a13625245eca");
-      //   }
-      // }
+          // Đẩy dữ liệu cho device a43...
+          dataQueues["7cda31d0-45bb-11ef-b8c3-a13625245eca"].push({
+            data: {
+              ...forwardPayload,
+              device_id: "7cda31d0-45bb-11ef-b8c3-a13625245eca",
+            },
+            apiUrl: MACHINE_INFO_API_URL,
+          });
+          processQueue("7cda31d0-45bb-11ef-b8c3-a13625245eca");
+        }
+      }
 
-      // if (deviceId === "22d821e0-45bd-11ef-b8c3-a13625245eca") {
-      //   const envHumi01 =
-      //     parsedData.data["ENV01:HUMI"] && parsedData.data["ENV01:HUMI"][0]
-      //       ? parsedData.data["ENV01:HUMI"][0][1]
-      //       : null;
-      //   const envTemper01 =
-      //     parsedData.data["ENV01:TEMPER"] && parsedData.data["ENV01:TEMPER"][0]
-      //       ? parsedData.data["ENV01:TEMPER"][0][1]
-      //       : null;
-      //   const envTemperPV01 =
-      //     parsedData.data["TEM_CHIL:Temper_PV"] &&
-      //     parsedData.data["TEM_CHIL:Temper_PV"][0]
-      //       ? parsedData.data["TEM_CHIL:Temper_PV"][0][1]
-      //       : null;
-      //   if (envHumi01 !== null && envTemper01 !== null && envTemperPV01 !== null) {
-      //     // Tạo payload chung cho 2 device
-      //     const forwardPayload = {
-      //       Env01_Humi: envHumi01,
-      //       Env01_Temper: envTemper01,
-      //       Temper_PV: envTemperPV01,
-      //     };
+      if (deviceId === "22d821e0-45bd-11ef-b8c3-a13625245eca") {
+        const envHumi01 =
+          parsedData.data["ENV01:HUMI"] && parsedData.data["ENV01:HUMI"][0]
+            ? parsedData.data["ENV01:HUMI"][0][1]
+            : null;
+        const envTemper01 =
+          parsedData.data["ENV01:TEMPER"] && parsedData.data["ENV01:TEMPER"][0]
+            ? parsedData.data["ENV01:TEMPER"][0][1]
+            : null;
+        const envTemperPV01 =
+          parsedData.data["TEM_CHIL:Temper_PV"] &&
+          parsedData.data["TEM_CHIL:Temper_PV"][0]
+            ? parsedData.data["TEM_CHIL:Temper_PV"][0][1]
+            : null;
+        if (envHumi01 !== null && envTemper01 !== null && envTemperPV01 !== null) {
+          // Tạo payload chung cho 2 device
+          const forwardPayload = {
+            Env01_Humi: envHumi01,
+            Env01_Temper: envTemper01,
+            Temper_PV: envTemperPV01,
+          };
 
-      //     // Đẩy dữ liệu cho device 886...
-      //     dataQueues["f7f77560-45bd-11ef-b8c3-a13625245eca"].push({
-      //       data: {
-      //         ...forwardPayload,
-      //         device_id: "f7f77560-45bd-11ef-b8c3-a13625245eca",
-      //       },
-      //       apiUrl: MACHINE_INFO_API_URL,
-      //     });
-      //     processQueue("f7f77560-45bd-11ef-b8c3-a13625245eca");
+          // Đẩy dữ liệu cho device 886...
+          dataQueues["f7f77560-45bd-11ef-b8c3-a13625245eca"].push({
+            data: {
+              ...forwardPayload,
+              device_id: "f7f77560-45bd-11ef-b8c3-a13625245eca",
+            },
+            apiUrl: MACHINE_INFO_API_URL,
+          });
+          processQueue("f7f77560-45bd-11ef-b8c3-a13625245eca");
 
-      //     // Đẩy dữ liệu cho device a43...
-      //     dataQueues["886de160-45be-11ef-b8c3-a13625245eca"].push({
-      //       data: {
-      //         ...forwardPayload,
-      //         device_id: "886de160-45be-11ef-b8c3-a13625245eca",
-      //       },
-      //       apiUrl: MACHINE_INFO_API_URL,
-      //     });
-      //     processQueue("886de160-45be-11ef-b8c3-a13625245eca");
-      //   }
-      // }
+          // Đẩy dữ liệu cho device a43...
+          dataQueues["886de160-45be-11ef-b8c3-a13625245eca"].push({
+            data: {
+              ...forwardPayload,
+              device_id: "886de160-45be-11ef-b8c3-a13625245eca",
+            },
+            apiUrl: MACHINE_INFO_API_URL,
+          });
+          processQueue("886de160-45be-11ef-b8c3-a13625245eca");
+        }
+      }
     } catch (error) {
       console.error(`Error processing data from ${deviceId}:`, error.message);
     }
