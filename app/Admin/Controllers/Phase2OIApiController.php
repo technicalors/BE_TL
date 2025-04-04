@@ -2601,7 +2601,7 @@ class Phase2OIApiController extends Controller
                     $permission[] = $t;
                 }
             }
-            foreach ($request->log as $key => $value) {
+            foreach ($request->log ?? $request->data as $key => $value) {
                 if (!$value) {
                     continue;
                 }
