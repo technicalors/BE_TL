@@ -2105,6 +2105,7 @@ class Phase2OIApiController extends Controller
             ->get();
         foreach ($infoCongDoans as $key => $infoCongDoan) {
             if ($infoCongDoan) {
+                $infoCongDoan['info_cong_doan_id'] = $infoCongDoan->id ?? null;
                 QCHistory::firstOrCreate(
                     [
                         'info_cong_doan_id' => $infoCongDoan->id,
@@ -2116,7 +2117,7 @@ class Phase2OIApiController extends Controller
                 );
             }
         }
-
+        
         return $this->success($infoCongDoans);
     }
 
