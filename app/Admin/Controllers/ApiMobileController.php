@@ -49,6 +49,7 @@ use App\Models\MachineParameters;
 use App\Models\MachineSpec;
 use App\Models\MachineSpeed;
 use App\Models\MachineStatus;
+use App\Models\Material;
 use App\Models\MaterialExportLog;
 use App\Models\MaterialLog;
 use App\Models\Monitor;
@@ -4112,7 +4113,23 @@ class ApiMobileController extends AdminController
     }
     public function ui_getProducts(Request $request)
     {
-        return $this->success(Product::all());
+        $products = Product::all();
+        $materials = Material::all();
+        $data = [];
+        foreach ($products as $key => $product) {
+            $object = new stdClass();
+            $object->id = $product->id;
+            $object->name = $product->name;
+            $data[] = $object;
+        }
+
+        foreach ($materials as $key => $material) {
+            $object = new stdClass();
+            $object->id = $material->id;
+            $object->name = $material->name;
+            $data[] = $object;
+        }
+        return $this->success($data);
     }
     public function ui_getStaffs(Request $request)
     {
