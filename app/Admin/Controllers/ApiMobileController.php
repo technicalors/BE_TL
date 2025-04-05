@@ -4113,22 +4113,9 @@ class ApiMobileController extends AdminController
     }
     public function ui_getProducts(Request $request)
     {
-        $products = Product::all();
-        $materials = Material::all();
-        $data = [];
-        foreach ($products as $key => $product) {
-            $object = new stdClass();
-            $object->id = $product->id;
-            $object->name = $product->name;
-            $data[] = $object;
-        }
-
-        foreach ($materials as $key => $material) {
-            $object = new stdClass();
-            $object->id = $material->id;
-            $object->name = $material->name;
-            $data[] = $object;
-        }
+        $products = Product::select('id', 'name', DB::raw("'product' as type"));
+        $materials = Material::select('id', 'name', DB::raw("'material' as type"));
+        $data = $products->union($materials)->get();
         return $this->success($data);
     }
     public function ui_getStaffs(Request $request)
