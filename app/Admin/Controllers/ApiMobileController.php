@@ -4113,9 +4113,26 @@ class ApiMobileController extends AdminController
     }
     public function ui_getProducts(Request $request)
     {
-        $products = Product::select('id', 'name', DB::raw("'product' as type"));
-        $materials = Material::select('id', 'name', DB::raw("'material' as type"));
-        $data = $products->union($materials)->get();
+        $products = Product::all();
+        $materials = Material::all();
+        // Gộp cả 2 nguồn
+        $data = collect();
+        foreach ($products as $product) {
+            $object = new stdClass();
+            $object->id = $product->id;
+            $object->name = $product->name;
+            $data->push($object);
+        }
+        
+        foreach ($materials as $material) {
+            // Kiểm tra ID đã tồn tại chưa
+            if (!$data->contains('id', $material->id)) {
+                $object = new stdClass();
+                $object->id = $material->id;
+                $object->name = $material->name;
+                $data->push($object);
+            }
+        }
         return $this->success($data);
     }
     public function ui_getStaffs(Request $request)
