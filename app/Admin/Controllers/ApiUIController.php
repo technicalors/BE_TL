@@ -4613,6 +4613,7 @@ class ApiUIController extends AdminController
             $plan->kqsx = InfoCongDoan::where('line_id', $plan->line_id)->where('lo_sx', $plan->lo_sx)->whereNotNull('thoi_gian_bat_dau')->sum('sl_dau_ra_hang_loat') -  InfoCongDoan::where('line_id', $plan->line_id)->whereNotNull('thoi_gian_bat_dau')->where('lo_sx', $plan->lo_sx)->sum('sl_ng');
             $plan->tg_ket_thuc = date('d/m/Y H:i:s', strtotime($plan->thoi_gian_ket_thuc));
             $plan->tg_bat_dau =  date('d/m/Y H:i:s', strtotime($plan->thoi_gian_bat_dau));
+            $plan->sl_con_thieu = $plan->sl_ke_hoach_manh - $plan->kqsx;
         }
         $table = $list;
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
@@ -4649,31 +4650,27 @@ class ApiUIController extends AdminController
                 ),
             ),
         ];
-        $header = ['Thứ tự ưu tiên', 'Thời gian bắt đầu', 'Thời gian kết thúc', 'Công đoạn', 'Máy', 'Mã SP', 'Tên SP', 'Khách hàng', 'Ca SX', 'Lô SX', 'Số bát', 'Ngày giao hàng', 'Số lượng tổng ĐH', 'Số lượng NVL đầu vào (tờ)', 'Kế hoạch SL thành phẩm (tờ)', 'Kế hoạch SL thành phẩm (mảnh)', 'Thực tế SL thành phẩm (mảnh)', 'UPH', 'Tổng thời gian thực hiện', 'Nhân lực', 'Tình trạng', 'Ghi chú', 'Kế hoạch'];
+        $header = ['Thứ tự ưu tiên', 'Thời gian bắt đầu', 'Thời gian kết thúc', 'Ca sx', 'Công đoạn', 'Máy', 'Tên SP', 'Khách hàng', 'Ngày giao hàng', 'Số lượng tổng ĐH', 'Kế hoạch SL thành phẩm (mảnh)', 'Thực tế SL thành phẩm (mảnh)', 'SL còn thiếu ĐH', 'UPH', 'Tổng thời gian thực hiện', 'Nhân lực', 'Tình trạng', 'Ghi chú', 'Kế hoạch'];
         $table_key = [
             'A' => 'thu_tu_uu_tien',
             'B' => 'tg_bat_dau',
             'C' => 'tg_ket_thuc',
-            'D' => 'cong_doan_sx',
-            'E' => 'machine_id',
-            'F' => 'product_id',
+            'D' => 'ca_sx',
+            'E' => 'cong_doan_sx',
+            'F' => 'machine_id',
             'G' => 'ten_sp',
             'H' => 'khach_hang',
-            'I' => 'ca_sx',
-            'J' => 'lo_sx',
-            'K' => 'so_bat',
-            'L' => 'ngay_giao_hang',
-            'M' => 'sl_tong_don_hang',
-            'N' => 'sl_nvl',
-            'O' => 'sl_thanh_pham',
-            'P' => 'sl_ke_hoach_manh',
-            'Q' => 'kqsx',
-            'R' => 'UPH',
-            'S' => 'tong_tg_thuc_hien',
-            'T' => 'nhan_luc',
-            'U' => 'status',
-            'V' => 'note',
-            'W' => 'plan',
+            'I' => 'ngay_giao_hang',
+            'J' => 'sl_tong_don_hang',
+            'K' => 'sl_ke_hoach_manh',
+            'L' => 'kqsx',
+            'M' => 'sl_con_thieu',
+            'N' => 'UPH',
+            'O' => 'tong_tg_thuc_hien',
+            'P' => 'nhan_luc',
+            'Q' => 'status',
+            'R' => 'note',
+            'S' => 'plan',
         ];
         foreach ($header as $key => $cell) {
             if (!is_array($cell)) {
