@@ -669,6 +669,7 @@ class Phase2OIApiController extends Controller
             ->orderByRaw("FIELD(line_id, $orderByString)")
             ->get()
             ->last();
+        $so_luong = $scannedLot->so_luong ?? 11000;
         if (count($filteredLineIds) > 0) {
             if (!$previousLineLot) {
                 return $this->failure([], 'Không tìm thấy lot đã chạy trước đó');
@@ -685,7 +686,9 @@ class Phase2OIApiController extends Controller
                     return $this->failure([$previousLineLot,$plan], 'Không khớp mã sản phẩm');
                 }
             }
+            $so_luong = $previousLineLot->sl_dau_vao_hang_loat ?? 11000;
         }
+
         try {
             DB::beginTransaction();
             if ($plan->status_plan == ProductionPlan::STATUS_PENDING) {
@@ -699,11 +702,11 @@ class Phase2OIApiController extends Controller
                 'lo_sx' => $plan->lo_sx,
                 'product_id' => $plan->product_id,
                 'thoi_gian_bat_dau' => Carbon::now(),
-                'sl_dau_vao_hang_loat' => $scannedLot->so_luong ?? 11000,
-                'sl_dau_ra_hang_loat' => $scannedLot->so_luong ?? 11000,
+                'sl_dau_vao_hang_loat' => $so_luong,
+                'sl_dau_ra_hang_loat' => $so_luong,
                 'status' => InfoCongDoan::STATUS_INPROGRESS,
                 'user_id' => $request->user()->id,
-                'sl_kh' => $scannedLot->so_luong ?? 11000,
+                'sl_kh' => $so_luong,
                 'plan_id' => $plan->id
             ]);
             if ($scannedLot) {
