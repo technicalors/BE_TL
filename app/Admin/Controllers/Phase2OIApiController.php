@@ -216,14 +216,12 @@ class Phase2OIApiController extends Controller
                 'hao_phi_cong_doan' => $hao_phi_sx ? $hao_phi_sx->value . "%" : "",
                 'sl_dau_vao' => $infoCongDoan->sl_dau_vao_hang_loat ?? 0,
                 'sl_dau_ra' => $infoCongDoan->sl_dau_ra_hang_loat ?? 0,
-                'sl_tem_vang' => $infoCongDoan->sl_tem_vang ?? 0,
                 'sl_tem_ng' => $infoCongDoan->sl_ng ?? 0,
                 'is_qc' => ($infoCongDoan && !is_null($infoCongDoan->qcHistory)) ? $infoCongDoan->qcHistory->eligible_to_end : 0,
                 'is_assign' => $infoCongDoan && count($infoCongDoan->assignments ?? []) > 0 ? 1 : 0,
                 'info_id' => $infoCongDoan->id ?? null,
             ];
             $data['ti_le_ht'] = $item->quantity > 0 ? round($data['sl_dau_ra_ok'] / $item->quantity * 100) . '%' : "0%";
-            $data['sl_dau_ra_ok'] = $data['sl_dau_ra'] - $data['sl_tem_vang'] - $data['sl_tem_ng'];
             $data['hao_phi'] = $data['sl_dau_vao'] ? round((($data['sl_tem_ng'] - (int)($hao_phi_vao_hang->value ?? 0)) > 0 ? ($data['sl_tem_ng'] - (int)($hao_phi_vao_hang->value ?? 0)) : 0 / $data['sl_dau_vao']) * 100) . '%' : "";
             $records[] = $data;
         }
