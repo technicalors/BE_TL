@@ -1359,7 +1359,23 @@ class Phase2OIApiController extends Controller
         $product = $infoCongDoan->product;
         $material = $infoCongDoan->material;
         $line = $infoCongDoan->line;
-        $product_journey = Spec::where('product_id', $infoCongDoan->product_id)->where('slug', 'hanh-trinh-san-xuat')->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
+        if($line->id === 24){
+            $losx = $infoCongDoan->lo_sx;
+            if($losx && $losx->product){
+                $product = $losx->product;
+            } else {
+                $bom = Bom::where('material_id', $infoCongDoan->product_id)->where('priority', 1)->first();
+                if($bom && $bom->product){
+                    $product = $bom->product;
+                } else {
+                    $product = $infoCongDoan->product;
+                }
+            }
+        } else {
+            $product = $infoCongDoan->product;
+        }
+        $product_id = $product->id ?? null;
+        $product_journey = Spec::where('product_id', $product_id)->where('slug', 'hanh-trinh-san-xuat')->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
         $currnetLineIndex = $product_journey[$infoCongDoan->line_id] ?? 0;
         $nextLineIds = collect($product_journey)
             ->filter(function ($value, $lineId) use ($currnetLineIndex) {
@@ -2838,7 +2854,33 @@ class Phase2OIApiController extends Controller
     {
         $product = $infoCongDoan->product;
         $line = $infoCongDoan->line;
-        $next_line = Line::where('ordering', '>', $line->ordering)->orderBy('ordering')->first();
+        if($line->id === 24){
+            $losx = $infoCongDoan->lo_sx;
+            if($losx && $losx->product){
+                $product = $losx->product;
+            } else {
+                $bom = Bom::where('material_id', $infoCongDoan->product_id)->where('priority', 1)->first();
+                if($bom && $bom->product){
+                    $product = $bom->product;
+                } else {
+                    $product = $infoCongDoan->product;
+                }
+            }
+        } else {
+            $product = $infoCongDoan->product;
+        }
+        $product_id = $product->id ?? null;
+        $product_journey = Spec::where('product_id', $product_id)->where('slug', 'hanh-trinh-san-xuat')->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
+        $currnetLineIndex = $product_journey[$infoCongDoan->line_id] ?? 0;
+        $nextLineIds = collect($product_journey)
+            ->filter(function ($value, $lineId) use ($currnetLineIndex) {
+                return $value > $currnetLineIndex;
+            })->keys();
+        if (count($nextLineIds) > 0) {
+            $next_line = Line::find($nextLineIds[0]);
+        } else {
+            $next_line = Line::where('ordering', '>', $line->ordering)->orderBy('ordering')->first();
+        }
         $qc_history = $infoCongDoan->qcHistory;
         $user_sx = CustomUser::find($infoCongDoan->user_id);
         $user_qc = CustomUser::find($qc_history->user_id);
