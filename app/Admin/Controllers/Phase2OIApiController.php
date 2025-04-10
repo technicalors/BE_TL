@@ -684,7 +684,7 @@ class Phase2OIApiController extends Controller
                     return $this->failure([$previousLineLot,$plan], 'Không khớp mã sản phẩm');
                 }
             }
-            $so_luong = $previousLineLot->sl_dau_vao_hang_loat ?? 11000;
+            $so_luong = $previousLineLot->sl_dau_ra_hang_loat ?? 11000;
         }
 
         try {
@@ -1362,20 +1362,19 @@ class Phase2OIApiController extends Controller
         $line = $infoCongDoan->line;
         if($line->id === 24){
             $losx = $infoCongDoan->losx;
-            if($losx && $losx->product){
-                $product = $losx->product;
+            if($losx && $losx->product_id){
+                $product_id = $losx->product_id;
             } else {
                 $bom = Bom::where('material_id', $infoCongDoan->product_id)->where('priority', 1)->first();
-                if($bom && $bom->product){
-                    $product = $bom->product;
+                if($bom && $bom->product_id){
+                    $product_id = $bom->product_id;
                 } else {
-                    $product = $infoCongDoan->product;
+                    $product_id = $infoCongDoan->product_id;
                 }
             }
         } else {
-            $product = $infoCongDoan->product;
+            $product_id = $infoCongDoan->product_id;
         }
-        $product_id = $product->id ?? null;
         $product_journey = Spec::where('product_id', $product_id)->where('slug', 'hanh-trinh-san-xuat')->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
         $currnetLineIndex = $product_journey[$infoCongDoan->line_id] ?? 0;
         $nextLineIds = collect($product_journey)
@@ -2857,20 +2856,19 @@ class Phase2OIApiController extends Controller
         $line = $infoCongDoan->line;
         if($line->id === 24){
             $losx = $infoCongDoan->losx;
-            if($losx && $losx->product){
-                $product = $losx->product;
+            if($losx && $losx->product_id){
+                $product_id = $losx->product_id;
             } else {
                 $bom = Bom::where('material_id', $infoCongDoan->product_id)->where('priority', 1)->first();
-                if($bom && $bom->product){
-                    $product = $bom->product;
+                if($bom && $bom->product_id){
+                    $product_id = $bom->product_id;
                 } else {
-                    $product = $infoCongDoan->product;
+                    $product_id = $infoCongDoan->product_id;
                 }
             }
         } else {
-            $product = $infoCongDoan->product;
+            $product_id = $infoCongDoan->product_id;
         }
-        $product_id = $product->id ?? null;
         $product_journey = Spec::where('product_id', $product_id)->where('slug', 'hanh-trinh-san-xuat')->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
         $currnetLineIndex = $product_journey[$infoCongDoan->line_id] ?? 0;
         $nextLineIds = collect($product_journey)
