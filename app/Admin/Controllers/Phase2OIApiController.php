@@ -351,7 +351,7 @@ class Phase2OIApiController extends Controller
             $info->sl_dau_ra_hang_loat = $info->sl_dau_ra_hang_loat ?? 0;
             $info->sl_tem_vang = $info->sl_tem_vang ?? 0;
             $info->sl_tem_ng = $info->sl_ng ?? 0;
-            $info->sl_dau_ra_ok = $info->sl_dau_ra_hang_loat - $info->sl_ng;
+            $info->sl_dau_ra_ok = $info->sl_dau_ra_hang_loat - $info->sl_ng - $info->sl_tem_vang;
             $info->ti_le_ht = $plan && $plan->sl_giao_sx > 0 ? round($info->sl_dau_ra_ok / $plan->sl_giao_sx * 100) : 0;
             $info->is_qc = (!is_null($info->qcHistory)) ? $info->qcHistory->eligible_to_end : 0;
             $info->is_assign = count($info->assignments ?? []) > 0 ? 1 : 0;
