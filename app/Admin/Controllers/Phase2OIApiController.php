@@ -2858,7 +2858,7 @@ class Phase2OIApiController extends Controller
         $product = $infoCongDoan->product;
         $line = $infoCongDoan->line;
         if($line->id === 24){
-            $losx = $infoCongDoan->lo_sx;
+            $losx = $infoCongDoan->losx;
             if($losx && $losx->product){
                 $product = $losx->product;
             } else {
