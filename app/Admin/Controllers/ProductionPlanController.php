@@ -1386,6 +1386,26 @@ class ProductionPlanController extends AdminController
                         $product_id = $bom->material_id;
                     }
                 }
+                $prev_plan = collect($productionPlans)
+                    ->where('product_id', $product_id)
+                    ->filter(fn($p) => $p['line_id'] !== $productionOrderHistory->line_id)
+                    ->sortByDesc('thoi_gian_ket_thuc')
+                    ->first();
+
+                if ($prev_plan) {
+                    $prev_efficiency = $prev_plan['UPH'];
+                    $prev_start = $prev_plan['thoi_gian_bat_dau'];
+                    $delay_minutes = ceil(($min_qty_to_start_next_process / $prev_efficiency) * 60);
+                    $earliest_start = date('Y-m-d H:i:s', strtotime("+{$delay_minutes} minutes", strtotime($prev_start)));
+
+                    if (strtotime($start_time) < strtotime($earliest_start)) {
+                        $start_time = $earliest_start;
+                        $end_time = date('Y-m-d H:i:s', strtotime("+{$productionTime} minutes", strtotime($start_time)));
+                        $times = $this->adjustShift($start_time, $end_time, $machineShifts);
+                        $start_time = $times['start_time'];
+                        $end_time = $times['end_time'];
+                    }
+                }
                 $product = Product::find($product_id);
                 $productionPlans[] = [
                     'lo_sx' => $productionOrderHistory->lo_sx,
