@@ -1334,133 +1334,238 @@ class ProductionPlanController extends AdminController
         $productionPlans = [];
         $machine_load_factors = [];
         $min_qty_to_start_next_process = 1;
-
-        $plans = ProductionPlan::where('ngay_sx', date('Y-m-d'))
-            ->whereIn('status_plan', [
-                ProductionPlan::STATUS_COMPLETED,
-                ProductionPlan::STATUS_IN_PROGRESS,
-                ProductionPlan::STATUS_PENDING
-            ])->get();
-
+        $plans = ProductionPlan::where('ngay_sx', date('Y-m-d'))->whereIn('status_plan', [ProductionPlan::STATUS_COMPLETED, ProductionPlan::STATUS_IN_PROGRESS, ProductionPlan::STATUS_PENDING])->get();
         foreach ($plans as $plan) {
             $losx = Losx::find($plan->lo_sx);
-            if ($losx->status != 1) continue;
-
-            $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $plan->lo_sx)
-                ->where('line_id', $plan->line_id)
-                ->orderBy('updated_at', 'desc')
-                ->first();
-            if (!$productionOrderHistory) continue;
-
-            $remainQuantityOrder = $productionOrderHistory->order_quantity - $productionOrderHistory->produced_quantity;
-            if ($remainQuantityOrder <= 0) continue;
-
-            $setupTime = $this->getSetupTime($productionOrderHistory->product_id, $productionOrderHistory->line_id);
-            $efficiency = $this->getEfficiency($productionOrderHistory->product_id, $productionOrderHistory->line_id);
-            if ($efficiency <= 0) {
-                throw new Exception("Không tìm thấy năng suất cho sản phẩm {$productionOrderHistory->product_id} và công đoạn {$productionOrderHistory->line->name}");
+            if ($losx->status != 1) {
+                continue;
             }
-
-            $productionTime = ceil(($remainQuantityOrder / $efficiency) * 60) + $setupTime;
-            $machineShifts = $this->getMachineProductionShifts($plan->machine_id, date('Y-m-d', strtotime('+1 day')));
-
-            if (isset($machine_load_factors[$plan->machine_id])) {
-                $totalTime = $machine_load_factors[$plan->machine_id]['fixed_hours'] - $machine_load_factors[$plan->machine_id]['work_hours'];
-                $start_time = $machine_load_factors[$plan->machine_id]['available_at'];
-                if ($machine_load_factors[$plan->machine_id]['product_id'] == $productionOrderHistory->product_id) {
-                    $setupTime = 0;
+            $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $plan->lo_sx)->where('line_id', $plan->line_id)->orderBy('updated_at', 'desc')->first();
+            if (!$productionOrderHistory) {
+                continue;
+            }
+            if ($productionOrderHistory->order_quantity - $productionOrderHistory->produced_quantity > 0) {
+                $setupTime = $this->getSetupTime($productionOrderHistory->product_id, $productionOrderHistory->line_id);
+                $remainQuantityOrder = $productionOrderHistory->order_quantity - $productionOrderHistory->produced_quantity;
+                $efficiency = $this->getEfficiency($productionOrderHistory->product_id, $productionOrderHistory->line_id);
+                if ($efficiency <= 0) {
+                    throw new Exception("Không tìm thấy năng suất cho sản phẩm " . $productionOrderHistory->product_id . " và công đoạn " . $productionOrderHistory->line->name, 1);
                 }
-            } else {
-                $totalTime = $machineShifts->where('type_break', 'Sản xuất')->sum('duration_minutes');
-                $start_time = date('Y-m-d ' . $machineShifts->first()->start_time, strtotime('+1 day'));
-            }
+                $productionTime = ceil(($remainQuantityOrder / $efficiency) * 60) + $setupTime;
+                $machineShifts = $this->getMachineProductionShifts($plan->machine_id, date('Y-m-d', strtotime('+1 day')));
 
-            if ($totalTime <= 0 || $totalTime <= $setupTime) continue;
-
-            $productionQuanty = ($productionTime > $totalTime)
-                ? ceil(($totalTime - $setupTime) * ($efficiency / 60))
-                : $remainQuantityOrder;
-
-            $end_time = date('Y-m-d H:i:s', strtotime("+{$productionTime} minutes", strtotime($start_time)));
-            $times = $this->adjustShift($start_time, $end_time, $machineShifts);
-            $start_time = $times['start_time'];
-            $end_time = $times['end_time'];
-
-            $product_id = $productionOrderHistory->product_id;
-            if ($productionOrderHistory->line_id == 24) {
-                $bom = Bom::where('product_id', $product_id)->where('priority', 1)->first();
-                if ($bom) $product_id = $bom->material_id;
-            }
-
-            // Tìm công đoạn trước đó từ các kế hoạch đã sinh
-            $prev_plan = collect($productionPlans)
-                ->where('product_id', $product_id)
-                ->filter(fn($p) => $p['line_id'] !== $productionOrderHistory->line_id)
-                ->sortByDesc('thoi_gian_ket_thuc')
-                ->first();
-
-            if ($prev_plan) {
-                $prev_efficiency = $prev_plan['UPH'];
-                $prev_start = $prev_plan['thoi_gian_bat_dau'];
-                $delay_minutes = ceil(($min_qty_to_start_next_process / $prev_efficiency) * 60);
-                $earliest_start = date('Y-m-d H:i:s', strtotime("+{$delay_minutes} minutes", strtotime($prev_start)));
-
-                if (strtotime($start_time) < strtotime($earliest_start)) {
-                    $start_time = $earliest_start;
-                    $end_time = date('Y-m-d H:i:s', strtotime("+{$productionTime} minutes", strtotime($start_time)));
-                    $times = $this->adjustShift($start_time, $end_time, $machineShifts);
-                    $start_time = $times['start_time'];
-                    $end_time = $times['end_time'];
+                if (isset($machine_load_factors[$plan->machine_id])) {
+                    $totalTime = $machine_load_factors[$plan->machine_id]['fixed_hours'] - $machine_load_factors[$plan->machine_id]['work_hours'];
+                    $start_time = $machine_load_factors[$plan->machine_id]['available_at'];
+                    if ($machine_load_factors[$plan->machine_id]['product_id'] == $productionOrderHistory->product_id) {
+                        $setupTime = 0;
+                    }
+                } else {
+                    $totalTime = $machineShifts->where('type_break', 'Sản xuất')->sum('duration_minutes');
+                    $start_time = date('Y-m-d ' . $machineShifts->first()->start_time, strtotime('+1 day'));
                 }
+                if ($totalTime <= 0 || $totalTime <= $setupTime) {
+                    continue;
+                }
+                if ($productionTime > $totalTime) {
+                    $productionTime = $totalTime;
+                    $productionQuanty = ceil(($totalTime - $setupTime) * ($efficiency / 60));
+                } else {
+
+                    $productionQuanty = $remainQuantityOrder;
+                }
+                $end_time = date('Y-m-d H:i:s', strtotime('+' . $productionTime . ' minutes', strtotime($start_time)));
+                $times = $this->adjustShift($start_time, $end_time, $machineShifts);
+
+                $start_time = $times['start_time'];
+                $end_time = $times['end_time'];
+                $product_id = $productionOrderHistory->product_id;
+                if ($productionOrderHistory->line_id == 24) {
+                    $bom = Bom::where('product_id', $productionOrderHistory->product_id)->where('priority', 1)->first();
+                    if ($bom) {
+                        $product_id = $bom->material_id;
+                    }
+                }
+                $product = Product::find($product_id);
+                $productionPlans[] = [
+                    'lo_sx' => $productionOrderHistory->lo_sx,
+                    'product_order_id' => '',
+                    'ngay_dat_hang' => '',
+                    'cong_doan_sx' => $productionOrderHistory->line->name,
+                    'line_id' => $productionOrderHistory->line_id,
+                    'ca_sx' => 1,
+                    'ngay_sx' => date('Y-m-d', strtotime('+1 day')),
+                    'ngay_giao_hang' => '',
+                    'machine_id' => $plan->machine_id,
+                    'product_id' => $product_id,
+                    'product_name' => $product->name ?? '',
+                    'khach_hang' => '',
+                    'so_bat' => 0,
+                    'sl_nvl' => 0,
+                    'sl_tong_don_hang' => $productionOrderHistory->order_quantity,
+                    'sl_giao_sx' => $productionQuanty,
+                    'sl_thanh_pham' => 0,
+                    'thu_tu_uu_tien' => '0',
+                    'note' => '',
+                    'UPH' => $efficiency,
+                    'nhan_luc' => 1,
+                    'tong_tg_thuc_hien' => $totalTime,
+                    'kho_giay' => '',
+                    'toc_do' => 0,
+                    'thoi_gian_chinh_may' => $setupTime,
+                    'thoi_gian_thuc_hien' => $totalTime - $setupTime,
+                    'thoi_gian_bat_dau' => $start_time,
+                    'thoi_gian_ket_thuc' => $end_time,
+                    'status' => InfoCongDoan::STATUS_PLANNED
+                ];
+                $machine_load_factors[$plan->machine_id] = [
+                    'date' => date('Y-m-d', strtotime('+1 day')),
+                    'fixed_productivity_per_hour' => $efficiency,
+                    'work_hours' => $productionTime,
+                    'fixed_hours' => $totalTime,
+                    'shift_id' => 1,
+                    'available_at' => $end_time,
+                    'product_id' => $product_id,
+                ];
             }
-
-            $product = Product::find($product_id);
-            $productionPlans[] = [
-                'lo_sx' => $productionOrderHistory->lo_sx,
-                'product_order_id' => '',
-                'ngay_dat_hang' => '',
-                'cong_doan_sx' => $productionOrderHistory->line->name,
-                'line_id' => $productionOrderHistory->line_id,
-                'ca_sx' => 1,
-                'ngay_sx' => date('Y-m-d', strtotime('+1 day')),
-                'ngay_giao_hang' => '',
-                'machine_id' => $plan->machine_id,
-                'product_id' => $product_id,
-                'product_name' => $product->name ?? '',
-                'khach_hang' => '',
-                'so_bat' => 0,
-                'sl_nvl' => 0,
-                'sl_tong_don_hang' => $productionOrderHistory->order_quantity,
-                'sl_giao_sx' => $productionQuanty,
-                'sl_thanh_pham' => 0,
-                'thu_tu_uu_tien' => '0',
-                'note' => '',
-                'UPH' => $efficiency,
-                'nhan_luc' => 1,
-                'tong_tg_thuc_hien' => $totalTime,
-                'kho_giay' => '',
-                'toc_do' => 0,
-                'thoi_gian_chinh_may' => $setupTime,
-                'thoi_gian_thuc_hien' => $totalTime - $setupTime,
-                'thoi_gian_bat_dau' => $start_time,
-                'thoi_gian_ket_thuc' => $end_time,
-                'status' => InfoCongDoan::STATUS_PLANNED
-            ];
-
-            $machine_load_factors[$plan->machine_id] = [
-                'date' => date('Y-m-d', strtotime('+1 day')),
-                'fixed_productivity_per_hour' => $efficiency,
-                'work_hours' => $productionTime,
-                'fixed_hours' => $totalTime,
-                'shift_id' => 1,
-                'available_at' => $end_time,
-                'product_id' => $product_id,
-            ];
         }
+        $productionOrderPriorities = Losx::with('productionOrderHistory')->whereNotIn('id', $plans->pluck('lo_sx')->toArray())->where('status', 1)->orderBy('priority', 'asc')->get();
+        foreach ($productionOrderPriorities as $productionOrderPriority) {
+            $sortedHistories = $productionOrderPriority->productionOrderHistory->sortByDesc('updated_at');
+            foreach ($sortedHistories as $key => $history) {
+                $setupTime = $this->getSetupTime($productionOrderPriority->product_id, $history->line_id);
+                $remainQuantityOrder = $history->order_quantity - $history->produced_quantity;
+                if ($remainQuantityOrder <= 0) {
+                    continue;
+                }
+                $efficiency = $this->getEfficiency($productionOrderPriority->product_id, $history->line_id);
+                if ($efficiency <= 0) {
+                    throw new Exception("Không tìm thấy năng suất cho sản phẩm " . $productionOrderPriority->product_id . " và công đoạn " . $history->line->name, 1);
+                }
+                $productionTime = ceil(($remainQuantityOrder / $efficiency) * 60) + $setupTime;
 
+                $machinePriorityOrder = $this->getPrioritizedMachine($history->line_id, $productionOrderPriority->product_id, $machine_load_factors, $productionTime);
+                if (empty($machinePriorityOrder)) {
+                    continue;
+                }
+                $machineShifts = $this->getMachineProductionShifts($machinePriorityOrder->machine_id, date('Y-m-d', strtotime('+1 day')));
+                Log::debug([$history->line_id, $machinePriorityOrder->machine_id, $machineShifts]);
+                if (count($machineShifts) <= 0) {
+                    if ($history->line_id == 29) {
+                        throw new Exception("Máy " . $machinePriorityOrder->machine_id . " chưa được phân ca ngày " . date('d-m-Y', strtotime('+1 day')), 1);
+                    } else {
+                        throw new Exception("Máy " . $machinePriorityOrder->machine_id . " chưa được phân ca ngày " . date('d-m-Y', strtotime('+1 day')), 1);
+                    }
+                }
+
+                if (isset($machine_load_factors[$machinePriorityOrder->machine_id])) {
+                    $totalTime = $machine_load_factors[$machinePriorityOrder->machine_id]['fixed_hours'] - $machine_load_factors[$machinePriorityOrder->machine_id]['work_hours'];
+                    $start_time = $machine_load_factors[$machinePriorityOrder->machine_id]['available_at'];
+                    if ($machine_load_factors[$machinePriorityOrder->machine_id]['product_id'] == $productionOrderPriority->product_id) {
+                        $setupTime = 0;
+                    }
+                } else {
+                    $totalTime = $machineShifts->where('type_break', 'Sản xuất')->sum('duration_minutes');
+                    $start_time = date('Y-m-d ' . $machineShifts->first()->start_time, strtotime('+1 day'));
+                }
+                if ($totalTime <= 0 || $totalTime <= $setupTime) {
+                    continue;
+                }
+
+                if ($history->line_id == 29) {
+                    $machineShift = MachineShift::where('machine_id', $machinePriorityOrder->machine_id)
+                        ->where('date', date('Y-m-d', strtotime('+1 day')))
+                        ->where('shift_id', $machineShifts->first()->shift_id ?? null)
+                        ->first();
+                    Log::debug($machineShift);
+                    $efficiency = ($machineShift->operator_quantity ?? 1) * $efficiency;
+                }
+
+                if ($productionTime > $totalTime) {
+                    $productionTime = $totalTime;
+                    $productionQuanty = ceil(($totalTime - $setupTime) * ($efficiency / 60));
+                } else {
+
+                    $productionQuanty = $remainQuantityOrder;
+                }
+                $end_time = date('Y-m-d H:i:s', strtotime('+' . $productionTime . ' minutes', strtotime($start_time)));
+                $times = $this->adjustShift($start_time, $end_time, $machineShifts);
+
+                $start_time = $times['start_time'];
+                $end_time = $times['end_time'];
+                $product_id = $productionOrderPriority->product_id;
+                if ($history->line_id == 24) {
+                    $bom = Bom::where('product_id', $productionOrderPriority->product_id)->where('priority', 1)->first();
+                    if ($bom) {
+                        $product_id = $bom->material_id;
+                    }
+                }
+                $prev_plan = collect($productionPlans)
+                    ->where('product_id', $product_id)
+                    ->filter(fn($p) => $p['line_id'] !== $productionOrderHistory->line_id)
+                    ->sortByDesc('thoi_gian_ket_thuc')
+                    ->first();
+
+                if ($prev_plan) {
+                    $prev_efficiency = $prev_plan['UPH'];
+                    $prev_start = $prev_plan['thoi_gian_bat_dau'];
+                    $delay_minutes = ceil(($min_qty_to_start_next_process / $prev_efficiency) * 60);
+                    $earliest_start = date('Y-m-d H:i:s', strtotime("+{$delay_minutes} minutes", strtotime($prev_start)));
+
+                    if (strtotime($start_time) < strtotime($earliest_start)) {
+                        $start_time = $earliest_start;
+                        $end_time = date('Y-m-d H:i:s', strtotime("+{$productionTime} minutes", strtotime($start_time)));
+                        $times = $this->adjustShift($start_time, $end_time, $machineShifts);
+                        $start_time = $times['start_time'];
+                        $end_time = $times['end_time'];
+                    }
+                }
+
+                $product = Product::find($product_id);
+                $productionPlans[] = [
+                    'lo_sx' => $history->lo_sx,
+                    'product_order_id' => $productionOrderPriority->production_order_id,
+                    'ngay_dat_hang' => '',
+                    'cong_doan_sx' => $history->line->name,
+                    'line_id' => $history->line_id,
+                    'ca_sx' => 1,
+                    'ngay_sx' => date('Y-m-d', strtotime('+1 day')),
+                    'ngay_giao_hang' => '',
+                    'machine_id' => $machinePriorityOrder->machine_id,
+                    'product_id' => $product_id,
+                    'product_name' => $product->name ?? '',
+                    'khach_hang' => '',
+                    'so_bat' => 0,
+                    'sl_nvl' => 0,
+                    'sl_tong_don_hang' => $history->order_quantity,
+                    'sl_giao_sx' => $productionQuanty,
+                    'sl_thanh_pham' => 0,
+                    'thu_tu_uu_tien' => $machinePriorityOrder->priority,
+                    'note' => '',
+                    'UPH' => $efficiency,
+                    'nhan_luc' => 1,
+                    'tong_tg_thuc_hien' => $totalTime,
+                    'kho_giay' => '',
+                    'toc_do' => 0,
+                    'thoi_gian_chinh_may' => $setupTime,
+                    'thoi_gian_thuc_hien' => $totalTime - $setupTime,
+                    'thoi_gian_bat_dau' => $start_time,
+                    'thoi_gian_ket_thuc' => $end_time,
+                    'status' => InfoCongDoan::STATUS_PLANNED
+                ];
+                $machine_load_factors[$machinePriorityOrder->machine_id] = [
+                    'date' => date('Y-m-d', strtotime('+1 day')),
+                    'fixed_productivity_per_hour' => $efficiency,
+                    'work_hours' => $productionTime,
+                    'fixed_hours' => $totalTime,
+                    'shift_id' => 1,
+                    'available_at' => $end_time,
+                    'product_id' => $product_id,
+                ];
+            }
+        }
         return $this->success($productionPlans, 'Tạo kế hoạch thành công');
     }
-
 
     public function approveProductionPlanAuto(Request $request)
     {
