@@ -843,10 +843,10 @@ Route::group([
 ], function (Router $router) {
     //Test new api
     $router->get('lot-production-list', [Phase2OIApiController::class, 'oiProductionList']);
-    $router->post('scan-material', [Phase2OIApiController::class, 'scanForFirstLine']);
-    $router->post('scan-manufacture', [Phase2OIApiController::class, 'scanForProductionLine']);
+    $router->post('scan-material', [Phase2OIApiController::class, 'scanForFirstLine'])->middleware('prevent-duplicate-requests');
+    $router->post('scan-manufacture', [Phase2OIApiController::class, 'scanForProductionLine'])->middleware('prevent-duplicate-requests');
     $router->post('end-of-production', [Phase2OIApiController::class, 'finishProductionLine']);
-    $router->post('scan-for-selection-line', [Phase2OIApiController::class, 'scanForSelectionLineV2']);
+    $router->post('scan-for-selection-line', [Phase2OIApiController::class, 'scanForSelectionLineV2'])->middleware('prevent-duplicate-requests');;
 });
 
 //OI

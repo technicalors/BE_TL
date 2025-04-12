@@ -684,7 +684,7 @@ class Phase2OIApiController extends Controller
                     return $this->failure([$previousLineLot,$plan], 'Không khớp mã sản phẩm');
                 }
             }
-            $so_luong = $previousLineLot->sl_dau_ra_hang_loat ?? 11000;
+            $so_luong = $previousLineLot->sl_dau_ra_hang_loat - $previousLineLot->sl_tem_vang - $previousLineLot->sl_ng;
         }
 
         try {
@@ -2027,7 +2027,7 @@ class Phase2OIApiController extends Controller
             return strtotime($a['date']) <=> strtotime($b['date']);
         });
 
-        return $this->success(['errorList' => $errorList]);
+        return $this->success(['errorList' => $errorList, 'infoCongDoan'=>$infoCongDoan]);
     }
     //============================Chất lượng============================
     //Số liệu tổng quan Chất lượng
