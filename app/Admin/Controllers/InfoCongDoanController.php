@@ -46,7 +46,7 @@ class InfoCongDoanController extends AdminController
     }
     public function updateInfoCongDoan(Request $request){
         $input = $request->all();
-        $info_cong_doan = InfoCongDoan::find($input['id']);
+        $info_cong_doan = InfoCongDoan::where('lot_id', $input['lot_id'])->where('line_id', $input['line_id'])->first();
         if($info_cong_doan){
             $info_cong_doan->update($input);
         }

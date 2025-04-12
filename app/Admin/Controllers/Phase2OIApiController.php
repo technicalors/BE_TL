@@ -1939,6 +1939,7 @@ class Phase2OIApiController extends Controller
                 foreach ($item->log ?? [] as $key => $value) {
                     $errorLog[] = [
                         'key' => $index,
+                        'id' => $item->id ?? null,
                         'error_id' => $key,
                         'quantity' => $value,
                     ];
@@ -1973,6 +1974,7 @@ class Phase2OIApiController extends Controller
                 foreach ($errorHistories ?? [] as $index => $item) {
                     $errorLog[] = [
                         'key' => $index,
+                        'id' => $item->id ?? null,
                         'error_id' => $item->error_id,
                         'quantity' => $item->quantity,
                     ];
@@ -2006,6 +2008,7 @@ class Phase2OIApiController extends Controller
                 foreach ($yellowStampHistories ?? [] as $index => $item) {
                     $errorLog[] = [
                         'key' => $index,
+                        'id' => $item->id ?? null,
                         'error_id' => $item->errors,
                         'quantity' => $item->sl_tem_vang,
                     ];
