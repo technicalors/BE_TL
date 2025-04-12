@@ -681,7 +681,7 @@ class Phase2OIApiController extends Controller
                 }
             } else {
                 if ($previousLineLot->product_id !== $plan->product_id) {
-                    return $this->failure([$previousLineLot,$plan], 'Không khớp mã sản phẩm');
+                    return $this->failure([$previousLineLot, $plan], 'Không khớp mã sản phẩm');
                 }
             }
             $so_luong = $previousLineLot->sl_dau_ra_hang_loat - $previousLineLot->sl_tem_vang - $previousLineLot->sl_ng;
@@ -1111,7 +1111,7 @@ class Phase2OIApiController extends Controller
         if ($machine->is_iot == 1 && !$tracking) {
             return $this->failure([], "Máy này chưa được sử dụng");
         }
-        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $machine->line->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
+        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $machine->line->id)->first();
         if ($infoCongDoan) {
             try {
                 if (empty($request->log)) {
@@ -1360,13 +1360,13 @@ class Phase2OIApiController extends Controller
         $product = $infoCongDoan->product;
         $material = $infoCongDoan->material;
         $line = $infoCongDoan->line;
-        if($line->id === 24){
+        if ($line->id === 24) {
             $losx = $infoCongDoan->losx;
-            if($losx && $losx->product_id){
+            if ($losx && $losx->product_id) {
                 $product_id = $losx->product_id;
             } else {
                 $bom = Bom::where('material_id', $infoCongDoan->product_id)->where('priority', 1)->first();
-                if($bom && $bom->product_id){
+                if ($bom && $bom->product_id) {
                     $product_id = $bom->product_id;
                 } else {
                     $product_id = $infoCongDoan->product_id;
@@ -1922,7 +1922,7 @@ class Phase2OIApiController extends Controller
     public function getNGTrackingResultList(Request $request)
     {
         $infoCongDoan = InfoCongDoan::find($request->info_cong_doan_id);
-        if(!$infoCongDoan){
+        if (!$infoCongDoan) {
             return $this->success(['errorList' => []]);
         }
         $errorList = [];
@@ -2030,7 +2030,46 @@ class Phase2OIApiController extends Controller
             return strtotime($a['date']) <=> strtotime($b['date']);
         });
 
-        return $this->success(['errorList' => $errorList, 'infoCongDoan'=>$infoCongDoan]);
+        return $this->success(['errorList' => $errorList, 'infoCongDoan' => $infoCongDoan]);
+    }
+
+    public function updateDauNoi(Request $request)
+    {
+        $lot_error_log = LotErrorLog::find($request->id);
+        if (!$lot_error_log) {
+            return $this->failure([], "Không tìm thấy lỗi này");
+        }
+        $log = $lot_error_log->log ?? [];
+        foreach ($log as $key => $value) {
+            $log[$request->error_id] = $request->quantity ?? 0;
+        }
+        $lot_error_log->update([
+            'log' => $log,
+            'user_id' => $request->user()->id,
+        ]);
+        return $this->success($lot_error_log, "Đã cập nhật dấu nối");
+    }
+
+    public function deleteDauNoi(Request $request)
+    {
+        $lot_error_log = LotErrorLog::find($request->id);
+        if (!$lot_error_log) {
+            return $this->failure([], "Không tìm thấy lỗi này");
+        }
+        $log = $lot_error_log->log ?? [];
+        foreach ($log as $key => $value) {
+            unset($log[$request->error_id]);
+        }
+        if (empty($log)) {
+            $lot_error_log->delete();
+            return $this->success([], "Đã xoá dấu nối");
+        } else {
+            $lot_error_log->update([
+                'log' => $log,
+                'user_id' => $request->user()->id,
+            ]);
+        }
+        return $this->success([], "Đã xoá dấu nối");
     }
     //============================Chất lượng============================
     //Số liệu tổng quan Chất lượng
@@ -2136,7 +2175,7 @@ class Phase2OIApiController extends Controller
                 );
             }
         }
-        
+
         return $this->success($infoCongDoans);
     }
 
@@ -2608,9 +2647,8 @@ class Phase2OIApiController extends Controller
             DB::beginTransaction();
             $sl_ng = $infoCongDoan->sl_ng ?? 0;
             $sl_dau_ra_hang_loat = $infoCongDoan->sl_dau_ra_hang_loat ?? 0;
-            if($sl_dau_ra_hang_loat == 0){
+            if ($sl_dau_ra_hang_loat == 0) {
                 return $this->failure([], "Không có sl đầu ra hàng loạt");
-
             }
             $sl_tem_vang = $infoCongDoan->sl_tem_vang ?? 0;
             $permission = [];
@@ -2729,7 +2767,8 @@ class Phase2OIApiController extends Controller
         return $this->success('', "Đã lưu kết quả QC");
     }
 
-    public function updateKhoangVung(Request $request){
+    public function updateKhoangVung(Request $request)
+    {
         $line = Line::find($request->line_id);
         if (!$line) {
             return $this->failure([], "Không tìm thấy công đoạn");
@@ -2857,13 +2896,13 @@ class Phase2OIApiController extends Controller
     {
         $product = $infoCongDoan->product;
         $line = $infoCongDoan->line;
-        if($line->id === 24){
+        if ($line->id === 24) {
             $losx = $infoCongDoan->losx;
-            if($losx && $losx->product_id){
+            if ($losx && $losx->product_id) {
                 $product_id = $losx->product_id;
             } else {
                 $bom = Bom::where('material_id', $infoCongDoan->product_id)->where('priority', 1)->first();
-                if($bom && $bom->product_id){
+                if ($bom && $bom->product_id) {
                     $product_id = $bom->product_id;
                 } else {
                     $product_id = $infoCongDoan->product_id;

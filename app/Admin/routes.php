@@ -672,6 +672,8 @@ Route::group([
     $router->post('change-status-ng-tracking', [Phase2OIApiController::class, 'changeStatusNGTracking']);
     $router->post('check-ng-tracking', [Phase2OIApiController::class, 'checkNGTracking']);
     $router->get('get-ng-tracking-result-list', [Phase2OIApiController::class, 'getNGTrackingResultList']);
+    $router->post('update-dau-noi', [Phase2OIApiController::class, 'updateDauNoi']);
+    $router->post('delete-dau-noi', [Phase2OIApiController::class, 'deleteDauNoi']);
 
     //Chất lượng
     $router->get('qc-overall', [Phase2OIApiController::class, 'getQCOverall']);

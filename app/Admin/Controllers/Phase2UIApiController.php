@@ -171,7 +171,7 @@ class Phase2UIApiController extends Controller
                 "thoi_gian_bam_may" => $item->thoi_gian_bam_may ? date('d/m/Y H:i:s', strtotime($item->thoi_gian_bam_may)) : '-',
                 "thoi_gian_ket_thuc" => $item->thoi_gian_ket_thuc ? date('d/m/Y H:i:s', strtotime($item->thoi_gian_ket_thuc)) : '-',
                 "thoi_gian_chay_san_luong" => number_format($d / 60, 2),
-                "sl_ng" => $sl_ng_pqc + $sl_ng_sxkt,
+                "sl_ng" => $item->sl_ng ?? 0,
                 "sl_tem_vang" => $item->sl_tem_vang,
                 'so_dau_noi' => $so_dau_noi,
                 "sl_dau_ra_ok" => $item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang,
