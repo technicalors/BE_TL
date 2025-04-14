@@ -3777,6 +3777,9 @@ class ApiMobileController extends AdminController
     public function storeProductPlan(Request $request)
     {
         $input = $request->all();
+        if(!isset($input['lo_sx'])){
+            throw new Exception("Không có lô sản xuất", 1);
+        }
         $machine = Machine::where('code', $input['machine_id'])->first();
         $input['line_id'] =  $machine->line_id;
         $input['thoi_gian_bat_dau'] = date('Y-m-d H:i:s', strtotime($input['thoi_gian_bat_dau']));
@@ -3797,20 +3800,52 @@ class ApiMobileController extends AdminController
         $times = ProductionPlanController::adjustShift($start_time, $end_time, $machineShifts);
         $input['thoi_gian_ket_thuc'] = $times['end_time'];
         $input['cong_doan_sx'] = $machine->line->name;
-        if ($machine->line_id == 24) {
-            $input['lo_sx'] = Losx::generateUniqueIdV1();
-            Losx::create(['id' =>  $input['lo_sx'], 'product_order_id' => $input['lo_sx'], 'status' => 2]);
-        } else {
-            $losx = Losx::where('product_id', $input['product_id'])->where('status', 1)->first();
-            if ($losx) {
-                $input['lo_sx'] = $losx->id;
-            } else {
-                return $this->failure([], 'Không tìm thấy lô sản xuất');
-            }
-        }
+        // if ($machine->line_id == 24) {
+        //     $input['lo_sx'] = Losx::generateUniqueIdV1();
+        //     Losx::create(['id' =>  $input['lo_sx'], 'product_order_id' => $input['lo_sx'], 'status' => 2]);
+        // } else {
+        //     $losx = Losx::where('product_id', $input['product_id'])->where('status', 1)->first();
+        //     if ($losx) {
+        //         $input['lo_sx'] = $losx->id;
+        //     } else {
+        //         return $this->failure([], 'Không tìm thấy lô sản xuất');
+        //     }
+        // }
         $input['ngay_sx'] = date('Y-m-d', strtotime($input['thoi_gian_bat_dau']));
-        ProductionPlan::create($input);
-        return $this->success([], 'Thêm thành công');
+        $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $input['lo_sx'])->where('line_id', $input['line_id'])->orderBy('updated_at', 'desc')->first();
+        $productionPlan = [
+            'lo_sx' => $input['lo_sx'],
+            'product_order_id' => '',
+            'ngay_dat_hang' => '',
+            'cong_doan_sx' => $input['cong_doan_sx'],
+            'line_id' => $input['line_id'],
+            'ca_sx' => 1,
+            'ngay_sx' => $input['ngay_sx'],
+            'ngay_giao_hang' => '',
+            'machine_id' => $input['machine_id'],
+            'product_id' => $input['product_id'],
+            'product_name' => Product::find($input['product_id'])->name ?? "",
+            'khach_hang' => '',
+            'so_bat' => 0,
+            'sl_nvl' => 0,
+            'sl_tong_don_hang' => $productionOrderHistory->order_quantity,
+            'sl_giao_sx' => $input['sl_giao_sx'],
+            'sl_thanh_pham' => 0,
+            'thu_tu_uu_tien' => 1,
+            'note' => '',
+            'UPH' => $efficiency,
+            'nhan_luc' => 1,
+            'tong_tg_thuc_hien' => $productionTime,
+            'kho_giay' => '',
+            'toc_do' => 0,
+            'thoi_gian_chinh_may' => $setupTime,
+            'thoi_gian_thuc_hien' => $productionTime - $setupTime,
+            'thoi_gian_bat_dau' => $input['thoi_gian_bat_dau'],
+            'thoi_gian_ket_thuc' => $input['thoi_gian_ket_thuc'],
+            'status' => InfoCongDoan::STATUS_PLANNED
+        ];
+        $production_plan = ProductionPlan::create($productionPlan);
+        return $this->success($production_plan, 'Thêm thành công');
     }
     public function updateProductPlan(Request $request)
     {
