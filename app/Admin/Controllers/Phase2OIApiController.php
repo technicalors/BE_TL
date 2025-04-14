@@ -684,7 +684,6 @@ class Phase2OIApiController extends Controller
                     return $this->failure([$previousLineLot, $plan], 'Không khớp mã sản phẩm');
                 }
             }
-            $so_luong = $previousLineLot->sl_dau_ra_hang_loat - $previousLineLot->sl_tem_vang - $previousLineLot->sl_ng;
         }
 
         try {
