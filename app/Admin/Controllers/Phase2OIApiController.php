@@ -509,7 +509,7 @@ class Phase2OIApiController extends Controller
                 return $this->failure([], "Máy này đang sản xuất lot khác");
             }
         }
-        // if ($machine->code != 'IN_8_MAU_01' && $machine->line_id != 26 && $machine->code != 'IN_2_MAU_01') {
+        if ($machine->line_id != 26) {
             $scannedLot = Lot::find($request->scanned_lot);
             if (!$scannedLot) {
                 return $this->failure('', 'Không tìm thấy lot');
@@ -562,22 +562,22 @@ class Phase2OIApiController extends Controller
             if (!$plan) {
                 return $this->failure([], 'Không tìm thấy KHSX');
             }
-        // } else {
-        //     $scannedLot = Lot::find($request->scanned_lot);
-        //     $plan_query = ProductionPlan::where('line_id', $machine->line_id)
-        //         ->where('machine_id', $machine->code)
-        //         ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
-        //         ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
-        //         ->orderBy('status_plan', 'DESC')
-        //         ->orderBy('thoi_gian_bat_dau');
-        //     // if ($scannedLot) {
-        //     //     $plan_query->where('product_id', $scannedLot->product_id);
-        //     // }
-        //     $plan = $plan_query->first();
-        //     if (!$plan) {
-        //         return $this->failure([], 'Không tìm thấy KHSX');
-        //     }
-        // }
+        } else {
+            $scannedLot = Lot::find($request->scanned_lot);
+            $plan_query = ProductionPlan::where('line_id', $machine->line_id)
+                ->where('machine_id', $machine->code)
+                ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
+                ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
+                ->orderBy('status_plan', 'DESC')
+                ->orderBy('thoi_gian_bat_dau');
+            // if ($scannedLot) {
+            //     $plan_query->where('product_id', $scannedLot->product_id);
+            // }
+            $plan = $plan_query->first();
+            if (!$plan) {
+                return $this->failure([], 'Không tìm thấy KHSX');
+            }
+        }
         try {
             DB::beginTransaction();
             MachineStatus::reset($machine->code);
