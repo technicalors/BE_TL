@@ -46,6 +46,7 @@ use PhpParser\Node\Expr\FuncCall;
 use App\Models\MachineLog;
 use App\Models\MachineParameterLogs;
 use App\Models\MachineParameters;
+use App\Models\MachinePriorityOrder;
 use App\Models\MachineSpec;
 use App\Models\MachineSpeed;
 use App\Models\MachineStatus;
@@ -3777,7 +3778,7 @@ class ApiMobileController extends AdminController
     public function storeProductPlan(Request $request)
     {
         $input = $request->all();
-        if(!isset($input['lo_sx'])){
+        if (!isset($input['lo_sx'])) {
             throw new Exception("Không có lô sản xuất", 1);
         }
         $machine = Machine::where('code', $input['machine_id'])->first();
@@ -3883,7 +3884,49 @@ class ApiMobileController extends AdminController
             $times = ProductionPlanController::adjustShift($start_time, $end_time, $machineShifts);
             $model->thoi_gian_ket_thuc = $times['end_time'];
             $model->ngay_sx = $input['thoi_gian_bat_dau'];
-            $model->fill($input);
+            $input['line_id'] =  $machine->line_id;
+            $input['cong_doan_sx'] = $machine->line->name;
+            $input['ngay_sx'] = date('Y-m-d', strtotime($input['thoi_gian_bat_dau']));
+            $input['sl_giao_sx'] = $input['sl_giao_sx'] ?? $model->sl_giao_sx;
+            $input['thoi_gian_ket_thuc'] = $times['end_time'];
+            $machinePriorityOrder = MachinePriorityOrder::where('line_id', $input['line_id'])
+            ->where('product_id', $input['product_id'])
+            ->orderBy('priority', 'asc')
+            ->first();
+            
+            $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $input['lo_sx'])->where('line_id', $input['line_id'])->orderBy('updated_at', 'desc')->first();
+            $productionPlan = [
+                'lo_sx' => $input['lo_sx'],
+                'product_order_id' => '',
+                'ngay_dat_hang' => '',
+                'cong_doan_sx' => $input['cong_doan_sx'],
+                'line_id' => $input['line_id'],
+                'ca_sx' => 1,
+                'ngay_sx' => $input['ngay_sx'],
+                'ngay_giao_hang' => '',
+                'machine_id' => $input['machine_id'],
+                'product_id' => $input['product_id'],
+                'product_name' => Product::find($input['product_id'])->name ?? "",
+                'khach_hang' => '',
+                'so_bat' => 0,
+                'sl_nvl' => 0,
+                'sl_tong_don_hang' => $productionOrderHistory->order_quantity,
+                'sl_giao_sx' => $input['sl_giao_sx'],
+                'sl_thanh_pham' => 0,
+                'thu_tu_uu_tien' => $machinePriorityOrder->priority ?? '',
+                'note' => '',
+                'UPH' => $efficiency,
+                'nhan_luc' => 1,
+                'tong_tg_thuc_hien' => $productionTime,
+                'kho_giay' => '',
+                'toc_do' => 0,
+                'thoi_gian_chinh_may' => $setupTime,
+                'thoi_gian_thuc_hien' => $productionTime - $setupTime,
+                'thoi_gian_bat_dau' => $input['thoi_gian_bat_dau'],
+                'thoi_gian_ket_thuc' => $input['thoi_gian_ket_thuc'],
+                'status' => InfoCongDoan::STATUS_PLANNED
+            ];
+            $model->fill($productionPlan);
             $model->save();
             DB::commit();
         } catch (\Throwable $th) {
@@ -4158,7 +4201,7 @@ class ApiMobileController extends AdminController
             $object->name = $product->name;
             $data->push($object);
         }
-        
+
         foreach ($materials as $material) {
             // Kiểm tra ID đã tồn tại chưa
             if (!$data->contains('id', $material->id)) {

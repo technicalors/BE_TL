@@ -4570,6 +4570,8 @@ class ApiUIController extends AdminController
             $spec = Spec::where('product_id', $plan->product_id)->where('line_id', $plan->line_id)->get();
             $plan->sl_ke_hoach_manh = $plan->sl_giao_sx;
             $plan->ten_san_pham = $plan->product->name ?? '';
+            $bom = Bom::where('product_id', $plan->product_id)->whereRaw('priority REGEXP "^[0-9]+$"')->orderBy('priority')->first();
+            $plan->material_name = $bom->material->name ?? "";
             // if ($plan->line_id == 24) {
             //     $plan->ten_san_pham = $plan->material->name ?? "";
             //     $plan->product_id = $plan->material->id ?? "";

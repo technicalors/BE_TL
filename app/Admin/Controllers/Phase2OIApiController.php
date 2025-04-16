@@ -14,6 +14,8 @@ use App\Models\Customer;
 use App\Models\CustomUser;
 use App\Models\Error;
 use App\Models\ErrorHistory;
+use App\Models\GroupYellowStamp;
+use App\Models\GroupYellowStampInfo;
 use App\Models\InfoCongDoan;
 use App\Models\Line;
 use App\Models\LineInventories;
@@ -845,6 +847,54 @@ class Phase2OIApiController extends Controller
         } else {
             return $this->failure([], "Không tìm thấy lot");
         }
+    }
+
+    public function createGroupYellowStamp(Request $request)
+    {
+        $input = $request->all();
+        $info = InfoCongDoan::find($input['info_cong_doan_id']);
+        if (!$info) {
+            return $this->failure('', 'Không tìm thấy lot');
+        }
+        $check = GroupYellowStampInfo::where('info_cong_doan_id', $info->id);
+        if (!$check) {
+            return $this->failure($info, 'Lot đã được gộp tem vàng');
+        }
+        $group_yellow_stamp = GroupYellowStamp::where('lo_sx', $info->lo_sx)->where('line_id', $info->line_id)->first();
+        if ($group_yellow_stamp) {
+            $group_yellow_stamp->update([
+                'quantity' => $group_yellow_stamp->quantity + $info->sl_tem_vang,
+            ]);
+            GroupYellowStampInfo::create(['info_cong_doan_id' => $info->id, 'group_yellow_stamp_id' => $group_yellow_stamp->id]);
+        } else {
+            GroupYellowStamp::create([
+                'lo_sx' => $info->lo_sx,
+                'line_id' => $info->line_id,
+                'quantity' => $info->sl_tem_vang,
+            ]);
+            GroupYellowStampInfo::create(['info_cong_doan_id' => $info->id, 'group_yellow_stamp_id' => $group_yellow_stamp->id]);
+        }
+        return $this->success('', 'Đã gộp tem vàng');
+    }
+
+    public function getGroupYellowStamp(Request $request)
+    {
+        $input = $request->all();
+        $info = InfoCongDoan::find($input['info_cong_doan_id']);
+        if (!$info) {
+            return $this->failure('', 'Không tìm thấy lot');
+        }
+        
+        $group_yellow_stamp = GroupYellowStamp::where('lo_sx', $input['lo_sx'])->where('line_id', $input['line_id'])->first();
+        $relate = GroupYellowStampInfo::where('info_cong_doan_id', $info->id)->where('group_yellow_stamp_id', $group_yellow_stamp->id ?? null)->first();
+        if ($group_yellow_stamp && $relate) {
+            $group_yellow_stamp->is_grouped = true;
+        }
+        return $this->success($group_yellow_stamp);
+    }
+
+    public function printGroupYellowStamp(Request $request){
+        
     }
     //=============================End=============================
 
