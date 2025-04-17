@@ -664,29 +664,29 @@ class Phase2OIApiController extends Controller
                 return $value < $requestValue;
             })->keys();
         $orderByString = "'" . implode("','", $filteredLineIds->toArray()) . "'";
-        $previousLineLot = InfoCongDoan::where('lot_id', $request->scanned_lot)
-            ->whereIn('line_id', $filteredLineIds)->where('status', InfoCongDoan::STATUS_COMPLETED)
-            ->orderByRaw("FIELD(line_id, $orderByString)")
-            ->get()
-            ->last();
+        // $previousLineLot = InfoCongDoan::where('lot_id', $request->scanned_lot)
+        //     ->whereIn('line_id', $filteredLineIds)->where('status', InfoCongDoan::STATUS_COMPLETED)
+        //     ->orderByRaw("FIELD(line_id, $orderByString)")
+        //     ->get()
+        //     ->last();
         $so_luong = $scannedLot->so_luong ?? 11000;
-        if (count($filteredLineIds) > 0) {
-            if (!$previousLineLot) {
-                return $this->failure([], 'Không tìm thấy lot đã chạy trước đó');
-            }
-            if ($previousLineLot->line_id == 24) {
-                $bomProducts = Bom::where(function ($subQuery) use ($previousLineLot) {
-                    $subQuery->where('material_id', $previousLineLot->product_id)->orWhere('product_id', $previousLineLot->product_id);
-                })->pluck('product_id')->toArray();
-                if (!in_array($plan->product_id, $bomProducts)) {
-                    return $this->failure($previousLineLot, 'Không khớp mã sản phẩm');
-                }
-            } else {
-                if ($previousLineLot->product_id !== $plan->product_id) {
-                    return $this->failure([$previousLineLot, $plan], 'Không khớp mã sản phẩm');
-                }
-            }
-        }
+        // if (count($filteredLineIds) > 0) {
+        //     if (!$previousLineLot) {
+        //         return $this->failure([], 'Không tìm thấy lot đã chạy trước đó');
+        //     }
+        //     if ($previousLineLot->line_id == 24) {
+        //         $bomProducts = Bom::where(function ($subQuery) use ($previousLineLot) {
+        //             $subQuery->where('material_id', $previousLineLot->product_id)->orWhere('product_id', $previousLineLot->product_id);
+        //         })->pluck('product_id')->toArray();
+        //         if (!in_array($plan->product_id, $bomProducts)) {
+        //             return $this->failure($previousLineLot, 'Không khớp mã sản phẩm');
+        //         }
+        //     } else {
+        //         if ($previousLineLot->product_id !== $plan->product_id) {
+        //             return $this->failure([$previousLineLot, $plan], 'Không khớp mã sản phẩm');
+        //         }
+        //     }
+        // }
 
         try {
             DB::beginTransaction();
