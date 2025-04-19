@@ -1489,6 +1489,14 @@ class Phase2OIApiController extends Controller
             if (!empty($info)) {
                 $param = (object) ['lot_id' => $record->lot_id];
                 $result[] = $this->formatTemTrang($info, $param);
+                Lot::updateOrCreate(['id' => $info->lot_id], [
+                    'id' => $info->lot_id,
+                    'product_id' => $info->product_id,
+                    'lo_sx' => $info->lo_sx,
+                    'so_luong' => $info->sl_dau_ra_hang_loat - $info->sl_ng - $info->sl_tem_vang,
+                    'final_line_id' => $info->line_id,
+                    'type' => Lot::TYPE_TEM_TRANG,
+                ]);
             }
         }
         return $this->success($result);
