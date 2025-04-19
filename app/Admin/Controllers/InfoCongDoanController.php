@@ -240,4 +240,14 @@ class InfoCongDoanController extends AdminController
         $info_cong_doan = $query->get();
         return $this->success($info_cong_doan);
     }
+
+    public function deleteInfoCongDoan(Request $request){
+        $info = InfoCongDoan::find($request->info_cong_doan_id);
+        
+        if(!$info){
+            return $this->failure([], 'Không tìm thấy lot');
+        }
+        $info->delete();
+        return $this->success($info, 'Xóa thành công');
+    }
 }
