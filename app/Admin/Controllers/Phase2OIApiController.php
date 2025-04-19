@@ -867,7 +867,7 @@ class Phase2OIApiController extends Controller
             ]);
             GroupYellowStampInfo::create(['info_cong_doan_id' => $info->id, 'group_yellow_stamp_id' => $group_yellow_stamp->id]);
         } else {
-            GroupYellowStamp::create([
+            $group_yellow_stamp = GroupYellowStamp::create([
                 'lo_sx' => $info->lo_sx,
                 'line_id' => $info->line_id,
                 'machine_id' => $info->machine_code,
