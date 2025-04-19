@@ -9,7 +9,7 @@ class GroupYellowStamp extends Model
 {
     use HasFactory;
     protected $table = 'group_yellow_stamp';
-    protected $fillable = ['id','lo_sx','line_id','quantity'];
+    protected $fillable = ['id','lo_sx','line_id','quantity', 'machine_id'];
     public function line(){
         return $this->belongsTo(Line::class, 'line_id');
     }
