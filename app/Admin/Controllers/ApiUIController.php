@@ -3402,8 +3402,8 @@ class ApiUIController extends AdminController
         foreach ($log_import as $key => $log) {
             $import_total = !empty($log->warehouseLog) ? $log->warehouseLog->sum('so_luong') : 0;
             $export_total = !empty($log_export[$key]->warehouseLog) ? $log_export[$key]->warehouseLog->sum('so_luong') : 0;
-            $import_product = !empty($product_import->warehouseLog) ? $product_import->warehouseLog->sum('so_luong') : 0;
-            $export_product = !empty($product_export[$key]->warehouseLog) ? $product_export[$key]->warehouseLog->sum('so_luong') : 0;
+            $import_product = $product_import->where('id', $log->id)->first() ? $product_import->where('id', $log->id)->first()->warehouseLog->sum('so_luong') : 0;
+            $export_product = $product_export->where('id', $log->id)->first() ? $product_export->where('id', $log->id)->first()->warehouseLog->sum('so_luong') : 0;
             $obj = [];
             $obj['product_id'] = $log->id;
             $obj['product_name'] = $log->name;
