@@ -860,16 +860,17 @@ class Phase2OIApiController extends Controller
         if (!$check) {
             return $this->failure($info, 'Lot đã được gộp tem vàng');
         }
-        $group_yellow_stamp = GroupYellowStamp::where('lo_sx', $info->lo_sx)->where('line_id', $info->line_id)->first();
+        $group_yellow_stamp = GroupYellowStamp::where('lo_sx', $info->lo_sx)->where('line_id', $info->line_id)->where('machine_id', $info->machine_code)->first();
         if ($group_yellow_stamp) {
             $group_yellow_stamp->update([
                 'quantity' => $group_yellow_stamp->quantity + $info->sl_tem_vang,
             ]);
             GroupYellowStampInfo::create(['info_cong_doan_id' => $info->id, 'group_yellow_stamp_id' => $group_yellow_stamp->id]);
         } else {
-            GroupYellowStamp::create([
+            $group_yellow_stamp = GroupYellowStamp::create([
                 'lo_sx' => $info->lo_sx,
                 'line_id' => $info->line_id,
+                'machine_id' => $info->machine_code,
                 'quantity' => $info->sl_tem_vang,
             ]);
             GroupYellowStampInfo::create(['info_cong_doan_id' => $info->id, 'group_yellow_stamp_id' => $group_yellow_stamp->id]);
@@ -884,18 +885,107 @@ class Phase2OIApiController extends Controller
         if (!$info) {
             return $this->failure('', 'Không tìm thấy lot');
         }
-        
-        $group_yellow_stamp = GroupYellowStamp::where('lo_sx', $input['lo_sx'])->where('line_id', $input['line_id'])->first();
+        $lots_tem_vang = [];
+        $group_yellow_stamp = GroupYellowStamp::where('lo_sx', $input['lo_sx'])->where('line_id', $input['line_id'])->where('machine_id', $input['machine_id'])->first();
         $relate = GroupYellowStampInfo::where('info_cong_doan_id', $info->id)->where('group_yellow_stamp_id', $group_yellow_stamp->id ?? null)->first();
-        if ($group_yellow_stamp && $relate) {
-            $group_yellow_stamp->is_grouped = true;
+        if ($group_yellow_stamp) {
+            if($relate){
+                $group_yellow_stamp->is_grouped = true;
+            }
+            $lots_tem_vang = Lot::where('id', 'like', $group_yellow_stamp->lo_sx . ".$group_yellow_stamp->line_id." . "LTV.%")->orderBy('id')->get();
+            $group_yellow_stamp->lots = $lots_tem_vang;
+            $group_yellow_stamp->quantity = ($group_yellow_stamp->quantity - $lots_tem_vang->sum('so_luong'));
         }
+        
         return $this->success($group_yellow_stamp);
     }
 
     public function printGroupYellowStamp(Request $request){
-        
+        $input = $request->all();
+        $group_yellow_stamp = GroupYellowStamp::with(['info_cong_doan.qcHistory.yellowStampHistories', 'losx.product'])->find($input['id']);
+        if (!$group_yellow_stamp) {
+            return $this->failure('', 'Không tìm thấy lịch sử gom tem vàng');
+        }
+        if($group_yellow_stamp->quantity < $input['quantity']){
+            return $this->failure('', 'Số lượng in vượt quá số lượng tồn, không thể tạo tem');
+        }
+        $prefix = $group_yellow_stamp->lo_sx . '.' . $group_yellow_stamp->line_id . '.LTV.';
+        $lotList = Lot::where('id', 'like', "$prefix%")->orderBy('id', 'DESC')->get();
+        if($lotList->sum('so_luong') >= $input['quantity']){
+            return $this->failure('', 'Đã in hết số lượng gom tem vàng');
+        }
+        $latestInfo = $lotList->first();
+        try {
+            if($latestInfo){
+                $array = explode('.', $latestInfo->id);
+                $index = $latestInfo ? (int) end($array) : 0;
+            }else{
+                $index = 0;
+            }
+        } catch (\Throwable $th) {
+            throw $th;
+            $index = 0;
+        }
+        $newSequence = str_pad($index + 1, 4, '0', STR_PAD_LEFT);
+        $new_lot_id = $prefix . $newSequence;
+        try {
+            DB::beginTransaction();
+            $lot_tem_vang = Lot::updateOrCreate(
+            ['id' => $new_lot_id],
+            [
+                'lo_sx' => $group_yellow_stamp->lo_sx,
+                'final_line_id' => $group_yellow_stamp->line_id,
+                'so_luong' => $request->quantity,
+                'product_id' => $group_yellow_stamp->losx->product_id ?? null,
+                'type' => Lot::TYPE_TEM_VANG
+            ]);
+            $tem = $this->formatGroupYellowStamp($lot_tem_vang, $group_yellow_stamp);
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            throw $th;
+        }
+        return $this->success($tem);
     }
+
+    function formatGroupYellowStamp($lot_tem_vang, $group_yellow_stamp){
+        $infos = $group_yellow_stamp->info_cong_doan;
+        $khoanh_vung = [];
+        foreach ($infos as $info) {
+            foreach ($info->qcHistory->yellowStampHistories ?? [] as $value) {
+                $khoanh_vung[] = $value->errors;
+            }
+        }
+        // return $khoanh_vung;
+        $tem = [
+            'lot_id' => $lot_tem_vang->id,
+            'lsx' => $lot_tem_vang->lo_sx,
+            'machine_code' => $group_yellow_stamp->machine_id,
+            'ten_sp' => $group_yellow_stamp->losx->product->name ?? null,
+            'sl_tem_vang' => $lot_tem_vang->so_luong,
+            'ver' => '',
+            'his' => '',
+            'cd_thuc_hien' => 'Đục cắt',
+            'cd_tiep_theo' => 'Chọn',
+            'ghi_chu' => implode(',', $khoanh_vung),
+        ];
+        return $tem;
+    }
+
+    public function reprintGroupYellowStamp(Request $request){
+        $input = $request->all();
+        $lot_tem_vang = Lot::find($input['lot_id']);
+        if(!$lot_tem_vang){
+            return $this->failure('', 'Không tìm thấy lot');
+        }
+        $group_yellow_stamp = GroupYellowStamp::where('lo_sx', $input['lo_sx'])->where('line_id', $input['line_id'])->where('machine_id', $input['machine_id'])->first();
+        if(!$group_yellow_stamp){
+            return $this->failure('', 'Không tìm thấy lịch sử gom tem vàng');
+        }
+        $tem = $this->formatGroupYellowStamp($lot_tem_vang, $group_yellow_stamp);
+        return $this->success($tem);
+    }
+
     //=============================End=============================
 
 
@@ -1399,6 +1489,14 @@ class Phase2OIApiController extends Controller
             if (!empty($info)) {
                 $param = (object) ['lot_id' => $record->lot_id];
                 $result[] = $this->formatTemTrang($info, $param);
+                Lot::updateOrCreate(['id' => $info->lot_id], [
+                    'id' => $info->lot_id,
+                    'product_id' => $info->product_id,
+                    'lo_sx' => $info->lo_sx,
+                    'so_luong' => $info->sl_dau_ra_hang_loat - $info->sl_ng - $info->sl_tem_vang,
+                    'final_line_id' => $info->line_id,
+                    'type' => Lot::TYPE_TEM_TRANG,
+                ]);
             }
         }
         return $this->success($result);
@@ -2190,6 +2288,8 @@ class Phase2OIApiController extends Controller
             $item['qc_status'] = $value->eligible_to_end ?? 0;
             $item['status'] = $infoCongDoan->status ?? 0;
             $item['sl_kh'] = $infoCongDoan->sl_dau_vao_hang_loat ?? 0;
+            $item['line_id'] = $infoCongDoan->line_id ?? "";
+            $item['machine_code'] = $infoCongDoan->machine_code ?? "";
             $data[] = $item;
         }
         return $this->success($data);
@@ -2972,9 +3072,9 @@ class Phase2OIApiController extends Controller
             $next_line = Line::where('ordering', '>', $line->ordering)->orderBy('ordering')->first();
         }
         $qc_history = $infoCongDoan->qcHistory;
-        $user_sx = CustomUser::find($infoCongDoan->user_id);
-        $user_qc = CustomUser::find($qc_history->user_id);
-        $loi_tem_vang = YellowStampHistory::where('q_c_history_id', $qc_history->id)->pluck('errors')->toArray();
+        $user_sx = CustomUser::find($infoCongDoan->user_id ?? null);
+        $user_qc = CustomUser::find($qc_history->user_id ?? null);
+        $loi_tem_vang = YellowStampHistory::where('q_c_history_id', $qc_history->id ?? null)->pluck('errors')->toArray();
         $lotErrorLog = LotErrorLog::where('lot_id', $request->lot_id)->orderBy('line_id')->get();
         $log = [];
         foreach ($lotErrorLog as $item) {

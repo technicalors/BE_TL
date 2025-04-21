@@ -451,6 +451,7 @@ Route::group([
     $router->post('info-cong-doan/update', [InfoCongDoanController::class, 'updateInfoCongDoan']);
     $router->get('info-cong-doan/export', [InfoCongDoanController::class, 'exportInfoCongDoan']);
     $router->post('info-cong-doan/import', [InfoCongDoanController::class, 'importInfoCongDoan']);
+    $router->post('info-cong-doan/delete', [InfoCongDoanController::class, 'deleteInfoCongDoan']);
 
     // $router->get('machine/list', [App\Admin\Controllers\MachineController::class, 'getMachine']);
     $router->patch('machine/update', [App\Admin\Controllers\MachineController::class, 'updateMachine']);
@@ -690,6 +691,8 @@ Route::group([
     $router->post('update-khoanh-vung', [Phase2OIApiController::class, 'updateKhoangVung']);
     $router->post('create-group-yellow-stamp', [Phase2OIApiController::class, 'createGroupYellowStamp']);
     $router->get('get-group-yellow-stamp', [Phase2OIApiController::class, 'getGroupYellowStamp']);
+    $router->get('print-group-yellow-stamp', [Phase2OIApiController::class, 'printGroupYellowStamp']);
+    $router->get('reprint-group-yellow-stamp', [Phase2OIApiController::class, 'reprintGroupYellowStamp']);
 
     //Thiết bị
     $router->get('machine-overall', [Phase2OIApiController::class, 'getMachineOverall']);
