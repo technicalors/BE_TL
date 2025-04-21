@@ -516,10 +516,10 @@ class Phase2OIApiController extends Controller
             if (!$scannedLot) {
                 return $this->failure('', 'Không tìm thấy lot');
             }
-            // $checkInfo = InfoCongDoan::where('input_lot_id', $request->scanned_lot)->first();
-            // if ($checkInfo && $machine->line_id != 24) {
-            //     return $this->failure('', 'Lot đã được sử dụng');
-            // }
+            $checkInfo = InfoCongDoan::where('input_lot_id', $request->scanned_lot)->first();
+            if ($checkInfo && $machine->line_id != 24) {
+                return $this->failure('', 'Lot đã được sử dụng');
+            }
             $plan_query = ProductionPlan::where('line_id', $machine->line_id)
                 ->where('machine_id', $machine->code)
                 ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
@@ -1935,6 +1935,25 @@ class Phase2OIApiController extends Controller
         return $this->success($data);
     }
 
+    function handleSelectionLineStamp($infoCongDoan, $index, $request){
+        if($infoCongDoan->product_id === 'SSG064'){
+
+        }else{
+            $counterT = Lot::where('id', 'like', $infoCongDoan->lo_sx . '-T%')->count() + 1;
+            $id = $infoCongDoan->id . '-T';
+            $thung = Lot::firstOrCreate([
+                'id' => $id . ($index + $counterT),
+                'product_id' => $infoCongDoan->product_id,
+                'material_id' => $infoCongDoan->material_id,
+                'final_line_id' => $infoCongDoan->line_id,
+                'lo_sx' => $infoCongDoan->lo_sx,
+                'so_luong' => $request->sl_in_tem,
+                'type' => Lot::TYPE_THUNG
+            ]);
+        }
+        return $this->formatTemChon($thung, $infoCongDoan);
+    }
+
     public function formatTemChon($lot, $infoCongDoan)
     {
         $product = $lot->product;
@@ -1969,6 +1988,40 @@ class Phase2OIApiController extends Controller
         return $data;
     }
 
+    public function formatTemChonSamsung($lot, $infoCongDoan)
+    {
+        $product = $lot->product;
+        $material = $lot->material;
+        $line = $infoCongDoan->line;
+        $next_line = Line::where('ordering', '>', $line->ordering)->orderBy('ordering')->first();
+        $user = CustomUser::find($infoCongDoan->user_id ?? "");
+        $lotErrorLog = LotErrorLog::where('lot_id', $infoCongDoan->lot_id)->orderBy('line_id')->get();
+        $log = [];
+        foreach ($lotErrorLog as $item) {
+            foreach ($item->log ?? [] as $key => $value) {
+                $log[$key] = ($log[$key] ?? 0) + $value;
+            }
+        }
+        $errors = [];
+        foreach ($log as $key => $value) {
+            $errors[] = "$key: $value";
+        }
+        $ghi_chu = implode(', ', $errors);
+        $data = [];
+        $assignment = Assignment::where('lot_id', $infoCongDoan->lot_id)->first();
+        $data['lot_id'] = $lot->id;
+        $data['lsx'] = $lot->lo_sx;
+        $data['ten_sp'] = $product->name ?? $material->name ?? "";
+        $data['soluongtp'] = $lot->so_luong;
+        $data['his'] = $product->his ?? "";
+        $data['ver'] = $product->ver ?? "";
+        $data['cd_thuc_hien'] = $line->name ?? "";
+        $data['cd_tiep_theo'] = $next_line->name ?? "";
+        $data['nguoi_sx'] = $assignment->worker ? $assignment->worker->name : "";
+        $data['ghi_chu'] = $ghi_chu ?? "";
+        return $data;
+    }
+    
     public function updateOutputProduction(Request $request)
     {
         $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $request->machine_code)->where('line_id', $request->line_id)->first();
