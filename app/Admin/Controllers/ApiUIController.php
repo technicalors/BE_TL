@@ -4519,7 +4519,7 @@ class ApiUIController extends AdminController
     public function productionPlanQuery(Request $request)
     {
         $input = $request->all();
-        $query = ProductionPlan::with('product', 'material', 'line')->orderBy('line_id', 'ASC')->orderBy('thoi_gian_bat_dau', 'ASC')->orderBy('status_plan', 'ASC')->orderBy('machine_id', 'ASC');
+        $query = ProductionPlan::with('product', 'material', 'line')->orderBy('line_id', 'ASC')->orderBy('machine_id', 'ASC')->orderBy('thoi_gian_bat_dau', 'ASC')->orderBy('status_plan', 'ASC');
         if (isset($input['date']) && count($input['date'])) {
             $query->whereDate('thoi_gian_bat_dau', '>=', date('Y-m-d', strtotime($input['date'][0])))
                 ->whereDate('thoi_gian_bat_dau', '<=', date('Y-m-d', strtotime($input['date'][1])));
