@@ -911,9 +911,9 @@ class Phase2OIApiController extends Controller
         }
         $prefix = $group_yellow_stamp->lo_sx . '.' . $group_yellow_stamp->line_id . '.LTV.';
         $lotList = Lot::where('id', 'like', "$prefix%")->orderBy('id', 'DESC')->get();
-        if($lotList->sum('so_luong') >= $input['quantity']){
-            return $this->failure('', 'Đã in hết số lượng gom tem vàng');
-        }
+        // if($lotList->sum('so_luong') >= $input['quantity']){
+        //     return $this->failure('', 'Đã in hết số lượng gom tem vàng');
+        // }
         $latestInfo = $lotList->first();
         try {
             if($latestInfo){
