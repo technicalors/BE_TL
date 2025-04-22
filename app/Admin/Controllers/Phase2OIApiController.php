@@ -519,10 +519,10 @@ class Phase2OIApiController extends Controller
             if (!$scannedLot) {
                 return $this->failure('', 'Không tìm thấy lot');
             }
-            $checkInfo = InfoCongDoan::where('input_lot_id', $request->scanned_lot)->first();
-            if ($checkInfo && $machine->line_id != 24) {
-                return $this->failure('', 'Lot đã được sử dụng');
-            }
+            // $checkInfo = InfoCongDoan::where('input_lot_id', $request->scanned_lot)->first();
+            // if ($checkInfo && $machine->line_id != 24) {
+            //     return $this->failure('', 'Lot đã được sử dụng');
+            // }
             $plan_query = ProductionPlan::where('line_id', $machine->line_id)
                 ->where('machine_id', $machine->code)
                 ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
