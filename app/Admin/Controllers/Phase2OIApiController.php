@@ -33,6 +33,8 @@ use App\Models\ProductionOrderHistory;
 use App\Models\ProductionPlan;
 use App\Models\QCHistory;
 use App\Models\RollMaterial;
+use App\Models\SelectionLineStamp;
+use App\Models\SelectionLineStampTemplate;
 use App\Models\Spec;
 use App\Models\TestCriteria;
 use App\Models\TestCriteriaDetailHistory;
@@ -49,6 +51,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use GuzzleHttp\Client;
+use PhpOffice\PhpSpreadsheet\Calculation\LookupRef\Selection;
 use stdClass;
 
 class Phase2OIApiController extends Controller
@@ -516,10 +519,10 @@ class Phase2OIApiController extends Controller
             if (!$scannedLot) {
                 return $this->failure('', 'Không tìm thấy lot');
             }
-            $checkInfo = InfoCongDoan::where('input_lot_id', $request->scanned_lot)->first();
-            if ($checkInfo && $machine->line_id != 24) {
-                return $this->failure('', 'Lot đã được sử dụng');
-            }
+            // $checkInfo = InfoCongDoan::where('input_lot_id', $request->scanned_lot)->first();
+            // if ($checkInfo && $machine->line_id != 24) {
+            //     return $this->failure('', 'Lot đã được sử dụng');
+            // }
             $plan_query = ProductionPlan::where('line_id', $machine->line_id)
                 ->where('machine_id', $machine->code)
                 ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
@@ -889,24 +892,25 @@ class Phase2OIApiController extends Controller
         $group_yellow_stamp = GroupYellowStamp::where('lo_sx', $input['lo_sx'])->where('line_id', $input['line_id'])->where('machine_id', $input['machine_id'])->first();
         $relate = GroupYellowStampInfo::where('info_cong_doan_id', $info->id)->where('group_yellow_stamp_id', $group_yellow_stamp->id ?? null)->first();
         if ($group_yellow_stamp) {
-            if($relate){
+            if ($relate) {
                 $group_yellow_stamp->is_grouped = true;
             }
             $lots_tem_vang = Lot::where('id', 'like', $group_yellow_stamp->lo_sx . ".$group_yellow_stamp->line_id." . "LTV.%")->orderBy('id')->get();
             $group_yellow_stamp->lots = $lots_tem_vang;
             $group_yellow_stamp->quantity = ($group_yellow_stamp->quantity - $lots_tem_vang->sum('so_luong'));
         }
-        
+
         return $this->success($group_yellow_stamp);
     }
 
-    public function printGroupYellowStamp(Request $request){
+    public function printGroupYellowStamp(Request $request)
+    {
         $input = $request->all();
         $group_yellow_stamp = GroupYellowStamp::with(['info_cong_doan.qcHistory.yellowStampHistories', 'losx.product'])->find($input['id']);
         if (!$group_yellow_stamp) {
             return $this->failure('', 'Không tìm thấy lịch sử gom tem vàng');
         }
-        if($group_yellow_stamp->quantity < $input['quantity']){
+        if ($group_yellow_stamp->quantity < $input['quantity']) {
             return $this->failure('', 'Số lượng in vượt quá số lượng tồn, không thể tạo tem');
         }
         $prefix = $group_yellow_stamp->lo_sx . '.' . $group_yellow_stamp->line_id . '.LTV.';
@@ -916,10 +920,10 @@ class Phase2OIApiController extends Controller
         // }
         $latestInfo = $lotList->first();
         try {
-            if($latestInfo){
+            if ($latestInfo) {
                 $array = explode('.', $latestInfo->id);
                 $index = $latestInfo ? (int) end($array) : 0;
-            }else{
+            } else {
                 $index = 0;
             }
         } catch (\Throwable $th) {
@@ -931,14 +935,15 @@ class Phase2OIApiController extends Controller
         try {
             DB::beginTransaction();
             $lot_tem_vang = Lot::updateOrCreate(
-            ['id' => $new_lot_id],
-            [
-                'lo_sx' => $group_yellow_stamp->lo_sx,
-                'final_line_id' => $group_yellow_stamp->line_id,
-                'so_luong' => $request->quantity,
-                'product_id' => $group_yellow_stamp->losx->product_id ?? null,
-                'type' => Lot::TYPE_TEM_VANG
-            ]);
+                ['id' => $new_lot_id],
+                [
+                    'lo_sx' => $group_yellow_stamp->lo_sx,
+                    'final_line_id' => $group_yellow_stamp->line_id,
+                    'so_luong' => $request->quantity,
+                    'product_id' => $group_yellow_stamp->losx->product_id ?? null,
+                    'type' => Lot::TYPE_TEM_VANG
+                ]
+            );
             $tem = $this->formatGroupYellowStamp($lot_tem_vang, $group_yellow_stamp);
             DB::commit();
         } catch (\Throwable $th) {
@@ -948,7 +953,8 @@ class Phase2OIApiController extends Controller
         return $this->success($tem);
     }
 
-    function formatGroupYellowStamp($lot_tem_vang, $group_yellow_stamp){
+    function formatGroupYellowStamp($lot_tem_vang, $group_yellow_stamp)
+    {
         $infos = $group_yellow_stamp->info_cong_doan;
         $khoanh_vung = [];
         foreach ($infos as $info) {
@@ -972,14 +978,15 @@ class Phase2OIApiController extends Controller
         return $tem;
     }
 
-    public function reprintGroupYellowStamp(Request $request){
+    public function reprintGroupYellowStamp(Request $request)
+    {
         $input = $request->all();
         $lot_tem_vang = Lot::find($input['lot_id']);
-        if(!$lot_tem_vang){
+        if (!$lot_tem_vang) {
             return $this->failure('', 'Không tìm thấy lot');
         }
         $group_yellow_stamp = GroupYellowStamp::where('lo_sx', $input['lo_sx'])->where('line_id', $input['line_id'])->where('machine_id', $input['machine_id'])->first();
-        if(!$group_yellow_stamp){
+        if (!$group_yellow_stamp) {
             return $this->failure('', 'Không tìm thấy lịch sử gom tem vàng');
         }
         $tem = $this->formatGroupYellowStamp($lot_tem_vang, $group_yellow_stamp);
@@ -1504,29 +1511,29 @@ class Phase2OIApiController extends Controller
 
     public function formatTemTrang($infoCongDoan, $request)
     {
-        $product = $infoCongDoan->product;
+        $product = $infoCongDoan->losx->product ?? null;
         $material = $infoCongDoan->material;
         $line = $infoCongDoan->line;
-        if ($line->id === 24) {
-            $losx = $infoCongDoan->losx;
-            if ($losx && $losx->product_id) {
-                $product_id = $losx->product_id;
-            } else {
-                $bom = Bom::where('material_id', $infoCongDoan->product_id)->where('priority', 1)->first();
-                if ($bom && $bom->product_id) {
-                    $product_id = $bom->product_id;
-                } else {
-                    $product_id = $infoCongDoan->product_id;
-                }
-            }
-        } else {
-            $product_id = $infoCongDoan->product_id;
-        }
-        $product_journey = Spec::where('product_id', $product_id)->where('slug', 'hanh-trinh-san-xuat')->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
-        $currnetLineIndex = $product_journey[$infoCongDoan->line_id] ?? 0;
+        // if ($line->id === 24) {
+        //     $losx = $infoCongDoan->losx;
+        //     if ($losx && $losx->product_id) {
+        //         $product_id = $losx->product_id;
+        //     } else {
+        //         $bom = Bom::where('material_id', $infoCongDoan->product_id)->where('priority', 1)->first();
+        //         if ($bom && $bom->product_id) {
+        //             $product_id = $bom->product_id;
+        //         } else {
+        //             $product_id = $infoCongDoan->product_id;
+        //         }
+        //     }
+        // } else {
+        //     $product_id = $infoCongDoan->product_id;
+        // }
+        $product_journey = Spec::where('product_id', $product->id ?? null)->where('slug', 'hanh-trinh-san-xuat')->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
+        $currentLineIndex = $product_journey[$infoCongDoan->line_id] ?? 0;
         $nextLineIds = collect($product_journey)
-            ->filter(function ($value, $lineId) use ($currnetLineIndex) {
-                return $value > $currnetLineIndex;
+            ->filter(function ($value, $lineId) use ($currentLineIndex) {
+                return $value > $currentLineIndex;
             })->keys();
         if (count($nextLineIds) > 0) {
             $next_line = Line::find($nextLineIds[0]);
@@ -1862,96 +1869,160 @@ class Phase2OIApiController extends Controller
                     $infoCongDoan->plan->update(['status_plan' => ProductionPlan::STATUS_COMPLETED]);
                 }
             }
-            $quantity = 0;
-            $counterT = Lot::where('id', 'like', $infoCongDoan->lo_sx . '-T%')->count() + 1;
-            switch ($request->type) {
-                case 1:
-                    $counter = ceil($sl_tong / $request->sl_in_tem);
-                    for ($i = 0; $i < $counter; $i++) {
-                        $id = $infoCongDoan->lo_sx . '-T';
-                        if ($i == $counter - 1 && ($sl_tong % $request->sl_in_tem) > 0) {
-                            $so_luong = $sl_tong % $request->sl_in_tem;
-                        } else {
-                            $so_luong = $request->sl_in_tem;
+            $template = SelectionLineStampTemplate::where('product_id', $infoCongDoan->product_id)->first();
+            // return $template;
+            if ($template) {
+                $type = 'samsung_stamp';
+                //In tem kiểu mới
+                $quantity = 0;
+                $counterT = Lot::where('id', 'like', $infoCongDoan->lo_sx . '-T%')->count() + 1;
+                switch ($request->type) {
+                    case 1:
+                        $counter = ceil($sl_tong / $request->sl_in_tem);
+                        for ($i = 0; $i < $counter; $i++) {
+                            $id = $infoCongDoan->lo_sx . '-T';
+                            if ($i == $counter - 1 && ($sl_tong % $request->sl_in_tem) > 0) {
+                                $so_luong = $sl_tong % $request->sl_in_tem;
+                            } else {
+                                $so_luong = $request->sl_in_tem;
+                            }
+                            $stamp = $this->handleSelectionLineStamp($infoCongDoan, $template, $so_luong);
+                            $data[] = $this->formatTemChonSamsung($stamp);
+                            $quantity += $request->sl_in_tem;
                         }
-                        $thung = Lot::firstOrCreate([
-                            'id' => $id . ($i + $counterT),
-                            'product_id' => $infoCongDoan->product_id,
-                            'material_id' => $infoCongDoan->material_id,
-                            'final_line_id' => $line->id,
-                            'lo_sx' => $infoCongDoan->lo_sx,
-                            'so_luong' => $so_luong,
-                            'type' => Lot::TYPE_THUNG
-                        ]);
-                        $quantity += $request->sl_in_tem;
-                        $data[] = $this->formatTemChon($thung, $infoCongDoan);
-                    }
-                    OddBin::where('lo_sx', $infoCongDoan->lo_sx)->where('product_id', $infoCongDoan->product_id)->delete();
-                    break;
-                case 2:
-                    $counter = floor($sl_tong / $request->sl_in_tem);
-                    for ($i = 0; $i < $counter; $i++) {
-                        $id = $infoCongDoan->id . '-T';
-                        $thung = Lot::firstOrCreate([
-                            'id' => $id . ($i + $counterT),
-                            'product_id' => $infoCongDoan->product_id,
-                            'material_id' => $infoCongDoan->material_id,
-                            'final_line_id' => $line->id,
-                            'lo_sx' => $infoCongDoan->lo_sx,
-                            'so_luong' => $request->sl_in_tem,
-                            'type' => Lot::TYPE_THUNG
-                        ]);
-                        $quantity += $request->sl_in_tem;
-                        $data[] = $this->formatTemChon($thung, $infoCongDoan);
-                    }
-                    OddBin::updateOrCreate(
-                        [
-                            'lo_sx' => $infoCongDoan->lo_sx,
-                            'product_id' => $infoCongDoan->product_id,
-                        ],
-                        [
-                            'so_luong' => $sl_tong - $quantity,
-                        ]
-                    );
-                    break;
-                case 3:
-                    OddBin::updateOrCreate(
-                        [
-                            'lo_sx' => $infoCongDoan->lo_sx,
-                            'product_id' => $infoCongDoan->product_id,
-                        ],
-                        [
-                            'so_luong' => $sl_tong,
-                        ]
-                    );
-                    break;
+                        OddBin::where('lo_sx', $infoCongDoan->lo_sx)->where('product_id', $infoCongDoan->product_id)->delete();
+                        break;
+                    case 2:
+                        $counter = floor($sl_tong / $request->sl_in_tem);
+                        for ($i = 0; $i < $counter; $i++) {
+                            $stamp = $this->handleSelectionLineStamp($infoCongDoan, $template, $request->sl_in_tem);
+                            $data[] = $this->formatTemChonSamsung($stamp);
+                            $quantity += $request->sl_in_tem;
+                        }
+                        OddBin::updateOrCreate(
+                            [
+                                'lo_sx' => $infoCongDoan->lo_sx,
+                                'product_id' => $infoCongDoan->product_id,
+                            ],
+                            [
+                                'so_luong' => $sl_tong - $quantity,
+                            ]
+                        );
+                        break;
+                    case 3:
+                        OddBin::updateOrCreate(
+                            [
+                                'lo_sx' => $infoCongDoan->lo_sx,
+                                'product_id' => $infoCongDoan->product_id,
+                            ],
+                            [
+                                'so_luong' => $sl_tong,
+                            ]
+                        );
+                        break;
+                }
+            } else {
+                //In tem kiểu cũ
+                $type = 'normal_stamp';
+                $quantity = 0;
+                $counterT = Lot::where('id', 'like', $infoCongDoan->lo_sx . '-T%')->count() + 1;
+                switch ($request->type) {
+                    case 1:
+                        $counter = ceil($sl_tong / $request->sl_in_tem);
+                        for ($i = 0; $i < $counter; $i++) {
+                            $id = $infoCongDoan->lo_sx . '-T';
+                            if ($i == $counter - 1 && ($sl_tong % $request->sl_in_tem) > 0) {
+                                $so_luong = $sl_tong % $request->sl_in_tem;
+                            } else {
+                                $so_luong = $request->sl_in_tem;
+                            }
+                            $thung = Lot::firstOrCreate([
+                                'id' => $id . ($i + $counterT),
+                            ], [
+                                'product_id' => $infoCongDoan->product_id,
+                                'material_id' => $infoCongDoan->material_id,
+                                'final_line_id' => $line->id,
+                                'lo_sx' => $infoCongDoan->lo_sx,
+                                'so_luong' => $so_luong,
+                                'type' => Lot::TYPE_THUNG
+                            ]);
+                            $quantity += $request->sl_in_tem;
+                            $data[] = $this->formatTemChon($thung, $infoCongDoan);
+                        }
+                        OddBin::where('lo_sx', $infoCongDoan->lo_sx)->where('product_id', $infoCongDoan->product_id)->delete();
+                        break;
+                    case 2:
+                        $counter = floor($sl_tong / $request->sl_in_tem);
+                        for ($i = 0; $i < $counter; $i++) {
+                            $id = $infoCongDoan->id . '-T';
+                            $thung = Lot::firstOrCreate([
+                                'id' => $id . ($i + $counterT),
+                            ], [
+                                'product_id' => $infoCongDoan->product_id,
+                                'material_id' => $infoCongDoan->material_id,
+                                'final_line_id' => $line->id,
+                                'lo_sx' => $infoCongDoan->lo_sx,
+                                'so_luong' => $request->sl_in_tem,
+                                'type' => Lot::TYPE_THUNG
+                            ]);
+                            $quantity += $request->sl_in_tem;
+                            $data[] = $this->formatTemChon($thung, $infoCongDoan);
+                        }
+                        OddBin::updateOrCreate(
+                            [
+                                'lo_sx' => $infoCongDoan->lo_sx,
+                                'product_id' => $infoCongDoan->product_id,
+                            ],
+                            [
+                                'so_luong' => $sl_tong - $quantity,
+                            ]
+                        );
+                        break;
+                    case 3:
+                        OddBin::updateOrCreate(
+                            [
+                                'lo_sx' => $infoCongDoan->lo_sx,
+                                'product_id' => $infoCongDoan->product_id,
+                            ],
+                            [
+                                'so_luong' => $sl_tong,
+                            ]
+                        );
+                        break;
+                }
             }
             DB::commit();
         } catch (\Throwable $th) {
             Log::info($th);
             DB::rollBack();
-            return $this->failure($th, "Lỗi quét lot");
+            return $this->failure($th, "Không thể in tem");
         }
-        return $this->success($data);
+        return $this->success(['data' => $data, 'type' => $type]);
     }
 
-    function handleSelectionLineStamp($infoCongDoan, $index, $request){
-        if($infoCongDoan->product_id === 'SSG064'){
-
-        }else{
-            $counterT = Lot::where('id', 'like', $infoCongDoan->lo_sx . '-T%')->count() + 1;
-            $id = $infoCongDoan->id . '-T';
-            $thung = Lot::firstOrCreate([
-                'id' => $id . ($index + $counterT),
-                'product_id' => $infoCongDoan->product_id,
-                'material_id' => $infoCongDoan->material_id,
-                'final_line_id' => $infoCongDoan->line_id,
-                'lo_sx' => $infoCongDoan->lo_sx,
-                'so_luong' => $request->sl_in_tem,
-                'type' => Lot::TYPE_THUNG
-            ]);
-        }
-        return $this->formatTemChon($thung, $infoCongDoan);
+    function handleSelectionLineStamp($infoCongDoan, $template, $so_luong)
+    {
+        [$productionBatch, $boxNumber] = SelectionLineStamp::generateStampLotId();
+        $stamp = SelectionLineStamp::create([
+            'lo_sx' => $infoCongDoan->lo_sx,
+            'production_batch' => $productionBatch,
+            'box_number' => $boxNumber,
+            'quantity' => $so_luong,
+            'lot_id' => $productionBatch . $boxNumber,
+            'qr_code' => $template->part_no . $template->vendor_code . $template->po_type . $productionBatch . $boxNumber . $template->box_quantity,
+            'selection_line_stamp_template_id' => $template->id,
+        ]);
+        $thung = Lot::firstOrCreate([
+            'id' => $stamp->lot_id
+        ], [
+            'product_id' => $infoCongDoan->product_id,
+            'material_id' => $infoCongDoan->material_id,
+            'final_line_id' => $infoCongDoan->id,
+            'lo_sx' => $infoCongDoan->lo_sx,
+            'so_luong' => $so_luong,
+            'type' => Lot::TYPE_THUNG
+        ]);
+        return $stamp;
     }
 
     public function formatTemChon($lot, $infoCongDoan)
@@ -1983,45 +2054,27 @@ class Phase2OIApiController extends Controller
         $data['ver'] = $product->ver ?? "";
         $data['cd_thuc_hien'] = $line->name ?? "";
         $data['cd_tiep_theo'] = $next_line->name ?? "";
-        $data['nguoi_sx'] = $assignment->worker ? $assignment->worker->name : "";
+        $data['nguoi_sx'] = isset($assignment->worker) ? $assignment->worker->name : "";
         $data['ghi_chu'] = $ghi_chu ?? "";
         return $data;
     }
 
-    public function formatTemChonSamsung($lot, $infoCongDoan)
+    public function formatTemChonSamsung($stamp)
     {
-        $product = $lot->product;
-        $material = $lot->material;
-        $line = $infoCongDoan->line;
-        $next_line = Line::where('ordering', '>', $line->ordering)->orderBy('ordering')->first();
-        $user = CustomUser::find($infoCongDoan->user_id ?? "");
-        $lotErrorLog = LotErrorLog::where('lot_id', $infoCongDoan->lot_id)->orderBy('line_id')->get();
-        $log = [];
-        foreach ($lotErrorLog as $item) {
-            foreach ($item->log ?? [] as $key => $value) {
-                $log[$key] = ($log[$key] ?? 0) + $value;
-            }
-        }
-        $errors = [];
-        foreach ($log as $key => $value) {
-            $errors[] = "$key: $value";
-        }
-        $ghi_chu = implode(', ', $errors);
-        $data = [];
-        $assignment = Assignment::where('lot_id', $infoCongDoan->lot_id)->first();
-        $data['lot_id'] = $lot->id;
-        $data['lsx'] = $lot->lo_sx;
-        $data['ten_sp'] = $product->name ?? $material->name ?? "";
-        $data['soluongtp'] = $lot->so_luong;
-        $data['his'] = $product->his ?? "";
-        $data['ver'] = $product->ver ?? "";
-        $data['cd_thuc_hien'] = $line->name ?? "";
-        $data['cd_tiep_theo'] = $next_line->name ?? "";
-        $data['nguoi_sx'] = $assignment->worker ? $assignment->worker->name : "";
-        $data['ghi_chu'] = $ghi_chu ?? "";
+        $data = [
+            'part_no' => $stamp->template->part_no ?? "",
+            'specification' => $stamp->template->specification ?? "",
+            'po_type' => $stamp->template->po_type ?? "",
+            'lot_no' => $stamp->lot_id,
+            'qr_code' => $stamp->qr_code,
+            'quantity' => $stamp->template->box_quantity ?? 0,
+            'vendor_name' => $stamp->template->vendor_name ?? "",
+            'vendor_code' => $stamp->template->vendor_code ?? "",
+            'week' => 'W' . Carbon::parse($stamp->created_at)->format('W'),
+        ];
         return $data;
     }
-    
+
     public function updateOutputProduction(Request $request)
     {
         $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $request->machine_code)->where('line_id', $request->line_id)->first();
