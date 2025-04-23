@@ -2027,8 +2027,8 @@ class Phase2OIApiController extends Controller
                                         $so_luong_tem_bo = $request->sl_tem_bo;
                                     }
                                     $tembo_items[] = $this->formatTemBoSamsung($stamp, $so_luong_tem_bo);
-                                    // Mỗi 2 tembo thì gộp lại thành 1 phần tử $data
-                                    if (count($tembo_items) == 2 || $j == $tem_bo_counter - 1) {
+                                    // Mỗi 3 tembo thì gộp lại thành 1 phần tử $data
+                                    if (count($tembo_items) == 3 || $j == $tem_bo_counter - 1) {
                                         $data[] = ['type' => 'tem_bo', 'data' => $tembo_items];
                                         $tembo_items = []; // reset để chứa cặp tiếp theo
                                     }
@@ -2055,8 +2055,8 @@ class Phase2OIApiController extends Controller
                                         $so_luong_tem_bo = $request->sl_tem_bo;
                                     }
                                     $tembo_items[] = $this->formatTemBoSamsung($stamp, $so_luong_tem_bo);
-                                    // Mỗi 2 tembo thì gộp lại thành 1 phần tử $data
-                                    if (count($tembo_items) == 2 || $j == $tem_bo_counter - 1) {
+                                    // Mỗi 3 tembo thì gộp lại thành 1 phần tử $data
+                                    if (count($tembo_items) == 3 || $j == $tem_bo_counter - 1) {
                                         $data[] = ['type' => 'tem_bo', 'data' => $tembo_items];
                                         $tembo_items = []; // reset để chứa cặp tiếp theo
                                     }
