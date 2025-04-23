@@ -4515,6 +4515,7 @@ class ApiMobileController extends AdminController
         $sheet = $spreadsheet->getActiveSheet();
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
         $data = [];
+        
         foreach ($allDataInSheet as $key => $row) {
             if($key == 1) {
                 continue;
@@ -4528,11 +4529,13 @@ class ApiMobileController extends AdminController
                     'vendor_code' => $row['D'],
                     'po_type' => $row['E'],
                     'box_quantity' => $row['I'],
-                    'specification' => $row['K'],
-                    'week' => $row['L'],
+                    'pack_quantity' => is_numeric($row['J']) ? $row['J'] : 0,
+                    'specification' => $row['L'],
+                    'week' => $row['M'],
                 ];
             }
         }
+        // return $data;
         foreach ($data as $key => $value) {
             $template = SelectionLineStampTemplate::updateOrCreate([
                 'product_id' => $value['product_id'],
@@ -4543,6 +4546,7 @@ class ApiMobileController extends AdminController
                 'box_quantity' => $value['box_quantity'],
                 'specification' => $value['specification'],
                 'week' => $value['week'],
+                'pack_quantity' => $value['pack_quantity'],
             ]);
         }
         return 'done.';
