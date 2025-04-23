@@ -915,9 +915,9 @@ class Phase2OIApiController extends Controller
         }
         $prefix = $group_yellow_stamp->lo_sx . '.' . $group_yellow_stamp->line_id . '.LTV.';
         $lotList = Lot::where('id', 'like', "$prefix%")->orderBy('id', 'DESC')->get();
-        // if($lotList->sum('so_luong') >= $input['quantity']){
-        //     return $this->failure('', 'Đã in hết số lượng gom tem vàng');
-        // }
+        if ($lotList->sum('so_luong') >= $input['quantity']) {
+            return $this->failure('', 'Đã in hết số lượng gom tem vàng');
+        }
         $latestInfo = $lotList->first();
         try {
             if ($latestInfo) {
@@ -1676,12 +1676,16 @@ class Phase2OIApiController extends Controller
 
     public function getInfoPrintSelection(Request $request)
     {
-        $oll_bin = OddBin::where('lo_sx', $request->lo_sx)->sum('so_luong');
+        $odd_bin = OddBin::where('lo_sx', $request->lo_sx)->sum('so_luong');
         $assignment = Assignment::where('lot_id', $request->lot_id)->sum('ok_quantity');
+        if(isset($request->product_id)){
+            $template = SelectionLineStampTemplate::where('product_id', $request->product_id)->first();
+        }
         $data = [
-            'sl_ton' => $oll_bin,
+            'sl_ton' => $odd_bin,
             'sl_ok' => $assignment,
-            'sl_tong' => $oll_bin + $assignment
+            'sl_tong' => $odd_bin + $assignment,
+            'sl_tem_bo' => $template->pack_quantity ?? 0,
         ];
         return $this->success($data);
     }
@@ -2013,19 +2017,25 @@ class Phase2OIApiController extends Controller
                             }
                             $stamp = $this->handleSelectionLineStamp($infoCongDoan, $template, $so_luong);
                             $data[] = $this->formatTemChonSamsung($stamp, $request);
-                            // if(isset($request->sl_tem_bo) && $request->sl_tem_bo > 0) {
-                            //     for ($i = 0; $i < $counter; $i++) {
-                            //         if ($i == $counter - 1 && ($sl_tong % $request->sl_in_tem) > 0) {
-                            //             $so_luong = $sl_tong % $request->sl_in_tem;
-                            //         } else {
-                            //             $so_luong = $request->sl_in_tem;
-                            //         }
-                            //         $stamp = $this->handleSelectionLineStamp($infoCongDoan, $template, $so_luong);
-                            //         $data[] = $this->formatTemChonSamsung($stamp, $request);
-                            //         $quantity += $request->sl_in_tem;
-                            //     }
-                            // }
-                            
+                            //In tem bó
+                            if (isset($request->sl_tem_bo) && $request->sl_tem_bo > 0) {
+                                $tem_bo_counter = ceil($so_luong / $request->sl_tem_bo);
+                                for ($j = 0; $j < $tem_bo_counter; $j++) {
+                                    if ($j == $tem_bo_counter - 1 && ($so_luong % $request->sl_tem_bo) > 0) {
+                                        $so_luong_tem_bo = $so_luong % $request->sl_tem_bo;
+                                    } else {
+                                        $so_luong_tem_bo = $request->sl_tem_bo;
+                                    }
+                                    $tembo_items[] = $this->formatTemBoSamsung($stamp, $so_luong_tem_bo);
+                                    // Mỗi 2 tembo thì gộp lại thành 1 phần tử $data
+                                    if (count($tembo_items) == 2 || $j == $tem_bo_counter - 1) {
+                                        $data[] = ['type' => 'tem_bo', 'data' => $tembo_items];
+                                        $tembo_items = []; // reset để chứa cặp tiếp theo
+                                    }
+                                }
+                                $template->update(['pack_quantity' => $request->sl_tem_bo]);
+                            }
+
                             $quantity += $request->sl_in_tem;
                         }
                         // OddBin::where('lo_sx', $infoCongDoan->lo_sx)->where('product_id', $infoCongDoan->product_id)->delete();
@@ -2035,6 +2045,24 @@ class Phase2OIApiController extends Controller
                         for ($i = 0; $i < $counter; $i++) {
                             $stamp = $this->handleSelectionLineStamp($infoCongDoan, $template, $request->sl_in_tem);
                             $data[] = $this->formatTemChonSamsung($stamp, $request);
+                            //In tem bó
+                            if (isset($request->sl_tem_bo) && $request->sl_tem_bo > 0) {
+                                $tem_bo_counter = ceil($request->sl_in_tem / $request->sl_tem_bo);
+                                for ($j = 0; $j < $tem_bo_counter; $j++) {
+                                    if ($j == $tem_bo_counter - 1 && ($request->sl_in_tem % $request->sl_tem_bo) > 0) {
+                                        $so_luong_tem_bo = $request->sl_in_tem % $request->sl_tem_bo;
+                                    } else {
+                                        $so_luong_tem_bo = $request->sl_tem_bo;
+                                    }
+                                    $tembo_items[] = $this->formatTemBoSamsung($stamp, $so_luong_tem_bo);
+                                    // Mỗi 2 tembo thì gộp lại thành 1 phần tử $data
+                                    if (count($tembo_items) == 2 || $j == $tem_bo_counter - 1) {
+                                        $data[] = ['type' => 'tem_bo', 'data' => $tembo_items];
+                                        $tembo_items = []; // reset để chứa cặp tiếp theo
+                                    }
+                                }
+                                $template->update(['pack_quantity' => $request->sl_tem_bo]);
+                            }
                             $quantity += $request->sl_in_tem;
                         }
                         // OddBin::updateOrCreate(
@@ -2142,6 +2170,7 @@ class Phase2OIApiController extends Controller
             'vendor_name' => $stamp->template->vendor_name ?? "",
             'vendor_code' => $stamp->template->vendor_code ?? "",
             'week' => 'W' . Carbon::parse($stamp->created_at)->format('W'),
+            'created_at' => $stamp->created_at
         ];
         return $data;
     }
@@ -2158,6 +2187,7 @@ class Phase2OIApiController extends Controller
             'vendor_name' => $stamp->template->vendor_name ?? "",
             'vendor_code' => $stamp->template->vendor_code ?? "",
             'week' => 'W' . Carbon::parse($stamp->created_at)->format('W'),
+            'created_at' => $stamp->created_at,
         ];
         return $data;
     }
