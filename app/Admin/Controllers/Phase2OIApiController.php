@@ -1869,127 +1869,73 @@ class Phase2OIApiController extends Controller
                     $infoCongDoan->plan->update(['status_plan' => ProductionPlan::STATUS_COMPLETED]);
                 }
             }
-            $template = SelectionLineStampTemplate::where('product_id', $infoCongDoan->product_id)->first();
-            // return $template;
-            if ($template) {
-                $type = 'samsung_stamp';
-                //In tem kiểu mới
-                $quantity = 0;
-                $counterT = Lot::where('id', 'like', $infoCongDoan->lo_sx . '-T%')->count() + 1;
-                switch ($request->type) {
-                    case 1:
-                        $counter = ceil($sl_tong / $request->sl_in_tem);
-                        for ($i = 0; $i < $counter; $i++) {
-                            $id = $infoCongDoan->lo_sx . '-T';
-                            if ($i == $counter - 1 && ($sl_tong % $request->sl_in_tem) > 0) {
-                                $so_luong = $sl_tong % $request->sl_in_tem;
-                            } else {
-                                $so_luong = $request->sl_in_tem;
-                            }
-                            $stamp = $this->handleSelectionLineStamp($infoCongDoan, $template, $so_luong);
-                            $data[] = $this->formatTemChonSamsung($stamp);
-                            $quantity += $request->sl_in_tem;
+            //In tem kiểu cũ
+            $type = 'normal_stamp';
+            $quantity = 0;
+            $counterT = Lot::where('id', 'like', $infoCongDoan->lo_sx . '-T%')->count() + 1;
+            switch ($request->type) {
+                case 1:
+                    $counter = ceil($sl_tong / $request->sl_in_tem);
+                    for ($i = 0; $i < $counter; $i++) {
+                        $id = $infoCongDoan->lo_sx . '-T';
+                        if ($i == $counter - 1 && ($sl_tong % $request->sl_in_tem) > 0) {
+                            $so_luong = $sl_tong % $request->sl_in_tem;
+                        } else {
+                            $so_luong = $request->sl_in_tem;
                         }
-                        OddBin::where('lo_sx', $infoCongDoan->lo_sx)->where('product_id', $infoCongDoan->product_id)->delete();
-                        break;
-                    case 2:
-                        $counter = floor($sl_tong / $request->sl_in_tem);
-                        for ($i = 0; $i < $counter; $i++) {
-                            $stamp = $this->handleSelectionLineStamp($infoCongDoan, $template, $request->sl_in_tem);
-                            $data[] = $this->formatTemChonSamsung($stamp);
-                            $quantity += $request->sl_in_tem;
-                        }
-                        OddBin::updateOrCreate(
-                            [
-                                'lo_sx' => $infoCongDoan->lo_sx,
-                                'product_id' => $infoCongDoan->product_id,
-                            ],
-                            [
-                                'so_luong' => $sl_tong - $quantity,
-                            ]
-                        );
-                        break;
-                    case 3:
-                        OddBin::updateOrCreate(
-                            [
-                                'lo_sx' => $infoCongDoan->lo_sx,
-                                'product_id' => $infoCongDoan->product_id,
-                            ],
-                            [
-                                'so_luong' => $sl_tong,
-                            ]
-                        );
-                        break;
-                }
-            } else {
-                //In tem kiểu cũ
-                $type = 'normal_stamp';
-                $quantity = 0;
-                $counterT = Lot::where('id', 'like', $infoCongDoan->lo_sx . '-T%')->count() + 1;
-                switch ($request->type) {
-                    case 1:
-                        $counter = ceil($sl_tong / $request->sl_in_tem);
-                        for ($i = 0; $i < $counter; $i++) {
-                            $id = $infoCongDoan->lo_sx . '-T';
-                            if ($i == $counter - 1 && ($sl_tong % $request->sl_in_tem) > 0) {
-                                $so_luong = $sl_tong % $request->sl_in_tem;
-                            } else {
-                                $so_luong = $request->sl_in_tem;
-                            }
-                            $thung = Lot::firstOrCreate([
-                                'id' => $id . ($i + $counterT),
-                            ], [
-                                'product_id' => $infoCongDoan->product_id,
-                                'material_id' => $infoCongDoan->material_id,
-                                'final_line_id' => $line->id,
-                                'lo_sx' => $infoCongDoan->lo_sx,
-                                'so_luong' => $so_luong,
-                                'type' => Lot::TYPE_THUNG
-                            ]);
-                            $quantity += $request->sl_in_tem;
-                            $data[] = $this->formatTemChon($thung, $infoCongDoan);
-                        }
-                        OddBin::where('lo_sx', $infoCongDoan->lo_sx)->where('product_id', $infoCongDoan->product_id)->delete();
-                        break;
-                    case 2:
-                        $counter = floor($sl_tong / $request->sl_in_tem);
-                        for ($i = 0; $i < $counter; $i++) {
-                            $id = $infoCongDoan->id . '-T';
-                            $thung = Lot::firstOrCreate([
-                                'id' => $id . ($i + $counterT),
-                            ], [
-                                'product_id' => $infoCongDoan->product_id,
-                                'material_id' => $infoCongDoan->material_id,
-                                'final_line_id' => $line->id,
-                                'lo_sx' => $infoCongDoan->lo_sx,
-                                'so_luong' => $request->sl_in_tem,
-                                'type' => Lot::TYPE_THUNG
-                            ]);
-                            $quantity += $request->sl_in_tem;
-                            $data[] = $this->formatTemChon($thung, $infoCongDoan);
-                        }
-                        OddBin::updateOrCreate(
-                            [
-                                'lo_sx' => $infoCongDoan->lo_sx,
-                                'product_id' => $infoCongDoan->product_id,
-                            ],
-                            [
-                                'so_luong' => $sl_tong - $quantity,
-                            ]
-                        );
-                        break;
-                    case 3:
-                        OddBin::updateOrCreate(
-                            [
-                                'lo_sx' => $infoCongDoan->lo_sx,
-                                'product_id' => $infoCongDoan->product_id,
-                            ],
-                            [
-                                'so_luong' => $sl_tong,
-                            ]
-                        );
-                        break;
-                }
+                        $thung = Lot::firstOrCreate([
+                            'id' => $id . ($i + $counterT),
+                        ], [
+                            'product_id' => $infoCongDoan->product_id,
+                            'material_id' => $infoCongDoan->material_id,
+                            'final_line_id' => $line->id,
+                            'lo_sx' => $infoCongDoan->lo_sx,
+                            'so_luong' => $so_luong,
+                            'type' => Lot::TYPE_THUNG
+                        ]);
+                        $quantity += $request->sl_in_tem;
+                        $data[] = $this->formatTemChon($thung, $infoCongDoan);
+                    }
+                    OddBin::where('lo_sx', $infoCongDoan->lo_sx)->where('product_id', $infoCongDoan->product_id)->delete();
+                    break;
+                case 2:
+                    $counter = floor($sl_tong / $request->sl_in_tem);
+                    for ($i = 0; $i < $counter; $i++) {
+                        $id = $infoCongDoan->id . '-T';
+                        $thung = Lot::firstOrCreate([
+                            'id' => $id . ($i + $counterT),
+                        ], [
+                            'product_id' => $infoCongDoan->product_id,
+                            'material_id' => $infoCongDoan->material_id,
+                            'final_line_id' => $line->id,
+                            'lo_sx' => $infoCongDoan->lo_sx,
+                            'so_luong' => $request->sl_in_tem,
+                            'type' => Lot::TYPE_THUNG
+                        ]);
+                        $quantity += $request->sl_in_tem;
+                        $data[] = $this->formatTemChon($thung, $infoCongDoan);
+                    }
+                    OddBin::updateOrCreate(
+                        [
+                            'lo_sx' => $infoCongDoan->lo_sx,
+                            'product_id' => $infoCongDoan->product_id,
+                        ],
+                        [
+                            'so_luong' => $sl_tong - $quantity,
+                        ]
+                    );
+                    break;
+                case 3:
+                    OddBin::updateOrCreate(
+                        [
+                            'lo_sx' => $infoCongDoan->lo_sx,
+                            'product_id' => $infoCongDoan->product_id,
+                        ],
+                        [
+                            'so_luong' => $sl_tong,
+                        ]
+                    );
+                    break;
             }
             DB::commit();
         } catch (\Throwable $th) {
@@ -1997,7 +1943,132 @@ class Phase2OIApiController extends Controller
             DB::rollBack();
             return $this->failure($th, "Không thể in tem");
         }
-        return $this->success(['data' => $data, 'type' => $type]);
+        return $this->success($data);
+    }
+
+    public function printTemSamsungSelectionLine(Request $request)
+    {
+        $line = Line::find($request->line_id);
+        if (!$line) {
+            return $this->failure([], "Không tìm thấy công đoạn");
+        }
+        $info = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->first();
+        if (!$info) {
+            return $this->failure([], "Lot này chưa được sản xuất");
+        }
+        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->first();
+        if (!$infoCongDoan) {
+            return $this->failure([], "Chưa quét lot này");
+        }
+        if (!$request->sl_in_tem) {
+            return $this->failure([], "Số lượng in tem không hợp lệ");
+        }
+        if (!$this->checkEligibleForPrinting($infoCongDoan)) {
+            return $this->failure([], "Chưa kiểm tra đủ tiêu chí QC");
+        }
+        $sl_ok = Assignment::where('lot_id', $request->lot_id)->sum('ok_quantity');
+        $sl_ton = OddBin::where('lo_sx', $infoCongDoan->lo_sx)->sum('so_luong');
+        $sl_tong = $sl_ok + $sl_ton;
+        $data = [];
+        try {
+            DB::beginTransaction();
+            $counter = floor($sl_tong / $request->sl_in_tem);
+            if ($counter < 0) {
+                return $this->failure([], "Số lượng in tem không hợp lệ");
+            }
+            // $infoCongDoan->update([
+            //     'thoi_gian_ket_thuc' => Carbon::now(),
+            //     'status' => InfoCongDoan::STATUS_COMPLETED
+            // ]);
+            // if ($infoCongDoan->plan) {
+            //     //Update ProductionOrderHistory and ProductionOrderPriority
+            //     $allInfoOfLosx = InfoCongDoan::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->get();
+            //     $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->where('component_id', $infoCongDoan->product_id)->first();
+            //     $producedInfoQuantity = $allInfoOfLosx->sum('sl_dau_ra_hang_loat') - $allInfoOfLosx->sum('sl_ng');
+            //     if ($productionOrderHistory) {
+            //         $productionOrderHistory->update([
+            //             'produced_quantity' => $producedInfoQuantity,
+            //         ]);
+            //     }
+
+            //     $infos = InfoCongDoan::where('plan_id', $infoCongDoan->plan_id)->get();
+            //     $producedQuantity = $infos->sum('sl_dau_ra_hang_loat') - $infos->sum('sl_ng');
+            //     if ($producedQuantity >= $infoCongDoan->plan->sl_giao_sx) {
+            //         $infoCongDoan->plan->update(['status_plan' => ProductionPlan::STATUS_COMPLETED]);
+            //     }
+            // }
+            $template = SelectionLineStampTemplate::where('product_id', $infoCongDoan->product_id)->first();
+            // return $template;
+            if ($template) {
+                //In tem kiểu mới
+                $quantity = 0;
+                switch ($request->type) {
+                    case 1:
+                        $counter = ceil($sl_tong / $request->sl_in_tem);
+                        for ($i = 0; $i < $counter; $i++) {
+                            if ($i == $counter - 1 && ($sl_tong % $request->sl_in_tem) > 0) {
+                                $so_luong = $sl_tong % $request->sl_in_tem;
+                            } else {
+                                $so_luong = $request->sl_in_tem;
+                            }
+                            $stamp = $this->handleSelectionLineStamp($infoCongDoan, $template, $so_luong);
+                            $data[] = $this->formatTemChonSamsung($stamp, $request);
+                            // if(isset($request->sl_tem_bo) && $request->sl_tem_bo > 0) {
+                            //     for ($i = 0; $i < $counter; $i++) {
+                            //         if ($i == $counter - 1 && ($sl_tong % $request->sl_in_tem) > 0) {
+                            //             $so_luong = $sl_tong % $request->sl_in_tem;
+                            //         } else {
+                            //             $so_luong = $request->sl_in_tem;
+                            //         }
+                            //         $stamp = $this->handleSelectionLineStamp($infoCongDoan, $template, $so_luong);
+                            //         $data[] = $this->formatTemChonSamsung($stamp, $request);
+                            //         $quantity += $request->sl_in_tem;
+                            //     }
+                            // }
+                            
+                            $quantity += $request->sl_in_tem;
+                        }
+                        // OddBin::where('lo_sx', $infoCongDoan->lo_sx)->where('product_id', $infoCongDoan->product_id)->delete();
+                        break;
+                    case 2:
+                        $counter = floor($sl_tong / $request->sl_in_tem);
+                        for ($i = 0; $i < $counter; $i++) {
+                            $stamp = $this->handleSelectionLineStamp($infoCongDoan, $template, $request->sl_in_tem);
+                            $data[] = $this->formatTemChonSamsung($stamp, $request);
+                            $quantity += $request->sl_in_tem;
+                        }
+                        // OddBin::updateOrCreate(
+                        //     [
+                        //         'lo_sx' => $infoCongDoan->lo_sx,
+                        //         'product_id' => $infoCongDoan->product_id,
+                        //     ],
+                        //     [
+                        //         'so_luong' => $sl_tong - $quantity,
+                        //     ]
+                        // );
+                        break;
+                    case 3:
+                        // OddBin::updateOrCreate(
+                        //     [
+                        //         'lo_sx' => $infoCongDoan->lo_sx,
+                        //         'product_id' => $infoCongDoan->product_id,
+                        //     ],
+                        //     [
+                        //         'so_luong' => $sl_tong,
+                        //     ]
+                        // );
+                        break;
+                }
+            } else {
+                return $this->failure([], "Không tìm thấy mẫu tem");
+            }
+            DB::commit();
+        } catch (\Throwable $th) {
+            Log::info($th);
+            DB::rollBack();
+            return $this->failure($th, "Không thể in tem");
+        }
+        return $this->success($data);
     }
 
     function handleSelectionLineStamp($infoCongDoan, $template, $so_luong)
@@ -2013,7 +2084,7 @@ class Phase2OIApiController extends Controller
             'selection_line_stamp_template_id' => $template->id,
         ]);
         $thung = Lot::firstOrCreate([
-            'id' => $stamp->lot_id
+            'id' => $stamp->qr_code
         ], [
             'product_id' => $infoCongDoan->product_id,
             'material_id' => $infoCongDoan->material_id,
@@ -2059,15 +2130,31 @@ class Phase2OIApiController extends Controller
         return $data;
     }
 
-    public function formatTemChonSamsung($stamp)
+    public function formatTemChonSamsung($stamp, $request)
     {
         $data = [
             'part_no' => $stamp->template->part_no ?? "",
             'specification' => $stamp->template->specification ?? "",
-            'po_type' => $stamp->template->po_type ?? "",
+            'po_type' => $request->po_type ?? $stamp->template->po_type ?? "",
             'lot_no' => $stamp->lot_id,
             'qr_code' => $stamp->qr_code,
-            'quantity' => $stamp->template->box_quantity ?? 0,
+            'quantity' => str_pad($stamp->quantity ?? 0, 6, '0', STR_PAD_LEFT),
+            'vendor_name' => $stamp->template->vendor_name ?? "",
+            'vendor_code' => $stamp->template->vendor_code ?? "",
+            'week' => 'W' . Carbon::parse($stamp->created_at)->format('W'),
+        ];
+        return $data;
+    }
+
+    public function formatTemBoSamsung($stamp, $so_luong)
+    {
+        $data = [
+            'part_no' => $stamp->template->part_no ?? "",
+            'specification' => $stamp->template->specification ?? "",
+            'po_type' => $request->po_type ?? $stamp->template->po_type ?? "",
+            'lot_no' => $stamp->lot_id,
+            'qr_code' => $stamp->qr_code,
+            'quantity' => $so_luong,
             'vendor_name' => $stamp->template->vendor_name ?? "",
             'vendor_code' => $stamp->template->vendor_code ?? "",
             'week' => 'W' . Carbon::parse($stamp->created_at)->format('W'),

@@ -675,6 +675,7 @@ Route::group([
     $router->get('get-ng-tracking-result-list', [Phase2OIApiController::class, 'getNGTrackingResultList']);
     $router->post('update-dau-noi', [Phase2OIApiController::class, 'updateDauNoi']);
     $router->post('delete-dau-noi', [Phase2OIApiController::class, 'deleteDauNoi']);
+    $router->post('print-tem-samsung-selection-line', [Phase2OIApiController::class, 'printTemSamsungSelectionLine']);
 
     //Chất lượng
     $router->get('qc-overall', [Phase2OIApiController::class, 'getQCOverall']);
@@ -865,4 +866,5 @@ Route::group([
     $router->post('convert-spec', [ProductController::class, 'convertSpec']);
     $router->post('create-prioritized-machines', [ProductionPlanController::class, 'createPrioritizedMachines']);
     $router->post('update-inventory', [ApiMobileController::class, 'updateInventory']);
+    $router->post('import-list-samsung-stamp-template', [ApiMobileController::class, 'importListSamsungStampTemplate']);
 });

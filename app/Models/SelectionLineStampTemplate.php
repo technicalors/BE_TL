@@ -9,5 +9,5 @@ class SelectionLineStampTemplate extends Model
 {
     use HasFactory;
 
-    protected $fillable=['id', 'vendor_name', 'part_no', 'vendor_code', 'po_type', 'box_number', 'production_batch', 'qr_code', 'specification', 'week'];
+    protected $fillable=['id', 'product_id', 'vendor_name', 'part_no', 'vendor_code', 'po_type', 'box_quantity', 'specification', 'week'];
 }

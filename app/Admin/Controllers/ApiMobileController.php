@@ -59,6 +59,7 @@ use App\Models\ProductionOrderHistory;
 use App\Models\ProductOrder;
 use App\Models\QCHistory;
 use App\Models\Scenario;
+use App\Models\SelectionLineStampTemplate;
 use App\Models\Spec;
 use App\Models\Stamp;
 use App\Models\TestCriteria;
@@ -4497,5 +4498,53 @@ class ApiMobileController extends AdminController
             }
         }
         return $this->success([], 'Cập nhật thành công');
+    }
+
+    public function importListSamsungStampTemplate(Request $request)
+    {
+        $extension = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
+        if ($extension == 'csv') {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
+        } elseif ($extension == 'xlsx') {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+        } else {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
+        }
+        // file path
+        $spreadsheet = $reader->load($_FILES['file']['tmp_name']);
+        $sheet = $spreadsheet->getActiveSheet();
+        $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
+        $data = [];
+        foreach ($allDataInSheet as $key => $row) {
+            if($key == 1) {
+                continue;
+            }
+            $product = Product::where('name', $row['C'])->first();
+            if ($product) {
+                $data[] = [
+                    'product_id' => $product->id,
+                    'vendor_name' => $row['B'],
+                    'part_no' => $row['C'],
+                    'vendor_code' => $row['D'],
+                    'po_type' => $row['E'],
+                    'box_quantity' => $row['I'],
+                    'specification' => $row['K'],
+                    'week' => $row['L'],
+                ];
+            }
+        }
+        foreach ($data as $key => $value) {
+            $template = SelectionLineStampTemplate::updateOrCreate([
+                'product_id' => $value['product_id'],
+                'vendor_name' => $value['vendor_name'],
+                'part_no' => $value['part_no'],
+                'vendor_code' => $value['vendor_code'],
+                'po_type' => $value['po_type'],
+                'box_quantity' => $value['box_quantity'],
+                'specification' => $value['specification'],
+                'week' => $value['week'],
+            ]);
+        }
+        return 'done.';
     }
 }
