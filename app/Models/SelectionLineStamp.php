@@ -17,7 +17,6 @@ class SelectionLineStamp extends Model
         $latestStamp = SelectionLineStamp::where('production_batch', $productionBatch)
             ->orderBy('lot_id', 'desc')
             ->first();
-        Log::debug(SelectionLineStamp::get()->toArray());
         if ($latestStamp) {
             $lastSequence = (int) substr($latestStamp->lot_id, -4);
         } else {

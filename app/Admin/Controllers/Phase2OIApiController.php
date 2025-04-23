@@ -2101,14 +2101,14 @@ class Phase2OIApiController extends Controller
 
     function handleSelectionLineStamp($infoCongDoan, $template, $so_luong)
     {
-        [$productionBatch, $boxNumber] = SelectionLineStamp::generateStampLotId();
+        list($productionBatch, $boxNumber) = SelectionLineStamp::generateStampLotId();
         $stamp = SelectionLineStamp::create([
             'lo_sx' => $infoCongDoan->lo_sx,
             'production_batch' => $productionBatch,
             'box_number' => $boxNumber,
             'quantity' => $so_luong,
             'lot_id' => $productionBatch . $boxNumber,
-            'qr_code' => $template->part_no . $template->vendor_code . $template->po_type . $productionBatch . $boxNumber . $template->box_quantity,
+            'qr_code' => $template->part_no . $template->vendor_code . $template->po_type . $productionBatch . $boxNumber . str_pad($so_luong, 6, '0', STR_PAD_LEFT),
             'selection_line_stamp_template_id' => $template->id,
         ]);
         $thung = Lot::firstOrCreate([
@@ -2160,15 +2160,16 @@ class Phase2OIApiController extends Controller
 
     public function formatTemChonSamsung($stamp, $request)
     {
+        $template = $stamp->template;
         $data = [
-            'part_no' => $stamp->template->part_no ?? "",
-            'specification' => $stamp->template->specification ?? "",
-            'po_type' => $request->po_type ?? $stamp->template->po_type ?? "",
+            'part_no' => $template->part_no ?? "",
+            'specification' => $template->specification ?? "",
+            'po_type' => $request->po_type ?? $template->po_type ?? "",
             'lot_no' => $stamp->lot_id,
             'qr_code' => $stamp->qr_code,
             'quantity' => str_pad($stamp->quantity ?? 0, 6, '0', STR_PAD_LEFT),
-            'vendor_name' => $stamp->template->vendor_name ?? "",
-            'vendor_code' => $stamp->template->vendor_code ?? "",
+            'vendor_name' => $template->vendor_name ?? "",
+            'vendor_code' => $template->vendor_code ?? "",
             'week' => 'W' . Carbon::parse($stamp->created_at)->format('W'),
             'created_at' => $stamp->created_at
         ];
@@ -2177,12 +2178,13 @@ class Phase2OIApiController extends Controller
 
     public function formatTemBoSamsung($stamp, $so_luong)
     {
+        $template = $stamp->template;
         $data = [
             'part_no' => $stamp->template->part_no ?? "",
             'specification' => $stamp->template->specification ?? "",
             'po_type' => $request->po_type ?? $stamp->template->po_type ?? "",
             'lot_no' => $stamp->lot_id,
-            'qr_code' => $stamp->qr_code,
+            'qr_code' => $template->part_no . $template->vendor_code . $template->po_type . $stamp->production_batch . $stamp->boxNumber . str_pad($so_luong, 6, '0', STR_PAD_LEFT),
             'quantity' => $so_luong,
             'vendor_name' => $stamp->template->vendor_name ?? "",
             'vendor_code' => $stamp->template->vendor_code ?? "",
