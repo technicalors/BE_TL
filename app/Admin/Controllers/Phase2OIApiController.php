@@ -16,6 +16,7 @@ use App\Models\Error;
 use App\Models\ErrorHistory;
 use App\Models\GroupYellowStamp;
 use App\Models\GroupYellowStampInfo;
+use App\Models\GroupYellowStampLot;
 use App\Models\InfoCongDoan;
 use App\Models\Line;
 use App\Models\LineInventories;
@@ -895,7 +896,7 @@ class Phase2OIApiController extends Controller
             if ($relate) {
                 $group_yellow_stamp->is_grouped = true;
             }
-            $lots_tem_vang = Lot::where('id', 'like', $group_yellow_stamp->lo_sx . ".$group_yellow_stamp->line_id." . "LTV.%")->orderBy('id')->get();
+            $lots_tem_vang = $group_yellow_stamp->lot;
             $group_yellow_stamp->lots = $lots_tem_vang;
             $group_yellow_stamp->quantity = ($group_yellow_stamp->quantity - $lots_tem_vang->sum('so_luong'));
         }
@@ -914,11 +915,11 @@ class Phase2OIApiController extends Controller
             return $this->failure('', 'Số lượng in vượt quá số lượng tồn, không thể tạo tem');
         }
         $prefix = $group_yellow_stamp->lo_sx . '.' . $group_yellow_stamp->line_id . '.LTV.';
-        $lotList = Lot::where('id', 'like', "$prefix%")->orderBy('id', 'DESC')->get();
-        if ($lotList->sum('so_luong') >= $input['quantity']) {
-            return $this->failure('', 'Đã in hết số lượng gom tem vàng');
-        }
-        $latestInfo = $lotList->first();
+        // $lotList = Lot::where('id', 'like', "$prefix%")->orderBy('id', 'DESC')->get();
+        // if ($lotList->sum('so_luong') >= $input['quantity']) {
+        //     return $this->failure('', 'Đã in hết số lượng gom tem vàng');
+        // }
+        $latestInfo = Lot::where('id', 'like', "$prefix%")->orderBy('id', 'DESC')->first();
         try {
             if ($latestInfo) {
                 $array = explode('.', $latestInfo->id);
@@ -944,6 +945,7 @@ class Phase2OIApiController extends Controller
                     'type' => Lot::TYPE_TEM_VANG
                 ]
             );
+            GroupYellowStampLot::updateOrCreate(['lot_id' => $lot_tem_vang->id, 'group_yellow_stamp_id' => $group_yellow_stamp->id]); 
             $tem = $this->formatGroupYellowStamp($lot_tem_vang, $group_yellow_stamp);
             DB::commit();
         } catch (\Throwable $th) {

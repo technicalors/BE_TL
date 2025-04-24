@@ -19,4 +19,7 @@ class GroupYellowStamp extends Model
     public function info_cong_doan(){
         return $this->hasManyThrough(InfoCongDoan::class, GroupYellowStampInfo::class, 'group_yellow_stamp_id', 'id', 'id', 'info_cong_doan_id');
     }
+    public function lot(){
+        return $this->hasManyThrough(Lot::class, GroupYellowStampLot::class, 'group_yellow_stamp_id', 'id', 'id', 'lot_id');
+    }
 }
