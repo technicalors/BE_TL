@@ -1982,27 +1982,27 @@ class Phase2OIApiController extends Controller
             if ($counter < 0) {
                 return $this->failure([], "Số lượng in tem không hợp lệ");
             }
-            // $infoCongDoan->update([
-            //     'thoi_gian_ket_thuc' => Carbon::now(),
-            //     'status' => InfoCongDoan::STATUS_COMPLETED
-            // ]);
-            // if ($infoCongDoan->plan) {
-            //     //Update ProductionOrderHistory and ProductionOrderPriority
-            //     $allInfoOfLosx = InfoCongDoan::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->get();
-            //     $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->where('component_id', $infoCongDoan->product_id)->first();
-            //     $producedInfoQuantity = $allInfoOfLosx->sum('sl_dau_ra_hang_loat') - $allInfoOfLosx->sum('sl_ng');
-            //     if ($productionOrderHistory) {
-            //         $productionOrderHistory->update([
-            //             'produced_quantity' => $producedInfoQuantity,
-            //         ]);
-            //     }
+            $infoCongDoan->update([
+                'thoi_gian_ket_thuc' => Carbon::now(),
+                'status' => InfoCongDoan::STATUS_COMPLETED
+            ]);
+            if ($infoCongDoan->plan) {
+                //Update ProductionOrderHistory and ProductionOrderPriority
+                $allInfoOfLosx = InfoCongDoan::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->get();
+                $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->where('component_id', $infoCongDoan->product_id)->first();
+                $producedInfoQuantity = $allInfoOfLosx->sum('sl_dau_ra_hang_loat') - $allInfoOfLosx->sum('sl_ng');
+                if ($productionOrderHistory) {
+                    $productionOrderHistory->update([
+                        'produced_quantity' => $producedInfoQuantity,
+                    ]);
+                }
 
-            //     $infos = InfoCongDoan::where('plan_id', $infoCongDoan->plan_id)->get();
-            //     $producedQuantity = $infos->sum('sl_dau_ra_hang_loat') - $infos->sum('sl_ng');
-            //     if ($producedQuantity >= $infoCongDoan->plan->sl_giao_sx) {
-            //         $infoCongDoan->plan->update(['status_plan' => ProductionPlan::STATUS_COMPLETED]);
-            //     }
-            // }
+                $infos = InfoCongDoan::where('plan_id', $infoCongDoan->plan_id)->get();
+                $producedQuantity = $infos->sum('sl_dau_ra_hang_loat') - $infos->sum('sl_ng');
+                if ($producedQuantity >= $infoCongDoan->plan->sl_giao_sx) {
+                    $infoCongDoan->plan->update(['status_plan' => ProductionPlan::STATUS_COMPLETED]);
+                }
+            }
             $template = SelectionLineStampTemplate::where('product_id', $infoCongDoan->product_id)->first();
             // return $template;
             if ($template) {
@@ -2040,7 +2040,7 @@ class Phase2OIApiController extends Controller
 
                             $quantity += $request->sl_in_tem;
                         }
-                        // OddBin::where('lo_sx', $infoCongDoan->lo_sx)->where('product_id', $infoCongDoan->product_id)->delete();
+                        OddBin::where('lo_sx', $infoCongDoan->lo_sx)->where('product_id', $infoCongDoan->product_id)->delete();
                         break;
                     case 2:
                         $counter = floor($sl_tong / $request->sl_in_tem);
@@ -2067,26 +2067,26 @@ class Phase2OIApiController extends Controller
                             }
                             $quantity += $request->sl_in_tem;
                         }
-                        // OddBin::updateOrCreate(
-                        //     [
-                        //         'lo_sx' => $infoCongDoan->lo_sx,
-                        //         'product_id' => $infoCongDoan->product_id,
-                        //     ],
-                        //     [
-                        //         'so_luong' => $sl_tong - $quantity,
-                        //     ]
-                        // );
+                        OddBin::updateOrCreate(
+                            [
+                                'lo_sx' => $infoCongDoan->lo_sx,
+                                'product_id' => $infoCongDoan->product_id,
+                            ],
+                            [
+                                'so_luong' => $sl_tong - $quantity,
+                            ]
+                        );
                         break;
                     case 3:
-                        // OddBin::updateOrCreate(
-                        //     [
-                        //         'lo_sx' => $infoCongDoan->lo_sx,
-                        //         'product_id' => $infoCongDoan->product_id,
-                        //     ],
-                        //     [
-                        //         'so_luong' => $sl_tong,
-                        //     ]
-                        // );
+                        OddBin::updateOrCreate(
+                            [
+                                'lo_sx' => $infoCongDoan->lo_sx,
+                                'product_id' => $infoCongDoan->product_id,
+                            ],
+                            [
+                                'so_luong' => $sl_tong,
+                            ]
+                        );
                         break;
                 }
             } else {
