@@ -945,7 +945,7 @@ class Phase2OIApiController extends Controller
                     'type' => Lot::TYPE_TEM_VANG
                 ]
             );
-            GroupYellowStampLot::updateOrCreate(['lot_id' => $lot_tem_vang->id, 'group_yellow_stamp_id' => $group_yellow_stamp->id]); 
+            GroupYellowStampLot::updateOrCreate(['lot_id' => $lot_tem_vang->id, 'group_yellow_stamp_id' => $group_yellow_stamp->id]);
             $tem = $this->formatGroupYellowStamp($lot_tem_vang, $group_yellow_stamp);
             DB::commit();
         } catch (\Throwable $th) {
@@ -1678,16 +1678,21 @@ class Phase2OIApiController extends Controller
 
     public function getInfoPrintSelection(Request $request)
     {
+        $info = InfoCongDoan::find($request->info_cong_doan_id);
         $odd_bin = OddBin::where('lo_sx', $request->lo_sx)->sum('so_luong');
         $assignment = Assignment::where('lot_id', $request->lot_id)->sum('ok_quantity');
-        if(isset($request->product_id)){
+        if (isset($request->product_id)) {
             $template = SelectionLineStampTemplate::where('product_id', $request->product_id)->first();
+        }
+        if($info){
+            $po_type = $info->plan->po_type ?? "";
         }
         $data = [
             'sl_ton' => $odd_bin,
             'sl_ok' => $assignment,
             'sl_tong' => $odd_bin + $assignment,
             'sl_tem_bo' => $template->pack_quantity ?? 0,
+            'po_type' => $po_type ?? "",
         ];
         return $this->success($data);
     }
@@ -1966,6 +1971,9 @@ class Phase2OIApiController extends Controller
         if (!$infoCongDoan) {
             return $this->failure([], "Chưa quét lot này");
         }
+        if(!($infoCongDoan->plan->po_type ?? false)){
+            return $this->failure('', 'Không có PO type trong kế hoạch');
+        }
         if (!$request->sl_in_tem) {
             return $this->failure([], "Số lượng in tem không hợp lệ");
         }
@@ -2101,6 +2109,98 @@ class Phase2OIApiController extends Controller
         return $this->success($data);
     }
 
+    public function reprintTemSamsungSelectionLine(Request $request)
+    {
+        // $line = Line::find($request->line_id);
+        // if (!$line) {
+        //     return $this->failure([], "Không tìm thấy công đoạn");
+        // }
+        // $info = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->first();
+        // if (!$info) {
+        //     return $this->failure([], "Lot này chưa được sản xuất");
+        // }
+        // $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->first();
+        // if (!$infoCongDoan) {
+        //     return $this->failure([], "Chưa quét lot này");
+        // }
+        // if (!$request->sl_in_tem) {
+        //     return $this->failure([], "Số lượng in tem không hợp lệ");
+        // }
+        // if (!$this->checkEligibleForPrinting($infoCongDoan)) {
+        //     return $this->failure([], "Chưa kiểm tra đủ tiêu chí QC");
+        // }
+        // $sl_ok = Assignment::where('lot_id', $request->lot_id)->sum('ok_quantity');
+        // $sl_ton = OddBin::where('lo_sx', $infoCongDoan->lo_sx)->sum('so_luong');
+        $input = $request->all();
+        $product = Product::find($input['product_id']);
+        if(!$product){
+            return $this->failure('', 'Không tìm thấy sản phẩm');
+        }
+        $input['product_id'] = $product->id; 
+        $so_luong = $input['so_luong'];
+        $data = [];
+        try {
+            DB::beginTransaction();
+            $counter = $input['number_bin'];
+            if ($counter < 0) {
+                return $this->failure([], "Số lượng in tem không hợp lệ");
+            }
+            $template = SelectionLineStampTemplate::where('product_id', $input['product_id'])->first();
+            // return $template;
+            if ($template) {
+                //In tem kiểu mới
+                for ($i = 0; $i < $counter; $i++) {
+                    list($productionBatch, $boxNumber) = SelectionLineStamp::generateStampLotId();
+                    $stamp = SelectionLineStamp::create([
+                        'lo_sx' => $input['lo_sx'],
+                        'production_batch' => $productionBatch,
+                        'box_number' => $boxNumber,
+                        'quantity' => $so_luong,
+                        'lot_id' => $productionBatch . $boxNumber,
+                        'qr_code' => $template->part_no . $template->vendor_code . $template->po_type . $productionBatch . $boxNumber . str_pad($so_luong, 6, '0', STR_PAD_LEFT),
+                        'selection_line_stamp_template_id' => $template->id,
+                        'po_type' => $input['po_type'] ?? $template->po_type,
+                    ]);
+                    $thung = Lot::firstOrCreate([
+                        'id' => $stamp->qr_code
+                    ], [
+                        'product_id' => $input['product_id'],
+                        'lo_sx' => $input['lo_sx'],
+                        'so_luong' => $so_luong,
+                        'type' => Lot::TYPE_THUNG
+                    ]);
+                    $data[] = $this->formatTemChonSamsung($stamp);
+                    //In tem bó
+                    if (isset($request->sl_tem_bo) && $request->sl_tem_bo > 0) {
+                        $tem_bo_counter = ceil($so_luong / $request->sl_tem_bo);
+                        for ($j = 0; $j < $tem_bo_counter; $j++) {
+                            if ($j == $tem_bo_counter - 1 && ($so_luong % $request->sl_tem_bo) > 0) {
+                                $so_luong_tem_bo = $so_luong % $request->sl_tem_bo;
+                            } else {
+                                $so_luong_tem_bo = $request->sl_tem_bo;
+                            }
+                            $tembo_items[] = $this->formatTemBoSamsung($stamp, $so_luong_tem_bo);
+                            // Mỗi 3 tembo thì gộp lại thành 1 phần tử $data
+                            if (count($tembo_items) == 3 || $j == $tem_bo_counter - 1) {
+                                $data[] = ['type' => 'tem_bo', 'data' => $tembo_items];
+                                $tembo_items = []; // reset để chứa cặp tiếp theo
+                            }
+                        }
+                        $template->update(['pack_quantity' => $request->sl_tem_bo]);
+                    }
+                }
+            } else {
+                return $this->failure([], "Không tìm thấy mẫu tem");
+            }
+            DB::commit();
+        } catch (\Throwable $th) {
+            Log::info($th);
+            DB::rollBack();
+            return $this->failure($th, "Không thể in tem");
+        }
+        return $this->success($data);
+    }
+
     function handleSelectionLineStamp($infoCongDoan, $template, $so_luong)
     {
         list($productionBatch, $boxNumber) = SelectionLineStamp::generateStampLotId();
@@ -2112,13 +2212,14 @@ class Phase2OIApiController extends Controller
             'lot_id' => $productionBatch . $boxNumber,
             'qr_code' => $template->part_no . $template->vendor_code . $template->po_type . $productionBatch . $boxNumber . str_pad($so_luong, 6, '0', STR_PAD_LEFT),
             'selection_line_stamp_template_id' => $template->id,
+            'po_type' => $infoCongDoan->plan->po_type ?? $template->po_type,
         ]);
         $thung = Lot::firstOrCreate([
             'id' => $stamp->qr_code
         ], [
             'product_id' => $infoCongDoan->product_id,
             'material_id' => $infoCongDoan->material_id,
-            'final_line_id' => $infoCongDoan->id,
+            'final_line_id' => $infoCongDoan->line_id,
             'lo_sx' => $infoCongDoan->lo_sx,
             'so_luong' => $so_luong,
             'type' => Lot::TYPE_THUNG
@@ -2160,13 +2261,13 @@ class Phase2OIApiController extends Controller
         return $data;
     }
 
-    public function formatTemChonSamsung($stamp, $request)
+    public function formatTemChonSamsung($stamp)
     {
         $template = $stamp->template;
         $data = [
             'part_no' => $template->part_no ?? "",
             'specification' => $template->specification ?? "",
-            'po_type' => $request->po_type ?? $template->po_type ?? "",
+            'po_type' => $stamp->po_type ?? $template->po_type ?? "",
             'lot_no' => $stamp->lot_id,
             'qr_code' => $stamp->qr_code,
             'quantity' => str_pad($stamp->quantity ?? 0, 6, '0', STR_PAD_LEFT),

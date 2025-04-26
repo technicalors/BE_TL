@@ -55,6 +55,7 @@ class ProductionPlan extends Model
         'status_plan',
         'production_order_id',
         'component_id',
+        'po_type',
     ];
     public function machine()
     {

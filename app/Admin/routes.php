@@ -676,6 +676,7 @@ Route::group([
     $router->post('update-dau-noi', [Phase2OIApiController::class, 'updateDauNoi']);
     $router->post('delete-dau-noi', [Phase2OIApiController::class, 'deleteDauNoi']);
     $router->post('print-tem-samsung-selection-line', [Phase2OIApiController::class, 'printTemSamsungSelectionLine']);
+    $router->post('reprint-tem-samsung-selection-line', [Phase2OIApiController::class, 'reprintTemSamsungSelectionLine']);
 
     //Chất lượng
     $router->get('qc-overall', [Phase2OIApiController::class, 'getQCOverall']);
