@@ -3844,7 +3844,8 @@ class ApiMobileController extends AdminController
             'thoi_gian_thuc_hien' => $productionTime - $setupTime,
             'thoi_gian_bat_dau' => $input['thoi_gian_bat_dau'],
             'thoi_gian_ket_thuc' => $input['thoi_gian_ket_thuc'],
-            'status' => InfoCongDoan::STATUS_PLANNED
+            'status' => InfoCongDoan::STATUS_PLANNED,
+            'po_type' => $input['po_type'] ?? null
         ];
         $production_plan = ProductionPlan::create($productionPlan);
         return $this->success($production_plan, 'Thêm thành công');
