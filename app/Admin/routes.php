@@ -538,7 +538,7 @@ Route::group([
     $router->post('customer/create', [App\Admin\Controllers\CustomerApiController::class, 'create']);
     $router->delete('customer/delete/{id}', [App\Admin\Controllers\CustomerApiController::class, 'delete']);
     $router->post('customers/delete', [App\Admin\Controllers\CustomerApiController::class, 'deleteMultiple']);
-    $router->get('customer/export', [App\Admin\Controllers\CustomerApiController::class, 'exportLine']);
+    $router->get('customer/export', [App\Admin\Controllers\CustomerApiController::class, 'export']);
     $router->post('customer/import', [App\Admin\Controllers\CustomerApiController::class, 'import']);
 
     $router->get('template/list', [App\Admin\Controllers\TemplateController::class, 'list']);
