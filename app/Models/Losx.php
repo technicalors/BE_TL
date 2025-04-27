@@ -38,7 +38,10 @@ class Losx extends Model
         return $this->hasMany(ProductionOrderHistory::class, 'lo_sx', 'id');
     }
 
-
+    public function productOrder()
+    {
+        return $this->belongsTo(ProductOrder::class, 'product_order_id');
+    }
 
     public static function generateUniqueIdV1()
     {

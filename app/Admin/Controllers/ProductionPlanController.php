@@ -1436,7 +1436,8 @@ class ProductionPlanController extends AdminController
                     'thoi_gian_thuc_hien' => $totalTime - $setupTime,
                     'thoi_gian_bat_dau' => $start_time,
                     'thoi_gian_ket_thuc' => $end_time,
-                    'status' => InfoCongDoan::STATUS_PLANNED
+                    'status' => InfoCongDoan::STATUS_PLANNED,
+                    'po_type' => $losx->productOrder->customer->po_type ?? null,
                 ];
                 $machine_load_factors[$plan->machine_id] = [
                     'date' => date('Y-m-d', strtotime('+1 day')),
@@ -1571,7 +1572,8 @@ class ProductionPlanController extends AdminController
                     'thoi_gian_thuc_hien' => $totalTime - $setupTime,
                     'thoi_gian_bat_dau' => $start_time,
                     'thoi_gian_ket_thuc' => $end_time,
-                    'status' => InfoCongDoan::STATUS_PLANNED
+                    'status' => InfoCongDoan::STATUS_PLANNED,
+                    'po_type' => $productionOrderPriority->productOrder->customer->po_type ?? null,
                 ];
                 $machine_load_factors[$machinePriorityOrder->machine_id] = [
                     'date' => date('Y-m-d', strtotime('+1 day')),

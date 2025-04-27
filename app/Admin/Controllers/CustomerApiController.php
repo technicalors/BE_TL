@@ -101,16 +101,37 @@ class CustomerApiController extends Controller
 
     public function import(Request $request)
     {
-        $request->validate([
-            'file' => 'required|mimes:xlsx',
-        ]);
-        // try {
-        //     Excel::import(new MoldsImport, $request->file('file'));
-        // } catch (\Exception $e) {
-        //     // Handle the exception and return an appropriate response
-        //     return $this->failure(['error' => $e->getMessage()], 'File import failed', 422);
-        // }
-        return $this->success('', 'Upload thành công');
+        $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
+        if ($extension == 'csv') {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
+        } elseif ($extension == 'xlsx') {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+        } else {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
+        }
+        // file path
+        $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
+        $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
+        $data = [];
+        foreach ($allDataInSheet as $key => $row) {
+            //Lấy dứ liệu từ dòng thứ 2
+            if ($key > 2 && !empty($row['A']) && !empty($row['B'])) {
+                $input = [];
+                $input['id'] = $row['A'];
+                $input['name'] = $row['B'];
+                $input['po_type'] = $row['C'];
+                $data[] = $input;
+            }
+        }
+        foreach ($data as $key => $input) {
+            $error = Customer::where('id', $input['id'])->first();
+            if($error){
+                $error->update($input);
+            }else{
+                Customer::create($input);
+            }
+        }
+        return $this->success([], 'Upload thành công');
     }
 
     public function export(Request $request)

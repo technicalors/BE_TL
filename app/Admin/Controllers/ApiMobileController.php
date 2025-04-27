@@ -3845,7 +3845,7 @@ class ApiMobileController extends AdminController
             'thoi_gian_bat_dau' => $input['thoi_gian_bat_dau'],
             'thoi_gian_ket_thuc' => $input['thoi_gian_ket_thuc'],
             'status' => InfoCongDoan::STATUS_PLANNED,
-            'po_type' => $input['po_type'] ?? null
+            'po_type' => $input['po_type'] ?? $productionOrderHistory->productionOrder->customer->po_type ?? null,
         ];
         $production_plan = ProductionPlan::create($productionPlan);
         return $this->success($production_plan, 'Thêm thành công');
@@ -3927,7 +3927,7 @@ class ApiMobileController extends AdminController
                 'thoi_gian_bat_dau' => $input['thoi_gian_bat_dau'],
                 'thoi_gian_ket_thuc' => $input['thoi_gian_ket_thuc'],
                 'status' => InfoCongDoan::STATUS_PLANNED,
-                'po_type' => $input['po_type'] ?? null,
+                'po_type' => $input['po_type'] ?? $productionOrderHistory->productionOrder->customer->po_type ?? null,
             ];
             $model->fill($productionPlan);
             $model->save();
