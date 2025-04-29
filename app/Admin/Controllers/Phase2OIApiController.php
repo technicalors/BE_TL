@@ -515,37 +515,56 @@ class Phase2OIApiController extends Controller
                 return $this->failure([], "Máy này đang sản xuất lot khác");
             }
         }
-        if ($machine->line_id != 26 && $machine->code != 'IN_7_MAU_02') {
-            $scannedLot = Lot::find($request->scanned_lot);
-            if (!$scannedLot) {
-                return $this->failure('', 'Không tìm thấy lot');
-            }
-            // $checkInfo = InfoCongDoan::where('input_lot_id', $request->scanned_lot)->first();
-            // if ($checkInfo && $machine->line_id != 24) {
-            //     return $this->failure('', 'Lot đã được sử dụng');
-            // }
-            $plan_query = ProductionPlan::where('line_id', $machine->line_id)
-                ->where('machine_id', $machine->code)
-                ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
-                ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
-                ->orderBy('status_plan', 'DESC')
-                ->orderBy('thoi_gian_bat_dau');
-            $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $scannedLot->product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
-            $requestValue = $hanh_trinh_san_xuat[$request->line_id] ?? 0;
-            // Lọc các line_id có value nhỏ hơn requestValue
-            $filteredLineIds = collect($hanh_trinh_san_xuat)
-                ->filter(function ($value, $lineId) use ($requestValue) {
-                    return $value < $requestValue;
-                })->keys();
-            $orderByString = "'" . implode("','", $filteredLineIds->toArray()) . "'";
-            $previousLineLot = InfoCongDoan::where('lot_id', $request->scanned_lot)
-                ->whereIn('line_id', $filteredLineIds)->where('status', InfoCongDoan::STATUS_COMPLETED)
-                ->orderByRaw("FIELD(line_id, $orderByString)")
-                ->get()
-                ->last();
-            if (count($filteredLineIds) > 0) {
+        $current_plan = ProductionPlan::where('line_id', $machine->line_id)
+            ->where('machine_id', $machine->code)
+            ->where('status_plan', ProductionPlan::STATUS_IN_PROGRESS)
+            ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
+            ->orderBy('status_plan', 'DESC')
+            ->orderBy('thoi_gian_bat_dau')
+            ->first();
+        if (!$current_plan) {
+            return $this->failure('', 'Chưa có kế hoạch nào đang sản xuất');
+        }
+        //Kiểm tra xem KH có cho phép không kiểm tra đầu vào không
+        if (!$current_plan->pass_input_lot_id) {
+            $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $current_plan->product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
+            // return in_array($machine->line_id, [24, 25]) && $hanh_trinh_san_xuat[$machine->line_id] == 1;
+            if (in_array($machine->line_id, [24, 25]) && $hanh_trinh_san_xuat[$machine->line_id] == 1) {
+                $roll = RollMaterial::with(['material.products', 'warehouse_inventory'])->find($request->scanned_lot);
+                if (!$roll) {
+                    return $this->failure([], "Không tìm thấy cuộn");
+                }
+                $product_ids = $roll->material->products->pluck('id')->toArray() ?? [];
+                $product_ids[] = $roll->material_id;
+                if (!in_array($current_plan->product_id, $product_ids)) {
+                    return $this->failure([], "Mã cuộn không phù hợp");
+                }
+            } else {
+                $scannedLot = Lot::find($request->scanned_lot);
+                if (!$scannedLot) {
+                    return $this->failure('', 'Không tìm thấy lot');
+                }
+                $currentLineIndex = $hanh_trinh_san_xuat[$machine->line_id] ?? 0;
+                // Lọc các line_id có value nhỏ hơn currentLineIndex
+                // $previousLineIds = collect($hanh_trinh_san_xuat)
+                //     ->filter(function ($value, $lineId) use ($currentLineIndex) {
+                //         return $value < $currentLineIndex;
+                //     })->keys();
+                // $orderByString = "'" . implode("','", $previousLineIds->toArray()) . "'";
+                // $previousLineLot = InfoCongDoan::where('lot_id', $request->scanned_lot)
+                //     ->whereIn('line_id', $previousLineIds)->where('status', InfoCongDoan::STATUS_COMPLETED)
+                //     ->orderByRaw("FIELD(line_id, $orderByString)")
+                //     ->get()
+                //     ->last();
+                $previousLineId = collect($hanh_trinh_san_xuat)
+                    ->filter(function ($value, $lineId) use ($currentLineIndex) {
+                        return $value < $currentLineIndex;
+                    })->keys()->last();
+                $previousLineLot = InfoCongDoan::where('lot_id', $request->scanned_lot)
+                    ->where('line_id', $previousLineId)->where('status', InfoCongDoan::STATUS_COMPLETED)
+                    ->first();
                 if (!$previousLineLot) {
-                    return $this->failure([], 'Không tìm thấy lot đã chạy trước đó');
+                    return $this->failure([], 'Không tìm thấy lot đã chạy công đoạn trước');
                 }
                 if ($previousLineLot->line_id == 24) {
                     $bomProducts = Bom::where(function ($subQuery) use ($previousLineLot) {
@@ -553,37 +572,25 @@ class Phase2OIApiController extends Controller
                     })->pluck('product_id')->toArray();
                     if (!in_array($scannedLot->product_id, $bomProducts)) {
                         return $this->failure($previousLineLot, 'Không khớp mã sản phẩm');
-                    } else {
-                        $plan_query->whereIn('product_id', $bomProducts);
                     }
                 } else {
-                    if ($previousLineLot->product_id !== $scannedLot->product_id) {
+                    if ($previousLineLot->product_id !== $current_plan->product_id) {
                         return $this->failure([$previousLineLot, $scannedLot], 'Không khớp mã sản phẩm');
+                    }
+                }
+                //Nếu đáp ứng đủ các điều kiện ở trên thì bắt đầu sản xuất và trừ tồn
+                if ($scannedLot) {
+                    $sl_dat = $scannedLot->so_luong;
+                    $line_inventory = LineInventories::where('product_id', $scannedLot->product_id)->where('line_id', $scannedLot->final_line_id)->first();
+                    if ($line_inventory) {
+                        $line_inventory->update(['quantity' => $line_inventory->quantity - $sl_dat]);
                     } else {
-                        $plan_query->where('product_id', $previousLineLot->product_id);
+                        LineInventories::create(['quantity' => $sl_dat, 'line_id' => $machine->line_id, 'product_id' => $current_plan->product_id]);
                     }
                 }
             }
-            $plan = $plan_query->first();
-            if (!$plan) {
-                return $this->failure([], 'Không tìm thấy KHSX');
-            }
-        } else {
-            $scannedLot = Lot::find($request->scanned_lot);
-            $plan_query = ProductionPlan::where('line_id', $machine->line_id)
-                ->where('machine_id', $machine->code)
-                ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
-                ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
-                ->orderBy('status_plan', 'DESC')
-                ->orderBy('thoi_gian_bat_dau');
-            // if ($scannedLot) {
-            //     $plan_query->where('product_id', $scannedLot->product_id);
-            // }
-            $plan = $plan_query->first();
-            if (!$plan) {
-                return $this->failure([], 'Không tìm thấy KHSX');
-            }
         }
+        $plan = $current_plan;
         try {
             DB::beginTransaction();
             MachineStatus::reset($machine->code);
@@ -603,18 +610,27 @@ class Phase2OIApiController extends Controller
                 'sl_kh' => $plan->sl_giao_sx,
                 'plan_id' => $plan->id
             ]);
-            if ($machine->code != 'IN_8_MAU_01' && $machine->code != 'DC_1' && $machine->line_id != 26) {
-                if ($scannedLot) {
-                    $sl_dat = $scannedLot->so_luong;
-                    $line_inventory = LineInventories::where('product_id', $scannedLot->product_id)->where('line_id', $scannedLot->final_line_id)->first();
-
-                    if ($line_inventory) {
-                        $line_inventory->update(['quantity' => $line_inventory->quantity - $sl_dat]);
-                    } else {
-                        LineInventories::create(['quantity' => $sl_dat, 'line_id' => $infoCongDoan->line_id, 'product_id' => $infoCongDoan->product_id]);
-                    }
-                }
-            }
+            // TODO: Kiểm tra lại logic này
+            // if($previousLineLot && $scannedLot && $scannedLot->type == Lot::TYPE_TEM_VANG){
+            //     $qcHistory = QCHistory::firstOrCreate(
+            //         [
+            //             'info_cong_doan_id' => $infoCongDoan->id,
+            //         ],
+            //         [
+            //             'scanned_time' => date('Y-m-d H:i:s'),
+            //             'user_id' => $request->user()->id,
+            //         ]
+            //     );
+            //     $lot_error_log_data = YellowStampHistory::where('q_c_history_id', $previousLineLot->qcHistory->id)->get();
+            //     foreach($lot_error_log_data as $lot_error_log){
+            //         YellowStampHistory::create([
+            //             'q_c_history_id' => $qcHistory->id,
+            //             'errors' => $lot_error_log->errors,
+            //             'sl_tem_vang' => $lot_error_log->sl_tem_vang,
+            //             'user_id' => $lot_error_log->user_id
+            //         ]);
+            //     }
+            // }
             if (isset($tracking)) {
                 $tracking->update([
                     'lot_id' => $infoCongDoan->lot_id,
@@ -629,7 +645,7 @@ class Phase2OIApiController extends Controller
             throw $th;
             return $this->failure($th, 'Lỗi quét tem' . $th);
         }
-        return $this->success([], "Quét lot thành công");
+        return $this->success([], "Quét thành công, bắt đầu sản xuất");
     }
 
     public function scanForSelectionLineV2(Request $request)
@@ -891,14 +907,12 @@ class Phase2OIApiController extends Controller
         }
         $lots_tem_vang = [];
         $group_yellow_stamp = GroupYellowStamp::where('lo_sx', $input['lo_sx'])->where('line_id', $input['line_id'])->where('machine_id', $input['machine_id'])->first();
-        $relate = GroupYellowStampInfo::where('info_cong_doan_id', $info->id)->where('group_yellow_stamp_id', $group_yellow_stamp->id ?? null)->first();
+        $grouped_info = GroupYellowStampInfo::where('info_cong_doan_id', $info->id)->where('group_yellow_stamp_id', $group_yellow_stamp->id ?? null)->get();
         if ($group_yellow_stamp) {
-            if ($relate) {
-                $group_yellow_stamp->is_grouped = true;
-            }
             $lots_tem_vang = $group_yellow_stamp->lot;
             $group_yellow_stamp->lots = $lots_tem_vang;
             $group_yellow_stamp->quantity = ($group_yellow_stamp->quantity - $lots_tem_vang->sum('so_luong'));
+            $group_yellow_stamp->grouped_quantity = $grouped_info->sum('quantity');
         }
 
         return $this->success($group_yellow_stamp);
@@ -957,14 +971,14 @@ class Phase2OIApiController extends Controller
 
     function formatGroupYellowStamp($lot_tem_vang, $group_yellow_stamp)
     {
-        $infos = $group_yellow_stamp->info_cong_doan;
-        $khoanh_vung = [];
-        foreach ($infos as $info) {
-            foreach ($info->qcHistory->yellowStampHistories ?? [] as $value) {
-                $khoanh_vung[] = $value->errors;
-            }
+        $grouped_infos = GroupYellowStampInfo::where('group_yellow_stamp_id', $group_yellow_stamp->id)->get();
+        Log::debug($grouped_infos);
+        $yellow_stamp_history = [];
+        foreach ($grouped_infos as $grouped_info) {
+            if(!$grouped_info->error_id) continue;
+            $yellow_stamp_history[] = $grouped_info->error_id;
         }
-        // return $khoanh_vung;
+        $ghi_chu = "Hàng tem vàng" . (count($yellow_stamp_history) > 0 ? (" - " . implode(', ', $yellow_stamp_history)) : "");
         $tem = [
             'lot_id' => $lot_tem_vang->id,
             'lsx' => $lot_tem_vang->lo_sx,
@@ -975,7 +989,7 @@ class Phase2OIApiController extends Controller
             'his' => '',
             'cd_thuc_hien' => 'Đục cắt',
             'cd_tiep_theo' => 'Chọn',
-            'ghi_chu' => implode(',', $khoanh_vung),
+            'ghi_chu' => $ghi_chu,
         ];
         return $tem;
     }
@@ -993,6 +1007,50 @@ class Phase2OIApiController extends Controller
         }
         $tem = $this->formatGroupYellowStamp($lot_tem_vang, $group_yellow_stamp);
         return $this->success($tem);
+    }
+
+    public function groupingYellowStamp(Request $request)
+    {
+        $input = $request->all();
+        $info = InfoCongDoan::find($input['info_cong_doan_id']);
+        if (!$info) {
+            return $this->failure('', 'Không tìm thấy lot');
+        }
+        $sl_ok = $info->sl_dau_ra_hang_loat - $info->sl_ng - $info->sl_tem_vang;
+        $grouped_infos = GroupYellowStampInfo::where('info_cong_doan_id', $info->id)->get();
+        $grouped_quantity = $grouped_infos->sum('quantity');
+        $remain_quantity = $sl_ok - $grouped_quantity;
+        if ($remain_quantity <= 0) {
+            return $this->failure('', 'Không thể gom do đã hết số lượng');
+        }
+        $data = [];
+        foreach ($input['log'] ?? [] as $key => $value) {
+            if ($value > $remain_quantity) {
+                return $this->failure('', 'Số lượng gom vượt quá số lượng còn lại');
+            }
+            $data[] = [
+                'info_cong_doan_id' => $info->id,
+                'error_id' => $key,
+                'quantity' => $value,
+                'user_id' => $request->user()->id
+            ];
+            $remain_quantity -= $value;
+        }
+        $group_yellow_stamp = GroupYellowStamp::firstOrCreate([
+            'lo_sx' => $info->lo_sx,
+            'line_id' => $info->line_id,
+            'machine_id' => $info->machine_code,
+        ]);
+        $addIng_quantity = 0;
+        foreach ($data as $item) {
+            $item['group_yellow_stamp_id'] = $group_yellow_stamp->id;
+            GroupYellowStampInfo::create($item);
+            $addIng_quantity += $item['quantity'];
+        }
+        $group_yellow_stamp->update([
+            'quantity' => $group_yellow_stamp->quantity + $addIng_quantity
+        ]);
+        return $this->success('', 'Đã gom tem vàng');
     }
 
     //=============================End=============================
@@ -1684,7 +1742,7 @@ class Phase2OIApiController extends Controller
         if (isset($request->product_id)) {
             $template = SelectionLineStampTemplate::where('product_id', $request->product_id)->first();
         }
-        if($info){
+        if ($info) {
             $po_type = $info->plan->po_type ?? "";
         }
         $data = [
@@ -1971,7 +2029,7 @@ class Phase2OIApiController extends Controller
         if (!$infoCongDoan) {
             return $this->failure([], "Chưa quét lot này");
         }
-        if(!($infoCongDoan->plan->po_type ?? false)){
+        if (!($infoCongDoan->plan->po_type ?? false)) {
             return $this->failure('', 'Không có PO type trong kế hoạch');
         }
         if (!$request->sl_in_tem) {
@@ -1984,6 +2042,22 @@ class Phase2OIApiController extends Controller
         $sl_ton = OddBin::where('lo_sx', $infoCongDoan->lo_sx)->sum('so_luong');
         $sl_tong = $sl_ok + $sl_ton;
         $data = [];
+        $template = SelectionLineStampTemplate::where('product_id', $infoCongDoan->product_id)->first();
+        if (!$template) {
+            return $this->failure([], "Không tìm thấy mẫu tem");
+        }
+        $box_quantity = (int) $template->box_quantity;
+        $plan = $infoCongDoan->plan;
+        if ($request->type != 3 || $plan->sl_giao_sx > $box_quantity) {
+            $infos = $plan->infoCongDoan;
+            $remain_quantity = $plan->sl_giao_sx - $infos->sum('sl_dau_ra_hang_loat');
+            if ($remain_quantity <= 0) {
+                return $this->failure('', 'Số lượng còn lại không đủ để in tem');
+            }
+            if ($remain_quantity < $box_quantity) {
+                return $this->failure('', 'Số lượng còn lại là: ' . $remain_quantity . ', không thoả mãn định mức thùng: ' . $box_quantity);
+            }
+        }
         try {
             DB::beginTransaction();
             $counter = floor($sl_tong / $request->sl_in_tem);
@@ -2011,94 +2085,87 @@ class Phase2OIApiController extends Controller
                     $infoCongDoan->plan->update(['status_plan' => ProductionPlan::STATUS_COMPLETED]);
                 }
             }
-            $template = SelectionLineStampTemplate::where('product_id', $infoCongDoan->product_id)->first();
-            // return $template;
-            if ($template) {
-                //In tem kiểu mới
-                $quantity = 0;
-                switch ($request->type) {
-                    case 1:
-                        $counter = ceil($sl_tong / $request->sl_in_tem);
-                        for ($i = 0; $i < $counter; $i++) {
-                            if ($i == $counter - 1 && ($sl_tong % $request->sl_in_tem) > 0) {
-                                $so_luong = $sl_tong % $request->sl_in_tem;
-                            } else {
-                                $so_luong = $request->sl_in_tem;
-                            }
-                            $stamp = $this->handleSelectionLineStamp($infoCongDoan, $template, $so_luong);
-                            $data[] = $this->formatTemChonSamsung($stamp, $request);
-                            //In tem bó
-                            if (isset($request->sl_tem_bo) && $request->sl_tem_bo > 0) {
-                                $tem_bo_counter = ceil($so_luong / $request->sl_tem_bo);
-                                for ($j = 0; $j < $tem_bo_counter; $j++) {
-                                    if ($j == $tem_bo_counter - 1 && ($so_luong % $request->sl_tem_bo) > 0) {
-                                        $so_luong_tem_bo = $so_luong % $request->sl_tem_bo;
-                                    } else {
-                                        $so_luong_tem_bo = $request->sl_tem_bo;
-                                    }
-                                    $tembo_items[] = $this->formatTemBoSamsung($stamp, $so_luong_tem_bo);
-                                    // Mỗi 3 tembo thì gộp lại thành 1 phần tử $data
-                                    if (count($tembo_items) == 3 || $j == $tem_bo_counter - 1) {
-                                        $data[] = ['type' => 'tem_bo', 'data' => $tembo_items];
-                                        $tembo_items = []; // reset để chứa cặp tiếp theo
-                                    }
+            $quantity = 0;
+            switch ($request->type) {
+                case 1:
+                    $counter = ceil($sl_tong / $request->sl_in_tem);
+                    for ($i = 0; $i < $counter; $i++) {
+                        if ($i == $counter - 1 && ($sl_tong % $request->sl_in_tem) > 0) {
+                            $so_luong = $sl_tong % $request->sl_in_tem;
+                        } else {
+                            $so_luong = $request->sl_in_tem;
+                        }
+                        $stamp = $this->handleSelectionLineStamp($infoCongDoan, $template, $so_luong);
+                        $data[] = $this->formatTemChonSamsung($stamp, $request);
+                        //In tem bó
+                        if (isset($request->sl_tem_bo) && $request->sl_tem_bo > 0) {
+                            $tem_bo_counter = ceil($so_luong / $request->sl_tem_bo);
+                            for ($j = 0; $j < $tem_bo_counter; $j++) {
+                                if ($j == $tem_bo_counter - 1 && ($so_luong % $request->sl_tem_bo) > 0) {
+                                    $so_luong_tem_bo = $so_luong % $request->sl_tem_bo;
+                                } else {
+                                    $so_luong_tem_bo = $request->sl_tem_bo;
                                 }
-                                $template->update(['pack_quantity' => $request->sl_tem_bo]);
+                                $tembo_items[] = $this->formatTemBoSamsung($stamp, $so_luong_tem_bo);
+                                // Mỗi 3 tembo thì gộp lại thành 1 phần tử $data
+                                if (count($tembo_items) == 3 || $j == $tem_bo_counter - 1) {
+                                    $data[] = ['type' => 'tem_bo', 'data' => $tembo_items];
+                                    $tembo_items = []; // reset để chứa cặp tiếp theo
+                                }
                             }
+                            $template->update(['pack_quantity' => $request->sl_tem_bo]);
+                        }
 
-                            $quantity += $request->sl_in_tem;
-                        }
-                        OddBin::where('lo_sx', $infoCongDoan->lo_sx)->where('product_id', $infoCongDoan->product_id)->delete();
-                        break;
-                    case 2:
-                        $counter = floor($sl_tong / $request->sl_in_tem);
-                        for ($i = 0; $i < $counter; $i++) {
-                            $stamp = $this->handleSelectionLineStamp($infoCongDoan, $template, $request->sl_in_tem);
-                            $data[] = $this->formatTemChonSamsung($stamp, $request);
-                            //In tem bó
-                            if (isset($request->sl_tem_bo) && $request->sl_tem_bo > 0) {
-                                $tem_bo_counter = ceil($request->sl_in_tem / $request->sl_tem_bo);
-                                for ($j = 0; $j < $tem_bo_counter; $j++) {
-                                    if ($j == $tem_bo_counter - 1 && ($request->sl_in_tem % $request->sl_tem_bo) > 0) {
-                                        $so_luong_tem_bo = $request->sl_in_tem % $request->sl_tem_bo;
-                                    } else {
-                                        $so_luong_tem_bo = $request->sl_tem_bo;
-                                    }
-                                    $tembo_items[] = $this->formatTemBoSamsung($stamp, $so_luong_tem_bo);
-                                    // Mỗi 3 tembo thì gộp lại thành 1 phần tử $data
-                                    if (count($tembo_items) == 3 || $j == $tem_bo_counter - 1) {
-                                        $data[] = ['type' => 'tem_bo', 'data' => $tembo_items];
-                                        $tembo_items = []; // reset để chứa cặp tiếp theo
-                                    }
+                        $quantity += $request->sl_in_tem;
+                    }
+                    OddBin::where('lo_sx', $infoCongDoan->lo_sx)->where('product_id', $infoCongDoan->product_id)->delete();
+                    break;
+                case 2:
+                    $counter = floor($sl_tong / $request->sl_in_tem);
+                    for ($i = 0; $i < $counter; $i++) {
+                        $stamp = $this->handleSelectionLineStamp($infoCongDoan, $template, $request->sl_in_tem);
+                        $data[] = $this->formatTemChonSamsung($stamp, $request);
+                        //In tem bó
+                        if (isset($request->sl_tem_bo) && $request->sl_tem_bo > 0) {
+                            $tem_bo_counter = ceil($request->sl_in_tem / $request->sl_tem_bo);
+                            for ($j = 0; $j < $tem_bo_counter; $j++) {
+                                if ($j == $tem_bo_counter - 1 && ($request->sl_in_tem % $request->sl_tem_bo) > 0) {
+                                    $so_luong_tem_bo = $request->sl_in_tem % $request->sl_tem_bo;
+                                } else {
+                                    $so_luong_tem_bo = $request->sl_tem_bo;
                                 }
-                                $template->update(['pack_quantity' => $request->sl_tem_bo]);
+                                $tembo_items[] = $this->formatTemBoSamsung($stamp, $so_luong_tem_bo);
+                                // Mỗi 3 tembo thì gộp lại thành 1 phần tử $data
+                                if (count($tembo_items) == 3 || $j == $tem_bo_counter - 1) {
+                                    $data[] = ['type' => 'tem_bo', 'data' => $tembo_items];
+                                    $tembo_items = []; // reset để chứa cặp tiếp theo
+                                }
                             }
-                            $quantity += $request->sl_in_tem;
+                            $template->update(['pack_quantity' => $request->sl_tem_bo]);
                         }
-                        OddBin::updateOrCreate(
-                            [
-                                'lo_sx' => $infoCongDoan->lo_sx,
-                                'product_id' => $infoCongDoan->product_id,
-                            ],
-                            [
-                                'so_luong' => $sl_tong - $quantity,
-                            ]
-                        );
-                        break;
-                    case 3:
-                        OddBin::updateOrCreate(
-                            [
-                                'lo_sx' => $infoCongDoan->lo_sx,
-                                'product_id' => $infoCongDoan->product_id,
-                            ],
-                            [
-                                'so_luong' => $sl_tong,
-                            ]
-                        );
-                        break;
-                }
-            } else {
-                return $this->failure([], "Không tìm thấy mẫu tem");
+                        $quantity += $request->sl_in_tem;
+                    }
+                    OddBin::updateOrCreate(
+                        [
+                            'lo_sx' => $infoCongDoan->lo_sx,
+                            'product_id' => $infoCongDoan->product_id,
+                        ],
+                        [
+                            'so_luong' => $sl_tong - $quantity,
+                        ]
+                    );
+                    break;
+                case 3:
+                    OddBin::updateOrCreate(
+                        [
+                            'lo_sx' => $infoCongDoan->lo_sx,
+                            'product_id' => $infoCongDoan->product_id,
+                        ],
+                        [
+                            'so_luong' => $sl_tong,
+                        ]
+                    );
+                    break;
             }
             DB::commit();
         } catch (\Throwable $th) {
@@ -2133,10 +2200,10 @@ class Phase2OIApiController extends Controller
         // $sl_ton = OddBin::where('lo_sx', $infoCongDoan->lo_sx)->sum('so_luong');
         $input = $request->all();
         $product = Product::find($input['product_id']);
-        if(!$product){
+        if (!$product) {
             return $this->failure('', 'Không tìm thấy sản phẩm');
         }
-        $input['product_id'] = $product->id; 
+        $input['product_id'] = $product->id;
         $so_luong = $input['so_luong'];
         $data = [];
         try {

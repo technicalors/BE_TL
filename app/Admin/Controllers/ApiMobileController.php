@@ -3846,6 +3846,7 @@ class ApiMobileController extends AdminController
             'thoi_gian_ket_thuc' => $input['thoi_gian_ket_thuc'],
             'status' => InfoCongDoan::STATUS_PLANNED,
             'po_type' => $input['po_type'] ?? $productionOrderHistory->productionOrder->customer->po_type ?? null,
+            'pass_input_lot_id' => isset($input['pass_input_lot_id']) ? $input['pass_input_lot_id'] : ($input['line_id'] == 26 ? 1 : 0),
         ];
         $production_plan = ProductionPlan::create($productionPlan);
         return $this->success($production_plan, 'Thêm thành công');
@@ -3928,6 +3929,7 @@ class ApiMobileController extends AdminController
                 'thoi_gian_ket_thuc' => $input['thoi_gian_ket_thuc'],
                 'status' => InfoCongDoan::STATUS_PLANNED,
                 'po_type' => $input['po_type'] ?? $productionOrderHistory->productionOrder->customer->po_type ?? null,
+                'pass_input_lot_id' => isset($input['pass_input_lot_id']) ? $input['pass_input_lot_id'] : ($input['line_id'] == 26 ? 1 : 0),
             ];
             $model->fill($productionPlan);
             $model->save();

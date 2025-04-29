@@ -56,6 +56,7 @@ class ProductionPlan extends Model
         'production_order_id',
         'component_id',
         'po_type',
+        'pass_input_lot_id'
     ];
     public function machine()
     {

@@ -695,6 +695,7 @@ Route::group([
     $router->get('get-group-yellow-stamp', [Phase2OIApiController::class, 'getGroupYellowStamp']);
     $router->get('print-group-yellow-stamp', [Phase2OIApiController::class, 'printGroupYellowStamp']);
     $router->get('reprint-group-yellow-stamp', [Phase2OIApiController::class, 'reprintGroupYellowStamp']);
+    $router->post('grouping-yellow-stamp', [Phase2OIApiController::class, 'groupingYellowStamp']);
 
     //Thiết bị
     $router->get('machine-overall', [Phase2OIApiController::class, 'getMachineOverall']);
