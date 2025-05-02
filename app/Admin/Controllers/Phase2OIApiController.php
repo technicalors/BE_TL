@@ -929,10 +929,10 @@ class Phase2OIApiController extends Controller
             return $this->failure('', 'Số lượng in vượt quá số lượng tồn, không thể tạo tem');
         }
         $prefix = $group_yellow_stamp->lo_sx . '.' . $group_yellow_stamp->line_id . '.LTV.';
-        // $lotList = Lot::where('id', 'like', "$prefix%")->orderBy('id', 'DESC')->get();
-        // if ($lotList->sum('so_luong') >= $input['quantity']) {
-        //     return $this->failure('', 'Đã in hết số lượng gom tem vàng');
-        // }
+        $lotList = Lot::where('id', 'like', "$prefix%")->orderBy('id', 'DESC')->get();
+        if ($lotList->sum('so_luong') >= $input['quantity']) {
+            return $this->failure('', 'Đã in hết số lượng gom tem vàng');
+        }
         $latestInfo = Lot::where('id', 'like', "$prefix%")->orderBy('id', 'DESC')->first();
         try {
             if ($latestInfo) {
@@ -2046,18 +2046,18 @@ class Phase2OIApiController extends Controller
         if (!$template) {
             return $this->failure([], "Không tìm thấy mẫu tem");
         }
-        $box_quantity = (int) $template->box_quantity;
-        $plan = $infoCongDoan->plan;
-        if ($request->type != 3 || $plan->sl_giao_sx > $box_quantity) {
-            $infos = $plan->infoCongDoan;
-            $remain_quantity = $plan->sl_giao_sx - $infos->sum('sl_dau_ra_hang_loat');
-            if ($remain_quantity <= 0) {
-                return $this->failure('', 'Số lượng còn lại không đủ để in tem');
-            }
-            if ($remain_quantity < $box_quantity) {
-                return $this->failure('', 'Số lượng còn lại là: ' . $remain_quantity . ', không thoả mãn định mức thùng: ' . $box_quantity);
-            }
-        }
+        // $box_quantity = (int) $template->box_quantity;
+        // $plan = $infoCongDoan->plan;
+        // if ($request->type != 3 || $plan->sl_giao_sx > $box_quantity) {
+        //     $infos = $plan->infoCongDoan;
+        //     $remain_quantity = $plan->sl_giao_sx - $infos->sum('sl_dau_ra_hang_loat');
+        //     if ($remain_quantity <= 0) {
+        //         return $this->failure('', 'Số lượng còn lại không đủ để in tem');
+        //     }
+        //     if ($remain_quantity < $box_quantity) {
+        //         return $this->failure('', 'Số lượng còn lại là: ' . $remain_quantity . ', không thoả mãn định mức thùng: ' . $box_quantity);
+        //     }
+        // }
         try {
             DB::beginTransaction();
             $counter = floor($sl_tong / $request->sl_in_tem);
