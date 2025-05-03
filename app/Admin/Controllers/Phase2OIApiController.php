@@ -722,7 +722,7 @@ class Phase2OIApiController extends Controller
                 'product_id' => $plan->product_id,
                 'thoi_gian_bat_dau' => Carbon::now(),
                 'sl_dau_vao_hang_loat' => $so_luong,
-                'sl_dau_ra_hang_loat' => $so_luong, //Số lượng đầu ra hàng loạt được cập nhật mỗi khi in tem và lưu tồn
+                // 'sl_dau_ra_hang_loat' => $so_luong, //Số lượng đầu ra hàng loạt được cập nhật mỗi khi in tem và lưu tồn
                 'status' => InfoCongDoan::STATUS_INPROGRESS,
                 'user_id' => $request->user()->id,
                 'sl_kh' => $so_luong,
@@ -2032,12 +2032,16 @@ class Phase2OIApiController extends Controller
         if (!$request->sl_in_tem) {
             return $this->failure([], "Số lượng in tem không hợp lệ");
         }
+        if (!$request->sl_tem_thung) {
+            return $this->failure([], "Số lượng tem thùng không hợp lệ");
+        }
         if (!$this->checkEligibleForPrinting($infoCongDoan)) {
             return $this->failure([], "Chưa đạt kiểm tra QC");
         }
-        $sl_ok = Assignment::where('lot_id', $request->lot_id)->sum('ok_quantity');
+        if (($infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_dau_ra_hang_loat) < $request->sl_in_tem || $infoCongDoan->sl_dau_vao_hang_loat < $request->sl_in_tem) {
+            return $this->failure([], "Số lượng còn lại không đủ để thực hiện thao tác này");
+        }
         $sl_ton = OddBin::where('lo_sx', $infoCongDoan->lo_sx)->sum('so_luong');
-        $sl_tong = $sl_ok + $sl_ton;
         $data = [];
         $template = SelectionLineStampTemplate::where('product_id', $infoCongDoan->product_id)->first();
         if (!$template) {
@@ -2057,49 +2061,23 @@ class Phase2OIApiController extends Controller
         // }
         try {
             DB::beginTransaction();
-            $counter = floor($sl_tong / $request->sl_in_tem);
-            if ($counter < 0) {
-                return $this->failure([], "Số lượng in tem không hợp lệ");
-            }
-            $infoCongDoan->update([
-                'thoi_gian_ket_thuc' => Carbon::now(),
-                'status' => InfoCongDoan::STATUS_COMPLETED
-            ]);
-            if ($infoCongDoan->plan) {
-                //Update ProductionOrderHistory and ProductionOrderPriority
-                $allInfoOfLosx = InfoCongDoan::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->get();
-                $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->where('component_id', $infoCongDoan->product_id)->first();
-                $producedInfoQuantity = $allInfoOfLosx->sum('sl_dau_ra_hang_loat') - $allInfoOfLosx->sum('sl_ng');
-                if ($productionOrderHistory) {
-                    $productionOrderHistory->update([
-                        'produced_quantity' => $producedInfoQuantity,
-                    ]);
-                }
-
-                $infos = InfoCongDoan::where('plan_id', $infoCongDoan->plan_id)->get();
-                $producedQuantity = $infos->sum('sl_dau_ra_hang_loat') - $infos->sum('sl_ng');
-                if ($producedQuantity >= $infoCongDoan->plan->sl_giao_sx) {
-                    $infoCongDoan->plan->update(['status_plan' => ProductionPlan::STATUS_COMPLETED]);
-                }
-            }
-            $quantity = 0;
             switch ($request->type) {
                 case 1:
-                    $counter = ceil($sl_tong / $request->sl_in_tem);
+                    if ($request->sl_in_tem < $request->sl_tem_thung) {
+                        return $this->failure([], "Số lượng in tem phải lớn hơn hoặc bằng số lượng tem thùng");
+                    }
+                    $sl_in_tem = $request->sl_in_tem + $sl_ton;
+                    $sl_tem_thung = $request->sl_tem_thung;
+                    $counter = floor($sl_in_tem / $sl_tem_thung);
                     for ($i = 0; $i < $counter; $i++) {
-                        if ($i == $counter - 1 && ($sl_tong % $request->sl_in_tem) > 0) {
-                            $so_luong = $sl_tong % $request->sl_in_tem;
-                        } else {
-                            $so_luong = $request->sl_in_tem;
-                        }
-                        $stamp = $this->handleSelectionLineStamp($infoCongDoan, $template, $so_luong);
+                        $stamp = $this->handleSelectionLineStamp($infoCongDoan, $template, $sl_tem_thung);
                         $data[] = $this->formatTemChonSamsung($stamp, $request);
                         //In tem bó
                         if (isset($request->sl_tem_bo) && $request->sl_tem_bo > 0) {
-                            $tem_bo_counter = ceil($so_luong / $request->sl_tem_bo);
+                            $tem_bo_counter = ceil($sl_tem_thung / $request->sl_tem_bo);
                             for ($j = 0; $j < $tem_bo_counter; $j++) {
-                                if ($j == $tem_bo_counter - 1 && ($so_luong % $request->sl_tem_bo) > 0) {
-                                    $so_luong_tem_bo = $so_luong % $request->sl_tem_bo;
+                                if ($j == $tem_bo_counter - 1 && ($sl_tem_thung % $request->sl_tem_bo) > 0) {
+                                    $so_luong_tem_bo = $sl_tem_thung % $request->sl_tem_bo;
                                 } else {
                                     $so_luong_tem_bo = $request->sl_tem_bo;
                                 }
@@ -2111,23 +2089,39 @@ class Phase2OIApiController extends Controller
                                 }
                             }
                             $template->update(['pack_quantity' => $request->sl_tem_bo]);
+                            $stamp->update(['pack_quantity' => $request->sl_tem_bo]);
                         }
-
-                        $quantity += $request->sl_in_tem;
                     }
-                    OddBin::where('lo_sx', $infoCongDoan->lo_sx)->where('product_id', $infoCongDoan->product_id)->delete();
+                    $phan_du = $sl_in_tem % $sl_tem_thung;
+                    $odd_bin = OddBin::where('lo_sx', $infoCongDoan->lo_sx)->where('product_id', $infoCongDoan->product_id)->first();
+                    if ($odd_bin) {
+                        $odd_bin->update([
+                            'so_luong' => $phan_du
+                        ]);
+                    } else {
+                        OddBin::create([
+                            'lo_sx' => $infoCongDoan->lo_sx,
+                            'product_id' => $infoCongDoan->product_id,
+                            'so_luong' => $phan_du
+                        ]);
+                    }
                     break;
                 case 2:
-                    $counter = floor($sl_tong / $request->sl_in_tem);
+                    if ($request->sl_in_tem < $request->sl_tem_thung) {
+                        return $this->failure([], "Số lượng in tem phải lớn hơn hoặc bằng số lượng tem thùng");
+                    }
+                    $sl_in_tem = $request->sl_in_tem;
+                    $sl_tem_thung = $request->sl_tem_thung;
+                    $counter = floor($sl_in_tem / $sl_tem_thung);
                     for ($i = 0; $i < $counter; $i++) {
-                        $stamp = $this->handleSelectionLineStamp($infoCongDoan, $template, $request->sl_in_tem);
+                        $stamp = $this->handleSelectionLineStamp($infoCongDoan, $template, $sl_tem_thung);
                         $data[] = $this->formatTemChonSamsung($stamp, $request);
                         //In tem bó
                         if (isset($request->sl_tem_bo) && $request->sl_tem_bo > 0) {
-                            $tem_bo_counter = ceil($request->sl_in_tem / $request->sl_tem_bo);
+                            $tem_bo_counter = ceil($sl_tem_thung / $request->sl_tem_bo);
                             for ($j = 0; $j < $tem_bo_counter; $j++) {
-                                if ($j == $tem_bo_counter - 1 && ($request->sl_in_tem % $request->sl_tem_bo) > 0) {
-                                    $so_luong_tem_bo = $request->sl_in_tem % $request->sl_tem_bo;
+                                if ($j == $tem_bo_counter - 1 && ($sl_tem_thung % $request->sl_tem_bo) > 0) {
+                                    $so_luong_tem_bo = $sl_tem_thung % $request->sl_tem_bo;
                                 } else {
                                     $so_luong_tem_bo = $request->sl_tem_bo;
                                 }
@@ -2139,36 +2133,70 @@ class Phase2OIApiController extends Controller
                                 }
                             }
                             $template->update(['pack_quantity' => $request->sl_tem_bo]);
+                            $stamp->update(['pack_quantity' => $request->sl_tem_bo]);
                         }
-                        $quantity += $request->sl_in_tem;
                     }
-                    OddBin::updateOrCreate(
-                        [
-                            'lo_sx' => $infoCongDoan->lo_sx,
-                            'product_id' => $infoCongDoan->product_id,
-                        ],
-                        [
-                            'so_luong' => $sl_tong - $quantity,
-                        ]
-                    );
+                    $phan_du = $sl_in_tem % $request->sl_tem_thung;
+                    if ($phan_du > 0) {
+                        $odd_bin = OddBin::where('lo_sx', $infoCongDoan->lo_sx)->where('product_id', $infoCongDoan->product_id)->first();
+                        if ($odd_bin) {
+                            $odd_bin->update([
+                                'so_luong' => $odd_bin->so_luong + $phan_du
+                            ]);
+                        } else {
+                            OddBin::create([
+                                'lo_sx' => $infoCongDoan->lo_sx,
+                                'product_id' => $infoCongDoan->product_id,
+                                'so_luong' => $phan_du
+                            ]);
+                        }   
+                    }
                     break;
                 case 3:
-                    OddBin::updateOrCreate(
-                        [
+                    $odd_bin = OddBin::where('lo_sx', $infoCongDoan->lo_sx)->where('product_id', $infoCongDoan->product_id)->first();
+                    if ($odd_bin) {
+                        $odd_bin->update([
+                            'so_luong' => $odd_bin->so_luong + $request->sl_in_tem,
+                        ]);
+                    } else {
+                        OddBin::create([
                             'lo_sx' => $infoCongDoan->lo_sx,
                             'product_id' => $infoCongDoan->product_id,
-                        ],
-                        [
-                            'so_luong' => $sl_tong,
-                        ]
-                    );
+                            'so_luong' => $request->sl_in_tem
+                        ]);
+                    }
                     break;
+            }
+            $infoCongDoan->update([
+                'sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_ra_hang_loat + $request->sl_in_tem
+            ]);
+            if (($infoCongDoan->sl_dau_ra_hang_loat + $infoCongDoan->sl_ng) === $infoCongDoan->sl_dau_vao_hang_loat) {
+                $infoCongDoan->update([
+                    'thoi_gian_ket_thuc' => Carbon::now(),
+                    'status' => InfoCongDoan::STATUS_COMPLETED
+                ]);
+
+                if ($infoCongDoan->plan) {
+                    //Update ProductionOrderHistory and ProductionOrderPriority
+                    $allInfoOfLosx = InfoCongDoan::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->get();
+                    $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $infoCongDoan->lo_sx)->where('line_id', $infoCongDoan->line_id)->where('component_id', $infoCongDoan->product_id)->first();
+                    $producedInfoQuantity = $allInfoOfLosx->sum('sl_dau_ra_hang_loat') - $allInfoOfLosx->sum('sl_ng');
+                    if ($productionOrderHistory) {
+                        $productionOrderHistory->update([
+                            'produced_quantity' => $producedInfoQuantity,
+                        ]);
+                    }
+                    $infos = InfoCongDoan::where('plan_id', $infoCongDoan->plan_id)->get();
+                    $producedQuantity = $infos->sum('sl_dau_ra_hang_loat') - $infos->sum('sl_ng');
+                    if ($producedQuantity >= $infoCongDoan->plan->sl_giao_sx) {
+                        $infoCongDoan->plan->update(['status_plan' => ProductionPlan::STATUS_COMPLETED]);
+                    }
+                }
             }
             DB::commit();
         } catch (\Throwable $th) {
-            Log::info($th);
             DB::rollBack();
-            return $this->failure($th, "Không thể in tem");
+            throw $th;
         }
         return $this->success($data);
     }
@@ -2277,6 +2305,7 @@ class Phase2OIApiController extends Controller
             'qr_code' => $template->part_no . $template->vendor_code . $template->po_type . $productionBatch . $boxNumber . str_pad($so_luong, 6, '0', STR_PAD_LEFT),
             'selection_line_stamp_template_id' => $template->id,
             'po_type' => $infoCongDoan->plan->po_type ?? $template->po_type,
+            'plan_id' => $infoCongDoan->plan_id,
         ]);
         $thung = Lot::firstOrCreate([
             'id' => $stamp->qr_code
@@ -2682,6 +2711,11 @@ class Phase2OIApiController extends Controller
             $item['sl_kh'] = $infoCongDoan->sl_dau_vao_hang_loat ?? 0;
             $item['line_id'] = $infoCongDoan->line_id ?? "";
             $item['machine_code'] = $infoCongDoan->machine_code ?? "";
+            if($infoCongDoan->line_id == 26){
+                $group_yellow_stamp_info_quantity = GroupYellowStampInfo::where('info_cong_doan_id', $infoCongDoan->id)->sum('quantity');
+                $item['sl_gom_tem_vang'] = $group_yellow_stamp_info_quantity ?? 0;
+            }
+            
             $data[] = $item;
         }
         return $this->success($data);
@@ -3187,10 +3221,6 @@ class Phase2OIApiController extends Controller
         try {
             DB::beginTransaction();
             $sl_ng = $infoCongDoan->sl_ng ?? 0;
-            $sl_dau_ra_hang_loat = $infoCongDoan->sl_dau_ra_hang_loat ?? 0;
-            if ($sl_dau_ra_hang_loat == 0) {
-                return $this->failure([], "Không có sl đầu ra hàng loạt");
-            }
             $sl_tem_vang = $infoCongDoan->sl_tem_vang ?? 0;
             $permission = [];
             foreach ($request->user()->roles as $role) {
@@ -3212,43 +3242,89 @@ class Phase2OIApiController extends Controller
                 ]);
                 $sl_ng += ($value ?? 0);
             }
-            $sl_con_lai = $sl_dau_ra_hang_loat - $sl_tem_vang - $sl_ng;
-            if ($sl_con_lai < 0) {
-                return $this->failure([], "Số lượng NG vượt quá số lượng sản xuất");
-            } elseif ($sl_con_lai === 0) {
-                $infoCongDoan->update([
-                    'sl_ng' => $sl_ng,
-                    'thoi_gian_ket_thuc' => Carbon::now(),
-                    'status' => InfoCongDoan::STATUS_COMPLETED
-                ]);
-                if ($tracking) {
-                    $tracking->update([
-                        'lot_id' => null,
-                        'input' => 0,
-                        'output' => 0
+            //Nếu công đoạn hiện tại không phải chọn
+            if($machine->line_id != 29){
+                $sl_dau_ra_hang_loat = $infoCongDoan->sl_dau_ra_hang_loat ?? 0;
+                if ($sl_dau_ra_hang_loat == 0) {
+                    return $this->failure([], "Không có sl đầu ra hàng loạt");
+                }
+                $sl_con_lai = $sl_dau_ra_hang_loat - $sl_tem_vang - $sl_ng;
+                if ($sl_con_lai < 0) {
+                    return $this->failure([], "Số lượng NG vượt quá số lượng sản xuất");
+                } elseif ($sl_con_lai === 0) {
+                    $infoCongDoan->update([
+                        'sl_ng' => $sl_ng,
+                        'thoi_gian_ket_thuc' => Carbon::now(),
+                        'status' => InfoCongDoan::STATUS_COMPLETED
+                    ]);
+                    if ($tracking) {
+                        $tracking->update([
+                            'lot_id' => null,
+                            'input' => 0,
+                            'output' => 0
+                        ]);
+                    }
+                    Lot::updateOrCreate(
+                        ['id' => $infoCongDoan->lot_id],
+                        [
+                            'product_id' => $infoCongDoan->product_id,
+                            'material_id' => $infoCongDoan->material_id,
+                            'lo_sx' => $infoCongDoan->lo_sx,
+                            'so_luong' => 0,
+                            'final_line_id' => $line->id,
+                        ]
+                    );
+                } else {
+                    $infoCongDoan->update([
+                        'sl_ng' => $sl_ng
                     ]);
                 }
-                Lot::updateOrCreate(
-                    ['id' => $infoCongDoan->lot_id],
-                    [
-                        'product_id' => $infoCongDoan->product_id,
-                        'material_id' => $infoCongDoan->material_id,
-                        'lo_sx' => $infoCongDoan->lo_sx,
-                        'so_luong' => 0,
-                        'final_line_id' => $line->id,
-                    ]
-                );
             } else {
-                Assignment::where('lot_id', $infoCongDoan->lot_id)->update(['ok_quantity' => $sl_con_lai]);
-                $infoCongDoan->update([
-                    'sl_ng' => $sl_ng
-                ]);
+                $sl_dau_vao_hang_loat = $infoCongDoan->sl_dau_vao_hang_loat ?? 0;
+                $sl_dau_ra_hang_loat = $infoCongDoan->sl_dau_ra_hang_loat ?? 0;
+                if ($sl_dau_vao_hang_loat == 0) {
+                    return $this->failure([], "Không có sl đầu ra hàng loạt");
+                }
+                $sl_con_lai = $sl_dau_vao_hang_loat - $sl_dau_ra_hang_loat - $sl_tem_vang - ($sl_ng - $infoCongDoan->sl_ng);
+                if ($sl_con_lai < 0) {
+                    return $this->failure([], "Số lượng NG vượt quá số lượng sản xuất");
+                } elseif ($sl_con_lai === 0) {
+                    $infoCongDoan->update([
+                        'sl_ng' => $sl_ng,
+                        'thoi_gian_ket_thuc' => Carbon::now(),
+                        'status' => InfoCongDoan::STATUS_COMPLETED,
+                        'sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_ra_hang_loat + ($sl_ng - $infoCongDoan->sl_ng)
+                    ]);
+                    if ($tracking) {
+                        $tracking->update([
+                            'lot_id' => null,
+                            'input' => 0,
+                            'output' => 0
+                        ]);
+                    }
+                    Lot::updateOrCreate(
+                        ['id' => $infoCongDoan->lot_id],
+                        [
+                            'product_id' => $infoCongDoan->product_id,
+                            'material_id' => $infoCongDoan->material_id,
+                            'lo_sx' => $infoCongDoan->lo_sx,
+                            'so_luong' => 0,
+                            'final_line_id' => $line->id,
+                        ]
+                    );
+                } else {
+                    Assignment::where('lot_id', $infoCongDoan->lot_id)->update(['ok_quantity' => $sl_con_lai]);
+                    $infoCongDoan->update([
+                        'sl_ng' => $sl_ng,
+                        'sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_ra_hang_loat + ($sl_ng - $infoCongDoan->sl_ng)
+                    ]);
+                }
             }
+            
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
             throw $th;
-            return $this->failure($th, "Lỗi lưu kết quả QC");
         }
         return $this->success('', "Đã lưu kết quả quản lý lỗi");
     }

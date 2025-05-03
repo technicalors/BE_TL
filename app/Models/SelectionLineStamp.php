@@ -10,7 +10,7 @@ class SelectionLineStamp extends Model
 {
     use HasFactory;
 
-    protected $fillable=['id', 'lo_sx', 'box_number', 'production_batch', 'lot_id', 'qr_code', 'selection_line_stamp_template_id', 'quantity', 'po_type'];
+    protected $fillable=['id', 'lo_sx', 'box_number', 'production_batch', 'lot_id', 'qr_code', 'selection_line_stamp_template_id', 'quantity', 'po_type', 'pack_quantity', 'plan_id'];
 
     public static function generateStampLotId(){
         $productionBatch = date('ymd');
