@@ -722,7 +722,7 @@ class Phase2OIApiController extends Controller
                 'product_id' => $plan->product_id,
                 'thoi_gian_bat_dau' => Carbon::now(),
                 'sl_dau_vao_hang_loat' => $so_luong,
-                'sl_dau_ra_hang_loat' => $so_luong,
+                // 'sl_dau_ra_hang_loat' => $so_luong, //Só lượng đầu ra hàng loạt được cập nhật mỗi khi in tem và lưu tồn
                 'status' => InfoCongDoan::STATUS_INPROGRESS,
                 'user_id' => $request->user()->id,
                 'sl_kh' => $so_luong,
@@ -929,10 +929,10 @@ class Phase2OIApiController extends Controller
             return $this->failure('', 'Số lượng in vượt quá số lượng tồn, không thể tạo tem');
         }
         $prefix = $group_yellow_stamp->lo_sx . '.' . $group_yellow_stamp->line_id . '.LTV.';
-        $lotList = Lot::where('id', 'like', "$prefix%")->orderBy('id', 'DESC')->get();
-        if ($lotList->sum('so_luong') >= $input['quantity']) {
-            return $this->failure('', 'Đã in hết số lượng gom tem vàng');
-        }
+        // $lotList = Lot::where('id', 'like', "$prefix%")->orderBy('id', 'DESC')->get();
+        // if ($lotList->sum('so_luong') >= $input['quantity']) {
+        //     return $this->failure('', 'Đã in hết số lượng gom tem vàng');
+        // }
         $latestInfo = Lot::where('id', 'like', "$prefix%")->orderBy('id', 'DESC')->first();
         try {
             if ($latestInfo) {
@@ -1751,6 +1751,7 @@ class Phase2OIApiController extends Controller
             'sl_tong' => $odd_bin + $assignment,
             'sl_tem_bo' => $template->pack_quantity ?? 0,
             'po_type' => $po_type ?? "",
+            'sl_tem_thung' => (int)($template->box_quantity ?? 0),
         ];
         return $this->success($data);
     }
@@ -2021,10 +2022,6 @@ class Phase2OIApiController extends Controller
         if (!$line) {
             return $this->failure([], "Không tìm thấy công đoạn");
         }
-        $info = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->first();
-        if (!$info) {
-            return $this->failure([], "Lot này chưa được sản xuất");
-        }
         $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('line_id', $line->id)->first();
         if (!$infoCongDoan) {
             return $this->failure([], "Chưa quét lot này");
@@ -2036,7 +2033,7 @@ class Phase2OIApiController extends Controller
             return $this->failure([], "Số lượng in tem không hợp lệ");
         }
         if (!$this->checkEligibleForPrinting($infoCongDoan)) {
-            return $this->failure([], "Chưa kiểm tra đủ tiêu chí QC");
+            return $this->failure([], "Chưa đạt kiểm tra QC");
         }
         $sl_ok = Assignment::where('lot_id', $request->lot_id)->sum('ok_quantity');
         $sl_ton = OddBin::where('lo_sx', $infoCongDoan->lo_sx)->sum('so_luong');
