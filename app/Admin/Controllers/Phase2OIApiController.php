@@ -722,7 +722,7 @@ class Phase2OIApiController extends Controller
                 'product_id' => $plan->product_id,
                 'thoi_gian_bat_dau' => Carbon::now(),
                 'sl_dau_vao_hang_loat' => $so_luong,
-                // 'sl_dau_ra_hang_loat' => $so_luong, //Só lượng đầu ra hàng loạt được cập nhật mỗi khi in tem và lưu tồn
+                'sl_dau_ra_hang_loat' => $so_luong, //Số lượng đầu ra hàng loạt được cập nhật mỗi khi in tem và lưu tồn
                 'status' => InfoCongDoan::STATUS_INPROGRESS,
                 'user_id' => $request->user()->id,
                 'sl_kh' => $so_luong,
@@ -975,7 +975,7 @@ class Phase2OIApiController extends Controller
         Log::debug($grouped_infos);
         $yellow_stamp_history = [];
         foreach ($grouped_infos as $grouped_info) {
-            if(!$grouped_info->error_id) continue;
+            if (!$grouped_info->error_id) continue;
             $yellow_stamp_history[] = $grouped_info->error_id;
         }
         $ghi_chu = "Hàng tem vàng" . (count($yellow_stamp_history) > 0 ? (" - " . implode(', ', $yellow_stamp_history)) : "");
