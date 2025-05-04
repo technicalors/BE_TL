@@ -375,6 +375,12 @@ class Phase2OIApiController extends Controller
             $info->hao_phi = ($info->sl_dau_ra_hang_loat ? round(($hao_phi / $info->sl_dau_ra_hang_loat) * 100) : 0) . '%';
 
             $info->so_dau_noi = LotErrorLog::where('lot_id', $info->lot_id)->count();
+            if($info->line_id == 26){
+                $group_yellow_stamp_info_quantity = GroupYellowStampInfo::where('info_cong_doan_id', $info->id)->sum('quantity');
+                $info['sl_gom_tem_vang'] = $group_yellow_stamp_info_quantity ?? 0;
+                $info['sl_dau_ra_ok'] -= $info['sl_gom_tem_vang'];
+                $info['sl_dau_ra_ok'] = $info['sl_dau_ra_ok'] < 0 ? 0 : $info['sl_dau_ra_ok'];
+            }
         }
         return $this->success($infos);
     }
@@ -2714,6 +2720,8 @@ class Phase2OIApiController extends Controller
             if($infoCongDoan->line_id == 26){
                 $group_yellow_stamp_info_quantity = GroupYellowStampInfo::where('info_cong_doan_id', $infoCongDoan->id)->sum('quantity');
                 $item['sl_gom_tem_vang'] = $group_yellow_stamp_info_quantity ?? 0;
+                $item['sl_ok'] -= $item['sl_gom_tem_vang'];
+                $item['sl_ok'] = $item['sl_ok'] < 0 ? 0 : $item['sl_ok'];
             }
             
             $data[] = $item;
