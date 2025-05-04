@@ -399,6 +399,9 @@ class Phase2OIApiController extends Controller
 
     public function scanForFirstLine(Request $request)
     {
+        //Sử dụng logic quét mới áp dụng cho mọi công đoạn từ Gấp dán đến Đục cắt
+        $request->merge(['scanned_lot' => $request->roll_id]);
+        return $this->scanForProductionLine($request);
         $line = Line::find($request->line_id);
         if (!$line) {
             return $this->failure([], "Không tìm thấy công đoạn");
@@ -1618,12 +1621,19 @@ class Phase2OIApiController extends Controller
         foreach ($log as $key => $value) {
             $errors[] = "$key: $value";
         }
+        if($line->id == 26){
+            $group_yellow_stamp_info_quantity = GroupYellowStampInfo::where('info_cong_doan_id', $infoCongDoan->id)->sum('quantity');
+            $so_luong_tem_trang = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang - $group_yellow_stamp_info_quantity;
+            $so_luong_tem_trang = $so_luong_tem_trang < 0 ? 0 : $so_luong_tem_trang;
+        }else{
+            $so_luong_tem_trang = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_tem_vang - $infoCongDoan->sl_ng;
+        }
         $ghi_chu = implode(', ', $errors);
         $data = [];
         $data['lot_id'] = $infoCongDoan->lot_id;
         $data['lsx'] = $infoCongDoan->lo_sx;
         $data['ten_sp'] = $product->name ?? $material->name ?? "";
-        $data['soluongtp'] = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang;
+        $data['soluongtp'] = $so_luong_tem_trang;
         $data['his'] = $product->his ?? "";
         $data['ver'] = $product->ver ?? "";
         $data['cd_thuc_hien'] = $line->name ?? "";
