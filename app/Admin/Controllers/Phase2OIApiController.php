@@ -759,7 +759,7 @@ class Phase2OIApiController extends Controller
             DB::rollBack();
             return $this->failure($th, "Lỗi quét lot");
         }
-        return $this->success([], "Bắt đầu sản xuất");
+        return $this->success($infoCongDoan, "Bắt đầu sản xuất");
     }
 
     public function finishProductionLine(Request $request)
@@ -2717,6 +2717,7 @@ class Phase2OIApiController extends Controller
             $item['ten_sp'] = $infoCongDoan->product->name ?? "";
             $item['product_id'] = $infoCongDoan->product_id ?? "";
             $item['lo_sx'] = $infoCongDoan->lo_sx ?? "";
+            $item['sl_dau_vao_hang_loat'] = $infoCongDoan->sl_dau_vao_hang_loat ?? 0;
             $item['sl_dau_ra_hang_loat'] = $infoCongDoan->sl_dau_ra_hang_loat ?? 0;
             $item['sl_ok'] = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang;
             $item['ty_le_ht'] = $infoCongDoan->sl_dau_ra_hang_loat > 0 ? round($infoCongDoan->sl_ok / $infoCongDoan->sl_dau_ra_hang_loat * 100) : 0;
@@ -2967,7 +2968,9 @@ class Phase2OIApiController extends Controller
         if ($counter >= 3) {
             $infoCongDoan->qcHistory && $infoCongDoan->qcHistory->update(['eligible_to_end' => 1]);
             if (!$infoCongDoan->sl_dau_ra_hang_loat) {
-                $infoCongDoan->update(['sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_ng]);
+                if ($line->id != '29') {
+                    $infoCongDoan->update(['sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_ng]);
+                }
             }
         }
         return $this->success($data);
