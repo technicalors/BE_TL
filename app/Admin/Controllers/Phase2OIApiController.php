@@ -2035,9 +2035,9 @@ class Phase2OIApiController extends Controller
         if (!($infoCongDoan->plan->po_type ?? false)) {
             return $this->failure('', 'Không có PO type trong kế hoạch');
         }
-        if (!$request->sl_in_tem) {
-            return $this->failure([], "Số lượng in tem không hợp lệ");
-        }
+        // if (!$request->sl_in_tem) {
+        //     return $this->failure([], "Số lượng in tem không hợp lệ");
+        // }
         if (!$request->sl_tem_thung) {
             return $this->failure([], "Số lượng tem thùng không hợp lệ");
         }
@@ -2176,7 +2176,7 @@ class Phase2OIApiController extends Controller
             $infoCongDoan->update([
                 'sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_ra_hang_loat + $request->sl_in_tem
             ]);
-            if (($infoCongDoan->sl_dau_ra_hang_loat + $infoCongDoan->sl_ng) === $infoCongDoan->sl_dau_vao_hang_loat) {
+            if ($infoCongDoan->sl_dau_ra_hang_loat == $infoCongDoan->sl_dau_vao_hang_loat) {
                 $infoCongDoan->update([
                     'thoi_gian_ket_thuc' => Carbon::now(),
                     'status' => InfoCongDoan::STATUS_COMPLETED
