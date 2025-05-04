@@ -2063,11 +2063,11 @@ class Phase2OIApiController extends Controller
             DB::beginTransaction();
             switch ($request->type) {
                 case 1:
-                    if ($request->sl_in_tem < $request->sl_tem_thung) {
-                        return $this->failure([], "Số lượng in tem phải lớn hơn hoặc bằng số lượng tem thùng");
-                    }
                     $sl_in_tem = $request->sl_in_tem + $sl_ton;
                     $sl_tem_thung = $request->sl_tem_thung;
+                    if ($sl_in_tem < $sl_tem_thung) {
+                        return $this->failure([], "Số lượng in tem phải lớn hơn hoặc bằng số lượng tem thùng");
+                    }
                     $counter = floor($sl_in_tem / $sl_tem_thung);
                     for ($i = 0; $i < $counter; $i++) {
                         $stamp = $this->handleSelectionLineStamp($infoCongDoan, $template, $sl_tem_thung);
@@ -2107,11 +2107,11 @@ class Phase2OIApiController extends Controller
                     }
                     break;
                 case 2:
-                    if ($request->sl_in_tem < $request->sl_tem_thung) {
-                        return $this->failure([], "Số lượng in tem phải lớn hơn hoặc bằng số lượng tem thùng");
-                    }
                     $sl_in_tem = $request->sl_in_tem;
                     $sl_tem_thung = $request->sl_tem_thung;
+                    if ($sl_in_tem < $sl_tem_thung) {
+                        return $this->failure([], "Số lượng in tem phải lớn hơn hoặc bằng số lượng tem thùng");
+                    }
                     $counter = floor($sl_in_tem / $sl_tem_thung);
                     for ($i = 0; $i < $counter; $i++) {
                         $stamp = $this->handleSelectionLineStamp($infoCongDoan, $template, $sl_tem_thung);
