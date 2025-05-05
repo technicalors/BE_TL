@@ -179,7 +179,7 @@ class ProductionPlanController extends AdminController
     {
         $bom = Bom::where('material_id', $productId)->get();
         if(count($bom) === 1){
-            $productId = $bom->product_id;            
+            $productId = $bom[0]->product_id;            
         }
         // Truy vấn để lấy giá trị năng suất từ bảng spec theo slug 'nang-suat'
         $efficiencySpec = Spec::where('line_id', $lineId)
