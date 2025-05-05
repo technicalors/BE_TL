@@ -177,6 +177,10 @@ class ProductionPlanController extends AdminController
 
     public static function getEfficiency($productId, $lineId)
     {
+        $bom = Bom::where('material_id', $productId)->get();
+        if(count($bom) === 1){
+            $productId = $bom->product_id;            
+        }
         // Truy vấn để lấy giá trị năng suất từ bảng spec theo slug 'nang-suat'
         $efficiencySpec = Spec::where('line_id', $lineId)
             ->where('product_id', $productId)
