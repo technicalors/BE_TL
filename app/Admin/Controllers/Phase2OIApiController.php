@@ -326,7 +326,7 @@ class Phase2OIApiController extends Controller
         $info_query = InfoCongDoan::whereNotNull('plan_id')
             ->orderBy('thoi_gian_bat_dau', 'DESC')
             ->where(function ($query) {
-                $query->whereDate('thoi_gian_bat_dau', '>=', Carbon::now()->subDays(2)->format('Y-m-d'))->orWhere('status', InfoCongDoan::STATUS_INPROGRESS);
+                $query->whereDate('thoi_gian_bat_dau', Carbon::now()->format('Y-m-d'))->orWhere('thoi_gian_ket_thuc', Carbon::now()->format('Y-m-d'))->orWhere('status', InfoCongDoan::STATUS_INPROGRESS);
             });
         if (!empty($request->line_id)) {
             $info_query->where('line_id', $line_id);
@@ -2683,28 +2683,28 @@ class Phase2OIApiController extends Controller
     public function getLotQCList(Request $request)
     {
         if ($request->line_id == 30) {
-            $query = QCHistory::where(function ($q) {
-                $q->whereDate('scanned_time', date('Y-m-d'))->orWhere('eligible_to_end', 0);
-            })->whereHas('infoCongDoan', function ($q) use ($request) {
+            $query = QCHistory::whereHas('infoCongDoan', function ($q) use ($request) {
                 if (!empty($request->line_id)) {
                     $q->where('line_id', $request->line_id);
                 }
                 if (!empty($request->machine_code)) {
                     $q->where('machine_code', $request->machine_code);
                 }
+                $q->where(function ($subQuery) {
+                    $subQuery->whereDate('thoi_gian_bat_dau', Carbon::now()->format('Y-m-d'))->orWhere('thoi_gian_ket_thuc', Carbon::now()->format('Y-m-d'))->orWhere('status', InfoCongDoan::STATUS_INPROGRESS);
+                });
             });
         } else {
-            $query = QCHistory::where(function ($q) {
-                $q->whereDate('scanned_time', date('Y-m-d'))->orWhereHas('infoCongDoan', function ($info_query) {
-                    $info_query->where('status', 1);
-                });
-            })->whereHas('infoCongDoan', function ($q) use ($request) {
+            $query = QCHistory::whereHas('infoCongDoan', function ($q) use ($request) {
                 if (!empty($request->line_id)) {
                     $q->where('line_id', $request->line_id);
                 }
                 if (!empty($request->machine_code)) {
                     $q->where('machine_code', $request->machine_code);
                 }
+                $q->where(function ($subQuery) {
+                    $subQuery->whereDate('thoi_gian_bat_dau', Carbon::now()->format('Y-m-d'))->orWhere('thoi_gian_ket_thuc', Carbon::now()->format('Y-m-d'))->orWhere('status', InfoCongDoan::STATUS_INPROGRESS);
+                });
             });
         }
         $list = $query->orderBy('scanned_time', 'DESC')->get();
