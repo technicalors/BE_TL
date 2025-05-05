@@ -538,7 +538,7 @@ class Phase2OIApiController extends Controller
         if (!$current_plan->pass_input_lot_id) {
             $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $current_plan->product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
             // return in_array($machine->line_id, [24, 25]) && $hanh_trinh_san_xuat[$machine->line_id] == 1;
-            $material = Material::where('product_id', $current_plan->product_id)->first();
+            $material = Material::find($current_plan->product_id);
             if ($material || (in_array($machine->line_id, [24, 25]) && $hanh_trinh_san_xuat[$machine->line_id] == 1)) {
                 $roll = RollMaterial::with(['material.products', 'warehouse_inventory'])->find($request->scanned_lot);
                 if (!$roll) {
