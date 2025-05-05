@@ -326,7 +326,7 @@ class Phase2OIApiController extends Controller
         $info_query = InfoCongDoan::whereNotNull('plan_id')
             ->orderBy('thoi_gian_bat_dau', 'DESC')
             ->where(function ($query) {
-                $query->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->orWhere('status', InfoCongDoan::STATUS_INPROGRESS);
+                $query->whereDate('thoi_gian_bat_dau', '>=', Carbon::now()->subDays(2)->format('Y-m-d'))->orWhere('status', InfoCongDoan::STATUS_INPROGRESS);
             });
         if (!empty($request->line_id)) {
             $info_query->where('line_id', $line_id);
