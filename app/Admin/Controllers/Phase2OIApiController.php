@@ -326,7 +326,7 @@ class Phase2OIApiController extends Controller
         $info_query = InfoCongDoan::whereNotNull('plan_id')
             ->orderBy('thoi_gian_bat_dau', 'DESC')
             ->where(function ($query) {
-                $query->whereDate('thoi_gian_bat_dau', Carbon::now()->format('Y-m-d'))->orWhere('thoi_gian_ket_thuc', Carbon::now()->format('Y-m-d'))->orWhere('status', InfoCongDoan::STATUS_INPROGRESS);
+                $query->whereDate('thoi_gian_bat_dau', Carbon::now()->format('Y-m-d'))->orWhereDate('thoi_gian_ket_thuc', Carbon::now()->format('Y-m-d'))->orWhere('status', InfoCongDoan::STATUS_INPROGRESS);
             });
         if (!empty($request->line_id)) {
             $info_query->where('line_id', $line_id);
@@ -2691,7 +2691,7 @@ class Phase2OIApiController extends Controller
                     $q->where('machine_code', $request->machine_code);
                 }
                 $q->where(function ($subQuery) {
-                    $subQuery->whereDate('thoi_gian_bat_dau', Carbon::now()->format('Y-m-d'))->orWhere('thoi_gian_ket_thuc', Carbon::now()->format('Y-m-d'))->orWhere('status', InfoCongDoan::STATUS_INPROGRESS);
+                    $subQuery->whereDate('thoi_gian_bat_dau', Carbon::now()->format('Y-m-d'))->orWhereDate('thoi_gian_ket_thuc', Carbon::now()->format('Y-m-d'))->orWhere('status', InfoCongDoan::STATUS_INPROGRESS);
                 });
             });
         } else {
@@ -2703,7 +2703,7 @@ class Phase2OIApiController extends Controller
                     $q->where('machine_code', $request->machine_code);
                 }
                 $q->where(function ($subQuery) {
-                    $subQuery->whereDate('thoi_gian_bat_dau', Carbon::now()->format('Y-m-d'))->orWhere('thoi_gian_ket_thuc', Carbon::now()->format('Y-m-d'))->orWhere('status', InfoCongDoan::STATUS_INPROGRESS);
+                    $subQuery->whereDate('thoi_gian_bat_dau', Carbon::now()->format('Y-m-d'))->orWhereDate('thoi_gian_ket_thuc', Carbon::now()->format('Y-m-d'))->orWhere('status', InfoCongDoan::STATUS_INPROGRESS);
                 });
             });
         }
