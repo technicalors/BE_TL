@@ -14,6 +14,7 @@ use App\Models\LotPlan;
 use App\Models\Machine;
 use App\Models\MachineLoadFactor;
 use App\Models\MachinePriorityOrder;
+use App\Models\MachineProductionMode;
 use App\Models\MachineShift;
 use App\Models\NumberMachineOrder;
 use App\Models\Product;
@@ -175,19 +176,24 @@ class ProductionPlanController extends AdminController
         return $rollChangeSpec ? $rollChangeSpec->value : 0;
     }
 
-    public static function getEfficiency($productId, $lineId)
+    public static function getEfficiency($productId, $lineId, $machineId)
     {
         $bom = Bom::where('material_id', $productId)->get();
         if(count($bom) === 1){
             $productId = $bom[0]->product_id;            
         }
         // Truy vấn để lấy giá trị năng suất từ bảng spec theo slug 'nang-suat'
-        $efficiencySpec = Spec::where('line_id', $lineId)
+        $uph = MachineProductionMode::where('machine_id', $machineId)->where('product_id', $productId)->where('parameter_name', 'UPH')->first();
+        if($uph){
+            return $uph ? $uph->standard_value : 0;
+        }else{
+            $efficiencySpec = Spec::where('line_id', $lineId)
             ->where('product_id', $productId)
             ->where('slug', 'nang-suat-an-dinhgio')
             ->first();
-
-        return $efficiencySpec ? $efficiencySpec->value : 0;
+            return $efficiencySpec ? $efficiencySpec->value : 0;
+        }
+        
     }
 
     function getEfficiencys($productId, array $lineIds)
@@ -308,7 +314,7 @@ class ProductionPlanController extends AdminController
     {
         $cacheKey = "machine_{$machineId}_production_shifts_{$date}";
 
-        return Cache::remember($cacheKey, 60, function () use ($machineId, $date) {
+        return Cache::remember($cacheKey, 10, function () use ($machineId, $date) {
             // Lấy tất cả các shift_id của máy trong ngày
             $shiftIds = DB::table('machine_shift')
                 ->where('machine_id', $machineId)
@@ -1351,9 +1357,9 @@ class ProductionPlanController extends AdminController
             if ($productionOrderHistory->order_quantity - $productionOrderHistory->produced_quantity > 0) {
                 $setupTime = $this->getSetupTime($productionOrderHistory->product_id, $productionOrderHistory->line_id);
                 $remainQuantityOrder = $productionOrderHistory->order_quantity - $productionOrderHistory->produced_quantity;
-                $efficiency = $this->getEfficiency($productionOrderHistory->product_id, $productionOrderHistory->line_id);
+                $efficiency = $this->getEfficiency($productionOrderHistory->product_id, $productionOrderHistory->line_id, $plan->machine_id);
                 if ($efficiency <= 0) {
-                    throw new Exception("Không tìm thấy năng suất cho sản phẩm " . $productionOrderHistory->product_id . " và công đoạn " . $productionOrderHistory->line->name, 1);
+                    throw new Exception("Không tìm thấy năng suất cho sản phẩm " . $productionOrderHistory->product_id . " tại máy " . $plan->machine_id . " và công đoạn " . $productionOrderHistory->line->name, 1);
                 }
                 $productionTime = ceil(($remainQuantityOrder / $efficiency) * 60) + $setupTime;
                 $machineShifts = $this->getMachineProductionShifts($plan->machine_id, date('Y-m-d', strtotime('+1 day')));
@@ -1464,9 +1470,10 @@ class ProductionPlanController extends AdminController
                 if ($remainQuantityOrder <= 0) {
                     continue;
                 }
-                $efficiency = $this->getEfficiency($productionOrderPriority->product_id, $history->line_id);
+                $first_machine = Machine::where('line_id', $history->line_id)->first();
+                $efficiency = $this->getEfficiency($productionOrderPriority->product_id, $history->line_id, $first_machine->code);
                 if ($efficiency <= 0) {
-                    throw new Exception("Không tìm thấy năng suất cho sản phẩm " . $productionOrderPriority->product_id . " và công đoạn " . $history->line->name, 1);
+                    throw new Exception("Không tìm thấy năng suất cho sản phẩm " . $productionOrderPriority->product_id . " tại máy " . $first_machine->code . " và công đoạn " . $history->line->name, 1);
                 }
                 $productionTime = ceil(($remainQuantityOrder / $efficiency) * 60) + $setupTime;
 
@@ -1528,7 +1535,7 @@ class ProductionPlanController extends AdminController
                 }
                 $prev_plan = collect($productionPlans)
                     ->where('product_id', $product_id)
-                    ->filter(fn($p) => $p['line_id'] !== $productionOrderHistory->line_id)
+                    ->filter(fn($p) => $p['line_id'] !== $history->line_id)
                     ->sortByDesc('thoi_gian_ket_thuc')
                     ->first();
 
@@ -1662,7 +1669,7 @@ class ProductionPlanController extends AdminController
     }
     public function getTaskTime($productId, $lineId, $uph)
     {
-        $efficiency = $this->getEfficiency($productId, $lineId);
+        $efficiency = $this->getEfficiency($productId, $lineId, '');
         return $efficiency > 0 ? (60 / $efficiency) : ($uph > 0 ? (60 / $uph) : 0);
     }
 

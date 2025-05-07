@@ -25,6 +25,7 @@ use App\Models\LotErrorLog;
 use App\Models\LotPlan;
 use App\Models\Machine;
 use App\Models\MachinePriorityOrder;
+use App\Models\MachineProductionMode;
 use App\Models\MachineStatus;
 use App\Models\Material;
 use App\Models\NGTracking;
@@ -361,7 +362,8 @@ class Phase2OIApiController extends Controller
             $info->ti_le_ht = $plan && $plan->sl_giao_sx > 0 ? round($info->sl_dau_ra_ok / $plan->sl_giao_sx * 100) : 0;
             $info->is_qc = (!is_null($info->qcHistory)) ? $info->qcHistory->eligible_to_end : 0;
             $info->is_assign = count($info->assignments ?? []) > 0 ? 1 : 0;
-            $info->uph_an_dinh = $plan->UPH ?? 0;
+            $uph = MachineProductionMode::where('machine_id', $info->machine_code)->where('product_id', $info->product_id)->where('parameter_name', 'UPH')->first();
+            $info->uph_an_dinh = $uph->standard_value ?? 0;
             $info->uph_thuc_te = 0;
 
             $hao_phi_sx = $info->spec->first(function ($record) {
