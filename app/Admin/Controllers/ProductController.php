@@ -969,26 +969,102 @@ class ProductController extends Controller
 
     public function importMachinePriorityOrder($row, $title, $productId, $rowIndex)
     {
+        $columnGroups = [
+            [
+              'line_id'    => 24,
+              'machineCol' => 'KI',
+              'paramCols'  => ['KI','KJ','KK','KL','KM','KN'],  // hoặc $this->excelColumnRange('KI','KN')
+              'uph' => 'CP',
+            ],
+            [
+              'line_id'    => 25,
+              'machineCol' => 'KO',
+              'paramCols'  => ['KO','KP','KQ','KR','KS','KT','KU','KV','KW','KX','KY','KZ','LA','LB','LC','LD','LE','LF','LG','LH','LI','LJ','LK'],
+              'uph' => 'CS',
+            ],
+            [
+                'line_id'    => 27,
+                'machineCol' => 'LP',
+                'paramCols'  => ['LP','LQ','LR','LS','LT','LU','LV','LW','LX','LY','LZ','MA','MB','MC','MD','ME'],
+                'uph' => 'CQ',
+            ],
+            [
+                'line_id'    => 26,
+                'machineCol' => 'LZ',
+                'paramCols'  => ['LZ','MA','MB','MC','MD','ME','MF','MG','MH','MI','MJ','MK','ML','MM','MN','MO','MP','MQ','MR'],
+                'uph' => 'CW',
+            ],
+            [
+                'line_id'    => 29,
+                'machineCol' => '',
+                'paramCols'  => [],
+                'uph' => 'DA',
+            ],
+        ];
+        $uph = 0;
+        foreach ($columnGroups as $group) {
+            $machineCode = trim($row[$group['machineCol']] ?? '');
+            if (!$machineCode) {
+                // Nếu ô mã máy trống → bỏ qua nhóm này
+                continue;
+            }
+    
+            // 1) Kiểm tra tồn tại máy
+            if (!Machine::where('code', $machineCode)->exists()) {
+                throw new Exception("Mã máy ở {$group['machineCol']}{$rowIndex} không tồn tại", 404);
+            }
+    
+            // 2) Tạo/điền thứ tự ưu tiên (priority)
+            $previous = MachinePriorityOrder::where('product_id', $productId)
+                ->where('line_id', $group['line_id'])
+                ->orderByDesc('priority')
+                ->value('priority');
+            $priority = ((int)$previous) + 1;
+    
+            $mpo = MachinePriorityOrder::firstOrCreate([
+                'product_id' => $productId,
+                'line_id'    => $group['line_id'],
+                'machine_id' => $machineCode,
+            ], [
+                'priority'   => $priority,
+            ]);
+    
+            // 3) Lưu spec cho từng cột param nếu không rỗng
+            foreach ($group['paramCols'] as $col) {
+                $val = trim($row[$col] ?? '');
+                if ($val === '') {
+                    continue;
+                }
+                MachineProductionMode::firstOrCreate([
+                    'product_id'     => $productId,
+                    'machine_id'     => $machineCode,
+                    'parameter_name' => $title[$col],
+                ], [
+                    'standard_value' => $val,
+                ]);
+            }
+        }
         $machinePriorityOrder = null;
         foreach ($row as $key => $value) {
             $line_id = null;
             $machine_id = null;
-            if ($key === 'MK') {
-                $line_id = 24;
-                $machine_id = $value;
-            } else if ($key === 'KO') {
-                $line_id = 25;
-                $machine_id = $value;
-            } else if ($key === 'LP') {
-                $line_id = 27;
-                $machine_id = $value;
-            } else if ($key === 'LZ') {
-                $line_id = 26;
-                $machine_id = $value;
-            } else if ($key === 'ME'){
-                $line_id = '';
-                $machine_id = '';
+            if (in_array($key, $this->excelColumnRange("KI", "KN"))) {
+                $line_id = 24; //Gap dan lien hoan
+                $machine_id = $row['KI'];
             }
+            else if (in_array($key, $this->excelColumnRange("KO", "LK"))) {
+                $line_id = 25;
+                $machine_id = $row['KO'];
+            }
+            else if (in_array($key, $this->excelColumnRange("LP", "LS"))) {
+                $line_id = 27;
+                $machine_id = $row['LP'];
+            }
+            else if (in_array($key, $this->excelColumnRange("LZ", "MD"))) {
+                $line_id = 26;
+                $machine_id = $row['LZ'];
+            }
+            
             if ($line_id && $machine_id) {
                 $check = Machine::where('code', $machine_id)->exists();
                 if (!$check) {

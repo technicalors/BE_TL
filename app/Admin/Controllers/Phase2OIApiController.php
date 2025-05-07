@@ -580,7 +580,7 @@ class Phase2OIApiController extends Controller
                     $bomProducts = Bom::where(function ($subQuery) use ($previousLineLot) {
                         $subQuery->where('material_id', $previousLineLot->product_id)->orWhere('product_id', $previousLineLot->product_id);
                     })->pluck('product_id')->toArray();
-                    if (!in_array($scannedLot->product_id, $bomProducts)) {
+                    if (!in_array($current_plan->product_id, $bomProducts)) {
                         return $this->failure($previousLineLot, 'Không khớp mã sản phẩm');
                     }
                 } else {
