@@ -3787,7 +3787,7 @@ class ApiMobileController extends AdminController
         $input['thoi_gian_bat_dau'] = date('Y-m-d H:i:s', strtotime($input['thoi_gian_bat_dau']));
 
         $setupTime = ProductionPlanController::getSetupTime($input['product_id'], $machine->line_id);
-        $efficiency = ProductionPlanController::getEfficiency($input['product_id'], $machine->line_id);
+        $efficiency = ProductionPlanController::getEfficiency($input['product_id'], $machine->line_id, $machine->code);
         if ($efficiency <= 0) {
             throw new Exception("Không tìm thấy năng suất cho sản phẩm " . $input['product_id'] . " và công đoạn " . $machine->line->name, 1);
         }
@@ -3864,7 +3864,7 @@ class ApiMobileController extends AdminController
             $machine = Machine::where('code', $input['machine_id'])->first();
             $setupTime = ProductionPlanController::getSetupTime($input['product_id'], $machine->line_id);
             $productOrderHistory = ProductionOrderHistory::where('product_id', $input['product_id'])->where('line_id', $machine->line_id)->first();
-            $efficiency = ProductionPlanController::getEfficiency($input['product_id'], $machine->line_id);
+            $efficiency = ProductionPlanController::getEfficiency($input['product_id'], $machine->line_id, $machine->code);
             if ($efficiency <= 0) {
                 throw new Exception("Không tìm thấy năng suất cho sản phẩm " . $input['product_id'] . " ở công đoạn " . $machine->line->name, 1);
             }
