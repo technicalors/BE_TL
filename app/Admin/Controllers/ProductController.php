@@ -36,6 +36,11 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class ProductController extends Controller
 {
+    public $previousUPH = [];
+    public function __construct()
+    {
+        $this->previousUPH = [];
+    }
     use API;
     public function list(Request $request)
     {
@@ -261,19 +266,15 @@ class ProductController extends Controller
             $line_id = [];
             if (in_array($key, $this->excelColumnRange("DW", "EU", "AD", "AR", "BC", "BL", "BU", "CF", "CP", "DB"))) {
                 $line_id = [24]; //Gap dan lien hoan
-            } 
-            else if (in_array($key, $this->excelColumnRange("GI", "HF", "AE", "AS", "BD", "BM", "BV", "CG", "CQ", "DC"))) {
+            } else if (in_array($key, $this->excelColumnRange("GI", "HF", "AE", "AS", "BD", "BM", "BV", "CG", "CQ", "DC"))) {
                 $line_id = [27]; //Dan liner
-            } 
-            else if (in_array($key, $this->excelColumnRange("EV", "GH", "AF", "AU", "BE", "BN", "BW", "CH", "CS", "DE"))) {
+            } else if (in_array($key, $this->excelColumnRange("EV", "GH", "AF", "AU", "BE", "BN", "BW", "CH", "CS", "DE"))) {
                 $line_id = [25]; //In flexo
-            } 
-            else if (in_array($key, $this->excelColumnRange("IF", "JY", "AI", "AY", "BH", "BQ", "BZ", "CK", "CW", "DG"))) {
+            } else if (in_array($key, $this->excelColumnRange("IF", "JY", "AI", "AY", "BH", "BQ", "BZ", "CK", "CW", "DG"))) {
                 $line_id = [26]; //Duc cat
-            } 
-            else if (in_array($key, $this->excelColumnRange("", "", "AN", "CD", "DA"))) {
+            } else if (in_array($key, $this->excelColumnRange("", "", "AN", "CD", "DA"))) {
                 $line_id = [29]; //Chon Phase2 
-            } 
+            }
             // else if (in_array($key, $this->excelColumnRange("LJ", "MA"))) {
             //     $line_id = [30]; //OQC Phase2
             // } 
@@ -444,7 +445,7 @@ class ProductController extends Controller
         $input['meter_per_roll'] = $material_data['P'];
         $input['sheet_per_pallet'] = $material_data['Q'];
         if (!empty($input['id'])) {
-            $material = Material::firstOrCreate(['id'=>$input['id']], $input);
+            $material = Material::firstOrCreate(['id' => $input['id']], $input);
             return $material;
         }
         return null;
@@ -967,31 +968,33 @@ class ProductController extends Controller
         'MR'
     ];
 
+
+
     public function importMachinePriorityOrder($row, $title, $productId, $rowIndex)
     {
         $columnGroups = [
             [
-              'line_id'    => 24,
-              'machineCol' => 'KI',
-              'paramCols'  => ['KI','KJ','KK','KL','KM','KN'],  // hoặc $this->excelColumnRange('KI','KN')
-              'uph' => 'CP',
+                'line_id'    => 24,
+                'machineCol' => 'KI',
+                'paramCols'  => ['KI', 'KJ', 'KK', 'KL', 'KM', 'KN'],  // hoặc $this->excelColumnRange('KI','KN')
+                'uph' => 'CP',
             ],
             [
-              'line_id'    => 25,
-              'machineCol' => 'KO',
-              'paramCols'  => ['KO','KP','KQ','KR','KS','KT','KU','KV','KW','KX','KY','KZ','LA','LB','LC','LD','LE','LF','LG','LH','LI','LJ','LK'],
-              'uph' => 'CS',
+                'line_id'    => 25,
+                'machineCol' => 'KO',
+                'paramCols'  => ['KO', 'KP', 'KQ', 'KR', 'KS', 'KT', 'KU', 'KV', 'KW', 'KX', 'KY', 'KZ', 'LA', 'LB', 'LC', 'LD', 'LE', 'LF', 'LG', 'LH', 'LI', 'LJ', 'LK'],
+                'uph' => 'CS',
             ],
             [
                 'line_id'    => 27,
                 'machineCol' => 'LP',
-                'paramCols'  => ['LP','LQ','LR','LS','LT','LU','LV','LW','LX','LY','LZ','MA','MB','MC','MD','ME'],
+                'paramCols'  => ['LP', 'LQ', 'LR', 'LS', 'LT', 'LU', 'LV', 'LW', 'LX', 'LY', 'LZ', 'MA', 'MB', 'MC', 'MD', 'ME'],
                 'uph' => 'CQ',
             ],
             [
                 'line_id'    => 26,
                 'machineCol' => 'LZ',
-                'paramCols'  => ['LZ','MA','MB','MC','MD','ME','MF','MG','MH','MI','MJ','MK','ML','MM','MN','MO','MP','MQ','MR'],
+                'paramCols'  => ['LZ', 'MA', 'MB', 'MC', 'MD', 'ME', 'MF', 'MG', 'MH', 'MI', 'MJ', 'MK', 'ML', 'MM', 'MN', 'MO', 'MP', 'MQ', 'MR'],
                 'uph' => 'CW',
             ],
             [
@@ -1001,97 +1004,140 @@ class ProductController extends Controller
                 'uph' => 'DA',
             ],
         ];
-        $uph = 0;
         foreach ($columnGroups as $group) {
-            $machineCode = trim($row[$group['machineCol']] ?? '');
-            if (!$machineCode) {
-                // Nếu ô mã máy trống → bỏ qua nhóm này
-                continue;
-            }
-    
-            // 1) Kiểm tra tồn tại máy
-            if (!Machine::where('code', $machineCode)->exists()) {
-                throw new Exception("Mã máy ở {$group['machineCol']}{$rowIndex} không tồn tại", 404);
-            }
-    
-            // 2) Tạo/điền thứ tự ưu tiên (priority)
-            $previous = MachinePriorityOrder::where('product_id', $productId)
-                ->where('line_id', $group['line_id'])
-                ->orderByDesc('priority')
-                ->value('priority');
-            $priority = ((int)$previous) + 1;
-    
-            $mpo = MachinePriorityOrder::firstOrCreate([
-                'product_id' => $productId,
-                'line_id'    => $group['line_id'],
-                'machine_id' => $machineCode,
-            ], [
-                'priority'   => $priority,
-            ]);
-    
-            // 3) Lưu spec cho từng cột param nếu không rỗng
-            foreach ($group['paramCols'] as $col) {
-                $val = trim($row[$col] ?? '');
-                if ($val === '') {
+            if ($group['line_id'] === 29) {
+                $machines = Machine::where('line_id', $group['line_id'])->get();
+                $uph = trim($row[$group['uph']] ?? 0);
+                if ($uph > 0) {
+                    foreach ($machines as $machine) {
+                        MachineProductionMode::updateOrCreate(
+                            [
+                                'product_id' => $productId,
+                                'machine_id' => $machine->code,
+                                'parameter_name' => 'UPH',
+                            ],
+                            [
+                                'standard_value' => $uph,
+                            ]
+                        );
+                    }
+                }
+            } else {
+                $machineCode = trim($row[$group['machineCol']] ?? '');
+                if (!$machineCode) {
+                    // Nếu ô mã máy trống → bỏ qua nhóm này
                     continue;
                 }
-                MachineProductionMode::firstOrCreate([
-                    'product_id'     => $productId,
-                    'machine_id'     => $machineCode,
-                    'parameter_name' => $title[$col],
-                ], [
-                    'standard_value' => $val,
-                ]);
-            }
-        }
-        $machinePriorityOrder = null;
-        foreach ($row as $key => $value) {
-            $line_id = null;
-            $machine_id = null;
-            if (in_array($key, $this->excelColumnRange("KI", "KN"))) {
-                $line_id = 24; //Gap dan lien hoan
-                $machine_id = $row['KI'];
-            }
-            else if (in_array($key, $this->excelColumnRange("KO", "LK"))) {
-                $line_id = 25;
-                $machine_id = $row['KO'];
-            }
-            else if (in_array($key, $this->excelColumnRange("LP", "LS"))) {
-                $line_id = 27;
-                $machine_id = $row['LP'];
-            }
-            else if (in_array($key, $this->excelColumnRange("LZ", "MD"))) {
-                $line_id = 26;
-                $machine_id = $row['LZ'];
-            }
-            
-            if ($line_id && $machine_id) {
-                $check = Machine::where('code', $machine_id)->exists();
-                if (!$check) {
-                    throw new Exception("Mã máy ở " . $key . $rowIndex . " không tồn tại", 404);
+
+                // 1) Kiểm tra tồn tại máy
+                if (!Machine::where('code', $machineCode)->exists()) {
+                    throw new Exception("Mã máy ở {$group['machineCol']}{$rowIndex} không tồn tại", 404);
                 }
-                $previousMachinePriorityOrder = MachinePriorityOrder::where('product_id', $productId)->where('line_id', $line_id)->orderBy('priority', 'DESC')->first();
-                $machinePriorityOrder = MachinePriorityOrder::firstOrCreate([
+
+                // 2) Tạo/điền thứ tự ưu tiên (priority)
+                $previous = MachinePriorityOrder::where('product_id', $productId)
+                    ->where('line_id', $group['line_id'])
+                    ->orderByDesc('priority')
+                    ->value('priority');
+                $priority = ((int)$previous) + 1;
+
+                $mpo = MachinePriorityOrder::firstOrCreate([
                     'product_id' => $productId,
-                    'line_id' => $line_id,
-                    'machine_id' => $machine_id,
-                ],
-                [
-                    'priority' => (int)($previousMachinePriorityOrder->priority ?? 0) + 1,
+                    'line_id'    => $group['line_id'],
+                    'machine_id' => $machineCode,
+                ], [
+                    'priority'   => $priority,
                 ]);
-                if ($machinePriorityOrder && trim($value)) {
-                    $machineProductionMode = [
-                        'product_id' => $productId,
-                        'machine_id' => $machine_id,
-                        'parameter_name' => $title[$key],
-                        'standard_value' => $value
-                    ];
-                    MachineProductionMode::firstOrCreate($machineProductionMode);
+
+                // 3) Lưu spec cho từng cột param nếu không rỗng
+                foreach ($group['paramCols'] as $col) {
+                    $val = trim($row[$col] ?? '');
+                    if ($val === '') {
+                        continue;
+                    }
+                    MachineProductionMode::updateOrCreate([
+                        'product_id'     => $productId,
+                        'machine_id'     => $machineCode,
+                        'parameter_name' => $title[$col],
+                    ], [
+                        'standard_value' => $val,
+                    ]);
+                }
+
+                if (!empty($group['uph'])) {
+                    if (!empty($row[$group['uph']])) {
+                        $uph = $row[$group['uph']];
+                        $this->previousUPH[$group['line_id']][$group['uph']] = $uph;
+                    } else {
+                        if (!empty($this->previousUPH[$group['line_id']][$group['uph']])) {
+                            $uph = $this->previousUPH[$group['line_id']][$group['uph']];
+                        } else {
+                            $uph = 0;
+                        }
+                    }
+                    if ($uph > 0) {
+                        MachineProductionMode::updateOrCreate(
+                            [
+                                'product_id' => $productId,
+                                'machine_id' => $machineCode,
+                                'parameter_name' => 'UPH',
+                            ],
+                            [
+                                'standard_value' => $uph,
+                            ]
+                        );
+                    }
                 }
             }
-            
         }
-        
+        // $machinePriorityOrder = null;
+        // foreach ($row as $key => $value) {
+        //     $line_id = null;
+        //     $machine_id = null;
+        //     if (in_array($key, $this->excelColumnRange("KI", "KN"))) {
+        //         $line_id = 24; //Gap dan lien hoan
+        //         $machine_id = $row['KI'];
+        //     }
+        //     else if (in_array($key, $this->excelColumnRange("KO", "LK"))) {
+        //         $line_id = 25;
+        //         $machine_id = $row['KO'];
+        //     }
+        //     else if (in_array($key, $this->excelColumnRange("LP", "LS"))) {
+        //         $line_id = 27;
+        //         $machine_id = $row['LP'];
+        //     }
+        //     else if (in_array($key, $this->excelColumnRange("LZ", "MD"))) {
+        //         $line_id = 26;
+        //         $machine_id = $row['LZ'];
+        //     }
+
+        //     if ($line_id && $machine_id) {
+        //         $check = Machine::where('code', $machine_id)->exists();
+        //         if (!$check) {
+        //             throw new Exception("Mã máy ở " . $key . $rowIndex . " không tồn tại", 404);
+        //         }
+        //         $previousMachinePriorityOrder = MachinePriorityOrder::where('product_id', $productId)->where('line_id', $line_id)->orderBy('priority', 'DESC')->first();
+        //         $machinePriorityOrder = MachinePriorityOrder::firstOrCreate([
+        //             'product_id' => $productId,
+        //             'line_id' => $line_id,
+        //             'machine_id' => $machine_id,
+        //         ],
+        //         [
+        //             'priority' => (int)($previousMachinePriorityOrder->priority ?? 0) + 1,
+        //         ]);
+        //         if ($machinePriorityOrder && trim($value)) {
+        //             $machineProductionMode = [
+        //                 'product_id' => $productId,
+        //                 'machine_id' => $machine_id,
+        //                 'parameter_name' => $title[$key],
+        //                 'standard_value' => $value
+        //             ];
+        //             MachineProductionMode::firstOrCreate($machineProductionMode);
+        //         }
+        //     }
+
+        // }
+
     }
 
     /**
