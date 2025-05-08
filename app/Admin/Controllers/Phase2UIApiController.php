@@ -11,6 +11,7 @@ use App\Models\Error;
 use App\Models\ErrorHistory;
 use App\Models\ErrorMachine;
 use App\Models\Factory;
+use App\Models\GroupYellowStampInfo;
 use App\Models\InfoCongDoan;
 use App\Models\Line;
 use App\Models\Losx;
@@ -148,6 +149,13 @@ class Phase2UIApiController extends Controller
                 }
             }
             $so_dau_noi = LotErrorLog::where('lot_id', $item->lot_id)->where('machine_code', $item->machine_code)->where('line_id', $item->line_id)->count();
+            if($item->line_id == 26){
+                $group_yellow_stamp_info_quantity = GroupYellowStampInfo::where('info_cong_doan_id', $item->id)->sum('quantity');
+                $sl_ok = $item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang - $group_yellow_stamp_info_quantity;
+                $sl_ok = $sl_ok < 0 ? 0 : $sl_ok;
+            }else{
+                $sl_ok = $item->sl_dau_ra_hang_loat - $item->sl_tem_vang - $item->sl_ng;
+            }
             $tm = [
                 'info_cong_doan_id'=> $item->id,
                 "ngay_sx" => date('d/m/Y H:i:s', strtotime($item->created_at)),
@@ -174,13 +182,13 @@ class Phase2UIApiController extends Controller
                 "sl_ng" => $item->sl_ng ?? 0,
                 "sl_tem_vang" => $item->sl_tem_vang,
                 'so_dau_noi' => $so_dau_noi,
-                "sl_dau_ra_ok" => $item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang,
+                "sl_dau_ra_ok" => $sl_ok,
                 "ti_le_ng" => number_format($item->sl_dau_ra_hang_loat > 0 ? ($item->sl_ng / $item->sl_dau_ra_hang_loat) : 0, 2) * 100,
                 "sl_dau_ra_hang_loat" => $item->sl_dau_ra_hang_loat ?? 0,
                 "sl_dau_vao_hang_loat" => $item->sl_dau_vao_hang_loat ?? 0,
                 "sl_dau_ra_chay_thu" => $item->sl_dau_ra_chay_thu ?? 0,
                 "sl_dau_vao_chay_thu" => $item->sl_dau_vao_chay_thu ?? 0,
-                "ty_le_dat" => $item->sl_dau_ra_hang_loat > 0 ? number_format(($item->sl_dau_ra_hang_loat - $item->sl_ng - $item->sl_tem_vang) / $item->sl_dau_ra_hang_loat) : '-',
+                "ty_le_dat" => $item->sl_dau_ra_hang_loat > 0 ? number_format(($sl_ok) / $item->sl_dau_ra_hang_loat) : '-',
                 "cong_nhan_sx" =>  $item->plan ? $item->plan->nhan_luc : "-",
                 "leadtime" => $item->thoi_gian_ket_thuc ? number_format((strtotime($item->thoi_gian_ket_thuc) - strtotime($item->thoi_gian_bat_dau)) / 3600, 2) : '-',
                 "tt_thuc_te" => ($item->sl_dau_ra_hang_loat > 0 && $item->thoi_gian_bam_may) ? number_format((strtotime($item->thoi_gian_ket_thuc) - strtotime($item->thoi_gian_bam_may)) / ($item->sl_dau_ra_hang_loat * 60), 4) : '-',
