@@ -1568,14 +1568,6 @@ class Phase2OIApiController extends Controller
             if (!empty($info)) {
                 $param = (object) ['lot_id' => $record->lot_id];
                 $result[] = $this->formatTemTrang($info, $param);
-                Lot::updateOrCreate(['id' => $info->lot_id], [
-                    'id' => $info->lot_id,
-                    'product_id' => $info->product_id,
-                    'lo_sx' => $info->lo_sx,
-                    'so_luong' => $info->sl_dau_ra_hang_loat - $info->sl_ng - $info->sl_tem_vang,
-                    'final_line_id' => $info->line_id,
-                    'type' => Lot::TYPE_TEM_TRANG,
-                ]);
             }
         }
         return $this->success($result);
@@ -1586,21 +1578,6 @@ class Phase2OIApiController extends Controller
         $product = $infoCongDoan->losx->product ?? null;
         $material = $infoCongDoan->material;
         $line = $infoCongDoan->line;
-        // if ($line->id === 24) {
-        //     $losx = $infoCongDoan->losx;
-        //     if ($losx && $losx->product_id) {
-        //         $product_id = $losx->product_id;
-        //     } else {
-        //         $bom = Bom::where('material_id', $infoCongDoan->product_id)->where('priority', 1)->first();
-        //         if ($bom && $bom->product_id) {
-        //             $product_id = $bom->product_id;
-        //         } else {
-        //             $product_id = $infoCongDoan->product_id;
-        //         }
-        //     }
-        // } else {
-        //     $product_id = $infoCongDoan->product_id;
-        // }
         $product_journey = Spec::where('product_id', $product->id ?? null)->where('slug', 'hanh-trinh-san-xuat')->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
         $currentLineIndex = $product_journey[$infoCongDoan->line_id] ?? 0;
         $nextLineIds = collect($product_journey)
@@ -1644,6 +1621,29 @@ class Phase2OIApiController extends Controller
         // $data['nguoi_sx'] = $user->name ?? "";
         $data['ghi_chu'] = $ghi_chu ?? "";
         $data['machine_code'] = $infoCongDoan->machine_code;
+        if($infoCongDoan->line_id == 26){
+            $group_yellow_stamp_info_quantity = GroupYellowStampInfo::where('info_cong_doan_id', $infoCongDoan->id)->sum('quantity');
+            $so_luong_tem_trang = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang - $group_yellow_stamp_info_quantity;
+            $so_luong_tem_trang = $so_luong_tem_trang < 0 ? 0 : $so_luong_tem_trang;
+        }else{
+            $so_luong_tem_trang = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_tem_vang - $infoCongDoan->sl_ng;
+        }
+        $lot = Lot::where('id', $infoCongDoan->lot_id)->first();
+        if($lot){
+            $lot->update([
+                'so_luong' => $so_luong_tem_trang,
+                'type' => Lot::TYPE_TEM_TRANG,
+            ]);
+        }else{
+            Lot::create([
+                'id' => $infoCongDoan->lot_id,
+                'product_id' => $infoCongDoan->product_id,
+                'lo_sx' => $infoCongDoan->lo_sx,
+                'so_luong' => $so_luong_tem_trang,
+                'final_line_id' => $infoCongDoan->line_id,
+                'type' => Lot::TYPE_TEM_TRANG,
+            ]);
+        }
         return $data;
     }
 
