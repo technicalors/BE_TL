@@ -76,6 +76,9 @@ class IOTController extends AdminController
                 }
                 if ($request->output > $tracking->output && ((($request->output - $tracking->output) * $sl_bat) > $info_cong_doan->sl_dau_ra_hang_loat)) {
                     $info_cong_doan->sl_dau_ra_hang_loat = ($request->output - $tracking->output) * $sl_bat;
+                    if ($info_cong_doan->line_id == 26 || $info_cong_doan->line_id == 27) {
+                        $info_cong_doan->sl_dau_vao_hang_loat = ($request->output - $tracking->output) * $sl_bat;
+                    }
 
                     //Khi bắt đầu ghi nhận sản lượng hàng loạt thì cho phép ghi nhận sl NG
                     $ng_tracking = NGTracking::where('info_cong_doan_id', $info_cong_doan->id)->orderBy('created_at', 'DESC')->first();
