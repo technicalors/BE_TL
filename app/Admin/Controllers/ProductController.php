@@ -359,6 +359,10 @@ class ProductController extends Controller
         try {
             DB::beginTransaction();
             Spec::query()->delete();
+            Bom::query()->delete();
+            ProductionJourney::query()->delete();
+            MaterialWastage::query()->delete();
+            TimeWastage::query()->delete();
             foreach ($allDataInSheet as $index => $row) {
                 if ($index < 5) {
                     continue;

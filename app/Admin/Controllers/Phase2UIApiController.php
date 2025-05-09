@@ -200,6 +200,7 @@ class Phase2UIApiController extends Controller
                 'user_pqc' => $user_pqc,
                 'user_sxkt' => $user_sxkt,
                 'dien_nang' => $item->powerM ? number_format($item->powerM) : '',
+                'stamp_type' => $item->lot->type ?? null,
             ];
             $data[] = $tm;
         }
