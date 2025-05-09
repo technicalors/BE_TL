@@ -3132,7 +3132,7 @@ class Phase2OIApiController extends Controller
             }
             $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)
                 ->where('line_id', $line->id)->where('machine_code', $machine->code)
-                ->where('status', InfoCongDoan::STATUS_INPROGRESS)
+                // ->where('status', InfoCongDoan::STATUS_INPROGRESS)
                 ->first();
         }
         if (!$infoCongDoan) {
