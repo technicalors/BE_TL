@@ -15,6 +15,7 @@ use App\Models\CheckSheet;
 use App\Models\Customer;
 use App\Models\CustomUser;
 use App\Models\Error;
+use App\Models\GroupYellowStampInfo;
 use App\Models\InfoCongDoan;
 use App\Models\Insulation;
 use App\Models\Inventory;
@@ -4554,5 +4555,21 @@ class ApiMobileController extends AdminController
             ]);
         }
         return 'done.';
+    }
+
+    public function updateSoLuongDauRaDucCat(Request $request)
+    {
+        $input = $request->all();
+        $lots = Lot::whereDate('created_at', '>=', '2025-05-01')->where('final_line_id', 26)->where('type', 0)->get();
+        $count = 0;
+        foreach ($lots as $lot) {
+            $info = InfoCongDoan::where('lot_id', $lot->id)->where('line_id', 26)->first();
+                $group_info = GroupYellowStampInfo::where('info_cong_doan_id', $info->id ?? null)->get();
+                if ($info && $group_info->count() > 0) {
+                $lot->update(['so_luong' => $info->sl_dau_ra_hang_loat - $info->sl_ng - $info->sl_tem_vang - $group_info->sum('quantity')]);
+                $count++;
+            }
+        }
+        return $this->success([], 'Cập nhật thành công ' . $count . ' lô');
     }
 }

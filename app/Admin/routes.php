@@ -869,4 +869,5 @@ Route::group([
     $router->post('create-prioritized-machines', [ProductionPlanController::class, 'createPrioritizedMachines']);
     $router->post('update-inventory', [ApiMobileController::class, 'updateInventory']);
     $router->post('import-list-samsung-stamp-template', [ApiMobileController::class, 'importListSamsungStampTemplate']);
+    $router->post('update-so-luong-dau-ra-duc-cat', [ApiMobileController::class, 'updateSoLuongDauRaDucCat']);
 });
