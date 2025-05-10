@@ -4560,13 +4560,13 @@ class ApiMobileController extends AdminController
     public function updateSoLuongDauRaDucCat(Request $request)
     {
         $input = $request->all();
-        $lots = Lot::whereDate('created_at', '>=', '2025-05-01')->where('final_line_id', 26)->where('type', 0)->where('so_luong', 0)->get();
+        $lots = Lot::whereDate('created_at', '>=', '2025-05-01')->where('final_line_id', 26)->where('type', 2)->get();
         $count = 0;
         foreach ($lots as $lot) {
             $info = InfoCongDoan::where('lot_id', $lot->id)->where('line_id', 26)->first();
             $group_info = GroupYellowStampInfo::where('info_cong_doan_id', $info->id ?? null)->get();
             if ($info && $group_info->count() > 0) {
-                $lot->update(['so_luong' => $group_info->sum('quantity'), 'type' => 2]);
+                $lot->update(['so_luong' => $info->sl_tem_vang]);
                 $count++;
             }
         }
