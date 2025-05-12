@@ -377,7 +377,7 @@ class Phase2OIApiController extends Controller
             $info->hao_phi = ($info->sl_dau_ra_hang_loat ? round(($hao_phi / $info->sl_dau_ra_hang_loat) * 100) : 0) . '%';
 
             $info->so_dau_noi = LotErrorLog::where('lot_id', $info->lot_id)->count();
-            if($info->line_id == 26){
+            if ($info->line_id == 26) {
                 $group_yellow_stamp_info_quantity = GroupYellowStampInfo::where('info_cong_doan_id', $info->id)->sum('quantity');
                 $info['sl_gom_tem_vang'] = $group_yellow_stamp_info_quantity ?? 0;
                 $info['sl_dau_ra_ok'] -= $info['sl_gom_tem_vang'];
@@ -670,55 +670,65 @@ class Phase2OIApiController extends Controller
         if (!$machine) {
             return $this->failure([], "Không tìm thấy máy");
         }
-        $scannedLot = Lot::find($request->scanned_lot);
-        // if(!$scannedLot){
-        //     return $this->failure('', 'Không tìm thấy lot');
-        // }
         $check = InfoCongDoan::where('machine_code', $machine->code)->where('line_id', $line->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
         if ($check) {
             return $this->failure([], "Chưa hoàn thành lot trước đó");
         }
-        $plan = ProductionPlan::where('line_id', $machine->line_id)
+        $scannedLot = Lot::find($request->scanned_lot);
+        if (!$scannedLot) {
+            return $this->failure('', 'Không tìm thấy lot');
+        }
+        $current_plan = ProductionPlan::where('line_id', $machine->line_id)
             ->where('machine_id', $machine->code)
-            ->whereIn('status_plan', [ProductionPlan::STATUS_PENDING, ProductionPlan::STATUS_IN_PROGRESS])
-            ->whereDate('thoi_gian_bat_dau', '>=', date('Y-m-d'))
+            ->where('status_plan', ProductionPlan::STATUS_IN_PROGRESS)
+            ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
             ->orderBy('status_plan', 'DESC')
             ->orderBy('thoi_gian_bat_dau')
             ->first();
-        if (!$plan) {
-            return $this->failure([], 'Không tìm thấy KHSX');
+        if (!$current_plan) {
+            return $this->failure('', 'Chưa có kế hoạch nào đang sản xuất');
         }
-        $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $plan->product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
-        $requestValue = $hanh_trinh_san_xuat[$request->line_id] ?? 0;
-        // Lọc các line_id có value nhỏ hơn requestValue
-        $filteredLineIds = collect($hanh_trinh_san_xuat)
-            ->filter(function ($value, $lineId) use ($requestValue) {
-                return $value < $requestValue;
-            })->keys();
-        $orderByString = "'" . implode("','", $filteredLineIds->toArray()) . "'";
-        // $previousLineLot = InfoCongDoan::where('lot_id', $request->scanned_lot)
-        //     ->whereIn('line_id', $filteredLineIds)->where('status', InfoCongDoan::STATUS_COMPLETED)
-        //     ->orderByRaw("FIELD(line_id, $orderByString)")
-        //     ->get()
-        //     ->last();
+        //Kiểm tra xem KH có cho phép không kiểm tra đầu vào không
+        if (!$current_plan->pass_input_lot_id) {
+            $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $current_plan->product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
+            // return in_array($machine->line_id, [24, 25]) && $hanh_trinh_san_xuat[$machine->line_id] == 1;
+            
+            $currentLineIndex = $hanh_trinh_san_xuat[$machine->line_id] ?? 0;
+            $previousLineId = collect($hanh_trinh_san_xuat)
+                ->filter(function ($value, $lineId) use ($currentLineIndex) {
+                    return $value < $currentLineIndex;
+                })->keys()->last();
+            $previousLineLot = InfoCongDoan::where('lot_id', $request->scanned_lot)
+                ->where('line_id', $previousLineId)->where('status', InfoCongDoan::STATUS_COMPLETED)
+                ->first();
+            if (!$previousLineLot) {
+                return $this->failure([], 'Không tìm thấy lot đã chạy công đoạn trước');
+            }
+            if ($previousLineLot->line_id == 24) {
+                $bomProducts = Bom::where(function ($subQuery) use ($previousLineLot) {
+                    $subQuery->where('material_id', $previousLineLot->product_id)->orWhere('product_id', $previousLineLot->product_id);
+                })->pluck('product_id')->toArray();
+                if (!in_array($current_plan->product_id, $bomProducts)) {
+                    return $this->failure($previousLineLot, 'Không khớp mã sản phẩm');
+                }
+            } else {
+                if ($previousLineLot->product_id !== $current_plan->product_id) {
+                    return $this->failure([$previousLineLot, $scannedLot], 'Không khớp mã sản phẩm');
+                }
+            }
+            //Nếu đáp ứng đủ các điều kiện ở trên thì bắt đầu sản xuất và trừ tồn
+            if ($scannedLot) {
+                $sl_dat = $scannedLot->so_luong;
+                $line_inventory = LineInventories::where('product_id', $scannedLot->product_id)->where('line_id', $scannedLot->final_line_id)->first();
+                if ($line_inventory) {
+                    $line_inventory->update(['quantity' => $line_inventory->quantity - $sl_dat]);
+                } else {
+                    LineInventories::create(['quantity' => $sl_dat, 'line_id' => $machine->line_id, 'product_id' => $current_plan->product_id]);
+                }
+            }
+        }
+        $plan = $current_plan;
         $so_luong = $scannedLot->so_luong ?? 11000;
-        // if (count($filteredLineIds) > 0) {
-        //     if (!$previousLineLot) {
-        //         return $this->failure([], 'Không tìm thấy lot đã chạy trước đó');
-        //     }
-        //     if ($previousLineLot->line_id == 24) {
-        //         $bomProducts = Bom::where(function ($subQuery) use ($previousLineLot) {
-        //             $subQuery->where('material_id', $previousLineLot->product_id)->orWhere('product_id', $previousLineLot->product_id);
-        //         })->pluck('product_id')->toArray();
-        //         if (!in_array($plan->product_id, $bomProducts)) {
-        //             return $this->failure($previousLineLot, 'Không khớp mã sản phẩm');
-        //         }
-        //     } else {
-        //         if ($previousLineLot->product_id !== $plan->product_id) {
-        //             return $this->failure([$previousLineLot, $plan], 'Không khớp mã sản phẩm');
-        //         }
-        //     }
-        // }
 
         try {
             DB::beginTransaction();
@@ -1601,11 +1611,11 @@ class Phase2OIApiController extends Controller
         foreach ($log as $key => $value) {
             $errors[] = "$key: $value";
         }
-        if($line->id == 26){
+        if ($line->id == 26) {
             $group_yellow_stamp_info_quantity = GroupYellowStampInfo::where('info_cong_doan_id', $infoCongDoan->id)->sum('quantity');
             $so_luong_tem_trang = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang - $group_yellow_stamp_info_quantity;
             $so_luong_tem_trang = $so_luong_tem_trang < 0 ? 0 : $so_luong_tem_trang;
-        }else{
+        } else {
             $so_luong_tem_trang = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_tem_vang - $infoCongDoan->sl_ng;
         }
         $ghi_chu = implode(', ', $errors);
@@ -1621,20 +1631,20 @@ class Phase2OIApiController extends Controller
         // $data['nguoi_sx'] = $user->name ?? "";
         $data['ghi_chu'] = $ghi_chu ?? "";
         $data['machine_code'] = $infoCongDoan->machine_code;
-        if($infoCongDoan->line_id == 26){
+        if ($infoCongDoan->line_id == 26) {
             $group_yellow_stamp_info_quantity = GroupYellowStampInfo::where('info_cong_doan_id', $infoCongDoan->id)->sum('quantity');
             $so_luong_tem_trang = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang - $group_yellow_stamp_info_quantity;
             $so_luong_tem_trang = $so_luong_tem_trang < 0 ? 0 : $so_luong_tem_trang;
-        }else{
+        } else {
             $so_luong_tem_trang = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_tem_vang - $infoCongDoan->sl_ng;
         }
         $lot = Lot::where('id', $infoCongDoan->lot_id)->first();
-        if($lot){
+        if ($lot) {
             $lot->update([
                 'so_luong' => $so_luong_tem_trang,
                 'type' => Lot::TYPE_TEM_TRANG,
             ]);
-        }else{
+        } else {
             Lot::create([
                 'id' => $infoCongDoan->lot_id,
                 'product_id' => $infoCongDoan->product_id,
@@ -2168,7 +2178,7 @@ class Phase2OIApiController extends Controller
                                 'product_id' => $infoCongDoan->product_id,
                                 'so_luong' => $phan_du
                             ]);
-                        }   
+                        }
                     }
                     break;
                 case 3:
@@ -2731,13 +2741,13 @@ class Phase2OIApiController extends Controller
             $item['sl_kh'] = $infoCongDoan->sl_dau_vao_hang_loat ?? 0;
             $item['line_id'] = $infoCongDoan->line_id ?? "";
             $item['machine_code'] = $infoCongDoan->machine_code ?? "";
-            if($infoCongDoan->line_id == 26){
+            if ($infoCongDoan->line_id == 26) {
                 $group_yellow_stamp_info_quantity = GroupYellowStampInfo::where('info_cong_doan_id', $infoCongDoan->id)->sum('quantity');
                 $item['sl_gom_tem_vang'] = $group_yellow_stamp_info_quantity ?? 0;
                 $item['sl_ok'] -= $item['sl_gom_tem_vang'];
                 $item['sl_ok'] = $item['sl_ok'] < 0 ? 0 : $item['sl_ok'];
             }
-            
+
             $data[] = $item;
         }
         return $this->success($data);
@@ -3267,7 +3277,7 @@ class Phase2OIApiController extends Controller
                 $sl_ng += ($value ?? 0);
             }
             //Nếu công đoạn hiện tại không phải chọn
-            if($machine->line_id != 29){
+            if ($machine->line_id != 29) {
                 $sl_dau_ra_hang_loat = $infoCongDoan->sl_dau_ra_hang_loat ?? 0;
                 if ($sl_dau_ra_hang_loat == 0) {
                     return $this->failure([], "Không có sl đầu ra hàng loạt");
@@ -3344,7 +3354,7 @@ class Phase2OIApiController extends Controller
                     ]);
                 }
             }
-            
+
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
