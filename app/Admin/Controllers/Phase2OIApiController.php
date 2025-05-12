@@ -3142,7 +3142,7 @@ class Phase2OIApiController extends Controller
             }
             $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)
                 ->where('line_id', $line->id)->where('machine_code', $machine->code)
-                ->where('status', InfoCongDoan::STATUS_INPROGRESS)
+                // ->where('status', InfoCongDoan::STATUS_INPROGRESS)
                 ->first();
         }
         if (!$infoCongDoan) {
@@ -3507,9 +3507,16 @@ class Phase2OIApiController extends Controller
         if (!$this->checkEligibleForPrinting($infoCongDoan)) {
             return $this->failure([], "Chưa kiểm tra đủ tiêu chí QC");
         }
+
         try {
             DB::beginTransaction();
-            $sl_con_lai = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang;
+            if($line->id == 26){
+                $group_yellow_stamp_info_quantity = GroupYellowStampInfo::where('info_cong_doan_id', $infoCongDoan->id)->sum('quantity');
+                $sl_con_lai = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang - $group_yellow_stamp_info_quantity;
+                $sl_con_lai = $sl_con_lai < 0 ? 0 : $sl_con_lai;
+            }else{
+                $sl_con_lai = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang;
+            }
             if ($sl_con_lai < 0) {
                 return $this->failure([], "Số lượng Tem vàng vượt quá số lượng sản xuất");
             } elseif ($sl_con_lai === 0) {

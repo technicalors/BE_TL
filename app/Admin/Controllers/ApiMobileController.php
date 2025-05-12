@@ -3894,10 +3894,10 @@ class ApiMobileController extends AdminController
             $input['sl_giao_sx'] = $input['sl_giao_sx'] ?? $model->sl_giao_sx;
             $input['thoi_gian_ket_thuc'] = $times['end_time'];
             $machinePriorityOrder = MachinePriorityOrder::where('line_id', $input['line_id'])
-            ->where('product_id', $input['product_id'])
-            ->orderBy('priority', 'asc')
-            ->first();
-            
+                ->where('product_id', $input['product_id'])
+                ->orderBy('priority', 'asc')
+                ->first();
+
             $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $input['lo_sx'])->where('line_id', $input['line_id'])->orderBy('updated_at', 'desc')->first();
             $productionPlan = [
                 'lo_sx' => $input['lo_sx'],
@@ -4520,9 +4520,9 @@ class ApiMobileController extends AdminController
         $sheet = $spreadsheet->getActiveSheet();
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
         $data = [];
-        
+
         foreach ($allDataInSheet as $key => $row) {
-            if($key == 1) {
+            if ($key == 1) {
                 continue;
             }
             $product = Product::where('name', $row['C'])->first();
@@ -4560,13 +4560,13 @@ class ApiMobileController extends AdminController
     public function updateSoLuongDauRaDucCat(Request $request)
     {
         $input = $request->all();
-        $lots = Lot::whereDate('created_at', '>=', '2025-05-01')->where('final_line_id', 26)->where('type', 0)->get();
+        $lots = Lot::whereDate('created_at', '>=', '2025-05-01')->where('final_line_id', 26)->where('type', 2)->get();
         $count = 0;
         foreach ($lots as $lot) {
             $info = InfoCongDoan::where('lot_id', $lot->id)->where('line_id', 26)->first();
-                $group_info = GroupYellowStampInfo::where('info_cong_doan_id', $info->id ?? null)->get();
-                if ($info && $group_info->count() > 0) {
-                $lot->update(['so_luong' => $info->sl_dau_ra_hang_loat - $info->sl_ng - $info->sl_tem_vang - $group_info->sum('quantity')]);
+            $group_info = GroupYellowStampInfo::where('info_cong_doan_id', $info->id ?? null)->get();
+            if ($info && $group_info->count() > 0) {
+                $lot->update(['so_luong' => $info->sl_tem_vang]);
                 $count++;
             }
         }
