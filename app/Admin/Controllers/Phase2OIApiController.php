@@ -951,10 +951,11 @@ class Phase2OIApiController extends Controller
             return $this->failure('', 'Số lượng in vượt quá số lượng tồn, không thể tạo tem');
         }
         $prefix = $group_yellow_stamp->lo_sx . '.' . $group_yellow_stamp->line_id . '.LTV.';
-        // $lotList = Lot::where('id', 'like', "$prefix%")->orderBy('id', 'DESC')->get();
-        // if ($lotList->sum('so_luong') >= $input['quantity']) {
-        //     return $this->failure('', 'Đã in hết số lượng gom tem vàng');
-        // }
+        $lotList = $group_yellow_stamp->lot;
+        $remain_quantity = $group_yellow_stamp->quantity - $lotList->sum('so_luong');
+        if ($remain_quantity <= 0 || $remain_quantity < $input['quantity']) {
+            return $this->failure('', 'Số lượng in vượt quá số lượng tồn, không thể tạo tem');
+        }
         $latestInfo = Lot::where('id', 'like', "$prefix%")->orderBy('id', 'DESC')->first();
         try {
             if ($latestInfo) {
