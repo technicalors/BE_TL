@@ -2676,20 +2676,24 @@ class Phase2OIApiController extends Controller
     //Số liệu tổng quan Chất lượng
     public function getQCOverall(Request $request)
     {
-        $info_query = InfoCongDoan::whereDate('thoi_gian_ket_thuc', Carbon::today());
-        $lot_plan_query = LotPlan::whereDate('end_time', Carbon::today());
+        $info_query = InfoCongDoan::where(function ($subQuery) {
+            $subQuery->whereDate('thoi_gian_bat_dau', Carbon::now()->format('Y-m-d'))->orWhereDate('thoi_gian_ket_thuc', Carbon::now()->format('Y-m-d'));
+        });
+        $plan_query = ProductionPlan::where(function ($subQuery) {
+            $subQuery->whereDate('thoi_gian_bat_dau', Carbon::now()->format('Y-m-d'))->orWhereDate('thoi_gian_ket_thuc', Carbon::now()->format('Y-m-d'));
+        });
         if (!empty($request->line_id)) {
             $info_query->where('line_id', $request->line_id);
-            $lot_plan_query->where('line_id', $request->line_id);
+            $plan_query->where('line_id', $request->line_id);
         }
         if (!empty($request->machine_code)) {
             $info_query->where('machine_code', $request->machine_code);
-            $lot_plan_query->where('machine_code', $request->machine_code);
+            $plan_query->where('machine_id', $request->machine_code);
         }
         $info_cong_doan = $info_query->get();
-        $lot_plans = $lot_plan_query->get();
+        $plans = $plan_query->get();
         $data = [];
-        $data['ke_hoach'] = $lot_plans->sum('quantity');
+        $data['ke_hoach'] = $plans->sum('sl_giao_sx');
         $data['muc_tieu'] = round(($data['ke_hoach'] / 12) * ((int)date('H') - 6));
         $data['ket_qua'] = $info_cong_doan->sum('sl_dau_ra_hang_loat');
         return $this->success($data);
@@ -2737,7 +2741,8 @@ class Phase2OIApiController extends Controller
             $item['sl_dau_vao_hang_loat'] = $infoCongDoan->sl_dau_vao_hang_loat ?? 0;
             $item['sl_dau_ra_hang_loat'] = $infoCongDoan->sl_dau_ra_hang_loat ?? 0;
             $item['sl_ok'] = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang;
-            $item['ty_le_ht'] = $infoCongDoan->sl_dau_ra_hang_loat > 0 ? round($infoCongDoan->sl_ok / $infoCongDoan->sl_dau_ra_hang_loat * 100) : 0;
+            $item['ty_le_ht'] = ($infoCongDoan->sl_dau_vao_hang_loat > 0 ? round($infoCongDoan->sl_dau_ra_hang_loat / $infoCongDoan->sl_dau_vao_hang_loat * 100) : 0) . '%';
+            $item['ty_le_ok'] = ($infoCongDoan->sl_dau_ra_hang_loat > 0 ? round($item['sl_ok'] / $infoCongDoan->sl_dau_ra_hang_loat * 100) : 0) . '%';
             $item['sl_tem_vang'] = $infoCongDoan->sl_tem_vang ?? 0;
             $item['sl_ng'] = $infoCongDoan->sl_ng ?? 0;
             $item['qc_status'] = $value->eligible_to_end ?? 0;
@@ -2775,6 +2780,9 @@ class Phase2OIApiController extends Controller
         foreach ($infoCongDoans as $key => $infoCongDoan) {
             if ($infoCongDoan) {
                 $infoCongDoan['info_cong_doan_id'] = $infoCongDoan->id ?? null;
+                $infoCongDoan['sl_ok'] = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang;
+                $infoCongDoan['ty_le_ht'] = ($infoCongDoan->sl_dau_vao_hang_loat > 0 ? round($infoCongDoan->sl_dau_ra_hang_loat / $infoCongDoan->sl_dau_vao_hang_loat * 100) : 0) . '%';
+                $infoCongDoan['ty_le_ok'] = ($infoCongDoan->sl_dau_ra_hang_loat > 0 ? round($infoCongDoan['sl_ok'] / $infoCongDoan->sl_dau_ra_hang_loat * 100) : 0) . '%';
                 QCHistory::firstOrCreate(
                     [
                         'info_cong_doan_id' => $infoCongDoan->id,
