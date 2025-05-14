@@ -311,7 +311,7 @@ class ProductOrderController extends Controller
                         $quantity = $calculatedQuantity;
                     }
                     if ($productionStep->line_id == 24) {
-                        $bom = Bom::where('product_id', $productOrder->product_id)->where('priority', 1)->first();
+                        $bom = Bom::where('product_id', $productOrder->product_id)->orderBy('id')->first();
                         $component_id = $bom->material_id;
                     } else {
                         $component_id = $productOrder->product_id;
