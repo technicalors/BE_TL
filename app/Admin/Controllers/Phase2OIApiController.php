@@ -3331,7 +3331,7 @@ class Phase2OIApiController extends Controller
                 if ($sl_dau_vao_hang_loat == 0) {
                     return $this->failure([], "Không có sl đầu ra hàng loạt");
                 }
-                $sl_con_lai = $sl_dau_vao_hang_loat - $sl_dau_ra_hang_loat - $sl_tem_vang - ($sl_ng - $infoCongDoan->sl_ng);
+                $sl_con_lai = $sl_dau_vao_hang_loat - $sl_dau_ra_hang_loat - ($sl_ng - $infoCongDoan->sl_ng);
                 if ($sl_con_lai < 0) {
                     return $this->failure([], "Số lượng NG vượt quá số lượng sản xuất");
                 } elseif ($sl_con_lai === 0) {
@@ -3459,6 +3459,7 @@ class Phase2OIApiController extends Controller
                 'machine_id' => $infoCongDoan->machine_code,
             ]);
         }
+        $sl_dau_vao = $infoCongDoan->sl_dau_vao_hang_loat;
         $sl_dau_ra = $infoCongDoan->sl_dau_ra_hang_loat;
         $sl_ng = $infoCongDoan->sl_ng;
         $sl_tem_vang = $infoCongDoan->sl_tem_vang;
@@ -3473,13 +3474,26 @@ class Phase2OIApiController extends Controller
                 ]);
                 $sl_tem_vang += $value;
             }
-            $sl_con_lai = $sl_dau_ra - $sl_ng - $sl_tem_vang;
-            if ($sl_con_lai < 0) {
-                return $this->failure([], "Số lượng Tem vàng vượt quá số lượng sản xuất");
+            if($line->id != 29){
+                $sl_con_lai = $sl_dau_ra - $sl_ng - $sl_tem_vang;
+                if ($sl_con_lai < 0) {
+                    return $this->failure([], "Số lượng Tem vàng vượt quá số lượng sản xuất");
+                }
+                $infoCongDoan->update([
+                    'sl_tem_vang' => $sl_tem_vang
+                ]);
+            } else {
+                $sl_con_lai = $sl_dau_ra - $sl_ng - $sl_tem_vang;
+                $sl_con_lai = $sl_dau_vao - $sl_dau_ra - ($sl_tem_vang - $infoCongDoan->sl_tem_vang);
+                if ($sl_con_lai < 0) {
+                    return $this->failure([], "Số lượng Tem vàng vượt quá số lượng sản xuất");
+                }
+                $infoCongDoan->update([
+                    'sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_ra_hang_loat + ($sl_tem_vang - $infoCongDoan->sl_tem_vang),
+                    'sl_tem_vang' => $sl_tem_vang
+                ]);
             }
-            $infoCongDoan->update([
-                'sl_tem_vang' => $sl_tem_vang
-            ]);
+            
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -3526,7 +3540,12 @@ class Phase2OIApiController extends Controller
                 $group_yellow_stamp_info_quantity = GroupYellowStampInfo::where('info_cong_doan_id', $infoCongDoan->id)->sum('quantity');
                 $sl_con_lai = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang - $group_yellow_stamp_info_quantity;
                 $sl_con_lai = $sl_con_lai < 0 ? 0 : $sl_con_lai;
-            }else{
+            }
+            if($line->id == 29){
+                //Do sl_dau_ra_hang_loat = sl đã in tem + sl_ng + sl tem vàng
+                $sl_con_lai = $infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_dau_ra_hang_loat;
+            }
+            else{
                 $sl_con_lai = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang;
             }
             if ($sl_con_lai < 0) {
