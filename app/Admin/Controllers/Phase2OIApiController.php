@@ -3539,10 +3539,9 @@ class Phase2OIApiController extends Controller
             if($line->id == 26){
                 $group_yellow_stamp_info_quantity = (int)GroupYellowStampInfo::where('info_cong_doan_id', $infoCongDoan->id)->sum('quantity');
                 $sl_con_lai = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - ($infoCongDoan->sl_tem_vang - $group_yellow_stamp_info_quantity);
-                Log::debug([$infoCongDoan->id, $infoCongDoan->sl_dau_ra_hang_loat, $infoCongDoan->sl_ng, $infoCongDoan->sl_tem_vang, $group_yellow_stamp_info_quantity]);
+                Log::debug([$infoCongDoan->id, $infoCongDoan->sl_dau_ra_hang_loat, $infoCongDoan->sl_ng, $infoCongDoan->sl_tem_vang, $group_yellow_stamp_info_quantity, ]);
                 $sl_con_lai = $sl_con_lai < 0 ? 0 : $sl_con_lai;
-            }
-            if($line->id == 29){
+            } else if($line->id == 29){
                 //Do sl_dau_ra_hang_loat = sl đã in tem + sl_ng + sl tem vàng
                 $sl_con_lai = $infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_dau_ra_hang_loat;
             }
