@@ -3550,6 +3550,8 @@ class Phase2OIApiController extends Controller
             }
             if ($sl_con_lai < 0) {
                 return $this->failure([], "Số lượng Tem vàng vượt quá số lượng sản xuất");
+            } elseif($sl_con_lai > 0){
+                return $this->failure([], "Vẫn còn số lượng đạt chưa thể in tem vàng");
             } elseif ($sl_con_lai === 0) {
                 Lot::updateOrCreate(['id' => $infoCongDoan->lot_id], [
                     'id' => $infoCongDoan->lot_id,
