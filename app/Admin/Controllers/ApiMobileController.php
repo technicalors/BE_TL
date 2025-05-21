@@ -4332,7 +4332,7 @@ class ApiMobileController extends AdminController
     function getMachineParameters(Request $request)
     {
         $machine = Machine::with(['parameters' => function ($query) {
-            $query->select('parameters.*', 'machine_parameters.is_if');
+            $query->select('parameters.*', 'machine_parameters.is_if')->orderBy('is_if', 'asc');
         }])->where('code', $request->machine_id)->first();
         $columns = [];
         foreach ($machine->parameters as $param) {
