@@ -29,7 +29,7 @@ class Machine extends Model
 
     public function parameter()
     {
-        return $this->hasMany(MachineParameter::class);
+        return $this->hasMany(MachineParameter::class)->orderBy('is_if');
     }
     public function line()
     {
