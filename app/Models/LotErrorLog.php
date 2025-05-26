@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 class LotErrorLog extends Model
 {
     use HasFactory;
-    protected $fillable = ['lot_id', 'lo_sx', 'log', 'machine_code', 'line_id', 'user_id'];
+    protected $fillable = ['lot_id', 'lo_sx', 'log', 'machine_code', 'line_id', 'user_id', 'created_at', 'updated_at'];
     protected $casts = ['log' => 'json'];
 
     public function lot()

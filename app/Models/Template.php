@@ -20,6 +20,7 @@ class Template extends Model
         'machine_number',
         'worker_name',
         'status',
+        'note',
     ];
     protected $casts = [
         'material_id' => 'string',

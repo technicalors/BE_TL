@@ -51,6 +51,7 @@ class TemplateImport implements ToCollection, WithHeadingRow, WithStartRow
         $manufacture_date = $row['manufacture_date'] ?? null;
         $machine_number = $row['machine_number'] ?? null;
         $worker_name = $row['worker_name'] ?? null;
+        $note = $row['note'] ?? null;
         if (empty($material_id)) return;
 
         if (!empty($manufacture_date)) {
@@ -68,6 +69,7 @@ class TemplateImport implements ToCollection, WithHeadingRow, WithStartRow
                 'machine_number' => $machine_number,
                 'worker_name' => $worker_name,
                 'status' => 0,
+                'note' => $note,
             ]);
     
             // Lưu roll

@@ -625,27 +625,22 @@ class Phase2OIApiController extends Controller
                 'sl_kh' => $plan->sl_giao_sx,
                 'plan_id' => $plan->id
             ]);
-            // TODO: Kiểm tra lại logic này
-            // if($previousLineLot && $scannedLot && $scannedLot->type == Lot::TYPE_TEM_VANG){
-            //     $qcHistory = QCHistory::firstOrCreate(
-            //         [
-            //             'info_cong_doan_id' => $infoCongDoan->id,
-            //         ],
-            //         [
-            //             'scanned_time' => date('Y-m-d H:i:s'),
-            //             'user_id' => $request->user()->id,
-            //         ]
-            //     );
-            //     $lot_error_log_data = YellowStampHistory::where('q_c_history_id', $previousLineLot->qcHistory->id)->get();
-            //     foreach($lot_error_log_data as $lot_error_log){
-            //         YellowStampHistory::create([
-            //             'q_c_history_id' => $qcHistory->id,
-            //             'errors' => $lot_error_log->errors,
-            //             'sl_tem_vang' => $lot_error_log->sl_tem_vang,
-            //             'user_id' => $lot_error_log->user_id
-            //         ]);
-            //     }
-            // }
+            // Lưu lại những lần kiểm tra trước đó
+            if(!empty($previousLineLot)){
+                $dau_noi = LotErrorLog::where('lot_id', $previousLineLot->lot_id)->where('machine_code', $previousLineLot->machine_code)->where('line_id', $previousLineLot->line_id)->where('lo_sx', $previousLineLot->lo_sx)->get();
+                foreach ($dau_noi as $key => $value) {
+                    LotErrorLog::create([
+                        'lot_id' => $infoCongDoan->lot_id,
+                        'machine_code' => $infoCongDoan->machine_code,
+                        'line_id' => $infoCongDoan->line_id,
+                        'lo_sx' => $infoCongDoan->lo_sx,
+                        'log' => $value->log,
+                        'user_id' => $request->user()->id,
+                        'created_at' => $value->created_at,
+                        'updated_at' => $value->updated_at,
+                    ]);
+                }
+            }
             if (isset($tracking)) {
                 $tracking->update([
                     'lot_id' => $infoCongDoan->lot_id,
@@ -833,23 +828,23 @@ class Phase2OIApiController extends Controller
                 if ($sl_con_lai < 0) {
                     return $this->failure([], "Số lượng sản xuất không hợp lệ");
                 }
-                $lot = Lot::find($infoCongDoan->lot_id);
-                if (!$lot) {
-                    Lot::create([
-                        'id' => $infoCongDoan->lot_id,
-                        'product_id' => $infoCongDoan->product_id,
-                        'material_id' => $infoCongDoan->material_id,
-                        'lo_sx' => $infoCongDoan->lo_sx,
-                        'final_line_id' => $line->id,
-                        'so_luong' => $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang,
-                        'type' => Lot::TYPE_TEM_TRANG
-                    ]);
-                } else {
-                    $lot->update([
-                        'so_luong' => $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang,
-                        'final_line_id' => $line->id,
-                    ]);
-                }
+                // $lot = Lot::find($infoCongDoan->lot_id);
+                // if (!$lot) {
+                //     Lot::create([
+                //         'id' => $infoCongDoan->lot_id,
+                //         'product_id' => $infoCongDoan->product_id,
+                //         'material_id' => $infoCongDoan->material_id,
+                //         'lo_sx' => $infoCongDoan->lo_sx,
+                //         'final_line_id' => $line->id,
+                //         'so_luong' => $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang,
+                //         'type' => Lot::TYPE_TEM_TRANG
+                //     ]);
+                // } else {
+                //     $lot->update([
+                //         'so_luong' => $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang,
+                //         'final_line_id' => $line->id,
+                //     ]);
+                // }
                 $sl_dat = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng;
                 $line_inventory = LineInventories::where('product_id', $infoCongDoan->product_id)->where('line_id', $infoCongDoan->line_id)->first();
                 if ($line_inventory) {
@@ -1000,10 +995,10 @@ class Phase2OIApiController extends Controller
         $grouped_infos = GroupYellowStampInfo::where('group_yellow_stamp_id', $group_yellow_stamp->id)->get();
         Log::debug($grouped_infos);
         $yellow_stamp_history = [];
-        foreach ($grouped_infos as $grouped_info) {
-            if (!$grouped_info->error_id) continue;
-            $yellow_stamp_history[] = $grouped_info->error_id;
-        }
+        // foreach ($grouped_infos as $grouped_info) {
+        //     if (!$grouped_info->error_id) continue;
+        //     $yellow_stamp_history[] = $grouped_info->error_id;
+        // }
         $ghi_chu = "Hàng tem vàng" . (count($yellow_stamp_history) > 0 ? (" - " . implode(', ', $yellow_stamp_history)) : "");
         $tem = [
             'lot_id' => $lot_tem_vang->id,
@@ -1294,6 +1289,7 @@ class Phase2OIApiController extends Controller
             foreach ($item->log ?? [] as $key => $value) {
                 $errorLog[] = [
                     'key' => $index,
+                    'id' => $item->id ?? null,
                     'error_id' => $key,
                     'quantity' => $value,
                 ];
@@ -1326,11 +1322,37 @@ class Phase2OIApiController extends Controller
     //Cập nhật danh sách lỗi cho lot
     public function updateLotErrorLog(Request $request)
     {
-        if ($request->line_id === '29') {
-            return $this->updateLotErrorLogForSelectionLine($request);
-        } else {
-            return $this->updateLotErrorLogForNormalLine($request);
+        if (empty($request->log)) {
+            return $this->failure([], "Chưa nhập dấu nối");
         }
+        $machine = Machine::where('code', $request->machine_code)->first();
+        if (!$machine) {
+            return $this->failure([], "Không tìm thấy máy");
+        }
+        $tracking = Tracking::where('machine_id', $machine->code)->first();
+        if ($machine->is_iot == 1 && !$tracking) {
+            return $this->failure([], "Máy này chưa được sử dụng");
+        }
+        $infoCongDoan = InfoCongDoan::where('lot_id', $request->lot_id)->where('machine_code', $machine->code)->where('line_id', $machine->line_id)->first();
+        if (!$infoCongDoan) {
+            return $this->failure([], "Không tìm thấy lot");
+        }
+        try {
+            DB::beginTransaction();
+            $log = LotErrorLog::create([
+                'lot_id' => $infoCongDoan->lot_id,
+                'log' => $request->log,
+                'lo_sx' => $infoCongDoan->lo_sx,
+                'machine_code' => $infoCongDoan->machine_code,
+                'line_id' => $infoCongDoan->line_id,
+                'user_id' => $request->user()->id
+            ]);
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return $this->failure($th, "Lỗi cập nhật");
+        }
+        return $this->success([], "Cập nhật lỗi thành công");
     }
 
     public function updateLotErrorLogForNormalLine($request)
@@ -1606,15 +1628,23 @@ class Phase2OIApiController extends Controller
         $user = CustomUser::find($infoCongDoan->user_id ?? "");
         $lotErrorLog = LotErrorLog::where('lot_id', $request->lot_id)->orderBy('line_id')->get();
         $log = [];
-        foreach ($lotErrorLog as $item) {
+        $dau_noi = [];
+        foreach ($lotErrorLog as $key => $item) {
+            $attemp = 'Lần ' . ($key + 1) . ': ';
+            $loi = [];
             foreach ($item->log ?? [] as $key => $value) {
                 $log[$key] = ($log[$key] ?? 0) + $value;
+                $loi[] = $key . '(' . $value . ')';
             }
+            $attemp .= implode('; ', $loi);
+            $dau_noi[] = $attemp;
         }
+
         $errors = [];
         foreach ($log as $key => $value) {
             $errors[] = "$key: $value";
         }
+        $ghi_chu = implode(', ', $errors);
         if ($line->id == 26) {
             $group_yellow_stamp_info_quantity = GroupYellowStampInfo::where('info_cong_doan_id', $infoCongDoan->id)->sum('quantity');
             $so_luong_tem_trang = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang - $group_yellow_stamp_info_quantity;
@@ -1622,7 +1652,7 @@ class Phase2OIApiController extends Controller
         } else {
             $so_luong_tem_trang = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_tem_vang - $infoCongDoan->sl_ng;
         }
-        $ghi_chu = implode(', ', $errors);
+        
         $data = [];
         $data['lot_id'] = $infoCongDoan->lot_id;
         $data['lsx'] = $infoCongDoan->lo_sx;
@@ -1635,6 +1665,7 @@ class Phase2OIApiController extends Controller
         // $data['nguoi_sx'] = $user->name ?? "";
         $data['ghi_chu'] = $ghi_chu ?? "";
         $data['machine_code'] = $infoCongDoan->machine_code;
+        $data['dau_noi'] = implode(' | ', $dau_noi);
         if ($infoCongDoan->line_id == 26) {
             $group_yellow_stamp_info_quantity = GroupYellowStampInfo::where('info_cong_doan_id', $infoCongDoan->id)->sum('quantity');
             $so_luong_tem_trang = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang - $group_yellow_stamp_info_quantity;
@@ -2638,11 +2669,11 @@ class Phase2OIApiController extends Controller
     {
         $lot_error_log = LotErrorLog::find($request->id);
         if (!$lot_error_log) {
-            return $this->failure([], "Không tìm thấy lỗi này");
+            return $this->failure([], "Không tìm thấy lịch sử ghi nhận dấu nối");
         }
-        $log = $lot_error_log->log ?? [];
-        foreach ($log as $key => $value) {
-            $log[$request->error_id] = $request->quantity ?? 0;
+        $log = [];
+        foreach ($request->data ?? [] as $key => $record) {
+            $log[$record['error_id']] = $record['quantity'] ?? 0;
         }
         $lot_error_log->update([
             'log' => $log,

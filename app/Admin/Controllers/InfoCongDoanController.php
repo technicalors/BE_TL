@@ -6,6 +6,7 @@ use App\Models\InfoCongDoan;
 use Encore\Admin\Controllers\AdminController;
 use App\Models\CustomUser;
 use App\Models\Line;
+use App\Models\Tracking;
 use Illuminate\Http\Request;
 use App\Traits\API;
 
@@ -248,6 +249,14 @@ class InfoCongDoanController extends AdminController
             return $this->failure([], 'Không tìm thấy lot');
         }
         $info->delete();
+        $tracking = Tracking::where('lot_id', $info->lot_id)->first();
+        if($tracking){
+            $tracking->update([
+                'lot_id' => null,
+                'input' => 0,
+                'output' => 0
+            ]);
+        }
         return $this->success($info, 'Xóa thành công');
     }
 }

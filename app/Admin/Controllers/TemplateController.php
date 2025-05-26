@@ -5,6 +5,8 @@ namespace App\Admin\Controllers;
 use App\Http\Controllers\Controller;
 use App\Imports\TemplateImport;
 use App\Models\Template;
+use App\Models\WarehouseHistories;
+use App\Models\WarehouseInventory;
 use App\Traits\API;
 use Encore\Admin\Controllers\AdminController;
 use Encore\Admin\Form;
@@ -54,6 +56,9 @@ class TemplateController extends Controller
         try {
             DB::beginTransaction();
             $result = Template::create($input);
+            if($result){
+                
+            }
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -70,7 +75,13 @@ class TemplateController extends Controller
         }
         try {
             DB::beginTransaction();
-            $result = Template::find($id)->update($input);
+            $result = Template::find($id);
+            if($result){
+                $result->update($input);
+                $result->roll()->update(['material_id'=>$input['material_id'],'quantity'=>$input['quantity']]);
+                WarehouseInventory::where('roll_id', $result->roll->id)->update(['material_id'=>$input['material_id'],'quantity'=>$input['quantity']]);
+                WarehouseHistories::where('roll_id', $result->roll->id)->where('type', WarehouseHistories::TYPE_IMPORT)->update(['material_id'=>$input['material_id'],'quantity'=>$input['quantity']]);
+            }
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -82,10 +93,17 @@ class TemplateController extends Controller
     {
         try {
             DB::beginTransaction();
-            $result = Template::find($id)->delete();
+            $result = Template::find($id);
+            if($result){
+                WarehouseInventory::where('roll_id', $result->roll->id ?? null)->delete();
+                WarehouseHistories::where('roll_id', $result->roll->id ?? null)->where('type', WarehouseHistories::TYPE_IMPORT)->delete();
+                $result->roll()->delete();
+                $result->delete();
+            }
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
+            throw $th;
         }
         return $this->success('', 'Xoá thành công');
     }
