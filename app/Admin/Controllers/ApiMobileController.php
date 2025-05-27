@@ -3816,6 +3816,7 @@ class ApiMobileController extends AdminController
         // }
         $input['ngay_sx'] = date('Y-m-d', strtotime($input['thoi_gian_bat_dau']));
         $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $input['lo_sx'])->where('line_id', $input['line_id'])->orderBy('updated_at', 'desc')->first();
+        $losx = Losx::find($input['lo_sx']);
         $productionPlan = [
             'lo_sx' => $input['lo_sx'],
             'product_order_id' => '',
@@ -3846,7 +3847,7 @@ class ApiMobileController extends AdminController
             'thoi_gian_bat_dau' => $input['thoi_gian_bat_dau'],
             'thoi_gian_ket_thuc' => $input['thoi_gian_ket_thuc'],
             'status' => InfoCongDoan::STATUS_PLANNED,
-            'po_type' => $input['po_type'] ?? $productionOrderHistory->productionOrder->customer->po_type ?? null,
+            'po_type' => $input['po_type'] ?? $losx->productOrder->customer->po_type ?? null,
             'pass_input_lot_id' => isset($input['pass_input_lot_id']) ? $input['pass_input_lot_id'] : ($input['line_id'] == 26 ? 1 : 0),
         ];
         $production_plan = ProductionPlan::create($productionPlan);
