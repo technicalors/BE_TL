@@ -1390,7 +1390,8 @@ class ProductionPlanController extends AdminController
                 $start_time = $times['start_time'];
                 $end_time = $times['end_time'];
                 $product_id = $productionOrderHistory->product_id;
-                if ($productionOrderHistory->line_id == 24) {
+                $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
+                if ($hanh_trinh_san_xuat[$productionOrderHistory->line_id] == 1) {
                     $bom = Bom::where('product_id', $productionOrderHistory->product_id)->where('priority', 1)->first();
                     if ($bom) {
                         $product_id = $bom->material_id;
@@ -1527,7 +1528,8 @@ class ProductionPlanController extends AdminController
                 $start_time = $times['start_time'];
                 $end_time = $times['end_time'];
                 $product_id = $productionOrderPriority->product_id;
-                if ($history->line_id == 24) {
+                $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
+                if ($hanh_trinh_san_xuat[$history->line_id] == 1) {
                     $bom = Bom::where('product_id', $productionOrderPriority->product_id)->where('priority', 1)->first();
                     if ($bom) {
                         $product_id = $bom->material_id;
