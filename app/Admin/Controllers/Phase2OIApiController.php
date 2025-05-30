@@ -995,11 +995,18 @@ class Phase2OIApiController extends Controller
         $grouped_infos = GroupYellowStampInfo::where('group_yellow_stamp_id', $group_yellow_stamp->id)->get();
         Log::debug($grouped_infos);
         $yellow_stamp_history = [];
-        // foreach ($grouped_infos as $grouped_info) {
-        //     if (!$grouped_info->error_id) continue;
-        //     $yellow_stamp_history[] = $grouped_info->error_id;
-        // }
-        $ghi_chu = "Hàng tem vàng" . (count($yellow_stamp_history) > 0 ? (" - " . implode(', ', $yellow_stamp_history)) : "");
+        foreach ($grouped_infos as $grouped_info) {
+            if (!$grouped_info->error_id) continue;
+            if (!isset($yellow_stamp_history[$grouped_info->error_id])) {
+                $yellow_stamp_history[$grouped_info->error_id] = 0;
+            }
+            $yellow_stamp_history[$grouped_info->error_id] += $grouped_info->quantity;
+        }
+        $loi_tem_vang = [];
+        foreach ($yellow_stamp_history as $key => $value) {
+            $loi_tem_vang[] = $key . ": " . $value;
+        }
+        $ghi_chu = "Hàng tem vàng" . (count($loi_tem_vang) > 0 ? (" - " . implode(', ', $loi_tem_vang)) : "");
         $tem = [
             'lot_id' => $lot_tem_vang->id,
             'lsx' => $lot_tem_vang->lo_sx,
@@ -3034,9 +3041,6 @@ class Phase2OIApiController extends Controller
 
     public function findSpec($test, $product)
     {
-        $plusOrMinus = "±";
-        $approximate = "~";
-        $fromTo = "-";
         $hang_muc = Str::slug($test->hang_muc);
         $base_line_ids = $test->lines->pluck('id')->toArray();
         $reference = !empty($test->reference) ? explode(",", $test->reference) : [];
