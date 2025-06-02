@@ -1391,7 +1391,7 @@ class ProductionPlanController extends AdminController
                 $end_time = $times['end_time'];
                 $product_id = $productionOrderHistory->product_id;
                 $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
-                if ($hanh_trinh_san_xuat[$productionOrderHistory->line_id] == 1) {
+                if (isset($hanh_trinh_san_xuat[$productionOrderHistory->line_id]) && $hanh_trinh_san_xuat[$productionOrderHistory->line_id] == 1) {
                     $bom = Bom::where('product_id', $productionOrderHistory->product_id)->where('priority', 1)->first();
                     if ($bom) {
                         $product_id = $bom->material_id;
