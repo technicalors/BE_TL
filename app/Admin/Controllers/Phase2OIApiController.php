@@ -541,10 +541,14 @@ class Phase2OIApiController extends Controller
         }
         //Kiểm tra xem KH có cho phép không kiểm tra đầu vào không
         if (!$current_plan->pass_input_lot_id) {
+            $scannedLot = Lot::find($request->scanned_lot);
+            if (!$scannedLot) {
+                return $this->failure('', 'Không tìm thấy lot');
+            }
             $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $current_plan->product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
             // return in_array($machine->line_id, [24, 25]) && $hanh_trinh_san_xuat[$machine->line_id] == 1;
             $material = Material::find($current_plan->product_id);
-            if ($material || (in_array($machine->line_id, [24, 25]) && $hanh_trinh_san_xuat[$machine->line_id] == 1)) {
+            if ($material || (in_array($scannedLot->final_line_id, [24, 25]) && $hanh_trinh_san_xuat[$scannedLot->final_line_id] == 1)) {
                 $roll = RollMaterial::with(['material.products', 'warehouse_inventory'])->find($request->scanned_lot);
                 if (!$roll) {
                     return $this->failure([], "Không tìm thấy cuộn");
@@ -555,10 +559,6 @@ class Phase2OIApiController extends Controller
                     return $this->failure([], "Mã cuộn không phù hợp");
                 }
             } else {
-                $scannedLot = Lot::find($request->scanned_lot);
-                if (!$scannedLot) {
-                    return $this->failure('', 'Không tìm thấy lot');
-                }
                 $currentLineIndex = $hanh_trinh_san_xuat[$machine->line_id] ?? 0;
                 // Lọc các line_id có value nhỏ hơn currentLineIndex
                 // $previousLineIds = collect($hanh_trinh_san_xuat)
