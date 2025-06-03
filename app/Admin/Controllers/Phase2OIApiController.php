@@ -581,10 +581,11 @@ class Phase2OIApiController extends Controller
                 if (!$previousLineLot) {
                     return $this->failure([], 'Không tìm thấy lot đã chạy công đoạn trước');
                 }
-                if ($previousLineLot->line_id == 24) {
+                if ($previousLineLot->line_id == 24 || $previousLineLot->line_id == 25) {
                     $bomProducts = Bom::where(function ($subQuery) use ($previousLineLot) {
                         $subQuery->where('material_id', $previousLineLot->product_id)->orWhere('product_id', $previousLineLot->product_id);
                     })->pluck('product_id')->toArray();
+                    $bomProducts[] = $previousLineLot->product_id;
                     if (!in_array($current_plan->product_id, $bomProducts)) {
                         return $this->failure($previousLineLot, 'Không khớp mã sản phẩm');
                     }
