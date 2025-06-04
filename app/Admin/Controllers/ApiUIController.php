@@ -4570,12 +4570,12 @@ class ApiUIController extends AdminController
             $spec = Spec::where('product_id', $plan->product_id)->where('line_id', $plan->line_id)->get();
             $plan->sl_ke_hoach_manh = $plan->sl_giao_sx;
             $plan->ten_san_pham = $plan->product->name ?? '';
-            $bom = Bom::where('product_id', $plan->product_id)->whereRaw('priority REGEXP "^[0-9]+$"')->orderBy('priority')->first();
+            $bom = Bom::where('product_id', $plan->product_id)->whereRaw('priority REGEXP "^[0-9]+$"')->orderBy('id')->first();
             $plan->material_name = $bom->material->name ?? "";
             $material = Material::find($plan->product_id);
             if ($plan->line_id != 24 && $material) {
-                $plan->ten_san_pham = $material->name ?? "";
-                // $plan->product_id = $material->id ?? "";
+                $plan->ten_san_pham = $bom->product->name ?? "";
+                // $plan->product_id = $bom->product->id ?? "";
             }
             $plan->ngay_giao_hang = date('d/m/Y', strtotime($plan->ngay_giao_hang));
             $plan->cong_doan_sx = $plan->line->name ?? '';
