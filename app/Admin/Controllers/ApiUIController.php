@@ -4572,11 +4572,12 @@ class ApiUIController extends AdminController
             $plan->ten_san_pham = $plan->product->name ?? '';
             $bom = Bom::where('product_id', $plan->product_id)->whereRaw('priority REGEXP "^[0-9]+$"')->orderBy('priority')->first();
             $plan->material_name = $bom->material->name ?? "";
-            // if ($plan->line_id == 24) {
-            //     $plan->ten_san_pham = $plan->material->name ?? "";
-            //     $plan->product_id = $plan->material->id ?? "";
-            // }
-            // $plan->ngay_giao_hang = date('d/m/Y', strtotime($plan->ngay_giao_hang));
+            $material = Material::find($plan->product_id);
+            if ($plan->line_id != 24 && $material) {
+                $plan->ten_san_pham = $material->name ?? "";
+                // $plan->product_id = $material->id ?? "";
+            }
+            $plan->ngay_giao_hang = date('d/m/Y', strtotime($plan->ngay_giao_hang));
             $plan->cong_doan_sx = $plan->line->name ?? '';
             $plan->status = strtotime(date('Y-m-d')) >= strtotime($plan->ngay_sx) ? 'FIX' : 'PRE';
             $plan->kqsx = InfoCongDoan::where('line_id', $plan->line_id)->where('plan_id', $plan->id)->whereNotNull('thoi_gian_bat_dau')->sum('sl_dau_ra_hang_loat') -  InfoCongDoan::where('line_id', $plan->line_id)->where('plan_id', $plan->id)->whereNotNull('thoi_gian_bat_dau')->sum('sl_ng');
