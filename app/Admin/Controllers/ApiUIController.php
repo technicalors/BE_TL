@@ -4574,6 +4574,7 @@ class ApiUIController extends AdminController
             $plan->material_name = $bom->material->name ?? "";
             $material = Material::find($plan->product_id);
             if ($plan->line_id != 24 && $material) {
+                $bom = Bom::where('material_id', $plan->product_id)->whereRaw('priority REGEXP "^[0-9]+$"')->orderBy('id')->first();
                 $plan->ten_san_pham = $bom->product->name ?? "";
                 // $plan->product_id = $bom->product->id ?? "";
             }
