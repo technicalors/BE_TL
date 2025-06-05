@@ -4578,7 +4578,7 @@ class ApiUIController extends AdminController
                 $plan->ten_san_pham = $bom->product->name ?? "";
                 // $plan->product_id = $bom->product->id ?? "";
             }
-            $plan->ngay_giao_hang = date('d/m/Y', strtotime($plan->ngay_giao_hang));
+            $plan->ngay_giao_hang = $plan->ngay_giao_hang ? date('d/m/Y', strtotime($plan->ngay_giao_hang)) : "";
             $plan->cong_doan_sx = $plan->line->name ?? '';
             $plan->status = strtotime(date('Y-m-d')) >= strtotime($plan->ngay_sx) ? 'FIX' : 'PRE';
             $plan->kqsx = InfoCongDoan::where('line_id', $plan->line_id)->where('plan_id', $plan->id)->whereNotNull('thoi_gian_bat_dau')->sum('sl_dau_ra_hang_loat') -  InfoCongDoan::where('line_id', $plan->line_id)->where('plan_id', $plan->id)->whereNotNull('thoi_gian_bat_dau')->sum('sl_ng');

@@ -1620,9 +1620,18 @@ class Phase2OIApiController extends Controller
     public function formatTemTrang($infoCongDoan, $request)
     {
         $product = $infoCongDoan->losx->product ?? null;
-        $material = $infoCongDoan->material;
+        $material = Material::find($infoCongDoan->product_id);
+        
         $line = $infoCongDoan->line;
-        $product_journey = Spec::where('product_id', $product->id ?? null)->where('slug', 'hanh-trinh-san-xuat')->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
+        
+        $product_id = $infoCongDoan->product_id;
+        if($material){
+            $productBom = Bom::where('mateial_id', $material->id)->whereRaw('priority REGEXP "^[0-9]+$"')->orderBy('id')->first();
+            if($productBom){
+                $product_id = $productBom->product_id;
+            }
+        }
+        $product_journey = Spec::where('product_id', $product_id)->where('slug', 'hanh-trinh-san-xuat')->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
         $currentLineIndex = $product_journey[$infoCongDoan->line_id] ?? 0;
         $nextLineIds = collect($product_journey)
             ->filter(function ($value, $lineId) use ($currentLineIndex) {
