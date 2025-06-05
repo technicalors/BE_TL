@@ -1626,7 +1626,7 @@ class Phase2OIApiController extends Controller
         
         $product_id = $infoCongDoan->product_id;
         if($material){
-            $productBom = Bom::where('mateial_id', $material->id)->whereRaw('priority REGEXP "^[0-9]+$"')->orderBy('id')->first();
+            $productBom = Bom::where('material_id', $material->id)->whereRaw('priority REGEXP "^[0-9]+$"')->orderBy('id')->first();
             if($productBom){
                 $product_id = $productBom->product_id;
             }
