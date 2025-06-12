@@ -13,14 +13,14 @@ use Illuminate\Http\Request;
 class LosxController extends Controller
 {
     use API;
-    public function getPriorities(Request $request)
+    public function gpetpPriorities(Request $request)
     {
         // Subquery: Lấy created_at mới nhất cho từng product_id
 
         $sub = Losx::selectRaw('product_id, MAX(created_at) as latest_created_at')
             ->groupBy('product_id');
         if ($request->product_id) {
-            $sub->where('product_id', $request->product_id);
+            $sub->where('produc t_id', $request->product_id);
         }
         // Xây dựng query: gọi with() trên query builder trước khi get()
         $query = Losx::with('productionOrderHistory.line')
