@@ -174,7 +174,7 @@ class Phase2DBApiController extends Controller
                     ->where('machine_id', $machine->code)
                     ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
                     ->first();
-                $losx = Losx::find($plan->lo_sx);
+                $losx = Losx::find($plan->lo_sx ?? '');
                 $product = $losx->product ?? null;
                 $tm = [
                     "cong_doan" => mb_strtoupper($plan->line->name ?? "", 'UTF-8'),
@@ -247,7 +247,7 @@ class Phase2DBApiController extends Controller
                 // Ignore status 0
                 if ($status == 0) continue;
 
-                $losx = Losx::find($plan->lo_sx);
+                $losx = Losx::find($plan->lo_sx ?? '');
                 $product = $losx->product ?? null;
                 $tm = [
                     "cong_doan" => mb_strtoupper($info->line->name, 'UTF-8'),
@@ -306,6 +306,7 @@ class Phase2DBApiController extends Controller
                     ->first();
                 $losx = Losx::find($plan->lo_sx ?? '');
                 $product = $losx->product ?? null;
+                $sumLotPlan = $plan->sl_giao_sx;
                 $tm = [
                     "cong_doan" => mb_strtoupper($machine->line->name ?? "", 'UTF-8'),
                     'machine_code' => $machine->code,
@@ -359,7 +360,7 @@ class Phase2DBApiController extends Controller
                 // Ignore status 0
                 if ($status == 0) continue;
 
-                $losx = Losx::find($plan->lo_sx);
+                $losx = Losx::find($plan->lo_sx ?? '');
                 $product = $losx->product ?? null;
                 $tm = [
                     'target' => $target,
