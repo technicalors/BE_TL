@@ -306,7 +306,7 @@ class Phase2DBApiController extends Controller
                     ->first();
                 $losx = Losx::find($plan->lo_sx ?? '');
                 $product = $losx->product ?? null;
-                $sumLotPlan = $plan->sl_giao_sx;
+                $sumLotPlan = $plan->sl_giao_sx ?? 0;
                 $tm = [
                     "cong_doan" => mb_strtoupper($machine->line->name ?? "", 'UTF-8'),
                     'machine_code' => $machine->code,
