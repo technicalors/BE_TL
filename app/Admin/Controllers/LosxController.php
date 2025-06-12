@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 class LosxController extends Controller
 {
     use API;
-    public function gpetpPriorities(Request $request)
+    public function getPriorities(Request $request)
     {
         // Subquery: Lấy created_at mới nhất cho từng product_id
 
