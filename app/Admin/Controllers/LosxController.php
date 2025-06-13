@@ -20,7 +20,7 @@ class LosxController extends Controller
         $sub = Losx::selectRaw('product_id, MAX(created_at) as latest_created_at')
             ->groupBy('product_id');
         if ($request->product_id) {
-            $sub->where('produc t_id', $request->product_id);
+            $sub->where('product_id', $request->product_id);
         }
         // Xây dựng query: gọi with() trên query builder trước khi get()
         $query = Losx::with('productionOrderHistory.line')
