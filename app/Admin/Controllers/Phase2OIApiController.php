@@ -1624,7 +1624,6 @@ class Phase2OIApiController extends Controller
         } else {
             $product = $infoCongDoan->losx->product ?? null;
         }
-        $product = $infoCongDoan->losx->product ?? null;
         $material = Material::find($infoCongDoan->product_id);
 
         $line = $infoCongDoan->line;
