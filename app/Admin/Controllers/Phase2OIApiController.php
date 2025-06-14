@@ -627,7 +627,7 @@ class Phase2OIApiController extends Controller
                 'plan_id' => $plan->id
             ]);
             // Lưu lại những lần kiểm tra trước đó
-            if(!empty($previousLineLot)){
+            if (!empty($previousLineLot)) {
                 $dau_noi = LotErrorLog::where('lot_id', $previousLineLot->lot_id)->where('machine_code', $previousLineLot->machine_code)->where('line_id', $previousLineLot->line_id)->where('lo_sx', $previousLineLot->lo_sx)->get();
                 foreach ($dau_noi as $key => $value) {
                     LotErrorLog::create([
@@ -691,7 +691,7 @@ class Phase2OIApiController extends Controller
         if (!$current_plan->pass_input_lot_id) {
             // $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $current_plan->product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
             // return in_array($machine->line_id, [24, 25]) && $hanh_trinh_san_xuat[$machine->line_id] == 1;
-            
+
             // $currentLineIndex = $hanh_trinh_san_xuat[$machine->line_id] ?? 0;
             // $previousLineId = collect($hanh_trinh_san_xuat)
             //     ->filter(function ($value, $lineId) use ($currentLineIndex) {
@@ -1619,15 +1619,20 @@ class Phase2OIApiController extends Controller
 
     public function formatTemTrang($infoCongDoan, $request)
     {
+        if ($infoCongDoan->line_id === 24) {
+            $product = $infoCongDoan->product ?? null;
+        } else {
+            $product = $infoCongDoan->losx->product ?? null;
+        }
         $product = $infoCongDoan->losx->product ?? null;
         $material = Material::find($infoCongDoan->product_id);
-        
+
         $line = $infoCongDoan->line;
-        
+
         $product_id = $infoCongDoan->product_id;
-        if($material){
+        if ($material) {
             $productBom = Bom::where('material_id', $material->id)->whereRaw('priority REGEXP "^[0-9]+$"')->orderBy('id')->first();
-            if($productBom){
+            if ($productBom) {
                 $product_id = $productBom->product_id;
             }
         }
@@ -1669,7 +1674,7 @@ class Phase2OIApiController extends Controller
         } else {
             $so_luong_tem_trang = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_tem_vang - $infoCongDoan->sl_ng;
         }
-        
+
         $data = [];
         $data['lot_id'] = $infoCongDoan->lot_id;
         $data['lsx'] = $infoCongDoan->lo_sx;
@@ -3519,7 +3524,7 @@ class Phase2OIApiController extends Controller
                 ]);
                 $sl_tem_vang += $value;
             }
-            if($line->id != 29){
+            if ($line->id != 29) {
                 $sl_con_lai = $sl_dau_ra - $sl_ng - $sl_tem_vang;
                 if ($sl_con_lai < 0) {
                     return $this->failure([], "Số lượng Tem vàng vượt quá số lượng sản xuất");
@@ -3538,7 +3543,7 @@ class Phase2OIApiController extends Controller
                     'sl_tem_vang' => $sl_tem_vang
                 ]);
             }
-            
+
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -3581,21 +3586,20 @@ class Phase2OIApiController extends Controller
 
         try {
             DB::beginTransaction();
-            if($line->id == 26){
+            if ($line->id == 26) {
                 $group_yellow_stamp_info_quantity = (int)GroupYellowStampInfo::where('info_cong_doan_id', $infoCongDoan->id)->sum('quantity');
                 $sl_con_lai = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang - $group_yellow_stamp_info_quantity;
-                Log::debug(['sl_con_lai'=>$sl_con_lai]);
+                Log::debug(['sl_con_lai' => $sl_con_lai]);
                 $sl_con_lai = $sl_con_lai < 0 ? 0 : $sl_con_lai;
-            } else if($line->id == 29){
+            } else if ($line->id == 29) {
                 //Do sl_dau_ra_hang_loat = sl đã in tem + sl_ng + sl tem vàng
                 $sl_con_lai = $infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_dau_ra_hang_loat;
-            }
-            else{
+            } else {
                 $sl_con_lai = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang;
             }
             if ($sl_con_lai < 0) {
                 return $this->failure([], "Số lượng Tem vàng vượt quá số lượng sản xuất");
-            } elseif($sl_con_lai > 0){
+            } elseif ($sl_con_lai > 0) {
                 return $this->failure([], "Vẫn còn số lượng đạt chưa thể in tem vàng");
             } elseif ($sl_con_lai === 0) {
                 Lot::updateOrCreate(['id' => $infoCongDoan->lot_id], [
