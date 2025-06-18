@@ -1638,7 +1638,7 @@ class Phase2OIApiController extends Controller
         }
         $product_journey = Spec::where('product_id', $product_id)->where('slug', 'hanh-trinh-san-xuat')->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
         if(count($bom) === 1 && !isset($product_journey['25'])){
-            $product = $bom->product;
+            $product = $bom->first()->product ?? null;
         }
         $currentLineIndex = $product_journey[$infoCongDoan->line_id] ?? 0;
         $nextLineIds = collect($product_journey)
