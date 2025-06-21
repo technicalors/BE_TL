@@ -2446,6 +2446,10 @@ class Phase2OIApiController extends Controller
     public function formatTemChonSamsung($stamp)
     {
         $template = $stamp->template;
+        $date = Carbon::parse($stamp->created_at);
+        if ($date->isSunday()) {
+            $date->subDay();
+        }
         $data = [
             'part_no' => $template->part_no ?? "",
             'specification' => $template->specification ?? "",
@@ -2456,7 +2460,7 @@ class Phase2OIApiController extends Controller
             'vendor_name' => $template->vendor_name ?? "",
             'vendor_code' => $template->vendor_code ?? "",
             'week' => 'W' . Carbon::parse($stamp->created_at)->format('W'),
-            'created_at' => $stamp->created_at
+            'created_at' => $date->format('Y-m-d H:i:s')
         ];
         return $data;
     }
@@ -2464,6 +2468,10 @@ class Phase2OIApiController extends Controller
     public function formatTemBoSamsung($stamp, $so_luong)
     {
         $template = $stamp->template;
+        $date = Carbon::parse($stamp->created_at);
+        if ($date->isSunday()) {
+            $date->subDay();
+        }
         $data = [
             'part_no' => $stamp->template->part_no ?? "",
             'specification' => $stamp->template->specification ?? "",
@@ -2474,7 +2482,7 @@ class Phase2OIApiController extends Controller
             'vendor_name' => $stamp->template->vendor_name ?? "",
             'vendor_code' => $stamp->template->vendor_code ?? "",
             'week' => 'W' . Carbon::parse($stamp->created_at)->format('W'),
-            'created_at' => $stamp->created_at,
+            'created_at' => $date->format('Y-m-d H:i:s')
         ];
         return $data;
     }
