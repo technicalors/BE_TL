@@ -1678,6 +1678,10 @@ class Phase2OIApiController extends Controller
             $so_luong_tem_trang = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_tem_vang - $infoCongDoan->sl_ng;
         }
 
+        $date = Carbon::parse($infoCongDoan->created_at);
+        if ($date->isSunday()) {
+            $date->subDay();
+        }
         $data = [];
         $data['lot_id'] = $infoCongDoan->lot_id;
         $data['lsx'] = $infoCongDoan->lo_sx;
@@ -1691,6 +1695,8 @@ class Phase2OIApiController extends Controller
         $data['ghi_chu'] = $ghi_chu ?? "";
         $data['machine_code'] = $infoCongDoan->machine_code;
         $data['dau_noi'] = implode(' | ', $dau_noi);
+        $data['datetime'] = $date->copy()->format('d/m/Y H:i:s');
+        $data['date'] = $date->copy()->format('d/m/Y');
         if ($infoCongDoan->line_id == 26) {
             $group_yellow_stamp_info_quantity = GroupYellowStampInfo::where('info_cong_doan_id', $infoCongDoan->id)->sum('quantity');
             $so_luong_tem_trang = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang - $group_yellow_stamp_info_quantity;
@@ -3688,6 +3694,10 @@ class Phase2OIApiController extends Controller
         foreach ($log as $key => $value) {
             $errors[] = "$key: $value";
         }
+        $date = $infoCongDoan ? Carbon::parse($infoCongDoan->created_at) : now();
+        if ($date->isSunday()) {
+            $date->subDay();
+        }
         $ghi_chu = "Hàng tem vàng - " . implode(',', $loi_tem_vang);
         $data = [];
         $data['lot_id'] = $infoCongDoan->lot_id ?? "";
@@ -3703,6 +3713,8 @@ class Phase2OIApiController extends Controller
         $data['tinh_trang_loi'] = implode(', ', $errors);
         $data['ghi_chu'] = $ghi_chu;
         $data['machine_code'] = $infoCongDoan->machine_code ?? "";
+        $data['datetime'] = $date->copy()->format('d/m/Y H:i:s');
+        $data['date'] = $date->copy()->format('d/m/Y');
         return $data;
     }
 
