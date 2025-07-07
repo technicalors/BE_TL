@@ -1619,11 +1619,11 @@ class Phase2OIApiController extends Controller
 
     public function formatTemTrang($infoCongDoan, $request)
     {
-        // if ($infoCongDoan->line_id == 24) {
-        //     $product = $infoCongDoan->product ?? null;
-        // } else {
+        if ($infoCongDoan->line_id == 24) {
+            $product = $infoCongDoan->product ?? null;
+        } else {
             $product = $infoCongDoan->losx->product ?? null;
-        // }
+        }
         $bom = Bom::where('material_id', $infoCongDoan->product_id)->get();
         $material = Material::find($infoCongDoan->product_id);
 
