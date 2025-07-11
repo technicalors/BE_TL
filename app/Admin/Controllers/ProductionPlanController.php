@@ -1350,6 +1350,10 @@ class ProductionPlanController extends AdminController
             if ($losx->status != 1) {
                 continue;
             }
+            //Bỏ qua công đoạn chọn
+            if ($plan->line_id == 29) {
+                continue;
+            }
             $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $plan->lo_sx)->where('line_id', $plan->line_id)->orderBy('updated_at', 'desc')->first();
             if (!$productionOrderHistory) {
                 continue;
@@ -1466,6 +1470,10 @@ class ProductionPlanController extends AdminController
         foreach ($productionOrderPriorities as $productionOrderPriority) {
             $sortedHistories = $productionOrderPriority->productionOrderHistory->sortByDesc('updated_at');
             foreach ($sortedHistories as $key => $history) {
+                //Bỏ qua công đoạn chọn
+                if ($history->line_id == 29) {
+                    continue;
+                }
                 $setupTime = $this->getSetupTime($productionOrderPriority->product_id, $history->line_id);
                 $remainQuantityOrder = $history->order_quantity - $history->produced_quantity;
                 if ($remainQuantityOrder <= 0) {
@@ -1483,7 +1491,6 @@ class ProductionPlanController extends AdminController
                     continue;
                 }
                 $machineShifts = $this->getMachineProductionShifts($machinePriorityOrder->machine_id, date('Y-m-d', strtotime('+1 day')));
-                Log::debug([$history->line_id, $machinePriorityOrder->machine_id, $machineShifts]);
                 if (count($machineShifts) <= 0) {
                     if ($history->line_id == 29) {
                         throw new Exception("Máy " . $machinePriorityOrder->machine_id . " chưa được phân ca ngày " . date('d-m-Y', strtotime('+1 day')), 1);
@@ -1511,7 +1518,6 @@ class ProductionPlanController extends AdminController
                         ->where('date', date('Y-m-d', strtotime('+1 day')))
                         ->where('shift_id', $machineShifts->first()->shift_id ?? null)
                         ->first();
-                    Log::debug($machineShift);
                     $efficiency = ($machineShift->operator_quantity ?? 1) * $efficiency;
                 }
 
