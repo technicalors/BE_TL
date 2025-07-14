@@ -2975,7 +2975,9 @@ class Phase2UIApiController extends Controller
             ->whereNotNull('info->start_time')
             ->whereNotNull('info->end_time');
         // return $query->get();
+
         $count = $query->count();
+        $count_down = $query->where('info->error_id', '=', 124)->count();
         $time = $query->select(DB::raw("SUM(JSON_UNQUOTE(JSON_EXTRACT(info, '$.end_time')) - JSON_UNQUOTE(JSON_EXTRACT(info, '$.start_time'))) as stop_time"))->first();
         $stopTime = 0;
         if (!$time->stop_time) {
@@ -2995,6 +2997,10 @@ class Phase2UIApiController extends Controller
                     'name' => 'Số giờ dừng',
                     'data' => $stopTime,
                 ],
+                [
+                    'name' => 'Số lần hỏng máy',
+                    'data' => $count_down,
+                ]
             ]
         ];
     }
