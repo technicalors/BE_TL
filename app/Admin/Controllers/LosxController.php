@@ -57,7 +57,11 @@ class LosxController extends Controller
                 $calculatedQuantity = ProductionPlanController::calculateProductionOutput($losx->product_id, $productionStep->line_id, $quantity);
                 $quantity = $calculatedQuantity;
             }
-            ProductionOrderHistory::where('lo_sx', $losx->id)->where('line_id', $productionStep->line_id)->update(['order_quantity' => $quantity]);
+            ProductionOrderHistory::updateOrCreate([
+                'lo_sx'=>$losx->id,
+                'line_id'=>$productionStep->line_id
+            ],
+            ['order_quantity' => $quantity]);
         }
         return $this->success('', 'Cập nhật thành công');
     }

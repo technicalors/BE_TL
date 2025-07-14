@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class SelectionLineStamp extends Model
 {
@@ -13,7 +14,12 @@ class SelectionLineStamp extends Model
     protected $fillable=['id', 'lo_sx', 'box_number', 'production_batch', 'lot_id', 'qr_code', 'selection_line_stamp_template_id', 'quantity', 'po_type', 'pack_quantity', 'plan_id'];
 
     public static function generateStampLotId(){
-        $productionBatch = date('ymd');
+        $date = Carbon::now();
+        if ($date->isSunday()) {
+            $date->subDay();
+        }
+        $productionBatch = $date->format('ymd');
+        
         $latestStamp = SelectionLineStamp::where('production_batch', $productionBatch)
             ->orderBy('lot_id', 'desc')
             ->first();

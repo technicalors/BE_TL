@@ -581,10 +581,11 @@ class Phase2OIApiController extends Controller
                 if (!$previousLineLot) {
                     return $this->failure([], 'Không tìm thấy lot đã chạy công đoạn trước');
                 }
-                if ($previousLineLot->line_id == 24) {
+                if ($previousLineLot->line_id == 24 || $previousLineLot->line_id == 25) {
                     $bomProducts = Bom::where(function ($subQuery) use ($previousLineLot) {
                         $subQuery->where('material_id', $previousLineLot->product_id)->orWhere('product_id', $previousLineLot->product_id);
                     })->pluck('product_id')->toArray();
+                    $bomProducts[] = $previousLineLot->product_id;
                     if (!in_array($current_plan->product_id, $bomProducts)) {
                         return $this->failure($previousLineLot, 'Không khớp mã sản phẩm');
                     }
@@ -626,7 +627,7 @@ class Phase2OIApiController extends Controller
                 'plan_id' => $plan->id
             ]);
             // Lưu lại những lần kiểm tra trước đó
-            if(!empty($previousLineLot)){
+            if (!empty($previousLineLot)) {
                 $dau_noi = LotErrorLog::where('lot_id', $previousLineLot->lot_id)->where('machine_code', $previousLineLot->machine_code)->where('line_id', $previousLineLot->line_id)->where('lo_sx', $previousLineLot->lo_sx)->get();
                 foreach ($dau_noi as $key => $value) {
                     LotErrorLog::create([
@@ -690,7 +691,7 @@ class Phase2OIApiController extends Controller
         if (!$current_plan->pass_input_lot_id) {
             // $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $current_plan->product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
             // return in_array($machine->line_id, [24, 25]) && $hanh_trinh_san_xuat[$machine->line_id] == 1;
-            
+
             // $currentLineIndex = $hanh_trinh_san_xuat[$machine->line_id] ?? 0;
             // $previousLineId = collect($hanh_trinh_san_xuat)
             //     ->filter(function ($value, $lineId) use ($currentLineIndex) {
@@ -995,11 +996,18 @@ class Phase2OIApiController extends Controller
         $grouped_infos = GroupYellowStampInfo::where('group_yellow_stamp_id', $group_yellow_stamp->id)->get();
         Log::debug($grouped_infos);
         $yellow_stamp_history = [];
-        // foreach ($grouped_infos as $grouped_info) {
-        //     if (!$grouped_info->error_id) continue;
-        //     $yellow_stamp_history[] = $grouped_info->error_id;
-        // }
-        $ghi_chu = "Hàng tem vàng" . (count($yellow_stamp_history) > 0 ? (" - " . implode(', ', $yellow_stamp_history)) : "");
+        foreach ($grouped_infos as $grouped_info) {
+            if (!$grouped_info->error_id) continue;
+            if (!isset($yellow_stamp_history[$grouped_info->error_id])) {
+                $yellow_stamp_history[$grouped_info->error_id] = 0;
+            }
+            $yellow_stamp_history[$grouped_info->error_id] += $grouped_info->quantity;
+        }
+        $loi_tem_vang = [];
+        foreach ($yellow_stamp_history as $key => $value) {
+            $loi_tem_vang[] = $key . ": " . $value;
+        }
+        $ghi_chu = "Hàng tem vàng" . (count($loi_tem_vang) > 0 ? (" - " . implode(', ', $loi_tem_vang)) : "");
         $tem = [
             'lot_id' => $lot_tem_vang->id,
             'lsx' => $lot_tem_vang->lo_sx,
@@ -1611,10 +1619,27 @@ class Phase2OIApiController extends Controller
 
     public function formatTemTrang($infoCongDoan, $request)
     {
-        $product = $infoCongDoan->losx->product ?? null;
-        $material = $infoCongDoan->material;
+        if ($infoCongDoan->line_id == 24) {
+            $product = $infoCongDoan->product ?? null;
+        } else {
+            $product = $infoCongDoan->losx->product ?? null;
+        }
+        $bom = Bom::where('material_id', $infoCongDoan->product_id)->get();
+        $material = Material::find($infoCongDoan->product_id);
+
         $line = $infoCongDoan->line;
-        $product_journey = Spec::where('product_id', $product->id ?? null)->where('slug', 'hanh-trinh-san-xuat')->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
+
+        $product_id = $infoCongDoan->product_id;
+        if ($material) {
+            $productBom = Bom::where('material_id', $material->id)->whereColumn('material_id' , '!=', 'product_id')->whereRaw('priority REGEXP "^[0-9]+$"')->orderBy('id')->first();
+            if ($productBom) {
+                $product_id = $productBom->product_id;
+            }
+        }
+        $product_journey = Spec::where('product_id', $product_id)->where('slug', 'hanh-trinh-san-xuat')->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
+        if(count($bom) === 1 && !isset($product_journey['25'])){
+            $product = $bom->first()->product ?? null;
+        }
         $currentLineIndex = $product_journey[$infoCongDoan->line_id] ?? 0;
         $nextLineIds = collect($product_journey)
             ->filter(function ($value, $lineId) use ($currentLineIndex) {
@@ -1652,7 +1677,11 @@ class Phase2OIApiController extends Controller
         } else {
             $so_luong_tem_trang = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_tem_vang - $infoCongDoan->sl_ng;
         }
-        
+
+        $date = Carbon::parse($infoCongDoan->created_at);
+        if ($date->isSunday()) {
+            $date->subDay();
+        }
         $data = [];
         $data['lot_id'] = $infoCongDoan->lot_id;
         $data['lsx'] = $infoCongDoan->lo_sx;
@@ -1666,6 +1695,8 @@ class Phase2OIApiController extends Controller
         $data['ghi_chu'] = $ghi_chu ?? "";
         $data['machine_code'] = $infoCongDoan->machine_code;
         $data['dau_noi'] = implode(' | ', $dau_noi);
+        $data['datetime'] = $date->copy()->format('d/m/Y H:i:s');
+        $data['date'] = $date->copy()->format('d/m/Y');
         if ($infoCongDoan->line_id == 26) {
             $group_yellow_stamp_info_quantity = GroupYellowStampInfo::where('info_cong_doan_id', $infoCongDoan->id)->sum('quantity');
             $so_luong_tem_trang = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang - $group_yellow_stamp_info_quantity;
@@ -2421,6 +2452,10 @@ class Phase2OIApiController extends Controller
     public function formatTemChonSamsung($stamp)
     {
         $template = $stamp->template;
+        $date = Carbon::parse($stamp->created_at);
+        if ($date->isSunday()) {
+            $date->subDay();
+        }
         $data = [
             'part_no' => $template->part_no ?? "",
             'specification' => $template->specification ?? "",
@@ -2431,7 +2466,7 @@ class Phase2OIApiController extends Controller
             'vendor_name' => $template->vendor_name ?? "",
             'vendor_code' => $template->vendor_code ?? "",
             'week' => 'W' . Carbon::parse($stamp->created_at)->format('W'),
-            'created_at' => $stamp->created_at
+            'created_at' => $date->format('Y-m-d H:i:s')
         ];
         return $data;
     }
@@ -2439,6 +2474,10 @@ class Phase2OIApiController extends Controller
     public function formatTemBoSamsung($stamp, $so_luong)
     {
         $template = $stamp->template;
+        $date = Carbon::parse($stamp->created_at);
+        if ($date->isSunday()) {
+            $date->subDay();
+        }
         $data = [
             'part_no' => $stamp->template->part_no ?? "",
             'specification' => $stamp->template->specification ?? "",
@@ -2449,7 +2488,7 @@ class Phase2OIApiController extends Controller
             'vendor_name' => $stamp->template->vendor_name ?? "",
             'vendor_code' => $stamp->template->vendor_code ?? "",
             'week' => 'W' . Carbon::parse($stamp->created_at)->format('W'),
-            'created_at' => $stamp->created_at,
+            'created_at' => $date->format('Y-m-d H:i:s')
         ];
         return $data;
     }
@@ -3034,9 +3073,6 @@ class Phase2OIApiController extends Controller
 
     public function findSpec($test, $product)
     {
-        $plusOrMinus = "±";
-        $approximate = "~";
-        $fromTo = "-";
         $hang_muc = Str::slug($test->hang_muc);
         $base_line_ids = $test->lines->pluck('id')->toArray();
         $reference = !empty($test->reference) ? explode(",", $test->reference) : [];
@@ -3505,7 +3541,7 @@ class Phase2OIApiController extends Controller
                 ]);
                 $sl_tem_vang += $value;
             }
-            if($line->id != 29){
+            if ($line->id != 29) {
                 $sl_con_lai = $sl_dau_ra - $sl_ng - $sl_tem_vang;
                 if ($sl_con_lai < 0) {
                     return $this->failure([], "Số lượng Tem vàng vượt quá số lượng sản xuất");
@@ -3524,7 +3560,7 @@ class Phase2OIApiController extends Controller
                     'sl_tem_vang' => $sl_tem_vang
                 ]);
             }
-            
+
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -3567,21 +3603,20 @@ class Phase2OIApiController extends Controller
 
         try {
             DB::beginTransaction();
-            if($line->id == 26){
+            if ($line->id == 26) {
                 $group_yellow_stamp_info_quantity = (int)GroupYellowStampInfo::where('info_cong_doan_id', $infoCongDoan->id)->sum('quantity');
                 $sl_con_lai = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang - $group_yellow_stamp_info_quantity;
-                Log::debug(['sl_con_lai'=>$sl_con_lai]);
+                Log::debug(['sl_con_lai' => $sl_con_lai]);
                 $sl_con_lai = $sl_con_lai < 0 ? 0 : $sl_con_lai;
-            } else if($line->id == 29){
+            } else if ($line->id == 29) {
                 //Do sl_dau_ra_hang_loat = sl đã in tem + sl_ng + sl tem vàng
                 $sl_con_lai = $infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_dau_ra_hang_loat;
-            }
-            else{
+            } else {
                 $sl_con_lai = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang;
             }
             if ($sl_con_lai < 0) {
                 return $this->failure([], "Số lượng Tem vàng vượt quá số lượng sản xuất");
-            } elseif($sl_con_lai > 0){
+            } elseif ($sl_con_lai > 0) {
                 return $this->failure([], "Vẫn còn số lượng đạt chưa thể in tem vàng");
             } elseif ($sl_con_lai === 0) {
                 Lot::updateOrCreate(['id' => $infoCongDoan->lot_id], [
@@ -3659,6 +3694,10 @@ class Phase2OIApiController extends Controller
         foreach ($log as $key => $value) {
             $errors[] = "$key: $value";
         }
+        $date = $infoCongDoan ? Carbon::parse($infoCongDoan->created_at) : now();
+        if ($date->isSunday()) {
+            $date->subDay();
+        }
         $ghi_chu = "Hàng tem vàng - " . implode(',', $loi_tem_vang);
         $data = [];
         $data['lot_id'] = $infoCongDoan->lot_id ?? "";
@@ -3674,6 +3713,8 @@ class Phase2OIApiController extends Controller
         $data['tinh_trang_loi'] = implode(', ', $errors);
         $data['ghi_chu'] = $ghi_chu;
         $data['machine_code'] = $infoCongDoan->machine_code ?? "";
+        $data['datetime'] = $date->copy()->format('d/m/Y H:i:s');
+        $data['date'] = $date->copy()->format('d/m/Y');
         return $data;
     }
 

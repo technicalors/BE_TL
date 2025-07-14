@@ -257,7 +257,7 @@ class ErrorController extends AdminController
                     if($line){
                         $input['line_id'] = $line->id;
                     }else{
-                        continue;
+                        $input['line_id'] = null;
                     }
                 }
                 $input['nguyen_nhan'] = $row['F'];

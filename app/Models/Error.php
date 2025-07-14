@@ -28,7 +28,7 @@ class Error extends Model
             [
                 'id'=>'required|unique:errors,id'. ($id ? ",$id" : ""),
                 // 'noi_dung'=>'required',
-                'line_id' => 'required',
+                // 'line_id' => 'required',
                 // 'nguyen_nhan'=>'required', 
                 // 'khac_phuc'=>'required',
                 // 'phong_ngua'=>'required',
@@ -37,7 +37,7 @@ class Error extends Model
                 'id.required' => 'Không có mã lỗi',
                 'id.unique' => 'Mã lỗi đã tồn tại',
                 // 'noi_dung.required'=>'Không có nội dung', 
-                'line_id.required'=>'Không tìm thấy công đoạn',
+                // 'line_id.required'=>'Không tìm thấy công đoạn',
                 // 'nguyen_nhan.required'=>'Không có nguyên nhân',
                 // 'khac_phuc.required'=>'Không có khắc phục', 
                 // 'phong_ngua.required'=>'Không có phòng ngừa', 

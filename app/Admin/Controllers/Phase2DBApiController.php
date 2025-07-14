@@ -3,13 +3,16 @@
 namespace App\Admin\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Bom;
 use App\Models\Factory;
 use App\Models\InfoCongDoan;
 use App\Models\Line;
+use App\Models\Losx;
 use App\Models\Lot;
 use App\Models\LotPlan;
 use App\Models\Machine;
 use App\Models\MachineParameterLogs;
+use App\Models\Material;
 use App\Models\Product;
 use App\Models\ProductionPlan;
 use App\Models\Shift;
@@ -171,11 +174,13 @@ class Phase2DBApiController extends Controller
                     ->where('machine_id', $machine->code)
                     ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
                     ->first();
+                $losx = Losx::find($plan->lo_sx ?? '');
+                $product = $losx->product ?? null;
                 $tm = [
                     "cong_doan" => mb_strtoupper($plan->line->name ?? "", 'UTF-8'),
                     'machine_code' => $machine->code,
                     'machine_name' => $machine->code,
-                    "product" => $plan ? $plan->product->name : '',
+                    "product" => $product->name ?? '',
                     // "sl_dau_ra_kh" => $lotPlan->quantity ?? 0,
                     "sl_dau_ra_kh" => $plan->sl_giao_sx ?? 0,
                     // "sl_thuc_te" => $info->sl_dau_ra_hang_loat - $info->sl_ng,
@@ -215,7 +220,7 @@ class Phase2DBApiController extends Controller
                 $sumInfoActure = InfoCongDoan::where('plan_id', $plan->id)->sum('sl_dau_ra_hang_loat');
 
                 // $plan = $info->lot->getPlanByLine($info->line_id);
-                $product = $info->product ?? null;
+                // $product = $info->product ?? null;
                 // if (!isset($plan)) $plan = $info->lot->plan;
 
                 // $upm = $lotPlan->quantity / (2 * 60);
@@ -242,11 +247,13 @@ class Phase2DBApiController extends Controller
                 // Ignore status 0
                 if ($status == 0) continue;
 
+                $losx = Losx::find($plan->lo_sx ?? '');
+                $product = $losx->product ?? null;
                 $tm = [
                     "cong_doan" => mb_strtoupper($info->line->name, 'UTF-8'),
                     'machine_code' => $machine->code,
                     'machine_name' => $machine->code,
-                    "product" => $product ? $product->name : '',
+                    "product" => $product->name ?? '',
                     // "sl_dau_ra_kh" => $lotPlan->quantity ?? 0,
                     "sl_dau_ra_kh" => $sumLotPlan ?? 0,
                     // "sl_thuc_te" => $info->sl_dau_ra_hang_loat - $info->sl_ng,
@@ -297,11 +304,14 @@ class Phase2DBApiController extends Controller
                     ->where('machine_id', $machine->code)
                     ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
                     ->first();
+                $losx = Losx::find($plan->lo_sx ?? '');
+                $product = $losx->product ?? null;
+                $sumLotPlan = $plan->sl_giao_sx ?? 0;
                 $tm = [
                     "cong_doan" => mb_strtoupper($machine->line->name ?? "", 'UTF-8'),
                     'machine_code' => $machine->code,
                     'machine_name' => $machine->code,
-                    "product" => $plan ? $plan->product?->name : '',
+                    "product" => $product->name ?? '',
                     "sl_dau_ra_kh" => $plan->sl_giao_sx ?? 0,
                     "sl_thuc_te" => 0,
                     "sl_muc_tieu" =>  $sumLotPlan ?? 0,
@@ -324,7 +334,7 @@ class Phase2DBApiController extends Controller
                 $sumInfoActure = (int)InfoCongDoan::where('plan_id', $plan->id)->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->sum('sl_dau_ra_hang_loat');
 
                 // $plan = $info->lot->getPlanByLine($info->line_id);
-                $product = $info->product ?? null;
+                // $product = $info->product ?? null;
                 // if (!isset($plan)) $plan = $info->lot->plan;
                 $status = 0;
 
@@ -350,12 +360,14 @@ class Phase2DBApiController extends Controller
                 // Ignore status 0
                 if ($status == 0) continue;
 
+                $losx = Losx::find($plan->lo_sx ?? '');
+                $product = $losx->product ?? null;
                 $tm = [
                     'target' => $target,
                     "cong_doan" => mb_strtoupper($info->line->name, 'UTF-8'),
                     'machine_code' => $machine->code,
                     'machine_name' => $machine->code,
-                    "product" => $product ? $product->name : '',
+                    "product" => $product->name ?? '',
                     "sl_dau_ra_kh" => $sumLotPlan ?? 0,
                     "sl_thuc_te" => $sumInfoActure ?? 0,
                     "sl_muc_tieu" =>  $sumLotPlan ?? 0,
