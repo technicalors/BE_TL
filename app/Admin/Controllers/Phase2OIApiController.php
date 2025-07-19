@@ -1620,7 +1620,7 @@ class Phase2OIApiController extends Controller
     public function formatTemTrang($infoCongDoan, $request)
     {
         if ($infoCongDoan->line_id == 24) {
-            $product = $infoCongDoan->product ?? null;
+            $product = $infoCongDoan->losx->product ?? null;
         } else {
             $product = $infoCongDoan->losx->product ?? null;
         }
