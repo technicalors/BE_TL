@@ -1344,7 +1344,7 @@ class ProductionPlanController extends AdminController
         $productionPlans = [];
         $machine_load_factors = [];
         $min_qty_to_start_next_process = 1;
-        $plans = ProductionPlan::where('ngay_sx', date('Y-m-d'))->whereIn('status_plan', [ProductionPlan::STATUS_COMPLETED, ProductionPlan::STATUS_IN_PROGRESS, ProductionPlan::STATUS_PENDING])->get();
+        $plans = ProductionPlan::where('ngay_sx', date('Y-m-d'))->whereIn('status_plan', [ProductionPlan::STATUS_COMPLETED, ProductionPlan::STATUS_IN_PROGRESS, ProductionPlan::STATUS_PENDING])->groupBy('lo_sx')->get();
         foreach ($plans as $plan) {
             $losx = Losx::find($plan->lo_sx);
             if ($losx->status != 1) {
