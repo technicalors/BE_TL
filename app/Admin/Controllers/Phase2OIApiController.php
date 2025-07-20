@@ -1619,26 +1619,26 @@ class Phase2OIApiController extends Controller
 
     public function formatTemTrang($infoCongDoan, $request)
     {
-        if ($infoCongDoan->line_id == 24) {
-            $product = $infoCongDoan->losx->product ?? null;
-        } else {
-            $product = $infoCongDoan->losx->product ?? null;
-        }
+        $product = $infoCongDoan->losx->product ?? null;
         $bom = Bom::where('material_id', $infoCongDoan->product_id)->get();
         $material = Material::find($infoCongDoan->product_id);
-
         $line = $infoCongDoan->line;
 
-        $product_id = $infoCongDoan->product_id;
-        if ($material) {
-            $productBom = Bom::where('material_id', $material->id)->whereColumn('material_id' , '!=', 'product_id')->whereRaw('priority REGEXP "^[0-9]+$"')->orderBy('id')->first();
-            if ($productBom) {
-                $product_id = $productBom->product_id;
-            }
+        // $product_id = $infoCongDoan->product_id;
+        // if ($material) {
+        //     $productBom = Bom::where('material_id', $material->id)->whereColumn('material_id' , '!=', 'product_id')->whereRaw('priority REGEXP "^[0-9]+$"')->orderBy('id')->first();
+        //     if ($productBom) {
+        //         $product_id = $productBom->product_id;
+        //     }
+        // }
+        if($infoCongDoan->product_id != $product->id && $infoCongDoan->line_id == 24){
+            $product_id = $infoCongDoan->losx->product_id ?? null;
+        } else {
+            $product_id = $infoCongDoan->product_id;
         }
         $product_journey = Spec::where('product_id', $product_id)->where('slug', 'hanh-trinh-san-xuat')->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
-        if(count($bom) === 1 && !isset($product_journey['25'])){
-            $product = $bom->first()->product ?? null;
+        if(!isset($product_journey['25'])){
+            $product = $infoCongDoan->product;
         }
         $currentLineIndex = $product_journey[$infoCongDoan->line_id] ?? 0;
         $nextLineIds = collect($product_journey)
