@@ -238,8 +238,8 @@ Route::group([
     $router->post('/plan/lsx/update', [ApiMobileController::class, 'lsxUpdate']);
     $router->get('/plan/lsx/log', [ApiMobileController::class, 'lsxLog']);
     $router->delete('product_plan/destroy', [ApiMobileController::class, 'destroyProductPlan']);
-    $router->post('product_plan/store', [ApiMobileController::class, 'storeProductPlan']);
-    $router->post('product_plan/update', [ApiMobileController::class, 'updateProductPlan']);
+    $router->post('product_plan/store', [ApiMobileController::class, 'storeProductPlan'])->middleware('prevent-duplicate-requests');;
+    $router->post('product_plan/update', [ApiMobileController::class, 'updateProductPlan'])->middleware('prevent-duplicate-requests');;
 
     $router->post('/plan/lsx/test', [ApiMobileController::class, 'lsxTest']);
 
@@ -778,8 +778,8 @@ Route::group([
 
     Route::get('update-finished-product-inventory', [ApiUIController::class, 'updateFinishedProductInventory']);
 
-    Route::post('production_plan/store', [ProductionPlanController::class, 'storeProductionPlanAuto']);
-    Route::post('production_plan/approve', [ProductionPlanController::class, 'approveProductionPlanAuto']);
+    Route::post('production_plan/store', [ProductionPlanController::class, 'storeProductionPlanAuto'])->middleware('prevent-duplicate-requests');;
+    Route::post('production_plan/approve', [ProductionPlanController::class, 'approveProductionPlanAuto'])->middleware('prevent-duplicate-requests');;
     Route::apiResource('production-order-priorities', ProductionOrderPriorityController::class);
     Route::post('production-order-priorities/update', [ProductionOrderPriorityController::class, 'updateRecord']);
     Route::post('production-order-priorities/complete', [ProductionOrderPriorityController::class, 'complete']);
