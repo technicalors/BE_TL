@@ -37,6 +37,7 @@ use App\Admin\Controllers\ProductionOrderPriorityController;
 use App\Admin\Controllers\ProductionPlanController;
 use App\Admin\Controllers\ProductOrderController;
 use App\Admin\Controllers\QCCriteriaController;
+use App\Admin\Controllers\SelectionLineStampTemplateController;
 use App\Http\Controllers\ShiftBreakController;
 use App\Admin\Controllers\StampController;
 use App\Http\Controllers\FcPlantController;
@@ -844,6 +845,11 @@ Route::group([
     Route::apiResource('error-machines', ErrorMachineController::class);
     Route::post('error-machines/export', [ErrorMachineController::class, 'export']);
     Route::post('error-machines/import', [ErrorMachineController::class, 'import']);
+
+    Route::get('selection-line-stamp-template', [SelectionLineStampTemplateController::class, 'list']);
+    Route::post('selection-line-stamp-template', [SelectionLineStampTemplateController::class, 'create']);
+    Route::patch('selection-line-stamp-template/{id}', [SelectionLineStampTemplateController::class, 'update']);
+    Route::delete('selection-line-stamp-template/{id}', [SelectionLineStampTemplateController::class, 'delete']);
 });
 
 //OI
