@@ -535,17 +535,18 @@ class Phase2OIApiController extends Controller
             ->whereDate('thoi_gian_bat_dau', date('Y-m-d'))
             ->orderBy('status_plan', 'DESC')
             ->orderBy('thoi_gian_bat_dau')
+            ->with('loSX')
             ->first();
         if (!$current_plan) {
             return $this->failure('', 'Chưa có kế hoạch nào đang sản xuất');
         }
         //Kiểm tra xem KH có cho phép không kiểm tra đầu vào không
         if (!$current_plan->pass_input_lot_id && $current_plan->product_id !== 'RD176') {
-            $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $current_plan->product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
+            $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $current_plan->loSX->product_id ?? $current_plan->product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
             // return in_array($machine->line_id, [24, 25]) && $hanh_trinh_san_xuat[$machine->line_id] == 1;
             // $material = Material::find($current_plan->product_id);
             $roll = RollMaterial::with(['material.products', 'warehouse_inventory'])->find($request->scanned_lot);
-            if ($roll && (in_array($machine->line_id, [24, 25]) && $hanh_trinh_san_xuat[$machine->line_id] == 1)) {
+            if ($roll && (in_array($machine->line_id, [24, 25]) && isset($hanh_trinh_san_xuat[$machine->line_id]) && $hanh_trinh_san_xuat[$machine->line_id] == 1)) {
                 $roll = RollMaterial::with(['material.products', 'warehouse_inventory'])->find($request->scanned_lot);
                 if (!$roll) {
                     return $this->failure([], "Không tìm thấy cuộn");
