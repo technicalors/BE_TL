@@ -69,7 +69,7 @@ class ProductionPlan extends Model
     }
     public function loSX()
     {
-        return $this->hasOne(Lot::class, "lo_sx", "lo_sx");
+        return $this->belongsTo(Losx::class, "lo_sx", "id");
     }
     public function line()
     {
