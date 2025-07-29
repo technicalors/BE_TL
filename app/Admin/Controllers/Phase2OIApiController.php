@@ -1639,9 +1639,9 @@ class Phase2OIApiController extends Controller
             $product_id = $infoCongDoan->product_id;
         }
         $product_journey = Spec::where('product_id', $product_id)->where('slug', 'hanh-trinh-san-xuat')->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
-        if(!isset($product_journey['25'])){
-            $product = $infoCongDoan->product;
-        }
+        // if(!isset($product_journey['25'])){
+        //     $product = $infoCongDoan->losx->product;
+        // }
         $currentLineIndex = $product_journey[$infoCongDoan->line_id] ?? 0;
         $nextLineIds = collect($product_journey)
             ->filter(function ($value, $lineId) use ($currentLineIndex) {
