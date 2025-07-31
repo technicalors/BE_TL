@@ -17,13 +17,15 @@ class MachineShiftController extends Controller
         // Validate dữ liệu từ frontend
         $validated = $request->validate([
             'machines' => 'required|array|min:1', // Danh sách máy (mảng)
-            'machines.*' => 'exists:machines,code', // Mỗi máy phải tồn tại trong bảng machines
+            // 'machines.*' => 'exists:machines,code', // Mỗi máy phải tồn tại trong bảng machines
             'shifts' => 'required|array|min:1', // Danh sách ca (mảng)
             'shifts.*' => 'exists:shifts,id', // Mỗi ca phải tồn tại trong bảng shifts
             'dateRange' => 'required|array', // Dải thời gian (start_time, end_time)
             'dateRange.0' => 'required|date', // Đảm bảo đây là chuỗi ngày hợp lệ
             'dateRange.1' => 'required|date', // Đảm bảo đây là chuỗi ngày hợp lệ
         ]);
+        $allMachines = Machine::all()->pluck('code');
+        $machines = array_intersect($request->machines, $allMachines);
 
         // Trích xuất phần date từ timeRange (lấy ngày bắt đầu của dải thời gian)
         $startDate = Carbon::parse($validated['dateRange'][0])->setTimezone('Asia/Ho_Chi_Minh')->format('Y-m-d'); // Chuyển đổi định dạng từ ISO 8601 sang Y-m-d
@@ -34,7 +36,7 @@ class MachineShiftController extends Controller
 
         try {
             // Lặp qua các máy và ca để lưu dữ liệu vào bảng machine_shift
-            foreach ($validated['machines'] as $machineId) {
+            foreach ($machines as $machineId) {
                 foreach ($validated['shifts'] as $shiftId) {
                     // Lưu dữ liệu theo từng ngày trong khoảng thời gian
                     $currentDate = Carbon::parse($startDate);
