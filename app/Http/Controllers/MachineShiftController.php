@@ -24,7 +24,7 @@ class MachineShiftController extends Controller
             'dateRange.0' => 'required|date', // Đảm bảo đây là chuỗi ngày hợp lệ
             'dateRange.1' => 'required|date', // Đảm bảo đây là chuỗi ngày hợp lệ
         ]);
-        $allMachines = Machine::all()->pluck('code');
+        $allMachines = Machine::all()->pluck('code')->toArray();
         $machines = array_intersect($request->machines, $allMachines);
 
         // Trích xuất phần date từ timeRange (lấy ngày bắt đầu của dải thời gian)
