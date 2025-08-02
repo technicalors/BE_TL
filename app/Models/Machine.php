@@ -79,12 +79,12 @@ class Machine extends Model
                 'line_id' => 'required',
                 // 'kieu_loai' => 'required',
                 // 'cong_suat' => 'required',
-                'hang_sx' => 'required',
+                // 'hang_sx' => 'required',
                 // 'nam_sd' => 'required',
-                'don_vi_sd' => 'required',
+                // 'don_vi_sd' => 'required',
                 'ma_so' => 'required',
-                'tinh_trang' => 'required',
-                'vi_tri' => 'required',
+                // 'tinh_trang' => 'required',
+                // 'vi_tri' => 'required',
                 // 'is_iot' => 'required',
             ],
             [
@@ -94,12 +94,12 @@ class Machine extends Model
                 'code.required' => 'Không có mã máy',
                 // 'is_iot.required' => 'Không giá trị là IF',
                 // 'cong_suat.required' => 'Không có công suất',
-                'hang_sx.required' => 'Không có hãng sản xuất',
+                // 'hang_sx.required' => 'Không có hãng sản xuất',
                 // 'nam_sd.required' => 'Không có năm sử dụng',
-                'don_vi_sd.required' => 'Không có đơn vị sử dụng',
+                // 'don_vi_sd.required' => 'Không có đơn vị sử dụng',
                 'ma_so.required' => 'Không có mã số',
-                'tinh_trang.required' => 'Không có tình trạng',
-                'vi_tri' => 'Không có vị trí',
+                // 'tinh_trang.required' => 'Không có tình trạng',
+                // 'vi_tri' => 'Không có vị trí',
             ]
         );
         return $validated;

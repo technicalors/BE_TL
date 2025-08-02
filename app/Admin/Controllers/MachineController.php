@@ -58,7 +58,7 @@ class MachineController extends Controller
      * @param mixed $id
      * @return Show
      */
-    protected function detail($id)
+    protected function show($id)
     {
         $show = new Show(Machine::findOrFail($id));
 
@@ -105,7 +105,7 @@ class MachineController extends Controller
 
     public function index(Request $request)
     {
-        $query = Machine::with(['line', 'device:id,name'])->orderBy('created_at');
+        $query = Machine::with(['line', 'device:id,name']);
         if (isset($request->code)) {
             $query->where('code', 'like', "%$request->code%");
         }
@@ -115,7 +115,7 @@ class MachineController extends Controller
         if (isset($request->withs)) {
             $query->with($request->withs);
         }
-        $machines = $query->get();
+        $machines = $query->get()->sortBy('name', SORT_NATURAL)->values();
         return $this->success($machines);
     }
     public function update(Request $request)
@@ -300,20 +300,20 @@ class MachineController extends Controller
             }
             foreach ($allDataInSheet as $key => $row) {
                 //Lấy dứ liệu từ dòng thứ 2
-                if ($key > 4) {
+                if ($key > 2) {
                     $input = [];
                     $input['name'] = $row['B'];
                     $input['kieu_loai'] = $row['C'];
-                    $input['code'] = trim($row['N']);
-                    $input['ma_so'] = $row['D'];
+                    $input['code'] = trim($row['D']);
+                    $input['ma_so'] = $row['E'];
                     $input['line_id'] = isset($line_arr[Str::slug($row['F'])]) ? $line_arr[Str::slug($row['F'])] : '';
-                    $input['cong_suat'] = $row['E'];
-                    $input['hang_sx'] = $row['G'];
-                    $input['nam_sd'] = $row['H'];
-                    $input['don_vi_sd'] = $row['I'];
-                    $input['tinh_trang'] = $row['J'];
-                    $input['vi_tri'] = $row['K'];
-                    // $input['is_iot'] = $row['M'] === "Có" ? 1 : 0;
+                    $input['cong_suat'] = $row['G'];
+                    $input['hang_sx'] = $row['H'];
+                    $input['nam_sd'] = $row['I'];
+                    $input['don_vi_sd'] = $row['J'];
+                    $input['tinh_trang'] = $row['K'];
+                    $input['vi_tri'] = $row['L'];
+                    $input['is_iot'] = $row['M'] === "Có" ? 1 : 0;
                     if (!empty($input['code']) && !empty($input['line_id'])) {
                         $validated = Machine::validateUpdate($input);
                         if ($validated->fails()) {
