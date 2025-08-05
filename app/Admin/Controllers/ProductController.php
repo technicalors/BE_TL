@@ -264,47 +264,45 @@ class ProductController extends Controller
         $spec_data = [];
         foreach ($currRow as $key => $item) {
             $line_id = [];
-            if (in_array($key, $this->excelColumnRange("DW", "EU", "AD", "AR", "BC", "BL", "BU", "CF", "CP", "DB"))) {
+            if (in_array($key, $this->excelColumnRange("EF", "FD", "AD", "AT", "BF", "BP", "BZ", "CL", "CW", "DJ"))) {
                 $line_id = [24]; //Gap dan lien hoan
-            } else if (in_array($key, $this->excelColumnRange("GI", "HF", "AE", "AS", "BD", "BM", "BV", "CG", "CQ", "DC"))) {
+            } else if (in_array($key, $this->excelColumnRange("GR", "HO", "AE", "AU", "BG", "BQ", "CA", "CM", "CX", "DK"))) {
                 $line_id = [27]; //Dan liner
-            } else if (in_array($key, $this->excelColumnRange("EV", "GH", "AF", "AU", "BE", "BN", "BW", "CH", "CS", "DE"))) {
+            } else if (in_array($key, $this->excelColumnRange("HP", "IR", "AF", "AV", "BH", "BP", "CB", "CN", "CY", "DL"))) {
+                $line_id = [31]; //Dán Tem
+            } else if (in_array($key, $this->excelColumnRange("FE", "GQ", "AG", "AX", "BI", "BS", "CC", "CO", "DA", "DN"))) {
                 $line_id = [25]; //In flexo
-            } else if (in_array($key, $this->excelColumnRange("IF", "JY", "AI", "AY", "BH", "BQ", "BZ", "CK", "CW", "DG"))) {
+            } else if (in_array($key, $this->excelColumnRange("JR", "LK", "AJ", 'AK', "BB", "BL", "BV", "CF", "CR", "DE", "DP"))) {
                 $line_id = [26]; //Duc cat
-            } else if (in_array($key, $this->excelColumnRange("", "", "AN", "CD", "DA"))) {
+            } else if (in_array($key, $this->excelColumnRange("", "", "AP", "CJ", "DI"))) {
                 $line_id = [29]; //Chon Phase2 
-            }
-            // else if (in_array($key, $this->excelColumnRange("LJ", "MA"))) {
-            //     $line_id = [30]; //OQC Phase2
-            // } 
-            else if (in_array($key, $this->excelColumnRange("JZ", "KD", "CE", "CO"))) {
-                $line_id = [24, 27, 25, 26, 29, 30];
+            } else if (in_array($key, $this->excelColumnRange("LL", "LP", "CK", "CV"))) {
+                $line_id = [24, 27, 25, 26, 29, 30, 31];
             }
 
             foreach ($line_id as $id) {
                 $input = [];
                 if (!empty($item)) {
                     $input['name'] = "";
-                    if ($key === 'CE') {
+                    if ($key === 'CK') {
                         $input['name'] = 'Thời gian lên xuống cuộn';
-                    } else if ($key === 'CO') {
+                    } else if ($key === 'CV') {
                         $input['name'] = 'Số lượng cuộn 1 lần vận chuyển (Cuộn)';
-                    } else if (in_array($key, $this->excelColumnRange("R", "AN"))) {
+                    } else if (in_array($key, $this->excelColumnRange("R", "AP"))) {
                         $input['name'] = 'Hành trình sản xuất';
-                    } else if (in_array($key, $this->excelColumnRange("AR", "BB"))) {
+                    } else if (in_array($key, $this->excelColumnRange("AT", "BE"))) {
                         $input['name'] = "Hao phí vào hàng các công đoạn";
-                    } else if (in_array($key, $this->excelColumnRange("BC", "BK"))) {
+                    } else if (in_array($key, $this->excelColumnRange("BF", "BO"))) {
                         $input["name"] = "Hao phí sản xuất các công đoạn (%)";
-                    } else if (in_array($key, $this->excelColumnRange("BL", "BT"))) {
+                    } else if (in_array($key, $this->excelColumnRange("BP", "BY"))) {
                         $input["name"] = "Chuẩn bị(Đầu ca)";
-                    } else if (in_array($key, $this->excelColumnRange("BU", "CD"))) {
+                    } else if (in_array($key, $this->excelColumnRange("BZ", "CJ"))) {
                         $input["name"] = "Vận chuyển (chuyển hàng công đoạn trước sang công đoạn sau)";
-                    } else if (in_array($key, $this->excelColumnRange("CF", "CN"))) {
+                    } else if (in_array($key, $this->excelColumnRange("CL", "CU"))) {
                         $input["name"] = "Vào hàng (Setup máy)";
-                    } else if (in_array($key, $this->excelColumnRange("CP", "DA"))) {
+                    } else if (in_array($key, $this->excelColumnRange("CW", "DI"))) {
                         $input["name"] = "Năng suất ấn định/giờ";
-                    } else if (in_array($key, $this->excelColumnRange("DB", "DJ"))) {
+                    } else if (in_array($key, $this->excelColumnRange("DJ", "DS"))) {
                         $input["name"] = "Nhân sự ấn định máy (người)";
                     } else {
                         $input['name'] = $title[$key];
@@ -368,7 +366,7 @@ class ProductController extends Controller
                     continue;
                 }
                 //Lọc dữ liệu
-                $product_data[] = array_intersect_key($row, array_flip($this->product_columns));
+                // $product_data[] = array_intersect_key($row, array_flip($this->product_columns));
                 if (trim($row['B'])) {
                     $product = $this->importProduct(array_intersect_key($row, array_flip($this->product_columns)));
                     // $production_journey = ProductionJourney::create(['product_id' => $product->id], array_intersect_key($row, array_flip($this->production_journey_column)));
@@ -377,7 +375,7 @@ class ProductController extends Controller
                 if ($product) {
                     $this->importMachinePriorityOrder($row, $titleRow2, $product->id, $index);
                 }
-                $material_data[] = array_intersect_key($row, array_flip($this->material_columns));
+                // $material_data[] = array_intersect_key($row, array_flip($this->material_columns));
                 if (trim($row['I'])) {
                     $material = $this->importMaterial(array_intersect_key($row, array_flip($this->material_columns)));
                     if ($material && $product) {
@@ -404,8 +402,8 @@ class ProductController extends Controller
         'E',
         'F',
         'G',
-        'AO',
-        'AP'
+        'AQ',
+        'AR'
     ];
     //import product
     protected function importProduct($product_data)
@@ -416,8 +414,8 @@ class ProductController extends Controller
         $input['ver'] = $product_data['D'];
         $input['his'] = $product_data['E'];
         $input['customer_id'] = $product_data['F'];
-        $input['weight'] = $product_data['AO'];
-        $input['paper_norm'] = $product_data['AP'];
+        $input['weight'] = $product_data['AQ'];
+        $input['paper_norm'] = $product_data['AR'];
         $product[] = $input;
         $product = Product::firstOrCreate(['id' => $input['id']], $input);
         return $product;
@@ -979,33 +977,39 @@ class ProductController extends Controller
         $columnGroups = [
             [
                 'line_id'    => 24,
-                'machineCol' => 'KI',
-                'paramCols'  => ['KI', 'KJ', 'KK', 'KL', 'KM', 'KN'],  // hoặc $this->excelColumnRange('KI','KN')
-                'uph' => 'CP',
+                'machineCol' => 'LU',
+                'paramCols'  => $this->excelColumnRange('LU','LZ'),  // hoặc $this->excelColumnRange('KI','KN')
+                'uph' => 'CV',
             ],
             [
                 'line_id'    => 25,
-                'machineCol' => 'KO',
-                'paramCols'  => ['KO', 'KP', 'KQ', 'KR', 'KS', 'KT', 'KU', 'KV', 'KW', 'KX', 'KY', 'KZ', 'LA', 'LB', 'LC', 'LD', 'LE', 'LF', 'LG', 'LH', 'LI', 'LJ', 'LK'],
-                'uph' => 'CS',
+                'machineCol' => 'MD',
+                'paramCols'  => $this->excelColumnRange('MA','MW'),
+                'uph' => 'CZ',
             ],
             [
                 'line_id'    => 27,
-                'machineCol' => 'LP',
-                'paramCols'  => ['LP', 'LQ', 'LR', 'LS', 'LT', 'LU', 'LV', 'LW', 'LX', 'LY', 'LZ', 'MA', 'MB', 'MC', 'MD', 'ME'],
-                'uph' => 'CQ',
+                'machineCol' => 'NB',
+                'paramCols'  => $this->excelColumnRange('NB','NE'),
+                'uph' => 'CW',
             ],
             [
                 'line_id'    => 26,
-                'machineCol' => 'LZ',
-                'paramCols'  => ['LZ', 'MA', 'MB', 'MC', 'MD', 'ME', 'MF', 'MG', 'MH', 'MI', 'MJ', 'MK', 'ML', 'MM', 'MN', 'MO', 'MP', 'MQ', 'MR'],
-                'uph' => 'CW',
+                'machineCol' => 'NQ',
+                'paramCols'  => $this->excelColumnRange('NQ','NU'),
+                'uph' => 'DD',
             ],
             [
                 'line_id'    => 29,
                 'machineCol' => '',
                 'paramCols'  => [],
-                'uph' => 'DA',
+                'uph' => 'DH',
+            ],
+            [
+                'line_id'    => 31,
+                'machineCol' => 'NF',
+                'paramCols'  => $this->excelColumnRange('NF','NJ'),
+                'uph' => 'CX',
             ],
         ];
         foreach ($columnGroups as $group) {
