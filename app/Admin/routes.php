@@ -394,7 +394,7 @@ Route::group([
 
 Route::group([
     'prefix'        => "/api",
-    'middleware'    => "auth:sanctum",
+    'middleware'    => [],
     'as'            => "mobile/api" . '.',
 ], function (Router $router) {
     $router->post('/machine/update', [ApiMobileController::class, 'exMachineUpdate']);

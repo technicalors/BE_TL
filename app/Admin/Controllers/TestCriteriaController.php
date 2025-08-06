@@ -408,6 +408,7 @@ class TestCriteriaController extends AdminController
                     $lines = Line::whereIn(DB::raw('LOWER(name)'), array_map('strtolower', array_map('trim', $value)))->pluck('id')->toArray();
                 }
                 if (count($lines) <= 0) {
+                    continue;
                     return $this->failure('', 'Không tìm thấy công đoạn');
                 }
                 $input['line_ids'] = $lines;
