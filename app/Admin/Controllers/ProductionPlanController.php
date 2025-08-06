@@ -192,7 +192,7 @@ class ProductionPlanController extends AdminController
             ->where('product_id', $productId)
             ->where('slug', 'nang-suat-an-dinhgio')
             ->first();
-            Log::debug($efficiencySpec);
+            Log::debug([$productId, $lineId]);
             return $efficiencySpec ? $efficiencySpec->value : 0;
         }
         
