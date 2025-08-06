@@ -185,12 +185,14 @@ class ProductionPlanController extends AdminController
         // Truy vấn để lấy giá trị năng suất từ bảng spec theo slug 'nang-suat'
         $uph = MachineProductionMode::where('machine_id', $machineId)->where('product_id', $productId)->where('parameter_name', 'UPH')->first();
         if($uph){
+            Log::info($uph);
             return $uph ? $uph->standard_value : 0;
         }else{
             $efficiencySpec = Spec::where('line_id', $lineId)
             ->where('product_id', $productId)
             ->where('slug', 'nang-suat-an-dinhgio')
             ->first();
+            Log::debug($efficiencySpec);
             return $efficiencySpec ? $efficiencySpec->value : 0;
         }
         
