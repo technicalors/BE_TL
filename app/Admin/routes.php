@@ -4,6 +4,7 @@ use App\Admin\Controllers\ApiMobileController;
 use App\Admin\Controllers\ApiUIController;
 use App\Admin\Controllers\BomController;
 use App\Admin\Controllers\CheckSheetApiController;
+use App\Admin\Controllers\CheckSheetController;
 use App\Admin\Controllers\ErrorMachineApiController;
 use App\Admin\Controllers\ErrorMachineController;
 use App\Admin\Controllers\ExcelHeaderController;
@@ -850,6 +851,12 @@ Route::group([
     Route::post('selection-line-stamp-template', [SelectionLineStampTemplateController::class, 'create']);
     Route::patch('selection-line-stamp-template/{id}', [SelectionLineStampTemplateController::class, 'update']);
     Route::delete('selection-line-stamp-template/{id}', [SelectionLineStampTemplateController::class, 'delete']);
+
+    Route::get('checksheet', [CheckSheetController::class, 'list']);
+    Route::post('checksheet', [CheckSheetController::class, 'create']);
+    Route::patch('checksheet/{id}', [CheckSheetController::class, 'update']);
+    Route::delete('checksheet/{id}', [CheckSheetController::class, 'delete']);
+    Route::post('checksheet/import', [CheckSheetController::class, 'import']);
 });
 
 //OI

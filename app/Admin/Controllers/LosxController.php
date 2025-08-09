@@ -3,6 +3,7 @@
 namespace App\Admin\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Bom;
 use App\Models\Losx;
 use App\Models\ProductionOrderHistory;
 use App\Traits\API;
@@ -57,9 +58,17 @@ class LosxController extends Controller
                 $calculatedQuantity = ProductionPlanController::calculateProductionOutput($losx->product_id, $productionStep->line_id, $quantity);
                 $quantity = $calculatedQuantity;
             }
+            if ($productionStep->line_id == 24) {
+                $bom = Bom::where('product_id', $losx->product_id)->orderBy('id')->first();
+                $component_id = $bom->material_id;
+            } else {
+                $component_id = $losx->product_id;
+            }
             ProductionOrderHistory::updateOrCreate([
                 'lo_sx'=>$losx->id,
-                'line_id'=>$productionStep->line_id
+                'line_id'=>$productionStep->line_id,
+                'product_id'=>$losx->product_id,
+                'component_id'=>$component_id
             ],
             ['order_quantity' => $quantity]);
         }

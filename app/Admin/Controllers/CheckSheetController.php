@@ -4,94 +4,115 @@ namespace App\Admin\Controllers;
 
 use App\Models\CheckSheet;
 use App\Models\CheckSheetWork;
+use App\Traits\API;
 use Encore\Admin\Controllers\AdminController;
 use Encore\Admin\Form;
 use Encore\Admin\Grid;
 use Encore\Admin\Show;
 use Hamcrest\Type\IsNumeric;
+use Illuminate\Http\Request;
 
 class CheckSheetController extends AdminController
 {
-    /**
-     * Title for current resource.
-     *
-     * @var string
-     */
-    protected $title = 'CheckSheet';
-
-    /**
-     * Make a grid builder.
-     *
-     * @return Grid
-     */
-    protected function grid()
+    use API;
+    public function list(Request $request)
     {
-        $grid = new Grid(new CheckSheet());
-        $grid->tools(function ($tool) {
-            $tool->append($this->upload_xlsx('/admin/check-sheets/import', 'Chọn file check-sheet'));
-        });
-        $grid->actions(function ($actions) {
-            $actions->disableDelete();
-            $actions->disableEdit();
-            $actions->disableView();
-        });
-        // $grid->column('id', __('Id'));
-        $grid->column('line.name', __('Máy'))->label();
-        $grid->column('hang_muc', __('Hạng mục'));
-        $grid->column('checkSheetWork', __('Chi tiết công việc'))->display(
-            function ($item) {
-                $html = "";
-                foreach ($item as $x) {
-                    $congviec = $x['cong_viec'];
-                    $html .= "<div>- {$congviec}</div> ";
-                }
-                return $html;
+        $query = CheckSheet::orderBy('created_at', 'DESC');
+        if (isset($request->product_id)) {
+            $query->where('product_id', 'like', "%$request->product_id%");
+        }
+        if (isset($request->product_name)) {
+            $query->whereHas('product', function ($q) use ($request) {
+                $q->where('name', 'like', "%$request->product_name%");
+            });
+        }
+        $total = $query->count();
+        if (isset($request->page) && isset($request->pageSize)) {
+            // return $request->page - 1;
+            $query->offset((($request->page - 1) ?? 0) * $request->pageSize)->limit($request->pageSize);
+        }
+        $query->with('product');
+        $result = $query->get();
+        return $this->success(['data' => $result, 'total' => $total]);
+    }
+
+    public function create(Request $request)
+    {
+        $input = $request->all();
+        // $validated = SelectionLineStampTemplate::validate($input);
+        // if ($validated->fails()) {
+        //     return $this->failure('', $validated->errors()->first());
+        // }
+        $product = Product::find($input['product_id']);
+        if(!$product){
+            return $this->success($input, 'Không tìm thấy sản phẩm');
+        }
+        try {
+            DB::beginTransaction();
+            $input['part_no'] = $product->name;
+            $input['box_quantity'] = str_pad($input['box_quantity'], 6, '0', STR_PAD_LEFT);
+            $input['po_type'] = 'E1';
+            $selectionLineStampTemplate = SelectionLineStampTemplate::create($input);
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return $this->failure($th, 'Đã xảy ra lỗi');
+        }
+        $selectionLineStampTemplate->material_name = $bom->material->name ?? "";
+        return $this->success($selectionLineStampTemplate, 'Tạo thành công');
+    }
+
+    public function update(Request $request, $id)
+    {
+        $input = $request->all();
+        // $validated = SelectionLineStampTemplate::validate($input, $id);
+        // if ($validated->fails()) {
+        //     return $this->failure('', $validated->errors()->first());
+        // }
+        $product = Product::find($input['product_id']);
+        if(!$product){
+            return $this->success($input, 'Không tìm thấy sản phẩm');
+        }
+        try {
+            DB::beginTransaction();
+            $input['part_no'] = $product->name;
+            $input['box_quantity'] = str_pad($input['box_quantity'], 6, '0', STR_PAD_LEFT);
+            $input['po_type'] = 'E1';
+            $selectionLineStampTemplate = SelectionLineStampTemplate::find($id);
+            if($selectionLineStampTemplate){
+                $selectionLineStampTemplate->update($input);
             }
-
-        );
-       
-
-
-        // $grid->column('created_at', __('Created at'));
-        // $grid->column('updated_at', __('Updated at'));
-
-        return $grid;
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return $this->failure($th, 'Đã xảy ra lỗi');
+        }
+        return $this->success($selectionLineStampTemplate, 'Cập nhật thành công');
     }
 
-    /**
-     * Make a show builder.
-     *
-     * @param mixed $id
-     * @return Show
-     */
-    protected function detail($id)
+    public function delete(Request $request, $id)
     {
-        $show = new Show(CheckSheet::findOrFail($id));
-
-        $show->field('id', __('Id'));
-        $show->field('hang_muc', __('Hang muc'));
-        $show->field('active', __('Active'));
-        $show->field('created_at', __('Created at'));
-        $show->field('updated_at', __('Updated at'));
-
-        return $show;
+        try {
+            DB::beginTransaction();
+            SelectionLineStampTemplate::find($id)->delete();
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+        }
+        return $this->success('', 'Xoá thành công');
     }
 
-    /**
-     * Make a form builder.
-     *
-     * @return Form
-     */
-    protected function form()
+    public function deleteMultiple(Request $request)
     {
-        $form = new Form(new CheckSheet());
-
-        $form->text('hang_muc', __('Hang muc'));
-        $form->number('active', __('Active'))->default(1);
-
-        return $form;
+        try {
+            DB::beginTransaction();
+            SelectionLineStampTemplate::whereIn('id', $request)->delete();
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+        }
+        return $this->success('', 'Xoá thành công');
     }
-
     public function upload_xlsx($action, $title)
     {
         return view('import', [
@@ -100,78 +121,22 @@ class CheckSheetController extends AdminController
         ]);
     }
 
-
-
-    public function import()
+    public function import(Request $request)
     {
-        if (!isset($_FILES['files'])) { {
-                admin_error('Định dạng file không đúng', 'error');
-                return back();
-            }
-        }
+        $request->validate([
+            'file' => 'required|mimes:xlsx',
+        ]);
+        // try {
+        //     Excel::import(new MoldsImport, $request->file('file'));
+        // } catch (\Exception $e) {
+        //     // Handle the exception and return an appropriate response
+        //     return $this->failure(['error' => $e->getMessage()], 'File import failed', 422);
+        // }
+        return $this->success('', 'Upload thành công');
+    }
 
-
-        $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
-        if ($extension == 'csv') {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
-        } elseif ($extension == 'xlsx') {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
-        } else {
-            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
-        }
-        // file path
-        $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
-
-
-
-        $lines = [
-            -1, 10, 12, 11, 13
-        ];
-
-
-        CheckSheet::truncate();
-        CheckSheetWork::truncate();
-
-        for ($k = 1; $k <= 4; $k++) {
-
-            $datasheet =  $spreadsheet->getSheet($k)->toArray(null, true, true, true);
-            $mark_hang_muc = [];
-            for ($i = 1; $i < count($datasheet); $i++) {
-                $row = $datasheet[$i];
-                $hang_muc = "";
-                $flag = false;
-                if ((isset($row['B'][0]) && $row['B'][0] !== 'H' && $row['C'] !== 'ạ') && !$flag) {
-                    $flag = true;
-                }
-                if (!$flag) continue;
-
-
-
-                $hang_muc = $row['B'];
-                $work_name = $row['C'];
-
-                if (!isset($work_name) || !isset($hang_muc)) continue;
-
-                $type =  is_numeric($row['F']);
-
-                if (!isset($mark_hang_muc[$hang_muc])) {
-                    $checksheet = new CheckSheet();
-                    $checksheet->hang_muc = $hang_muc;
-                    $checksheet->line_id = $lines[$k];
-                    $checksheet->save();
-                    $mark_hang_muc[$hang_muc] = $checksheet;
-                } else {
-                    $checksheet = $mark_hang_muc[$hang_muc];
-                }
-                $work  = new CheckSheetWork();
-                $work->cong_viec = $work_name;
-                $work->check_sheet_id = $checksheet->id;
-                $work->type = $type;
-                $work->save();
-            }
-        }
-
-        admin_success('Tải lên thành công', 'success');
-        return back();
+    public function export(Request $request)
+    {
+        return $this->success('', 'Export thành công');
     }
 }
