@@ -3805,6 +3805,9 @@ class ApiMobileController extends AdminController
         $input['cong_doan_sx'] = $machine->line->name;
         $input['ngay_sx'] = date('Y-m-d', strtotime($input['thoi_gian_bat_dau']));
         $productionOrderHistory = ProductionOrderHistory::where('lo_sx', $input['lo_sx'])->where('line_id', $input['line_id'])->orderBy('updated_at', 'desc')->first();
+        if(empty($productionOrderHistory)){
+            return $this->failure([], 'Không tìm thấy dữ liệu thứ tự đơn hàng tại công đoạn ' . $input['cong_doan_sx']);
+        }
         $losx = Losx::find($input['lo_sx']);
         $productionPlan = [
             'lo_sx' => $input['lo_sx'],
