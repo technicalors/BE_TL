@@ -883,4 +883,5 @@ Route::group([
     $router->post('update-inventory', [ApiMobileController::class, 'updateInventory']);
     $router->post('import-list-samsung-stamp-template', [ApiMobileController::class, 'importListSamsungStampTemplate']);
     $router->post('update-so-luong-dau-ra-duc-cat', [ApiMobileController::class, 'updateSoLuongDauRaDucCat']);
+    $router->post('update-line-inventory', [ApiMobileController::class, 'updateLineInventory']);
 });

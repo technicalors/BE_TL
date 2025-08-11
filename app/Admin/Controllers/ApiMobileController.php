@@ -4565,4 +4565,14 @@ class ApiMobileController extends AdminController
         }
         return $this->success([], 'Cập nhật thành công ' . $count . ' lô');
     }
+
+    public function updateLineInventory(Request $request)
+    {
+        LineInventories::all()->map(function($item){
+            if($item->quantity < 0){
+                $item->update(['quantity'=>0]);
+            }
+            return $item;
+        });
+    }
 }
