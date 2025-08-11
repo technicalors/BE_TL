@@ -2,17 +2,18 @@
 
 namespace App\Admin\Controllers;
 
+use App\Http\Controllers\Controller;
 use App\Models\CheckSheet;
 use App\Models\CheckSheetWork;
 use App\Traits\API;
-use Encore\Admin\Controllers\AdminController;
 use Encore\Admin\Form;
 use Encore\Admin\Grid;
 use Encore\Admin\Show;
 use Hamcrest\Type\IsNumeric;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
-class CheckSheetController extends AdminController
+class CheckSheetController extends Controller
 {
     use API;
     public function list(Request $request)
@@ -39,79 +40,59 @@ class CheckSheetController extends AdminController
     public function create(Request $request)
     {
         $input = $request->all();
-        // $validated = SelectionLineStampTemplate::validate($input);
-        // if ($validated->fails()) {
-        //     return $this->failure('', $validated->errors()->first());
-        // }
-        $product = Product::find($input['product_id']);
-        if(!$product){
-            return $this->success($input, 'Không tìm thấy sản phẩm');
-        }
         try {
             DB::beginTransaction();
-            $input['part_no'] = $product->name;
-            $input['box_quantity'] = str_pad($input['box_quantity'], 6, '0', STR_PAD_LEFT);
-            $input['po_type'] = 'E1';
-            $selectionLineStampTemplate = SelectionLineStampTemplate::create($input);
+            $hang_muc = Checksheet::firstOrCreate(['name', $input['hang_muc']])->first();
+            $input['checksheet_id'] = $hang_muc->id;
+            $checksheet = CheckSheetWork::create([
+                'line_id' => $input['line_id'],
+                'machine_id' => $input['machine_id'],
+                'checksheet_id' => $input['checksheet_id'],
+                'cong_viec' => $input['cong_viec'],
+            ]);
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
             return $this->failure($th, 'Đã xảy ra lỗi');
         }
-        $selectionLineStampTemplate->material_name = $bom->material->name ?? "";
-        return $this->success($selectionLineStampTemplate, 'Tạo thành công');
+        return $this->success($checksheet, 'Tạo thành công');
     }
 
     public function update(Request $request, $id)
     {
         $input = $request->all();
-        // $validated = SelectionLineStampTemplate::validate($input, $id);
-        // if ($validated->fails()) {
-        //     return $this->failure('', $validated->errors()->first());
-        // }
-        $product = Product::find($input['product_id']);
-        if(!$product){
-            return $this->success($input, 'Không tìm thấy sản phẩm');
-        }
         try {
             DB::beginTransaction();
-            $input['part_no'] = $product->name;
-            $input['box_quantity'] = str_pad($input['box_quantity'], 6, '0', STR_PAD_LEFT);
-            $input['po_type'] = 'E1';
-            $selectionLineStampTemplate = SelectionLineStampTemplate::find($id);
-            if($selectionLineStampTemplate){
-                $selectionLineStampTemplate->update($input);
+            $hang_muc = Checksheet::firstOrCreate(['name', $input['hang_muc']])->first();
+            $input['checksheet_id'] = $hang_muc->id;
+            $checksheet = CheckSheetWork::find($id);
+            if(!$checksheet){
+                return $this->failure($id, 'Không tìm thấy cheksheet');
             }
+            $checksheet->update([
+                'line_id' => $input['line_id'],
+                'machine_id' => $input['machine_id'],
+                'checksheet_id' => $input['checksheet_id'],
+                'cong_viec' => $input['cong_viec'],
+            ]);
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
             return $this->failure($th, 'Đã xảy ra lỗi');
         }
-        return $this->success($selectionLineStampTemplate, 'Cập nhật thành công');
+        return $this->success($checksheet, 'Cập nhật thành công');
     }
 
     public function delete(Request $request, $id)
     {
         try {
             DB::beginTransaction();
-            SelectionLineStampTemplate::find($id)->delete();
+            $checksheet = CheckSheetWork::find($id)->delete();
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
         }
-        return $this->success('', 'Xoá thành công');
-    }
-
-    public function deleteMultiple(Request $request)
-    {
-        try {
-            DB::beginTransaction();
-            SelectionLineStampTemplate::whereIn('id', $request)->delete();
-            DB::commit();
-        } catch (\Throwable $th) {
-            DB::rollBack();
-        }
-        return $this->success('', 'Xoá thành công');
+        return $this->success($checksheet, 'Xoá thành công');
     }
     public function upload_xlsx($action, $title)
     {

@@ -3686,16 +3686,28 @@ class Phase2OIApiController extends Controller
         $user_qc = CustomUser::find($qc_history->user_id ?? null);
         $loi_tem_vang = YellowStampHistory::where('q_c_history_id', $qc_history->id ?? null)->pluck('errors')->toArray();
         $lotErrorLog = LotErrorLog::where('lot_id', $request->lot_id)->orderBy('line_id')->get();
-        $log = [];
-        foreach ($lotErrorLog as $item) {
+        // $log = [];
+        // foreach ($lotErrorLog as $item) {
+        //     foreach ($item->log ?? [] as $key => $value) {
+        //         $log[$key] = ($log[$key] ?? 0) + $value;
+        //     }
+        // }
+        // $errors = [];
+        // foreach ($log as $key => $value) {
+        //     $errors[] = "$key: $value";
+        // }
+        $dau_noi = [];
+        foreach ($lotErrorLog as $key => $item) {
+            $attemp = 'Lần ' . ($key + 1) . ': ';
+            $loi = [];
             foreach ($item->log ?? [] as $key => $value) {
                 $log[$key] = ($log[$key] ?? 0) + $value;
+                $loi[] = $key . '(' . $value . ')';
             }
+            $attemp .= implode('; ', $loi);
+            $dau_noi[] = $attemp;
         }
-        $errors = [];
-        foreach ($log as $key => $value) {
-            $errors[] = "$key: $value";
-        }
+        
         $date = $infoCongDoan ? Carbon::parse($infoCongDoan->created_at) : now();
         if ($date->isSunday()) {
             $date->subDay();
@@ -3712,7 +3724,7 @@ class Phase2OIApiController extends Controller
         $data['cd_tiep_theo'] = $next_line->name ?? "";
         $data['nguoi_sx'] = $user_sx->name ?? "";
         $data['nguoi_qc'] = $user_qc->name ?? "";
-        $data['tinh_trang_loi'] = implode(', ', $errors);
+        $data['tinh_trang_loi'] = implode(' | ', $dau_noi);
         $data['ghi_chu'] = $ghi_chu;
         $data['machine_code'] = $infoCongDoan->machine_code ?? "";
         $data['datetime'] = $date->copy()->format('d/m/Y H:i:s');
