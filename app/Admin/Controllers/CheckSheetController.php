@@ -18,7 +18,7 @@ class CheckSheetController extends Controller
     use API;
     public function list(Request $request)
     {
-        $query = CheckSheet::orderBy('created_at', 'DESC');
+        $query = CheckSheetWork::orderBy('created_at', 'DESC');
         if (isset($request->product_id)) {
             $query->where('product_id', 'like', "%$request->product_id%");
         }
@@ -32,8 +32,12 @@ class CheckSheetController extends Controller
             // return $request->page - 1;
             $query->offset((($request->page - 1) ?? 0) * $request->pageSize)->limit($request->pageSize);
         }
-        $query->with('product');
+        $query->with('checksheet');
         $result = $query->get();
+        foreach ($result as $key => $value) {
+            $value->hang_muc = $value->checksheet->hang_muc;
+            $value->machine_id = $value->checksheet->machine_id;
+        }
         return $this->success(['data' => $result, 'total' => $total]);
     }
 
