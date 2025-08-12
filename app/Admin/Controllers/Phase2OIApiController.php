@@ -601,7 +601,7 @@ class Phase2OIApiController extends Controller
                     $sl_dat = $scannedLot->so_luong;
                     $line_inventory = LineInventories::where('product_id', $scannedLot->product_id)->where('line_id', $scannedLot->final_line_id)->first();
                     if ($line_inventory) {
-                        $line_inventory->update(['quantity' => $line_inventory->quantity - $sl_dat]);
+                        $line_inventory->update(['quantity' => max($line_inventory->quantity - $sl_dat, 0)]);
                     } else {
                         LineInventories::create(['quantity' => $sl_dat, 'line_id' => $machine->line_id, 'product_id' => $current_plan->product_id]);
                     }
@@ -722,7 +722,7 @@ class Phase2OIApiController extends Controller
                 $sl_dat = $scannedLot->so_luong;
                 $line_inventory = LineInventories::where('product_id', $scannedLot->product_id)->where('line_id', $scannedLot->final_line_id)->first();
                 if ($line_inventory) {
-                    $line_inventory->update(['quantity' => $line_inventory->quantity - $sl_dat]);
+                    $line_inventory->update(['quantity' => max($line_inventory->quantity - $sl_dat, 0)]);
                 } else {
                     LineInventories::create(['quantity' => $sl_dat, 'line_id' => $machine->line_id, 'product_id' => $current_plan->product_id]);
                 }
@@ -751,15 +751,6 @@ class Phase2OIApiController extends Controller
                 'sl_kh' => $so_luong,
                 'plan_id' => $plan->id
             ]);
-            if ($scannedLot) {
-                $sl_dat = $scannedLot->so_luong;
-                $line_inventory = LineInventories::where('product_id', $scannedLot->product_id)->where('line_id', $scannedLot->final_line_id)->first();
-                if ($line_inventory) {
-                    $line_inventory->update(['quantity' => $line_inventory->quantity - $sl_dat]);
-                } else {
-                    LineInventories::create(['quantity' => $sl_dat, 'line_id' => $infoCongDoan->line_id, 'product_id' => $infoCongDoan->product_id]);
-                }
-            }
             if (isset($tracking)) {
                 $tracking->update([
                     'lot_id' => $infoCongDoan->lot_id,
