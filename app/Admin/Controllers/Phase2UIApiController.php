@@ -3097,6 +3097,7 @@ class Phase2UIApiController extends Controller
         $endDate = $request->end_date;
 
         $dateList = [];
+        $listByProduct = [];
 
         if ($dateType == 'date') {
             $period = CarbonPeriod::create($startDate, $endDate);
@@ -3146,8 +3147,71 @@ class Phase2UIApiController extends Controller
         } else {
             return $this->failure('Loại dữ liệu không hợp lệ');
         }
+        $listByProduct = $this->getKPIOrderProductionByProduct(Carbon::parse($startDate)->startOfDay(), Carbon::parse($endDate)->endOfDay());
+        return $this->success(['order_production'=>$dateList, 'product_production'=>$listByProduct]);
+    }
 
-        return $this->success($dateList);
+    // Thêm hàm mới để lấy dữ liệu theo sản phẩm
+    protected function getKPIOrderProductionByProduct($start, $end)
+    {
+        // --- Tổng SL đơn hàng theo sản phẩm ---
+        $poByProduct = DB::table('product_orders as po')
+            ->select('po.product_id', 'po.product_name', DB::raw('SUM(po.quantity) as total_orders'))
+            ->whereBetween('po.order_date', [$start, $end])
+            ->groupBy('po.product_id', 'po.product_name');
+
+        // --- Sản lượng đã SX (line_id = 29) theo sản phẩm ---
+        $producedByProduct = DB::table('info_cong_doan as icd')
+            ->join('losx as lx', 'lx.id', '=', 'icd.lo_sx')
+            ->join('product_orders as po', 'po.id', '=', 'lx.product_order_id')
+            ->whereBetween('po.order_date', [$start, $end])
+            ->where('icd.line_id', 29)
+            ->groupBy('po.product_id', 'po.product_name')
+            ->select('po.product_id', 'po.product_name', DB::raw('SUM(icd.sl_dau_ra_hang_loat - icd.sl_tem_vang - icd.sl_ng) as produced'));
+
+        // --- Ghép 2 nguồn ---
+        $rows = DB::query()
+            ->fromSub($poByProduct, 'po_by_prod')
+            ->leftJoinSub($producedByProduct, 'prod', function ($join) {
+                $join->on('prod.product_id', '=', 'po_by_prod.product_id')
+                    ->on('prod.product_name', '=', 'po_by_prod.product_name');
+            })
+            ->select(
+                'po_by_prod.product_id',
+                'po_by_prod.product_name',
+                DB::raw('po_by_prod.total_orders as total_orders'),
+                DB::raw('COALESCE(prod.produced, 0) as produced')
+            )
+            ->orderBy('po_by_prod.total_orders', 'DESC')
+            ->orderBy('po_by_prod.product_id')
+            ->get()
+            ->map(function ($r) {
+                $total    = (int) $r->total_orders;
+                $produced = (int) $r->produced;
+                $remain   = max(0, $total - $produced);
+
+                return [
+                    'ma_san_pham' => $r->product_id,
+                    'ten_san_pham' => $r->product_name,
+                    'don_hang'     => $total,
+                    'da_san_xuat'  => $produced,
+                    'chua_san_xuat' => $remain,
+                ];
+            })
+            ->take(4)
+            ->values();
+
+        // --- Summary ---
+        $summaryRow = [
+            'ma_san_pham' => '',
+            'ten_san_pham' => 'Tổng',
+            'don_hang'     => (int) $rows->sum('don_hang'),
+            'da_san_xuat'  => (int) $rows->sum('da_san_xuat'),
+            'chua_san_xuat' => (int) $rows->sum('chua_san_xuat'),
+        ];
+
+        // Đưa "Tổng" vào đầu mảng
+        return collect([$summaryRow])->merge($rows)->values();
     }
 
     protected function calculateOrderProductionForPeriod($start, $end, $label)
@@ -3163,8 +3227,7 @@ class Phase2UIApiController extends Controller
             ->join('product_orders as po', 'po.id', '=', 'losx.product_order_id')
             ->whereBetween('po.order_date', [$start, $end])
             ->where('icd.line_id', 29)
-            ->sum('icd.sl_dau_ra_hang_loat');
-
+            ->sum(DB::raw('icd.sl_dau_ra_hang_loat - icd.sl_tem_vang - icd.sl_ng'));
         // Chưa sản xuất
         $notProduced = max(0, $totalOrders - $produced);
 
@@ -3258,7 +3321,7 @@ class Phase2UIApiController extends Controller
             ->whereBetween('po.order_date', [$start, $end])
             ->where('icd.line_id', 29)
             ->groupBy('po.customer_id')
-            ->select('po.customer_id', DB::raw('SUM(icd.sl_dau_ra_hang_loat) as produced'));
+            ->select('po.customer_id', DB::raw('SUM(icd.sl_dau_ra_hang_loat - icd.sl_tem_vang - icd.sl_ng) as produced'));
 
         // Ghép 2 nguồn dữ liệu: tổng đặt hàng (bắt buộc có) + sản lượng (có thể null)
         $rows = DB::query()
@@ -3298,8 +3361,12 @@ class Phase2UIApiController extends Controller
             'summary' => $summary,
         ];
     }
-    public function getOrderProductionSummaryAndByCustomer(Request $request)
+    public function getKPIOrderProductionSummaryAndByCustomer(Request $request)
     {
+        $dateType  = $request->dateType;     // 'date' | 'week' | 'month' | 'year'
+        $startDate = $request->start_date;
+        $endDate   = $request->end_date;
+
         $start = Carbon::parse($request->start_date)->startOfDay();
         $end   = Carbon::parse($request->end_date)->endOfDay();
 
@@ -3316,14 +3383,16 @@ class Phase2UIApiController extends Controller
             ->whereBetween('po.order_date', [$start, $end])
             ->where('icd.line_id', 29)
             ->groupBy('po.customer_id')
-            ->select('po.customer_id', DB::raw('SUM(icd.sl_dau_ra_hang_loat) as produced'));
+            ->select('po.customer_id', DB::raw('SUM(icd.sl_dau_ra_hang_loat - icd.sl_tem_vang - icd.sl_ng) as produced'));
 
         // --- Ghép 2 nguồn ---
         $rows = DB::query()
             ->fromSub($poByCustomer, 'po_by_cus')
             ->leftJoinSub($producedByCustomer, 'prod', 'prod.customer_id', '=', 'po_by_cus.customer_id')
+            ->leftJoin('customer', 'customer.id', '=', 'po_by_cus.customer_id') // Thêm join với bảng customers
             ->select(
                 'po_by_cus.customer_id',
+                'customer.name as customer_name', // Lấy tên customer
                 DB::raw('po_by_cus.total_orders as total_orders'),
                 DB::raw('COALESCE(prod.produced, 0) as produced')
             )
@@ -3336,7 +3405,7 @@ class Phase2UIApiController extends Controller
 
                 return [
                     'customer_id'  => (string) $r->customer_id,
-                    'customer_name' => null,          // nếu có bảng customers thì nối name vào đây
+                    'customer_name' => $r->customer_name, // Lấy tên từ kết quả query
                     'total_orders' => $total,
                     'produced'     => $produced,
                     'not_produced' => $remain,
@@ -3356,13 +3425,36 @@ class Phase2UIApiController extends Controller
         // Đưa "Tổng" vào đầu mảng customers
         $customers = collect([$summaryRow])->merge($rows)->values();
 
+        if ($dateType === 'date') {
+            $start = Carbon::parse($startDate)->startOfDay();
+            $end   = Carbon::parse($endDate)->endOfDay();
+            $start_title = $start->format('d/m');
+            $end_title = $end->format('d/m');
+        } elseif ($dateType === 'week') {
+            $start = Carbon::parse($startDate)->startOfWeek();
+            $end   = Carbon::parse($endDate)->endOfWeek();
+            $start_title = 'Tuần ' . $start->format('W');
+            $end_title = 'Tuần ' . $end->format('W');
+        } elseif ($dateType === 'month') {
+            $start = Carbon::parse($startDate)->startOfMonth();
+            $end   = Carbon::parse($endDate)->endOfMonth();
+            $start_title = 'Tháng ' . $start->format('m/Y');
+            $end_title = 'Tháng ' . $end->format('m/Y');
+        } elseif ($dateType === 'year') {
+            $start = Carbon::parse($startDate)->startOfYear();
+            $end   = Carbon::parse($endDate)->endOfYear();
+            $start_title = 'Năm ' . $start->format('Y');
+            $end_title = 'Năm ' . $end->format('Y');
+        }
         return $this->success([
             'summary'   => [
                 'total_orders' => $summaryRow['total_orders'],
                 'produced'     => $summaryRow['produced'],
                 'not_produced' => $summaryRow['not_produced'],
             ],
-            'customers' => $customers, // phần tử đầu tiên là "Tổng", tiếp theo là từng customer
+            'customers' => $customers, // phần tử đầu tiên là "Tổng", tiếp theo là từng customer,
+            'start'=> $start_title,
+            'end'=> $end_title,
         ]);
     }
 }
