@@ -3147,13 +3147,18 @@ class Phase2UIApiController extends Controller
         } else {
             return $this->failure('Loại dữ liệu không hợp lệ');
         }
-        $listByProduct = $this->getKPIOrderProductionByProduct(Carbon::parse($startDate)->startOfDay(), Carbon::parse($endDate)->endOfDay());
+        // $listByProduct = $this->getKPIOrderProductionByProduct(Carbon::parse($startDate)->startOfDay(), Carbon::parse($endDate)->endOfDay());
         return $this->success(['order_production'=>$dateList, 'product_production'=>$listByProduct]);
     }
 
     // Thêm hàm mới để lấy dữ liệu theo sản phẩm
-    protected function getKPIOrderProductionByProduct($start, $end)
+    protected function getKPIOrderProductionByProduct(Request $request)
     {
+        $dateType  = $request->dateType;     // 'date' | 'week' | 'month' | 'year'
+        $startDate = $request->start_date;
+        $endDate   = $request->end_date;
+        $start = Carbon::parse($request->start_date)->startOfDay();
+        $end   = Carbon::parse($request->end_date)->endOfDay();
         // --- Tổng SL đơn hàng theo sản phẩm ---
         $poByProduct = DB::table('product_orders as po')
             ->select('po.product_id', 'po.product_name', DB::raw('SUM(po.quantity) as total_orders'))
@@ -3185,6 +3190,7 @@ class Phase2UIApiController extends Controller
             ->orderBy('po_by_prod.total_orders', 'DESC')
             ->orderBy('po_by_prod.product_id')
             ->get()
+            ->take(4)
             ->map(function ($r) {
                 $total    = (int) $r->total_orders;
                 $produced = (int) $r->produced;
@@ -3210,7 +3216,33 @@ class Phase2UIApiController extends Controller
         ];
 
         // Đưa "Tổng" vào đầu mảng
-        return collect([$summaryRow])->merge($rows)->values()->take(5);
+        $result = collect([$summaryRow])->merge($rows)->values();
+        if ($dateType === 'date') {
+            $start = Carbon::parse($startDate)->startOfDay();
+            $end   = Carbon::parse($endDate)->endOfDay();
+            $start_title = $start->format('d/m');
+            $end_title = $end->format('d/m');
+        } elseif ($dateType === 'week') {
+            $start = Carbon::parse($startDate)->startOfWeek();
+            $end   = Carbon::parse($endDate)->endOfWeek();
+            $start_title = 'Tuần ' . $start->format('W');
+            $end_title = 'Tuần ' . $end->format('W');
+        } elseif ($dateType === 'month') {
+            $start = Carbon::parse($startDate)->startOfMonth();
+            $end   = Carbon::parse($endDate)->endOfMonth();
+            $start_title = 'Tháng ' . $start->format('m/Y');
+            $end_title = 'Tháng ' . $end->format('m/Y');
+        } elseif ($dateType === 'year') {
+            $start = Carbon::parse($startDate)->startOfYear();
+            $end   = Carbon::parse($endDate)->endOfYear();
+            $start_title = 'Năm ' . $start->format('Y');
+            $end_title = 'Năm ' . $end->format('Y');
+        }
+        return $this->success([
+            'result'=>$result,
+            'start'=> $start_title,
+            'end'=> $end_title,
+        ]);
     }
 
     protected function calculateOrderProductionForPeriod($start, $end, $label)

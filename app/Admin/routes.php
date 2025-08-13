@@ -763,7 +763,7 @@ Route::group([
     $router->get('kpi/ti-le-loi-cong-doan', [Phase2UIApiController::class, 'getKPITiLeLoiCongDoan']);
     $router->get('kpi/hieu-suat-thiet-bi', [Phase2UIApiController::class, 'getKPIMachineEfficiency']);
     $router->get('kpi/so-lan-dung-may', [Phase2UIApiController::class, 'getKPISoLanDungMay']);
-    $router->get('kpi/tong-don-hang', [Phase2UIApiController::class, 'getKPIOrderProduction']);
+    $router->get('kpi/tong-don-hang', [Phase2UIApiController::class, 'getKPIOrderProductionByProduct']);
     $router->get('kpi/tong-theo-khach-hang', [Phase2UIApiController::class, 'getKPIOrderProductionSummaryAndByCustomer']);
 
     Route::apiResource('lot-plans', LotPlanController::class);
