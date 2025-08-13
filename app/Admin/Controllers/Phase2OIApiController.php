@@ -793,7 +793,7 @@ class Phase2OIApiController extends Controller
             try {
                 DB::beginTransaction();
                 $counter = $this->fetchDataFromApi($machine->device_id);
-                if ($machine->is_iot == 1 && $counter['PLC:Num_Out'][0]['value'] && $counter['PLC:Num_Out'][0]['value'] - $tracking->output > 0) {
+                if ($machine->is_iot == 1 && $tracking->output > 0 && $counter['PLC:Num_Out'][0]['value'] && $counter['PLC:Num_Out'][0]['value'] - $tracking->output > 0) {
                     $sl_dau_ra_hang_loat = ($counter['PLC:Num_Out'][0]['value'] - $tracking->output) * ($infoCongDoan->product->so_bat ?? 1);
                 } else {
                     $sl_dau_ra_hang_loat = $infoCongDoan->sl_dau_ra_hang_loat;
@@ -822,23 +822,7 @@ class Phase2OIApiController extends Controller
                 if ($sl_con_lai < 0) {
                     return $this->failure([], "Số lượng sản xuất không hợp lệ");
                 }
-                // $lot = Lot::find($infoCongDoan->lot_id);
-                // if (!$lot) {
-                //     Lot::create([
-                //         'id' => $infoCongDoan->lot_id,
-                //         'product_id' => $infoCongDoan->product_id,
-                //         'material_id' => $infoCongDoan->material_id,
-                //         'lo_sx' => $infoCongDoan->lo_sx,
-                //         'final_line_id' => $line->id,
-                //         'so_luong' => $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang,
-                //         'type' => Lot::TYPE_TEM_TRANG
-                //     ]);
-                // } else {
-                //     $lot->update([
-                //         'so_luong' => $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng - $infoCongDoan->sl_tem_vang,
-                //         'final_line_id' => $line->id,
-                //     ]);
-                // }
+
                 $sl_dat = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng;
                 $line_inventory = LineInventories::where('product_id', $infoCongDoan->product_id)->where('line_id', $infoCongDoan->line_id)->first();
                 if ($line_inventory) {

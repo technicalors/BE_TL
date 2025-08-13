@@ -3198,7 +3198,6 @@ class Phase2UIApiController extends Controller
                     'chua_san_xuat' => $remain,
                 ];
             })
-            ->take(4)
             ->values();
 
         // --- Summary ---
@@ -3211,7 +3210,7 @@ class Phase2UIApiController extends Controller
         ];
 
         // Đưa "Tổng" vào đầu mảng
-        return collect([$summaryRow])->merge($rows)->values();
+        return collect([$summaryRow])->merge($rows)->values()->take(5);
     }
 
     protected function calculateOrderProductionForPeriod($start, $end, $label)

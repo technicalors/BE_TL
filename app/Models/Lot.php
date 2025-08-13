@@ -39,7 +39,7 @@ class Lot extends Model
 
     public function line()
     {
-        return $this->belongsTo(Line::class);
+        return $this->belongsTo(Line::class, 'final_line_id');
     }
 
 

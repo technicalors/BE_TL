@@ -4568,11 +4568,24 @@ class ApiMobileController extends AdminController
 
     public function updateLineInventory(Request $request)
     {
-        LineInventories::all()->map(function($item){
-            if($item->quantity < 0){
-                $item->update(['quantity'=>0]);
-            }
-            return $item;
-        });
+        $data = [];
+        $line_inventories = LineInventories::where('quantity', '>', 1000000)->get();
+        foreach($line_inventories as $line_inventory){
+            $info = InfoCongDoan::where('line_id', $line_inventory->line_id)->where('product_id', $line_inventory->product_id)->get();
+            // $lots = Lot::has('line')->whereIn('id', $info->pluck('input_lot_id')->toArray())->get()->groupBy('final_line_id')->map(function($item){
+            //     return $item->sum('so_luong');
+            // });
+            $scanned = InfoCongDoan::whereIn('input_lot_id', $info->pluck('lot_id')->toArray())->get();
+            $remain = collect($info)->whereNotIn('lot_id', $scanned->pluck('lot_id')->toArray())->all();
+            $data[] = [
+                'product_id' => $line_inventory->product_id,
+                'line_id' => $line_inventory->line_id,
+                'quantity' => collect($remain)->sum('sl_dau_ra_hang_loat') - collect($remain)->sum('sl_ng') - collect($remain)->sum('sl_tem_vang'),
+            ];
+        }
+        foreach ($data as $key => $value) {
+            LineInventories::where('line_id', $value['line_id'])->where('product_id', $value['product_id'])->update(['quantity'=>$value['quantity']]);
+        }
+        return $this->success($data);
     }
 }
