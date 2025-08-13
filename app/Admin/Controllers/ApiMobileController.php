@@ -4571,16 +4571,14 @@ class ApiMobileController extends AdminController
         $data = [];
         $line_inventories = LineInventories::where('quantity', '>', 1000000)->get();
         foreach($line_inventories as $line_inventory){
-            $info = InfoCongDoan::where('line_id', $line_inventory->line_id)->where('product_id', $line_inventory->product_id)->get();
-            // $lots = Lot::has('line')->whereIn('id', $info->pluck('input_lot_id')->toArray())->get()->groupBy('final_line_id')->map(function($item){
-            //     return $item->sum('so_luong');
-            // });
-            $scanned = InfoCongDoan::whereIn('input_lot_id', $info->pluck('lot_id')->toArray())->get();
-            $remain = collect($info)->whereNotIn('lot_id', $scanned->pluck('lot_id')->toArray())->all();
+            $info = InfoCongDoan::where('sl_dau_ra_hang_loat', '<=', 100000)->where('line_id', $line_inventory->line_id)->where('product_id', $line_inventory->product_id);
+            $scanned = InfoCongDoan::whereIn('input_lot_id', (clone $info)->pluck('lot_id')->toArray())->get();
+            $remain = (clone $info)->whereNotIn('lot_id', $scanned->pluck('lot_id')->toArray())->get();
+            // return $remain->sum('sl_dau_ra_hang_loat') - $remain->sum('sl_ng') - $remain->sum('sl_tem_vang');
             $data[] = [
                 'product_id' => $line_inventory->product_id,
                 'line_id' => $line_inventory->line_id,
-                'quantity' => collect($remain)->sum('sl_dau_ra_hang_loat') - collect($remain)->sum('sl_ng') - collect($remain)->sum('sl_tem_vang'),
+                'quantity' => $remain->sum('sl_dau_ra_hang_loat') - $remain->sum('sl_ng') - $remain->sum('sl_tem_vang'),
             ];
         }
         foreach ($data as $key => $value) {
