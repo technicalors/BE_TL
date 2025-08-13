@@ -19,13 +19,18 @@ class CheckSheetController extends Controller
     public function list(Request $request)
     {
         $query = CheckSheetWork::orderBy('created_at', 'DESC');
-        if (isset($request->product_id)) {
-            $query->where('product_id', 'like', "%$request->product_id%");
-        }
-        if (isset($request->product_name)) {
-            $query->whereHas('product', function ($q) use ($request) {
-                $q->where('name', 'like', "%$request->product_name%");
+        if (isset($request->machine_id)) {
+            $query->whereHas('checksheet', function($q)use($request){
+                $q->where('machine_id', 'like', "%$request->machine_id%");
             });
+        }
+        if (isset($request->hang_muc)) {
+            $query->whereHas('checksheet', function($q)use($request){
+                $q->where('hang_muc', 'like', "%$request->hang_muc%");
+            });
+        }
+        if (isset($request->cong_viec)) {
+            $query->where('cong_viec', 'like', "%$request->product_name%");
         }
         $total = $query->count();
         if (isset($request->page) && isset($request->pageSize)) {

@@ -4572,12 +4572,12 @@ class ApiUIController extends AdminController
             $plan->ten_san_pham = $plan->product->name ?? '';
             $bom = Bom::where('product_id', $plan->product_id)->whereRaw('priority REGEXP "^[0-9]+$"')->orderBy('id')->first();
             $plan->material_name = $bom->material->name ?? "";
-            $material = Material::find($plan->product_id);
-            if ($plan->line_id != 24 && $material) {
-                $bom = Bom::where('material_id', $plan->product_id)->whereRaw('priority REGEXP "^[0-9]+$"')->orderBy('id')->first();
-                $plan->ten_san_pham = $bom->product->name ?? "";
-                // $plan->product_id = $bom->product->id ?? "";
-            }
+            // $material = Material::find($plan->product_id);
+            // if ($plan->line_id != 24 && $material) {
+            //     $bom = Bom::where('material_id', $plan->product_id)->whereRaw('priority REGEXP "^[0-9]+$"')->orderBy('id')->first();
+            //     $plan->ten_san_pham = $bom->product->name ?? "";
+            //     // $plan->product_id = $bom->product->id ?? "";
+            // }
             $plan->ngay_giao_hang = $plan->ngay_giao_hang ? date('d/m/Y', strtotime($plan->ngay_giao_hang)) : "";
             $plan->cong_doan_sx = $plan->line->name ?? '';
             $plan->status = strtotime(date('Y-m-d')) >= strtotime($plan->ngay_sx) ? 'FIX' : 'PRE';
