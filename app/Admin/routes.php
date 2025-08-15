@@ -798,7 +798,7 @@ Route::group([
 //Masterdata
 Route::group([
     'prefix'        => "/api/p2/ui/master-data",
-    'middleware'    => "auth:sanctum",
+    'middleware'    => [],
 ], function (Router $router) {
     Route::apiResource('stamps', StampController::class);
     Route::post('stamps/import', [StampController::class, 'import']);

@@ -248,11 +248,11 @@ class ApiMobileController extends AdminController
         $machine = Machine::where('code', $machine_id)->first();
         if (!$machine) return $this->success();
         $line = Line::find($machine['line_id']);
-        if ($line->id == 25) {
+        // if ($line->id == 25) {
             $checksheet_ids = CheckSheet::where('machine_id', $machine_id)->pluck('id');
-        } else {
-            $checksheet_ids = CheckSheet::where('line_id', $line->id)->pluck('id');
-        }
+        // } else {
+        //     $checksheet_ids = CheckSheet::where('line_id', $line->id)->pluck('id');
+        // }
         $checkSheetWork = CheckSheetWork::whereIn('check_sheet_id', $checksheet_ids)->with('checksheet')->get();
         $startDate = date("Y-m-d 00:00:00");
         $endDate = date("Y-m-d 23:59:59");

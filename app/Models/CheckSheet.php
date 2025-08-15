@@ -12,6 +12,7 @@ class CheckSheet extends Model
     protected $table = "check_sheet";
     protected $fillable = [
         'line_id',
+        'machine_id',
         'hang_muc',
     ];
 
