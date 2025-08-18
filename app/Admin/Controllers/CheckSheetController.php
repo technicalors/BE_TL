@@ -32,7 +32,7 @@ class CheckSheetController extends Controller
             });
         }
         if (isset($request->cong_viec)) {
-            $query->where('cong_viec', 'like', "%$request->product_name%");
+            $query->where('cong_viec', 'like', "%$request->cong_viec%");
         }
         $total = $query->count();
         if (isset($request->page) && isset($request->pageSize)) {
