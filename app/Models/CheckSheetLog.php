@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class CheckSheetLog extends Model
 {
     use HasFactory;
-    protected $fillable = ['info'];
+    protected $fillable = ['info', 'created_at'];
     protected $casts = ['info' => 'json'];
     protected  $table = "check_sheet_log";
 }

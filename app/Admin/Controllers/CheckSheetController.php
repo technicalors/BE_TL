@@ -4,6 +4,7 @@ namespace App\Admin\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\CheckSheet;
+use App\Models\CheckSheetLog;
 use App\Models\CheckSheetWork;
 use App\Models\Machine;
 use App\Traits\API;
@@ -51,13 +52,13 @@ class CheckSheetController extends Controller
     {
         $input = $request->all();
         $machine = Machine::where('code', $input['machine_id'])->first();
-        if(!$machine){
+        if (!$machine) {
             return $this->failure($input, 'Không tìm thấy máy');
         }
         try {
             DB::beginTransaction();
             $hang_muc = Checksheet::firstOrCreate([
-                'hang_muc'=>$input['hang_muc'],
+                'hang_muc' => $input['hang_muc'],
                 'line_id' => $machine->line_id,
                 'machine_id' => $machine->code,
             ]);
@@ -78,13 +79,13 @@ class CheckSheetController extends Controller
     {
         $input = $request->all();
         $machine = Machine::where('code', $input['machine_id'])->first();
-        if(!$machine){
+        if (!$machine) {
             return $this->failure($input, 'Không tìm thấy máy');
         }
         try {
             DB::beginTransaction();
             $hang_muc = Checksheet::firstOrCreate([
-                'hang_muc'=>$input['hang_muc'],
+                'hang_muc' => $input['hang_muc'],
                 'line_id' => $machine->line_id,
                 'machine_id' => $machine->code,
             ]);
@@ -151,7 +152,7 @@ class CheckSheetController extends Controller
             foreach ($allDataInSheet[$headerRowIndex] as $key => $ma_may) {
                 if (empty($ma_may)) continue;
                 $machine = Machine::where('code', $ma_may)->first();
-                if ($machine) $machines[$key] =[
+                if ($machine) $machines[$key] = [
                     'code' => $machine->code,
                     'line_id' => $machine->line_id
                 ];
@@ -177,7 +178,7 @@ class CheckSheetController extends Controller
                         if (preg_match('/\d+/', $cell, $m)) {
                             $count = max(1, (int)$m[0]);
                         }
-                        if(!empty($row['C'])){
+                        if (!empty($row['C'])) {
                             $input_checksheet['hang_muc'] = $row['C'];
                         }
                         $input_checksheet['machine_id'] = $machine['code'];
@@ -207,5 +208,32 @@ class CheckSheetController extends Controller
     public function export(Request $request)
     {
         return $this->success('', 'Export thành công');
+    }
+
+    public function autocomplete(Request $request)
+    {
+        if (empty($request->machine_ids)) {
+            return $this->failure([], 'Chưa chọn máy');
+        }
+        foreach ($request->machine_ids ?? [] as $key => $machine_id) {
+            $log = CheckSheetLog::query()
+                ->where('info->machine_id', $machine_id)
+                ->whereDate('created_at', now()->toDateString())
+                ->first();
+
+            if ($log) {
+                continue;
+            } else {
+                CheckSheetLog::create([
+                    'info'       => [
+                        'created_by' => $request->user()->id,
+                        'machine_id' => $machine_id,
+                        'data'       => [],
+                    ],
+                    'created_at' => now()->startOfDay(),
+                ]);
+            }
+        }
+        return $this->success([], 'Đã cập nhật thành công');
     }
 }

@@ -516,11 +516,11 @@ class Phase2OIApiController extends Controller
         if ($isExist) {
             return $this->failure('', 'Có lot chưa hoàn thành, không thể tiếp tục lot khác');
         }
+        $checksheet_logs = CheckSheetLog::where('info->machine_id', $machine->code)->whereDate('created_at', Carbon::today())->get();
+        if (count($checksheet_logs) <= 0) {
+            return $this->failure([], "Chưa nhập kiểm tra checksheet");
+        }
         if ($machine->is_iot) {
-            $checksheet_logs = CheckSheetLog::where('info->machine_id', $machine->code)->whereDate('created_at', Carbon::today())->get();
-            if (count($checksheet_logs) <= 0) {
-                return $this->failure([], "Chưa nhập kiểm tra checksheet");
-            }
             $tracking = Tracking::where('machine_id', $machine->code)->first();
             if ($machine->is_iot == 1 && !$tracking) {
                 return $this->failure([], "Máy này chưa được sử dụng");
@@ -1608,7 +1608,7 @@ class Phase2OIApiController extends Controller
         //         $product_id = $productBom->product_id;
         //     }
         // }
-        if($infoCongDoan->product_id != $product->id && $infoCongDoan->line_id == 24){
+        if ($infoCongDoan->product_id != $product->id && $infoCongDoan->line_id == 24) {
             $product_id = $infoCongDoan->losx->product_id ?? null;
         } else {
             $product_id = $infoCongDoan->product_id;
@@ -3682,7 +3682,7 @@ class Phase2OIApiController extends Controller
             $attemp .= implode('; ', $loi);
             $dau_noi[] = $attemp;
         }
-        
+
         $date = $infoCongDoan ? Carbon::parse($infoCongDoan->created_at) : now();
         if ($date->isSunday()) {
             $date->subDay();

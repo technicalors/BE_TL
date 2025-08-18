@@ -290,7 +290,7 @@ class ApiMobileController extends AdminController
         } else {
             $res = $checksheet;
         }
-        $res->id = Carbon::now()->timestamp;
+        // $res->id = Carbon::now()->timestamp;
         $res->save();
         return $this->success($res);
     }

@@ -798,7 +798,7 @@ Route::group([
 //Masterdata
 Route::group([
     'prefix'        => "/api/p2/ui/master-data",
-    'middleware'    => [],
+    'middleware'    => "auth:sanctum",
 ], function (Router $router) {
     Route::apiResource('stamps', StampController::class);
     Route::post('stamps/import', [StampController::class, 'import']);
@@ -859,6 +859,7 @@ Route::group([
     Route::patch('checksheet/{id}', [CheckSheetController::class, 'update']);
     Route::delete('checksheet/{id}', [CheckSheetController::class, 'delete']);
     Route::post('checksheet/import', [CheckSheetController::class, 'import']);
+    Route::post('checksheet/autocomplete', [CheckSheetController::class, 'autocomplete']);
 });
 
 //OI
