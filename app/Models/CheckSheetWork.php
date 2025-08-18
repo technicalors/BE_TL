@@ -12,6 +12,7 @@ class CheckSheetWork extends Model
     protected $fillable = [
         'check_sheet_id',
         'cong_viec',
+        'type'
     ];
 
     public function checksheet()

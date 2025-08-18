@@ -66,6 +66,7 @@ class CheckSheetController extends Controller
             $checksheet = CheckSheetWork::create([
                 'check_sheet_id' => $input['checksheet_id'],
                 'cong_viec' => $input['cong_viec'],
+                'type' => $input['type']
             ]);
             DB::commit();
         } catch (\Throwable $th) {
@@ -97,6 +98,7 @@ class CheckSheetController extends Controller
             $checksheet->update([
                 'check_sheet_id' => $input['checksheet_id'],
                 'cong_viec' => $input['cong_viec'],
+                'type' => $input['type']
             ]);
             DB::commit();
         } catch (\Throwable $th) {
