@@ -640,7 +640,6 @@ class Phase2OIApiController extends Controller
                         'log' => $value->log,
                         'user_id' => $request->user()->id,
                         'created_at' => $value->created_at,
-                        'updated_at' => $value->updated_at,
                     ]);
                 }
             }
