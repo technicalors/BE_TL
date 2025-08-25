@@ -630,7 +630,16 @@ class Phase2OIApiController extends Controller
             ]);
             // Lưu lại những lần kiểm tra trước đó
             if (!empty($previousLineLot)) {
-                $dau_noi = LotErrorLog::where('lot_id', $previousLineLot->lot_id)->where('machine_code', $previousLineLot->machine_code)->where('line_id', $previousLineLot->line_id)->where('lo_sx', $previousLineLot->lo_sx)->get();
+                $dau_noi = LotErrorLog::where('lot_id', $previousLineLot->lot_id)
+                ->where('machine_code', $previousLineLot->machine_code)
+                ->where('line_id', $previousLineLot->line_id)
+                ->where('lo_sx', $previousLineLot->lo_sx)
+                ->get();
+                $delete_old_dau_noi = LotErrorLog::where('lot_id', $infoCongDoan->lot_id)
+                ->where('machine_code', $infoCongDoan->machine_code)
+                ->where('line_id', $infoCongDoan->line_id)
+                ->where('lo_sx', $infoCongDoan->lo_sx)
+                ->delete();
                 foreach ($dau_noi as $key => $value) {
                     LotErrorLog::create([
                         'lot_id' => $infoCongDoan->lot_id,
