@@ -249,6 +249,9 @@ class Phase2UIApiController extends Controller
         if (isset($request->lot_id)) {
             $query->where('lot_id', 'like', "%$request->lot_id%");
         }
+        if (isset($request->input_lot_id)) {
+            $query->where('input_lot_id', 'like', "%$request->input_lot_id%");
+        }
         return $query;
     }
 
