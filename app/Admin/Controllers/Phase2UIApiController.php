@@ -161,6 +161,7 @@ class Phase2UIApiController extends Controller
                 "ngay_sx" => date('d/m/Y H:i:s', strtotime($item->created_at)),
                 'ca_sx' => $ca_sx,
                 'xuong' => 'Giấy',
+                "input_lot_id" => $item->input_lot_id,
                 "cong_doan" => $item->line->name,
                 "line_id" => $item->line_id,
                 "machine" => $item->machine_code ?? "",
