@@ -1639,12 +1639,13 @@ class Phase2OIApiController extends Controller
         $lotErrorLog = LotErrorLog::where('lot_id', $request->lot_id)->orderBy('line_id')->get();
         $log = [];
         $dau_noi = [];
-        foreach ($lotErrorLog as $key => $item) {
-            $attemp = 'Lần ' . ($key + 1) . ': ';
+        foreach ($lotErrorLog as $index => $item) {
+            $attemp = 'Lần ' . ($index + 1) . ': ';
             $loi = [];
             foreach ($item->log ?? [] as $key => $value) {
+                $err = Error::find($key);
                 $log[$key] = ($log[$key] ?? 0) + $value;
-                $loi[] = $key . '(' . $value . ')';
+                $loi[] = ($err->noi_dung ?? $key) . '(' . $value . ')';
             }
             $attemp .= implode('; ', $loi);
             $dau_noi[] = $attemp;
