@@ -338,7 +338,7 @@ class Phase2OIApiController extends Controller
         if (!empty($request->machine_code)) {
             $info_query->where('machine_code', $machine_code);
         }
-        $infos = $info_query->get();
+        $infos = $info_query->with('qcHistory.testCriteriaHistories')->get();
         foreach ($infos as $key => $info) {
             $plan = $info->plan;
             $product_name = $info->product->name ?? "";
@@ -386,6 +386,17 @@ class Phase2OIApiController extends Controller
                 $info['sl_dau_ra_ok'] -= $info['sl_gom_tem_vang'];
                 $info['sl_dau_ra_ok'] = $info['sl_dau_ra_ok'] < 0 ? 0 : $info['sl_dau_ra_ok'];
             }
+            $testHistories = !empty($info->qcHistory) ? $info->qcHistory->testCriteriaHistories->toArray() : [];
+            if(count($testHistories) === 3){
+                if(in_array('NG', array_column($testHistories, 'result'))){
+                    $info['phan_dinh'] = 'NG';
+                } else {
+                    $info['phan_dinh'] = 'OK';
+                }
+            }else{
+                $info['phan_dinh'] = '-';
+            }
+            
         }
         return $this->success($infos);
     }
@@ -1643,9 +1654,9 @@ class Phase2OIApiController extends Controller
             $attemp = 'Lần ' . ($index + 1) . ': ';
             $loi = [];
             foreach ($item->log ?? [] as $key => $value) {
-                $err = Error::find($key);
+                // $err = Error::find($key);
                 $log[$key] = ($log[$key] ?? 0) + $value;
-                $loi[] = ($err->noi_dung ?? $key) . '(' . $value . ')';
+                $loi[] = ($key) . '(' . $value . ')';
             }
             $attemp .= implode('; ', $loi);
             $dau_noi[] = $attemp;
@@ -2943,7 +2954,7 @@ class Phase2OIApiController extends Controller
         $product = $infoCongDoan->product;
         $tc_query = $line->testCriteria();
         $list = $tc_query->get();
-        $testCriteriaHistories = $infoCongDoan->qcHistory->testCriteriaHistories;
+        $testCriteriaHistories =  !empty($infoCongDoan->qcHistory) ? $infoCongDoan->qcHistory->testCriteriaHistories : collect([]);
         $testCriteriaDetailHistories = $testCriteriaHistories->flatMap->testCriteriaDetailHistories ?? collect([]);
         $data = [];
         if ($line->id == '30') {
