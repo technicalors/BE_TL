@@ -10,17 +10,17 @@ const MACHINE_STATUS_API_URL = base_url + "/update-status";
 const MACHINE_RECORD_API_URL = base_url + "/record-product-output";
 const POWER_CONSUME_API_URL = base_url + "/power-consume";
 const DEVICE_IDS = [
-  "f7f77560-45bd-11ef-b8c3-a13625245eca",
-  "7cda31d0-45bb-11ef-b8c3-a13625245eca",
-  "da03f550-45be-11ef-b8c3-a13625245eca",
-  "a43d8520-45bf-11ef-b8c3-a13625245eca",
-  "22d821e0-45bd-11ef-b8c3-a13625245eca",
-  "af35a2e0-45c0-11ef-b8c3-a13625245eca",
-  "9032a0e0-45bc-11ef-b8c3-a13625245eca",
-  "40a1abc0-45bc-11ef-b8c3-a13625245eca",
-  "886de160-45be-11ef-b8c3-a13625245eca",
-  "2a9b5df0-45bf-11ef-b8c3-a13625245eca",
-  "7b85a180-45bf-11ef-b8c3-a13625245eca",
+  "f7f77560-45bd-11ef-b8c3-a13625245eca",//LH2-A2
+  "7cda31d0-45bb-11ef-b8c3-a13625245eca",//IN_8_MAU_01
+  "da03f550-45be-11ef-b8c3-a13625245eca",//DC_8
+  "a43d8520-45bf-11ef-b8c3-a13625245eca",//LINER_01
+  "22d821e0-45bd-11ef-b8c3-a13625245eca",//LH1-A2
+  "af35a2e0-45c0-11ef-b8c3-a13625245eca",//LINER_02
+  "9032a0e0-45bc-11ef-b8c3-a13625245eca",//IN_4_MAU_01
+  "40a1abc0-45bc-11ef-b8c3-a13625245eca",//IN_2_MAU_01
+  "886de160-45be-11ef-b8c3-a13625245eca",//LH3-A2
+  "2a9b5df0-45bf-11ef-b8c3-a13625245eca",//DC_1
+  "7b85a180-45bf-11ef-b8c3-a13625245eca",//DC_2
 ];
 
 // Thông tin đăng nhập
@@ -62,6 +62,7 @@ const deviceFieldConfig = {
     PLC_AP03: "PLC:AP03",
     PM01_TEnergy: "PM01:Active_Energy",
     Env01_Temper: "ENV01:TEMPER",
+    Env01_Humi: "ENV01:HUMI",
     Temper_PV: "TEM_CHIL:Temper_PV",
   },
   "40a1abc0-45bc-11ef-b8c3-a13625245eca": {
@@ -420,7 +421,7 @@ async function connectWebSocket(deviceId) {
           parsedData.data["TEM_CHIL:Temper_PV"][0]
             ? parsedData.data["TEM_CHIL:Temper_PV"][0][1]
             : null;
-        if (envHumi !== null && envTemper !== null && envTemperPV !== null) {
+        if (envHumi !== null || envTemper !== null || envTemperPV !== null) {
           // Tạo payload chung cho 2 device
           const forwardPayload = {
             Env01_Humi: envHumi,
@@ -464,7 +465,7 @@ async function connectWebSocket(deviceId) {
           parsedData.data["TEM_CHIL:Temper_PV"][0]
             ? parsedData.data["TEM_CHIL:Temper_PV"][0][1]
             : null;
-        if (envHumi01 !== null && envTemper01 !== null && envTemperPV01 !== null) {
+        if (envHumi01 !== null || envTemper01 !== null || envTemperPV01 !== null) {
           // Tạo payload chung cho 2 device
           const forwardPayload = {
             Env01_Humi: envHumi01,
