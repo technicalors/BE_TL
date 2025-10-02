@@ -2778,7 +2778,7 @@ class Phase2OIApiController extends Controller
             $info_query->where('machine_code', $request->machine_code);
         }
         $info_query->where(function ($subQuery) {
-            $subQuery->whereDate('thoi_gian_bat_dau', Carbon::now()->format('Y-m-d'))->orWhereDate('thoi_gian_ket_thuc', Carbon::now()->format('Y-m-d'))->orWhere('status', InfoCongDoan::STATUS_INPROGRESS);
+            $subQuery->whereDate('thoi_gian_bat_dau', Carbon::now()->format('Y-m-d'))->orWhereDate('thoi_gian_ket_thuc', Carbon::now()->format('Y-m-d'));
         });
         $list = $info_query->get();
         $data = [];
