@@ -180,6 +180,7 @@ class CustomAdminController extends AdminController
 
     public function createUsers(Request $request){
         $input = $request->all();
+        $input['password'] = Hash::make('123456');
         $user = CustomUser::create($input);
         foreach($input['roles'] ?? [] as $role){
             DB::table('admin_role_users')->insert(['role_id'=>$role,'user_id'=>$user->id]);

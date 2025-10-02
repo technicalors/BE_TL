@@ -2935,7 +2935,6 @@ class Phase2OIApiController extends Controller
 
     public function filterTestCriteria($infoCongDoan, $qcHistory)
     {
-        $start = microtime(true);
         $qcHistory->load('testCriteriaHistories', 'testCriteriaDetailHistories');
         $line = $infoCongDoan->line;
         $product = $infoCongDoan->product;
@@ -2988,10 +2987,6 @@ class Phase2OIApiController extends Controller
             if ($parsedCriteria) array_push($data[$chi_tieu_slug]['data'], $parsedCriteria);
             $data[$chi_tieu_slug]['result'] = $testCriteriaHistories->firstWhere('type', $chi_tieu_slug)->result ?? null;
         }
-        $end = microtime(true);
-        $duration = $end - $start;
-
-        Log::info("Thời gian chạy: {$duration} giây");
         return $data;
     }
 
@@ -3250,6 +3245,7 @@ class Phase2OIApiController extends Controller
                     if ($infoCongDoan->id == 30) {
                         $infoCongDoan->update(['sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_ng]);
                     }
+                    Log::info('update quality here');
                     broadcast(new QualityUpdated($qualityData));
                 } else {
 
