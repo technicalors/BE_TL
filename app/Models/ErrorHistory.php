@@ -23,4 +23,7 @@ class ErrorHistory extends Model
     public function user(){
         return  $this->belongsTo(CustomUser::class, 'user_id');
     }
+    public function qcHistory(){
+        return $this->belongsTo(QCHistory::class, 'q_c_history_id');
+    }
 }

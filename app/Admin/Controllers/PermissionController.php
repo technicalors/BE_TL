@@ -28,9 +28,8 @@ class PermissionController extends AdminController
     
     public function updatePermission(Request $request){
         $input = $request->all();
-        $permission = Permission::where('id', $input['id'])->first();
+        $permission = Permission::find($input['id']);
         if($permission){
-            $input['slug'] = Str::slug($input['name']);
             $update = $permission->update($input);
             return $this->success($permission);
         }
@@ -41,15 +40,18 @@ class PermissionController extends AdminController
 
     public function createPermission(Request $request){
         $input = $request->all();
-        $input['slug'] = Str::slug($input['name']);
         $permission = Permission::create($input);
         return $this->success($permission, 'Tạo thành công');
     }
 
     public function deletePermissions(Request $request){
         $input = $request->all();
-        foreach ($input as $key => $value) {
-            Permission::where('id', $value)->delete();
+        if(isset($input['id'])){
+            if(is_array($input['id'])){
+                Permission::whereIn('id', $input['id'])->delete();
+            } else {
+                Permission::where('id', $input['id'])->delete();
+            }
         }
         return $this->success('Xoá thành công');
     }

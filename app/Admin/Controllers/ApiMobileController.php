@@ -146,22 +146,22 @@ class ApiMobileController extends AdminController
         $user =  $request->user();
         if ($user)
             return $this->success($this->parseDataUser($user));
-        return $this->failure([], "Nguời dùng không tồn tại");
+        return $this->failure([], "Unauthorized", 200);
     }
 
     public function userChangePassword(Request $request)
     {
         $user = $request->user();
-        if (!$request->password || !$request->newPassword) {
-            return $this->failure([], "Mật khẩu cũ và mật khẩu mới là bắt buộc");
+        if(!$user){
+            return $this->failure([], "Bạn không có quyền thực hiện thao tác này");
+        }
+        if (!$request->newPassword) {
+            return $this->failure([], "Mật khẩu mới là bắt buộc");
         }
 
-        if (Hash::check($request->password, $user->password)) {
-            $user->password = Hash::make($request->newPassword);
-            $user->save();
-            return $this->success($user, 'Đổi mật khẩu thành công');
-        }
-        return $this->failure([], "Sai mật khẩu, không thể thực hiện thao tác này");
+        $user->password = Hash::make($request->newPassword);
+        $user->save();
+        return $this->success($user, 'Đổi mật khẩu thành công');
     }
 
     /* =====================    PLAN   ================*/

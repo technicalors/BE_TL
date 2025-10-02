@@ -23,6 +23,11 @@ class RoleController extends AdminController
         if(isset($request->name)){
             $query->where('name', 'like', "%$request->name%");
         }
+        if(isset($request->permission_name)){
+            $query->whereHas('permissions', function($q)use($request){
+                $q->where('name', 'like', "%$request->permission_name%");
+            });
+        }
         $roles = $query->get();
         return $this->success($roles);
     }
@@ -71,8 +76,12 @@ class RoleController extends AdminController
 
     public function deleteRoles(Request $request){
         $input = $request->all();
-        foreach ($input as $key => $value) {
-            Role::where('id', $value)->delete();
+        if(isset($input['id'])){
+            if(is_array($input['id'])){
+                Role::whereIn('id', $input['id'])->delete();
+            } else {
+                Role::where('id', $input['id'])->delete();
+            }
         }
         return $this->success('Xoá thành công');
     }

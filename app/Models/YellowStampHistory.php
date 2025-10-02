@@ -15,4 +15,8 @@ class YellowStampHistory extends Model
         'sl_tem_vang',
         'user_id',
     ];
+
+    public function qcHistory(){
+        return $this->belongsTo(QCHistory::class, 'q_c_history_id');
+    }
 }

@@ -164,7 +164,7 @@ class Phase2DBApiController extends Controller
         $machines = Machine::with('line')->where('line_id', 25)->where('is_iot', 1)->orderBy('name')->get();
         $data = [];
         foreach ($machines as $machine) {
-            $info = InfoCongDoan::where("line_id", $machine->line_id)->where('machine_code', $machine->code)->with(["lotPlan", "lot.plan.product"])
+            $info = InfoCongDoan::where("line_id", $machine->line_id)->where('machine_code', $machine->code)
                 ->where(function ($query) {
                     $query->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->orWhere('status', InfoCongDoan::STATUS_INPROGRESS);
                 })->orderBy('thoi_gian_bat_dau', 'DESC')->first();

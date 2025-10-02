@@ -398,6 +398,7 @@ Route::group([
     'middleware'    => "auth:sanctum",
     'as'            => "mobile/api" . '.',
 ], function (Router $router) {
+    $router->get('/user-info', [ApiMobileController::class, 'userInfo']);
     $router->post('/machine/update', [ApiMobileController::class, 'exMachineUpdate']);
     $router->get('/material/barcode', [ApiMobileController::class, 'inNhanMuc']);
     $router->get('/tem/print', [ApiMobileController::class, 'temPrint']);

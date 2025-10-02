@@ -22,7 +22,6 @@ Homestead.json
 /.vagrant
 .phpunit.result.cache
 
-/public/exported_files
 /public/maintenance-log-images
 /public/admin.php
 

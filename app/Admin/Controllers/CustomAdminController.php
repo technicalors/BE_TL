@@ -136,6 +136,14 @@ class CustomAdminController extends AdminController
         if(isset($request->name)){
             $query->where('name', 'like', "%$request->name%");
         }
+        if(isset($request->username)){
+            $query->where('username', 'like', "%$request->username%");
+        }
+        if(isset($request->role_name)){
+            $query->whereHas('roles', function($q)use($request){
+                $q->where('name', 'like', "%$request->role_name%");
+            });
+        }
         $users = $query->get();
         return $this->success($users);
     }

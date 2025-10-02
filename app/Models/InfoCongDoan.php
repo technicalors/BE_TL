@@ -155,7 +155,7 @@ class InfoCongDoan extends Model
     }
     public function qcHistory()
     {
-        return $this->hasOne(QCHistory::class);
+        return $this->hasMany(QCHistory::class);
     }
     public function user()
     {
