@@ -3245,7 +3245,7 @@ class Phase2OIApiController extends Controller
                     $qualityData = [
                         'machine_code' => $request->machine_code,
                         'lot_id' => $request->lot_id,
-                        'is_check' => false,
+                        'is_check' => true,
                     ];
                     if ($infoCongDoan->id == 30) {
                         $infoCongDoan->update(['sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_ng]);
