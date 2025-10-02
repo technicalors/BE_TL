@@ -12,7 +12,7 @@ use Illuminate\Queue\SerializesModels;
 
 class QualityUpdated implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use Dispatchable, SerializesModels;
 
     public $qualityData;
 

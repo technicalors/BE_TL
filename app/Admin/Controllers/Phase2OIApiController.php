@@ -1630,9 +1630,9 @@ class Phase2OIApiController extends Controller
             });
         }
         $currentLineSpec = (clone $hanh_trinh_san_xuat)->where('line_id', $infoCongDoan->line_id)->first();
-        $previousLineSpec = (clone $hanh_trinh_san_xuat)->where('value', '>', $currentLineSpec->value)->orderBy('value')->first();
-        if(empty($previousLineSpec->line)){
-            $nextLine = Line::where('ordering', '>', $currentLineSpec->ordering)->orderBy('ordering')->first();
+        $nextLineSpec = (clone $hanh_trinh_san_xuat)->where('value', '>', $currentLineSpec->value)->orderBy('value')->first();
+        if(empty($nextLineSpec->line)){
+            $nextLine = Line::where('ordering', '>', ($currentLineSpec->ordering ?? 12))->orderBy('ordering')->first();
         }
         $lotErrorLog = LotErrorLog::where('lot_id', $request->lot_id)->orderBy('line_id')->get();
         $log = [];
@@ -1691,7 +1691,7 @@ class Phase2OIApiController extends Controller
         $data['his'] = $product->his ?? "";
         $data['ver'] = $product->ver ?? "";
         $data['cd_thuc_hien'] = $currentLineSpec->line->name ?? "";
-        $data['cd_tiep_theo'] = $previousLineSpec->line->name ?? ($nextLine ?? "");
+        $data['cd_tiep_theo'] = $nextLineSpec->line->name ?? ($nextLine->name ?? "");
         // $data['nguoi_sx'] = $user->name ?? "";
         $data['ghi_chu'] = $ghi_chu ?? "";
         $data['machine_code'] = $infoCongDoan->machine_code;
@@ -3626,6 +3626,9 @@ class Phase2OIApiController extends Controller
         }
         $currentLineSpec = (clone $hanh_trinh_san_xuat)->where('line_id', $infoCongDoan->line_id)->first();
         $nextLineSpec = (clone $hanh_trinh_san_xuat)->where('value', '>', $currentLineSpec->value)->orderBy('value')->first();
+        if(empty($nextLineSpec->line)){
+            $nextLine = Line::where('ordering', '>', ($currentLineSpec->ordering ?? 12))->orderBy('ordering')->first();
+        }
         $qcHistories = QCHistory::where('info_cong_doan_id', $infoCongDoan->id)->get();
         $qcHistoryByQC = QCHistory::where('info_cong_doan_id', $infoCongDoan->id)->where('type', 'qc')->first();
         $user_sx = CustomUser::find($infoCongDoan->user_id ?? null);
@@ -3659,7 +3662,7 @@ class Phase2OIApiController extends Controller
         $data['his'] = $product->his ?? "";
         $data['ver'] = $product->ver ?? "";
         $data['cd_thuc_hien'] = $currentLineSpec->line->name ?? "";
-        $data['cd_tiep_theo'] = $nextLineSpec->line->name ?? "";
+        $data['cd_tiep_theo'] = $nextLineSpec->line->name ?? ($nextLine ?? "");
         $data['nguoi_sx'] = $user_sx->name ?? "";
         $data['nguoi_qc'] = $user_qc->name ?? "";
         $data['tinh_trang_loi'] = implode(' | ', $dau_noi);
