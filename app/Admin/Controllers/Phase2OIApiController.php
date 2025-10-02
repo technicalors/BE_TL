@@ -3662,7 +3662,7 @@ class Phase2OIApiController extends Controller
         $data['his'] = $product->his ?? "";
         $data['ver'] = $product->ver ?? "";
         $data['cd_thuc_hien'] = $currentLineSpec->line->name ?? "";
-        $data['cd_tiep_theo'] = $nextLineSpec->line->name ?? ($nextLine ?? "");
+        $data['cd_tiep_theo'] = $nextLineSpec->line->name ?? ($nextLine->name ?? "");
         $data['nguoi_sx'] = $user_sx->name ?? "";
         $data['nguoi_qc'] = $user_qc->name ?? "";
         $data['tinh_trang_loi'] = implode(' | ', $dau_noi);
