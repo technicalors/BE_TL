@@ -3592,7 +3592,7 @@ class Phase2OIApiController extends Controller
                     'thoi_gian_ket_thuc' => Carbon::now(),
                     'status' => InfoCongDoan::STATUS_COMPLETED
                 ]);
-                $tracking = Tracking::where('lot_id', $infoCongDoan->lot_id)->where('machine_id', $machine->code ?? "")->first();
+                $tracking = Tracking::where('machine_id', $machine->code ?? "")->first();
                 if ($tracking) {
                     $tracking->update([
                         'lot_id' => null,
