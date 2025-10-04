@@ -3245,7 +3245,6 @@ class Phase2OIApiController extends Controller
                     if ($infoCongDoan->id == 30) {
                         $infoCongDoan->update(['sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_ng]);
                     }
-                    Log::info('update quality here');
                     broadcast(new QualityUpdated($qualityData));
                 } else {
 

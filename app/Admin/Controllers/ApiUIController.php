@@ -6405,14 +6405,11 @@ class ApiUIController extends AdminController
         try {
             foreach ($input as $key => $value) {
                 $productionPlan = ProductionPlan::find($value['plan_id']);
-                $productionPlan->update(['status_plan' => $value['status_plan']]);
-                if ($productionPlan->status_plan === 3) {
-                    $current_info = InfoCongDoan::where('plan_id', $productionPlan->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
-                    if ($current_info) {
-                        $current_info->update(['status' => 2]);
-                        Tracking::where('lot_id', $current_info->lot_id)->where('machine_id', $current_info->machine_code)->update(['lot_id' => null, 'input' => 0, 'output' => 0]);
-                    }
+                $current_info = InfoCongDoan::where('plan_id', $productionPlan->id)->where('status', InfoCongDoan::STATUS_INPROGRESS)->first();
+                if($current_info){
+                    return $this->failure('', 'Kế hoạch có lot chưa hoàn thành, không thể thực hiện thao tác này');
                 }
+                $productionPlan->update(['status_plan' => $value['status_plan']]);
             }
             DB::commit();
             return $this->success([], 'Thao tác thành công');
