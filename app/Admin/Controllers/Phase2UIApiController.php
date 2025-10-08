@@ -1073,7 +1073,10 @@ class Phase2UIApiController extends Controller
     //Pre Query QC History
     public function pqcHistoryQuery(Request $request)
     {
-        $qc_query = QCHistory::where('type', $request->requestFrom ?? 'qc')->orderBy('created_at');
+        $qc_query = QCHistory::orderBy('created_at');
+        if(isset($request->requestFrom)){
+            $qc_query->where('type', $request->requestFrom);
+        }
         if (isset($request->date) && count($request->date) == 2) {
             $qc_query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->date[0])))
                 ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->date[1])));
@@ -1159,6 +1162,7 @@ class Phase2UIApiController extends Controller
                 'user_sxkt' => $user_sx->name ?? "",
                 'sl_ng_pqc' => $sl_ng_qc,
                 'user_pqc' => $user_qc->name ?? "",
+                'checked_from' => $qc_history->type === 'sx' ? 'Sản xuất' : 'Chất lượng',
                 'sl_ng' => $qc_history->infoCongDoan->sl_ng ?? 0,
                 'ti_le_ng' => (isset($qc_history->infoCongDoan->sl_dau_ra_hang_loat) && $qc_history->infoCongDoan->sl_dau_ra_hang_loat > 0) ? number_format(($qc_history->infoCongDoan->sl_ng / $qc_history->infoCongDoan->sl_dau_ra_hang_loat) * 100) . "%" : "0%",
             ];
@@ -1183,6 +1187,9 @@ class Phase2UIApiController extends Controller
                 $noi_dung_tem_vang = rtrim($noi_dung_tem_vang, ",");
                 $item['noi_dung_tem_vang'] = $noi_dung_tem_vang;
                 $item['line_id'] = $qc_history->infoCongDoan->line_id;
+                $item['info_cong_doan_id'] = $qc_history->infoCongDoan->id;
+                $item['qc_history_id'] = $qc_history->id;
+                $item['qc_history_type'] = $qc_history->type;
             }
             $index++;
             $record[] = $item;
@@ -1370,6 +1377,7 @@ class Phase2UIApiController extends Controller
             'SX kiểm tra',
             "SL NG (PQC)",
             'QC kiểm tra',
+            'Kiểm tra bởi',
             "SL NG",
             "Tỉ lệ NG"
         ];
@@ -1402,6 +1410,7 @@ class Phase2UIApiController extends Controller
     public function exportTestCriteriaHistory(Request $request)
     {
         $query = $this->pqcHistoryQuery($request);
+        // return $query->get();
         $lineMachineQuery = clone $query;
         $lineMachines = $lineMachineQuery->get()->map(function ($history) {
             return [
@@ -1410,30 +1419,26 @@ class Phase2UIApiController extends Controller
                 'product_id' => $history->infoCongDoan->product_id ?? null,
                 'date' => Carbon::parse($history->created_at ?? null)->format('Y-m-d'),
             ];
-        })->toArray();
-        $lineMachines = array_map('unserialize', array_values(array_unique(array_map('serialize', $lineMachines))));
-        usort($lineMachines, function ($a, $b) {
-            if ($a['line_id'] === $b['line_id']) {
-                if ($a['machine_code'] === $b['machine_code']) {
-                    if ($a['product_id'] === $b['product_id']) {
-                        return strtotime($a['date']) <=> strtotime($b['date']); // Sắp xếp theo date nếu các giá trị trước giống nhau
-                    }
-                    return strcmp($a['product_id'], $b['product_id']); // So sánh product_id nếu line_id và machine_code giống nhau
-                }
-                return strcmp($a['machine_code'], $b['machine_code']); // So sánh machine_code nếu line_id giống nhau
-            }
-            return $a['line_id'] <=> $b['line_id']; // So sánh line_id
-        });
+        })->unique()->values()->toArray();
+        $lineMachines = collect($lineMachines)
+        ->sortBy([
+            ['line_id', 'asc'],
+            ['date', 'asc'],
+            ['machine_code', SORT_NATURAL], 
+            ['product_id', 'asc'],
+        ])
+        ->values()
+        ->toArray();
         // return $lineMachines;
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet_index = 0;
         foreach ($lineMachines as $lineMachine) {
-            $line = Line::find($lineMachine['line_id']);
-            $machine = Machine::where('code', $lineMachine['machine_code'])->first();
+            $machine = Machine::with('line')->where('code', $lineMachine['machine_code'])->first();
             $product = Product::find($lineMachine['product_id']);
-            if (!$line || !$product) {
+            if (!$machine || !$machine->line || !$product) {
                 continue;
             }
+            $line = $machine->line;
             $sheet = $spreadsheet->getSheet($sheet_index);
             $sheet->setTitle(($line->name != 'OQC' ? $machine->code : "OQC") . "-" . $product->id . "-" . Carbon::parse($lineMachine['date'])->format('dmy'));
             $lineQcHistoriesQuery = clone $query;
@@ -1443,33 +1448,30 @@ class Phase2UIApiController extends Controller
                 ->where('machine_code', $machine->code ?? null)
                 ->where('product_id', $product->id);
             })
-            ->with('testCriteriaHistories.testCriteriaDetailHistories.testCriteriaHistory.qcHistory.infoCongDoan')
+            ->with('testCriteriaDetailHistories', 'infoCongDoan')
             ->get();
-            $infos = $this->parseQCData($qcHistories);
-            $history = $qcHistories->flatMap->testCriteriaHistories->flatMap->testCriteriaDetailHistories->groupBy(function ($item) {
-                return $item->testCriteriaHistory->qcHistory->infoCongDoan->lot_id;
-            });
             $checked_data = [];
             $lot_id_array = [];
             $losx_array = [];
             $ngay_sx_array = [];
             $product_array = [];
             $machine_array = [];
-            foreach ($infos as $info) {
-                if ($info['lot_id']) {
-                    if (isset($info['lot_id']) && !in_array($info['lot_id'], $lot_id_array)) $lot_id_array[] = $info['lot_id'];
-                    if (isset($info['lo_sx']) && !in_array($info['lo_sx'], $losx_array)) $losx_array[] = $info['lo_sx'];
-                    if (isset($info['ngay_sx']) && !in_array($info['ngay_sx'], $ngay_sx_array)) $ngay_sx_array[] = $info['ngay_sx'];
-                    if (isset($info['ten_san_pham']) && !in_array($info['ten_san_pham'], $product_array)) $product_array[] = $info['ten_san_pham'];
-                    if (isset($info['machine_id']) && !in_array($info['machine_id'], $machine_array)) $machine_array[] = $info['machine_id'];
-                    if (isset($history[$info['lot_id']])) {
-                        $checked_data[$info['lot_id']] = $history[$info['lot_id']]->mapWithKeys(function ($e) {
-                            return [$e->test_criteria_id => $e->input ?? $e->result];
-                        });
-                    }
+            // return $infos;
+            foreach ($qcHistories as $qcHistory) {
+                if(empty($qcHistory->infoCongDoan)){
+                    continue;
                 }
+                $lot_id_array[] = $qcHistory->infoCongDoan->lot_id . '(' . $qcHistory->type . ')';
+                in_array($qcHistory->infoCongDoan->lo_sx, $losx_array) || $losx_array[] = $qcHistory->infoCongDoan->lo_sx;
+                in_array(date('d/m/Y', strtotime($qcHistory->infoCongDoan->created_at)), $ngay_sx_array) || $ngay_sx_array[] = date('d/m/Y', strtotime($qcHistory->infoCongDoan->created_at));
+                in_array($qcHistory->infoCongDoan->product->name, $product_array) || $product_array[] = $qcHistory->infoCongDoan->product->name;
+                in_array($qcHistory->infoCongDoan->machine_code, $machine_array) || $machine_array[] = $qcHistory->infoCongDoan->machine_code;
+                $checked_data[$qcHistory->id] = $qcHistory->testCriteriaDetailHistories->mapWithKeys(function ($e) {
+                    return [$e->test_criteria_id => $e->input ?? $e->result];
+                });
             }
             $transformData = $this->transformArray($checked_data);
+            // return [$checked_data, $transformData];
             $header = [
                 ['Ngày sản xuất', implode(" + ", $ngay_sx_array)],
                 ['Tên sản phẩm', implode(" + ", $product_array)],
@@ -1499,13 +1501,13 @@ class Phase2UIApiController extends Controller
                     $sheet->setCellValue([2, $row_index], $testCriterion->hang_muc);
                     $sheet->setCellValue([3, $row_index], $spec->value ?? null);
                     // Xử lý dữ liệu đã kiểm tra
-                    if (!isset($transformData[$testCriterion->id])) {
-                        foreach ($infos as $info) {
-                            $data[$testCriterion->id][$info['lot_id']] = null;
-                        }
-                    } else {
-                        $data[$testCriterion->id] = $transformData[$testCriterion->id];
-                    }
+                    // if (!isset($transformData[$testCriterion->id])) {
+                    //     foreach ($qcHistories as $info) {
+                    //         $data[$testCriterion->id][$info['lot_id']] = null;
+                    //     }
+                    // } else {
+                        $data[$testCriterion->id] = $transformData[$testCriterion->id] ?? [];
+                    // }
                     $row_data = array_filter($data[$testCriterion->id]);
                     if (empty($row_data)) {
                         unset($data[$testCriterion->id]);
@@ -1528,16 +1530,18 @@ class Phase2UIApiController extends Controller
                 'noi_dung_tem_vang' => 'Nội dung hàng tem vàng',
                 'user_sxkt' => 'Công nhân sản xuất',
                 'user_pqc' => 'QC kiểm tra',
+                'checked_from' => 'Kiểm tra bởi',
                 'note' => 'Ghi chú'
             ];
             $sheet->getStyle([1, 7, 4 + (count($lot_id_array) > 1 ? (count($lot_id_array) - 1) : 0), $row_index + count($next_rows) - 1])->applyFromArray(array_merge(ExcelStyleHelper::borders(), ExcelStyleHelper::alignment('left')));
+            $infos = $this->parseQCData($qcHistories);
             foreach ($next_rows as $key => $value) {
                 $sheet->setCellValue('A' . $row_index, $value)->mergeCells('A' . $row_index . ':C' . $row_index)->getStyle('A' . $row_index . ':C' . $row_index)->applyFromArray(array_merge(ExcelStyleHelper::bold(), ExcelStyleHelper::alignment('center')));
                 $row_index++;
                 $data[$key] = [];
                 foreach ($infos as $info) {
-                    if ($info['lot_id'] && isset($checked_data[$info['lot_id']])) {
-                        $data[$key][$info['lot_id']] = $info[$key] ?? null;
+                    if (isset($checked_data[$info['qc_history_id']])) {
+                        $data[$key][$info['qc_history_id']] = $info[$key] ?? null;
                     }
                 }
             }
@@ -1902,14 +1906,14 @@ class Phase2UIApiController extends Controller
                     })->where('line_id', $line->id)->with('qcHistory.testCriteriaHistories')
                         ->get()
                         ->groupBy(function ($infoCongDoan) {
-                            return ($infoCongDoan->machine_code ?? "") . ($infoCongDoan->product_id ?? "") . Carbon::parse($infoCongDoan->qcHistory->created_at ?? null)->format('Y-m-d');
+                            return ($infoCongDoan->machine_code ?? "") . ($infoCongDoan->product_id ?? "") . Carbon::parse($infoCongDoan->qcHistory->first()->created_at ?? null)->format('Y-m-d');
                         });
                     $tong_so_lot_kiem_tra = count($infoData);
                     $so_lot_ng = 0;
                     foreach ($infoData as $info) {
                         foreach ($info as $key => $value) {
-                            $final_result = $value->qcHistory->testCriteriaHistories->pluck('result')->toArray();
-                            if (count($final_result) >= 3 && in_array('NG', $final_result)) {
+                            $final_result = $value->qcHistory->first()->eligible_to_end;
+                            if ($final_result === QCHistory::NOT_READY_TO_END) {
                                 $so_lot_ng += 1;
                                 continue 2;
                             }

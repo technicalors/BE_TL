@@ -26,6 +26,7 @@ class QCHistory extends Model
     public function errorHistories(){
         return $this->hasMany(ErrorHistory::class);
     }
+    CONST INCOMPLETE = null;
     const NOT_READY_TO_END = 0;
     CONST READY_TO_END = 1;
     public function testCriteriaDetailHistories()
