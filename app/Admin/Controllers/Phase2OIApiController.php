@@ -1799,11 +1799,8 @@ class Phase2OIApiController extends Controller
     //Lấy dữ liệu giao việc
     public function getAssignment(Request $request)
     {
-        $info = InfoCongDoan::where('lot_id', $request->lot_id)->first();
-        $assignment = Assignment::with(['worker:id,name', 'lot'])->where('lot_id', $request->lot_id)->get();
-        foreach ($assignment as $item) {
-            $item['so_luong'] = $info->sl_dau_vao_hang_loat ?? 0;
-        }
+        // $info = InfoCongDoan::where('lot_id', $request->lot_id)->first();
+        $assignment = Assignment::where('lot_id', $request->lot_id)->get();
         return $this->success($assignment);
     }
 
@@ -3246,8 +3243,6 @@ class Phase2OIApiController extends Controller
                         $infoCongDoan->update(['sl_dau_ra_hang_loat' => $infoCongDoan->sl_dau_vao_hang_loat - $infoCongDoan->sl_ng]);
                     }
                     broadcast(new QualityUpdated($qualityData));
-                } else {
-
                 }
             } else {
                 $qc_history->update(['eligible_to_end' => QCHistory::NOT_READY_TO_END]);

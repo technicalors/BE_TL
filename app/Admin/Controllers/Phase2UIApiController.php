@@ -6,6 +6,7 @@ use App\Helpers\ExcelStyleHelper;
 use App\Http\Controllers\Controller;
 use App\Imports\InfoCongDoanImport;
 use App\Imports\WarehouseLocationImport;
+use App\Models\Assignment;
 use App\Models\CustomUser;
 use App\Models\Error;
 use App\Models\ErrorHistory;
@@ -319,6 +320,12 @@ class Phase2UIApiController extends Controller
             } else {
                 $sl_dau_ra_ok = $item->sl_dau_ra_hang_loat - $item->sl_tem_vang - $item->sl_ng;
             }
+            if($item->line_id == 29) {
+                $assignment = Assignment::where('lot_id', $item->lot_id)->with('worker')->first();
+                $user_sxkt = $assignment->worker->name ?? '';
+            } else {
+                $user_sxkt = $qcHistoryBySX->user->name ?? '';
+            }
             $tm = [
                 "stt" => $index + 1,
                 "ngay_sx" => date('d/m/Y H:i:s', strtotime($item->created_at)),
@@ -354,7 +361,7 @@ class Phase2UIApiController extends Controller
                 "thoi_gian_chay_san_luong" => number_format($d / 60, 2),
                 "leadtime" => $item->thoi_gian_ket_thuc ? number_format((strtotime($item->thoi_gian_ket_thuc) - strtotime($item->thoi_gian_bat_dau)) / 3600, 2) : '-',
                 'dien_nang' => $item->powerM ? number_format($item->powerM) : '',
-                'user_sxkt' => $qcHistoryBySX->user->name ?? '',
+                'user_sxkt' => $user_sxkt,
             ];
             $data[] = $tm;
         }
@@ -1128,9 +1135,13 @@ class Phase2UIApiController extends Controller
                 return ($shift->start_time < $shift->end_time && $createdTime >= $shift->start_time && $createdTime <= $shift->end_time) ||
                     ($shift->start_time > $shift->end_time && ($createdTime >= $shift->start_time || $createdTime <= $shift->end_time));
             })->name ?? "";
-
-            $user_sx = CustomUser::find($qc_history->infoCongDoan->user_id ?? null);
-            $user_qc = $qc_history->user;
+            if($qc_history->infoCongDoan->line_id == 29){
+                $assignment = Assignment::where('lot_id', $qc_history->infoCongDoan->lot_id ?? '')->with('worker')->first();
+                $user_sxkt = $assignment->worker->name ?? '';
+            } else {
+                $user_sxkt = '';
+            }
+            $user_qc = $qc_history->user->name ?? '';
             $sl_ng_sx = 0;
             $sl_ng_qc = 0;
             if (count($qc_history->errorHistories ?? [])) {
@@ -1159,9 +1170,9 @@ class Phase2UIApiController extends Controller
                 'sl_dau_ra_ok' => ($qc_history->infoCongDoan->sl_dau_ra_hang_loat ?? 0) - ($qc_history->infoCongDoan->sl_tem_vang ?? 0) - ($qc_history->infoCongDoan->sl_ng ?? 0),
                 'sl_tem_vang' => $qc_history->infoCongDoan->sl_tem_vang ?? 0,
                 'sl_ng_sxkt' => $sl_ng_sx,
-                'user_sxkt' => $user_sx->name ?? "",
+                'user_sxkt' => $user_sxkt,
                 'sl_ng_pqc' => $sl_ng_qc,
-                'user_pqc' => $user_qc->name ?? "",
+                'user_pqc' => $user_qc,
                 'checked_from' => $qc_history->type === 'sx' ? 'Sản xuất' : 'Chất lượng',
                 'sl_ng' => $qc_history->infoCongDoan->sl_ng ?? 0,
                 'ti_le_ng' => (isset($qc_history->infoCongDoan->sl_dau_ra_hang_loat) && $qc_history->infoCongDoan->sl_dau_ra_hang_loat > 0) ? number_format(($qc_history->infoCongDoan->sl_ng / $qc_history->infoCongDoan->sl_dau_ra_hang_loat) * 100) . "%" : "0%",
@@ -1805,6 +1816,7 @@ class Phase2UIApiController extends Controller
 
     public function exportPQCReportV2(Request $request)
     {
+        set_time_limit(180);
         $input = $request->all();
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $centerStyle = [
@@ -1903,10 +1915,10 @@ class Phase2UIApiController extends Controller
                     $date_key = $value['start']->copy()->format($value['key']);
                     $infoData = InfoCongDoan::whereHas('qcHistory', function ($query) use ($value) {
                         $query->whereBetween('created_at', [$value['start'], $value['end']]);
-                    })->where('line_id', $line->id)->with('qcHistory.testCriteriaHistories')
+                    })->where('line_id', $line->id)->with('qcHistory')
                         ->get()
                         ->groupBy(function ($infoCongDoan) {
-                            return ($infoCongDoan->machine_code ?? "") . ($infoCongDoan->product_id ?? "") . Carbon::parse($infoCongDoan->qcHistory->first()->created_at ?? null)->format('Y-m-d');
+                            return ($infoCongDoan->machine_code ?? "") . ($infoCongDoan->product_id ?? "");
                         });
                     $tong_so_lot_kiem_tra = count($infoData);
                     $so_lot_ng = 0;
