@@ -1135,11 +1135,16 @@ class Phase2UIApiController extends Controller
                 return ($shift->start_time < $shift->end_time && $createdTime >= $shift->start_time && $createdTime <= $shift->end_time) ||
                     ($shift->start_time > $shift->end_time && ($createdTime >= $shift->start_time || $createdTime <= $shift->end_time));
             })->name ?? "";
-            if($qc_history->infoCongDoan->line_id == 29){
-                $assignment = Assignment::where('lot_id', $qc_history->infoCongDoan->lot_id ?? '')->with('worker')->first();
+            if($qc_history->type == 'sx'){
+                $qcHistoryBySX = $qc_history;
+            } else {
+                $qcHistoryBySX = QCHistory::with('user')->where('info_cong_doan_id', $qc_history->infoCongDoan->id ?? '')->where('type', 'sx')->first();
+            }
+            if($qc_history->infoCongDoan->line_id == 29) {
+                $assignment = Assignment::where('lot_id', $qc_history->infoCongDoan->lot_id)->with('worker')->first();
                 $user_sxkt = $assignment->worker->name ?? '';
             } else {
-                $user_sxkt = '';
+                $user_sxkt = $qcHistoryBySX->user->name ?? '';
             }
             $user_qc = $qc_history->user->name ?? '';
             $sl_ng_sx = 0;
