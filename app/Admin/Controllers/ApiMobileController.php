@@ -3566,7 +3566,7 @@ class ApiMobileController extends AdminController
         $number_of_bin = $cell->number_of_bin - 1;
         $cell->lot()->detach($input['lot_id']);
         Cell::find($input['cell_id'])->update(['number_of_bin' => $number_of_bin]);
-        $record = WareHouseExportPlan::where('khach_hang', $input['khach_hang'])->where('product_id', $lot->product_id)->whereDate('ngay_xuat_hang', date('Y-m-d'))->first();
+        $record = WareHouseExportPlan::find($input['export_plan_id']);
         if ($record) {
             $sl = $lot->so_luong + $record->sl_thuc_xuat;
             $record->update(['sl_thuc_xuat' => $sl]);

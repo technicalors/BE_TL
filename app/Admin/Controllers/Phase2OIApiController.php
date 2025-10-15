@@ -3737,7 +3737,7 @@ class Phase2OIApiController extends Controller
         $exportPlans = WareHouseExportPlan::whereDate('ngay_xuat_hang', $date)->get();
         $sum_so_luong_kh = $exportPlans->sum('sl_yeu_cau_giao');
         $sum_so_luong_tt = $exportPlans->sum('sl_thuc_xuat');
-        $ti_le = $sum_so_luong_kh != 0 ? number_format(($sum_so_luong_tt * 100) / $sum_so_luong_kh) . ' %' : 0;
+        $ti_le = $sum_so_luong_kh != 0 ? number_format(($sum_so_luong_tt * 100) / $sum_so_luong_kh) . '%' : 0;
         $data = ['number_of_plan' => $sum_so_luong_kh, 'quantity' => $sum_so_luong_tt, 'ratio' => $ti_le];
         return $this->success($data);
     }
@@ -3790,6 +3790,7 @@ class Phase2OIApiController extends Controller
                 $object->vi_tri = '-';
                 $object->so_luong =  '-';
                 $object->pic = '-';
+                $object->export_plan_id = $record->id;
                 $data[] = $object;
             }
             $product = Product::find($record->product_id);
@@ -3812,6 +3813,7 @@ class Phase2OIApiController extends Controller
                     $object->vi_tri = $cell_lot->cell_id;
                     $object->so_luong =  $lot->so_luong;
                     $object->pic = '';
+                    $object->export_plan_id = $record->id;
                     $data[] = $object;
                     $dinh_muc = $dinh_muc + $lot->so_luong;
                 }

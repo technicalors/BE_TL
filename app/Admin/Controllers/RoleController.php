@@ -45,7 +45,7 @@ class RoleController extends AdminController
         }
         $role = Role::where('id', $input['id'])->first();
         if($role){
-            $input['slug'] = Str::slug($input['name']);
+            $input['slug'] = strtolower(str_replace(' ', '-', $input['name']));
             $update = $role->update($input);
             $user_roles = RolePermission::where('role_id', $role->id)->delete();
             foreach($input['permissions'] as $permission){
