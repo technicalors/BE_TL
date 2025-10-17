@@ -687,6 +687,10 @@ class Phase2OIApiController extends Controller
         if (!$scannedLot) {
             return $this->failure('', 'Không tìm thấy lot');
         }
+        $check = InfoCongDoan::where('input_lot_id', $request->scanned_lot)->where('line_id', 29)->first();
+        if($check) {
+            return $this->failure('', 'Tem này đã được sử dụng, vui lòng quét tem khác.');
+        }
         $current_plan = ProductionPlan::where('line_id', $machine->line_id)
             ->where('machine_id', $machine->code)
             ->where('status_plan', ProductionPlan::STATUS_IN_PROGRESS)
@@ -699,31 +703,8 @@ class Phase2OIApiController extends Controller
         }
         //Kiểm tra xem KH có cho phép không kiểm tra đầu vào không
         if (!$current_plan->pass_input_lot_id) {
-            // $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $current_plan->product_id)->whereRaw('value REGEXP "^[0-9]+$"')->orderBy('value')->pluck('value', 'line_id');
-            // return in_array($machine->line_id, [24, 25]) && $hanh_trinh_san_xuat[$machine->line_id] == 1;
-
-            // $currentLineIndex = $hanh_trinh_san_xuat[$machine->line_id] ?? 0;
-            // $previousLineId = collect($hanh_trinh_san_xuat)
-            //     ->filter(function ($value, $lineId) use ($currentLineIndex) {
-            //         return $value < $currentLineIndex;
-            //     })->keys()->last();
-            // $previousLineLot = InfoCongDoan::where('lot_id', $request->scanned_lot)
-            //     ->where('line_id', $previousLineId)->where('status', InfoCongDoan::STATUS_COMPLETED)
-            //     ->first();
-            // if (!$previousLineLot) {
-            //     return $this->failure([], 'Không tìm thấy lot đã chạy công đoạn trước');
-            // }
-            if ($scannedLot->final_line_id == 24) {
-                $bomProducts = Bom::where(function ($subQuery) use ($scannedLot) {
-                    $subQuery->where('material_id', $scannedLot->product_id)->orWhere('product_id', $scannedLot->product_id);
-                })->pluck('product_id')->toArray();
-                if (!in_array($current_plan->product_id, $bomProducts)) {
-                    return $this->failure($scannedLot, 'Không khớp mã sản phẩm');
-                }
-            } else {
-                if ($scannedLot->product_id !== $current_plan->product_id) {
-                    return $this->failure([$scannedLot, $scannedLot], 'Không khớp mã sản phẩm');
-                }
+            if ($scannedLot->product_id !== $current_plan->product_id) {
+                return $this->failure([$scannedLot, $scannedLot], 'Không khớp mã sản phẩm');
             }
             //Nếu đáp ứng đủ các điều kiện ở trên thì bắt đầu sản xuất và trừ tồn
             if ($scannedLot) {
