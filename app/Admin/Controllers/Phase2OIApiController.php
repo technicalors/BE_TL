@@ -1642,7 +1642,7 @@ class Phase2OIApiController extends Controller
         } else {
             $so_luong_tem_trang = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_tem_vang - $infoCongDoan->sl_ng;
         }
-        if(!$isReprint){
+        // if(!$isReprint){
             $lot = Lot::where('id', $infoCongDoan->lot_id)->first();
             if ($lot) {
                 $lot->update([
@@ -1659,7 +1659,7 @@ class Phase2OIApiController extends Controller
                     'type' => Lot::TYPE_TEM_TRANG,
                 ]);
             }
-        }
+        // }
         $date = Carbon::parse($infoCongDoan->created_at);
         if ($date->isSunday()) {
             $date->subDay();
