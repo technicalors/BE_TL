@@ -1059,13 +1059,7 @@ class Phase2UIApiController extends Controller
         if (isset($request->machine_error)) {
             $query->where('info->error_id', $request->machine_error);
         }
-        $mc_logs = [];
         $machine_logs = $query->get();
-        foreach ($machine_logs as $key => $value) {
-            if (($value->info['end_time'] - $value->info['start_time']) > 180) {
-                $mc_logs[] = $value;
-            }
-        }
         $machine_error = ErrorMachine::all();
         $mark_err = [];
         foreach ($machine_error as $err) {

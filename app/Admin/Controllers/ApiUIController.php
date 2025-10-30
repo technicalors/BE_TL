@@ -1087,7 +1087,7 @@ class ApiUIController extends AdminController
     {
         $page = $request->page - 1;
         $pageSize = $request->pageSize;
-        $query = MachineLog::with("machine")->whereNotNull('info->lot_id')->whereNotNull('info->end_time');
+        $query = MachineLog::with("machine")->whereNotNull('info->end_time');
         if (isset($request->machine_code)) {
             $query->where('machine_id', $request->machine_code);
         }
