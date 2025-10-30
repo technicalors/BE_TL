@@ -1032,6 +1032,17 @@ class Phase2UIApiController extends Controller
     public function getErrorFrequencyData(Request $request)
     {
         $query = MachineLog::with("machine")->whereNotNull('info->error_id');
+        if(isset($request->date) and is_array($request->date)){
+            $start = Carbon::parse($request->date[0])->startOfDay();
+            $end   = Carbon::parse($request->date[1])->endOfDay();
+
+            $query->where(function ($q) use ($start, $end) {
+                    $q->whereBetween('created_at', [$start, $end])
+                    ->orWhereBetween('updated_at', [$start, $end]);
+                });
+            // $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->date[0] ?? 'now')))
+            // ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->date[1] ?? 'now')));
+        }
         if (isset($request->machine_code)) {
             $query->where('machine_id', $request->machine_code);
         }

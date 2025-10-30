@@ -930,8 +930,8 @@ class ApiUIController extends AdminController
                 "xuong_sx" => 'Giấy',
                 "machine_id" => $log->machine->code ?? '-',
                 "machine_name" => $log->machine->name ?? '-',
-                "thoi_gian_bat_dau_dung" => date("d/m/Y H:i:s", $log->info['start_time']),
-                "thoi_gian_ket_thuc_dung" => isset($log->info['end_time']) ? date("d/m/Y H:i:s", $log->info['end_time']) : "",
+                "thoi_gian_bat_dau_dung" => Carbon::parse($log->info['start_time'])->format("d/m/Y H:i:s"),
+                "thoi_gian_ket_thuc_dung" => isset($log->info['end_time']) ? Carbon::parse($log->info['end_time'])->format("d/m/Y H:i:s") : "",
                 "lo_sx" => $lo_sx,
                 "lot_id" => $lot_id,
                 "thoi_gian_dung" => $d,
@@ -1087,13 +1087,18 @@ class ApiUIController extends AdminController
     {
         $page = $request->page - 1;
         $pageSize = $request->pageSize;
-        $query = MachineLog::with("machine")->whereNotNull('info->lot_id');
+        $query = MachineLog::with("machine")->whereNotNull('info->lot_id')->whereNotNull('info->end_time');
         if (isset($request->machine_code)) {
             $query->where('machine_id', $request->machine_code);
         }
         if (isset($request->date) && count($request->date) === 2) {
-            $query->where('info->start_time', '>=', strtotime(date('Y-m-d 00:00:00', strtotime($request->date[0]))))
-                ->where('info->end_time', '<=', strtotime(date('Y-m-d 23:59:59', strtotime($request->date[1]))));
+            $start = Carbon::parse($request->date[0])->startOfDay();
+            $end   = Carbon::parse($request->date[1])->endOfDay();
+
+            $query->where(function ($q) use ($start, $end) {
+                    $q->whereBetween('created_at', [$start, $end])
+                    ->orWhereBetween('updated_at', [$start, $end]);
+                });
         }
         if (isset($request->lo_sx)) {
             $query->where('info->lo_sx', $request->lo_sx);
