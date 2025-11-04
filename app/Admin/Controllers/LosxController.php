@@ -58,11 +58,12 @@ class LosxController extends Controller
                 $calculatedQuantity = ProductionPlanController::calculateProductionOutput($losx->product_id, $productionStep->line_id, $quantity);
                 $quantity = $calculatedQuantity;
             }
+            $component_id = $losx->product_id;
             if ($productionStep->line_id == 24) {
                 $bom = Bom::where('product_id', $losx->product_id)->orderBy('id')->first();
-                $component_id = $bom->material_id;
-            } else {
-                $component_id = $losx->product_id;
+                if($bom){
+                    $component_id = $bom->material_id;
+                }
             }
             ProductionOrderHistory::updateOrCreate([
                 'lo_sx'=>$losx->id,
