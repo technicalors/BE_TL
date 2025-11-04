@@ -49,14 +49,21 @@ class ProductionPlanController extends AdminController
     //=========================AUTO PLAN================================//
     public static function getProductionSteps($productId)
     {
+        $bom = Bom::where('material_id', $productId)->get();
+        if(count($bom) === 1){
+            $productId = $bom[0]->product_id;            
+        }
         // Bước 1: Truy vấn để lấy các công đoạn từ bảng spec theo product_id và slug 'hanh-trinh-san-xuat'
         // Sắp xếp theo thứ tự giảm dần (DESC) để tính toán sản lượng
-        return Spec::where('product_id', $productId)
+        $query = Spec::where('product_id', $productId)
             ->where('slug', 'hanh-trinh-san-xuat')
             // ->where('line_id', '<>', 29)
             ->whereRaw('value REGEXP "^[0-9]+$"')
-            ->orderBy('value', 'desc')
-            ->get();
+            ->orderBy('value', 'desc');
+        if(count($bom) === 1){
+            $query->where('value', 1);
+        }
+        return $query->get();
     }
 
     function getOrderedProductionSteps($productId)
@@ -82,6 +89,10 @@ class ProductionPlanController extends AdminController
 
     public static function calculateProductionOutput($productId, $lineId, $quantity)
     {
+        $bom = Bom::where('material_id', $productId)->get();
+        if(count($bom) === 1){
+            $productId = $bom[0]->product_id;            
+        }
         $productionWaste = Spec::where('line_id', $lineId)
             ->where('product_id', $productId)
             ->where('slug', 'hao-phi-san-xuat-cac-cong-doan')
@@ -128,6 +139,10 @@ class ProductionPlanController extends AdminController
 
     function getTransportTimeBetweenSteps($productId, $lineId)
     {
+        $bom = Bom::where('material_id', $productId)->get();
+        if(count($bom) === 1){
+            $productId = $bom[0]->product_id;            
+        }
         // Truy vấn để lấy thời gian vận chuyển giữa các công đoạn từ bảng spec theo slug 'van-chuyen-chuyen-hang-cong-doan-truoc-sang-cong-doan-sau'
         $transportTimeSpec = Spec::where('line_id', $lineId)
             ->where('product_id', $productId)
@@ -138,6 +153,10 @@ class ProductionPlanController extends AdminController
     }
     function getLotSize($productId, $lineId)
     {
+        $bom = Bom::where('material_id', $productId)->get();
+        if(count($bom) === 1){
+            $productId = $bom[0]->product_id;            
+        }
         // Truy vấn để lấy giá trị lotsize từ bảng spec theo slug 'so-luong'
         $lotSizeSpec = Spec::where('line_id', $lineId)
             ->where('product_id', $productId)
@@ -148,6 +167,10 @@ class ProductionPlanController extends AdminController
     }
     function getLotSizes($productId, array $lineIds)
     {
+        $bom = Bom::where('material_id', $productId)->get();
+        if(count($bom) === 1){
+            $productId = $bom[0]->product_id;            
+        }
         $specs = Spec::whereIn('line_id', $lineIds)
             ->where('product_id', $productId)
             ->where('slug', 'so-luong')
@@ -167,7 +190,10 @@ class ProductionPlanController extends AdminController
     function getRollChangeTime($productId, $lineId)
     {
         // Truy vấn để lấy giá trị thời gian lên xuống cuộn từ bảng spec theo slug 'thoi-gian-len-xuong-cuon'
-
+        $bom = Bom::where('material_id', $productId)->get();
+        if(count($bom) === 1){
+            $productId = $bom[0]->product_id;            
+        }
         $rollChangeSpec = Spec::where('line_id', $lineId)
             ->where('product_id', $productId)
             ->where('slug', 'thoi-gian-len-xuong-cuon')
@@ -200,6 +226,10 @@ class ProductionPlanController extends AdminController
 
     function getEfficiencys($productId, array $lineIds)
     {
+        $bom = Bom::where('material_id', $productId)->get();
+        if(count($bom) === 1){
+            $productId = $bom[0]->product_id;            
+        }
         $specs = Spec::whereIn('line_id', $lineIds)
             ->where('product_id', $productId)
             ->where('slug', 'nang-suat-an-dinhgio')
@@ -219,6 +249,10 @@ class ProductionPlanController extends AdminController
 
     function getBottleneckStage($productId)
     {
+        $bom = Bom::where('material_id', $productId)->get();
+        if(count($bom) === 1){
+            $productId = $bom[0]->product_id;            
+        }
         // Truy vấn để lấy công đoạn bottleneck từ bảng spec theo slug 'bottleneck'
         $bottleneckSpec = Spec::where('product_id', $productId)
             ->where('slug', 'nang-suat-an-dinhgio')
@@ -230,6 +264,10 @@ class ProductionPlanController extends AdminController
 
     function getRollsPerTransport($productId, $lineId)
     {
+        $bom = Bom::where('material_id', $productId)->get();
+        if(count($bom) === 1){
+            $productId = $bom[0]->product_id;            
+        }
         // Truy vấn để lấy số lượng cuộn một lần vận chuyển từ bảng spec theo slug 'so-luong-cuon-1-lan-van-chuyen'
         $rollsPerTransportSpec = Spec::where('line_id', $lineId)
             ->where('product_id', $productId)
@@ -241,6 +279,10 @@ class ProductionPlanController extends AdminController
 
     public static function getSetupTime($productId, $lineId)
     {
+        $bom = Bom::where('material_id', $productId)->get();
+        if(count($bom) === 1){
+            $productId = $bom[0]->product_id;            
+        }
         // Truy vấn để lấy giá trị thời gian vào hàng từ bảng spec theo slug 'vao-hang-setup-may'
         $setupTimeSpec = Spec::where('line_id', $lineId)
             ->where('product_id', $productId)
@@ -414,6 +456,10 @@ class ProductionPlanController extends AdminController
 
     function getShiftPreparationTime($productId, $lineId)
     {
+        $bom = Bom::where('material_id', $productId)->get();
+        if(count($bom) === 1){
+            $productId = $bom[0]->product_id;            
+        }
         $preparationTimeSpec = Spec::where('line_id', $lineId)
             ->where('product_id', $productId)
             ->where('slug', 'chuan-bidau-ca')
