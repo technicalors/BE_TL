@@ -1602,8 +1602,13 @@ class Phase2OIApiController extends Controller
     {
         $product = $infoCongDoan->losx->product ?? null;
         $material = Material::find($infoCongDoan->product_id);
-
-        $hanh_trinh_san_xuat = Spec::with('line')->where('slug', 'hanh-trinh-san-xuat')->where('product_id', $product->id ?? '')->whereRaw('value REGEXP "^[0-9]+$"');
+        $bom = Bom::where('material_id', $infoCongDoan->product_id)->get();
+        if(count($bom) === 1){
+            $productId = $bom[0]->product_id;            
+        } else {
+            $productId = $product->id;
+        }
+        $hanh_trinh_san_xuat = Spec::with('line')->where('slug', 'hanh-trinh-san-xuat')->where('product_id', $productId)->whereRaw('value REGEXP "^[0-9]+$"');
         if(!$material && $infoCongDoan->line_id == 26){
             $hanh_trinh_san_xuat->where(function($q){
                 $q->where('line_id', '!=', 26)
