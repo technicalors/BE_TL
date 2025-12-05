@@ -1600,7 +1600,7 @@ class Phase2OIApiController extends Controller
 
     public function formatTemTrang($infoCongDoan, $request, $isReprint = false)
     {
-        $product = $infoCongDoan->losx->product ?? null;
+        $product = $infoCongDoan->losx->product ?? $infoCongDoan->losx->product ?? null;
         $material = Material::find($infoCongDoan->product_id);
         $bom = Bom::where('material_id', $infoCongDoan->product_id)->get();
         if(count($bom) === 1){
