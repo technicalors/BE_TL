@@ -1616,7 +1616,7 @@ class Phase2OIApiController extends Controller
             });
         }
         $currentLineSpec = (clone $hanh_trinh_san_xuat)->where('line_id', $infoCongDoan->line_id)->first();
-        $nextLineSpec = (clone $hanh_trinh_san_xuat)->where('value', '>', $currentLineSpec->value)->orderBy('value')->first();
+        $nextLineSpec = (clone $hanh_trinh_san_xuat)->where('value', '>', $currentLineSpec->value ?? 0)->orderBy('value')->first();
         if(empty($nextLineSpec->line)){
             $nextLine = Line::where('ordering', '>', ($currentLineSpec->ordering ?? 12))->orderBy('ordering')->first();
         }
