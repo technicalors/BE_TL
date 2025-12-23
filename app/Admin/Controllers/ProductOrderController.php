@@ -312,7 +312,11 @@ class ProductOrderController extends Controller
                     }
                     if ($productionStep->line_id == 24) {
                         $bom = Bom::where('product_id', $productOrder->product_id)->orderBy('id')->first();
-                        $component_id = $bom->material_id;
+                        if(!$bom){
+                            $component_id = $productOrder->product_id;
+                        }else{
+                            $component_id = $bom->material_id;
+                        }
                     } else {
                         $component_id = $productOrder->product_id;
                     }
