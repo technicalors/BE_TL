@@ -528,10 +528,22 @@ class Phase2UIApiController extends Controller
 
     function parseReportTable1($value, $date, $machine_code)
     {
-        $sl_dau_vao = (int)$value->sum('sl_dau_vao_hang_loat') ?? 0;
-        $sl_dau_ra = (int)$value->sum('sl_dau_ra_hang_loat');
-        $sl_tem_vang = (int)$value->sum('sl_tem_vang');
-        $sl_ng = $value->sum('sl_ng');
+        $sl_dau_vao = (int)$value->sum(function ($item) {
+            $sl_bat = $item->product->so_bat ?? 1;
+            return $item->sl_dau_vao_hang_loat / $sl_bat;
+        });
+        $sl_dau_ra = (int)$value->sum(function ($item) {
+            $sl_bat = $item->product->so_bat ?? 1;
+            return $item->sl_dau_ra_hang_loat / $sl_bat;
+        });
+        $sl_tem_vang = (int)$value->sum(function ($item) {
+            $sl_bat = $item->product->so_bat ?? 1;
+            return $item->sl_tem_vang / $sl_bat;
+        });
+        $sl_ng = (int)$value->sum(function ($item) {
+            $sl_bat = $item->product->so_bat ?? 1;
+            return $item->sl_ng / $sl_bat;
+        });
         $sl_ok = $sl_dau_ra - $sl_tem_vang - $sl_ng;
         $tg_sx = 0;
         $tg_vao_hang = 0;
