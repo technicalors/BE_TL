@@ -320,7 +320,7 @@ class Phase2UIApiController extends Controller
             } else {
                 $sl_dau_ra_ok = $item->sl_dau_ra_hang_loat - $item->sl_tem_vang - $item->sl_ng;
             }
-            if($item->line_id == 29) {
+            if ($item->line_id == 29) {
                 $assignment = Assignment::where('lot_id', $item->lot_id)->with('worker')->first();
                 $user_sxkt = $assignment->worker->name ?? '';
             } else {
@@ -570,15 +570,15 @@ class Phase2UIApiController extends Controller
             $ty_le_ng = ($sl_dau_ra > 0 ? number_format($sl_ng / $sl_dau_ra, 2) * 100 : 0) . '%';
             $ty_le_hao_phi_tg = ($tg_sx > 0 ? (float)number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0) . '%';
             $A = ($tg_sx > 0 ? (int) ((float)number_format($tg_hang_loat / $tg_sx, 2) * 100) : 0);
-            if($A > 100) {
+            if ($A > 100) {
                 $A = 100;
             }
             $Q = ($sl_dau_vao > 0 ? (int) ((float)number_format($sl_ok / ($sl_dau_vao ?? 1), 2)) * 100 : 0);
-            if($Q > 100) {
+            if ($Q > 100) {
                 $Q = 100;
             }
             $P = ($sl_muc_tieu > 0 ? (int) ((float)number_format($sl_dau_ra / $sl_muc_tieu, 2)) * 100 : 0);
-            if($P > 100) {
+            if ($P > 100) {
                 $P = 100;
             }
             $OEE = number_format(($A * $P * $Q) / 10000, 2);
@@ -605,7 +605,7 @@ class Phase2UIApiController extends Controller
             'lead_time' => number_format($lead_time / 60, 2),
             'A' => $A . "%",
             'P' => $P . "%",
-            'Q' => $Q . "%",
+            'Q' => $sl_dau_vao > 0 ? number_format($sl_ok / $sl_dau_vao * 100, 2) . "%" : "0%",
             'OEE' => $OEE . "%",
             'power' => $power
         ];
@@ -666,8 +666,17 @@ class Phase2UIApiController extends Controller
         $ty_le_ng = ($sl_dau_ra > 0 ? number_format($sl_ng / $sl_dau_ra, 2) * 100 : 0) . '%';
         $ty_le_hao_phi_tg = ($tg_sx > 0 ? (float)number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0) . '%';
         $A = ($tg_sx > 0 ? (int) ((float)number_format($tg_hang_loat / $tg_sx, 2) * 100) : 0);
-        $Q = ($sl_dau_vao > 0 ? (int) ((float)number_format($sl_ok / $sl_dau_vao, 2) * 100) : 0);
+        if ($A > 100) {
+            $A = 100;
+        }
+        $Q = ($sl_dau_vao > 0 ? (int) ((float)number_format($sl_ok / ($sl_dau_vao ?? 1), 2)) * 100 : 0);
+        if ($Q > 100) {
+            $Q = 100;
+        }
         $P = ($sl_muc_tieu > 0 ? (int) ((float)number_format($sl_dau_ra / $sl_muc_tieu, 2)) * 100 : 0);
+        if ($P > 100) {
+            $P = 100;
+        }
         $OEE = number_format(($A * $P * $Q) / 10000, 2);
         $power = $value->sum('powerM');
         $row = [
@@ -1041,14 +1050,14 @@ class Phase2UIApiController extends Controller
     public function getErrorFrequencyData(Request $request)
     {
         $query = MachineLog::with("machine")->whereNotNull('info->error_id');
-        if(isset($request->date) and is_array($request->date)){
+        if (isset($request->date) and is_array($request->date)) {
             $start = Carbon::parse($request->date[0])->startOfDay();
             $end   = Carbon::parse($request->date[1])->endOfDay();
 
             $query->where(function ($q) use ($start, $end) {
-                    $q->whereBetween('created_at', [$start, $end])
+                $q->whereBetween('created_at', [$start, $end])
                     ->orWhereBetween('updated_at', [$start, $end]);
-                });
+            });
             // $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->date[0] ?? 'now')))
             // ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->date[1] ?? 'now')));
         }
@@ -1095,7 +1104,7 @@ class Phase2UIApiController extends Controller
     public function pqcHistoryQuery(Request $request)
     {
         $qc_query = QCHistory::orderBy('created_at');
-        if(isset($request->requestFrom)){
+        if (isset($request->requestFrom)) {
             $qc_query->where('type', $request->requestFrom);
         }
         if (isset($request->date) && count($request->date) == 2) {
@@ -1149,12 +1158,12 @@ class Phase2UIApiController extends Controller
                 return ($shift->start_time < $shift->end_time && $createdTime >= $shift->start_time && $createdTime <= $shift->end_time) ||
                     ($shift->start_time > $shift->end_time && ($createdTime >= $shift->start_time || $createdTime <= $shift->end_time));
             })->name ?? "";
-            if($qc_history->type == 'sx'){
+            if ($qc_history->type == 'sx') {
                 $qcHistoryBySX = $qc_history;
             } else {
                 $qcHistoryBySX = QCHistory::with('user')->where('info_cong_doan_id', $qc_history->infoCongDoan->id ?? '')->where('type', 'sx')->first();
             }
-            if($qc_history->infoCongDoan->line_id == 29) {
+            if ($qc_history->infoCongDoan->line_id == 29) {
                 $assignment = Assignment::where('lot_id', $qc_history->infoCongDoan->lot_id)->with('worker')->first();
                 $user_sxkt = $assignment->worker->name ?? '';
             } else {
@@ -1199,13 +1208,13 @@ class Phase2UIApiController extends Controller
             if (!$isExport) {
                 $item['ngay_sx'] = $qc_history->scanned_time ? Carbon::parse($qc_history->scanned_time)->format('d/m/Y') : "";
                 $final_qc_result = "";
-                if($qc_history && $qc_history->eligible_to_end !== null){
-                    if($qc_history->eligible_to_end === 1){
+                if ($qc_history && $qc_history->eligible_to_end !== null) {
+                    if ($qc_history->eligible_to_end === 1) {
                         $final_qc_result = 'OK';
                     } else {
                         $final_qc_result = 'NG';
                     }
-                }else{
+                } else {
                     $final_qc_result = '';
                 }
                 $item['final_qc_result'] = $final_qc_result;
@@ -1451,14 +1460,14 @@ class Phase2UIApiController extends Controller
             ];
         })->unique()->values()->toArray();
         $lineMachines = collect($lineMachines)
-        ->sortBy([
-            ['line_id', 'asc'],
-            ['date', 'asc'],
-            ['machine_code', SORT_NATURAL], 
-            ['product_id', 'asc'],
-        ])
-        ->values()
-        ->toArray();
+            ->sortBy([
+                ['line_id', 'asc'],
+                ['date', 'asc'],
+                ['machine_code', SORT_NATURAL],
+                ['product_id', 'asc'],
+            ])
+            ->values()
+            ->toArray();
         // return $lineMachines;
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet_index = 0;
@@ -1473,13 +1482,13 @@ class Phase2UIApiController extends Controller
             $sheet->setTitle(($line->name != 'OQC' ? $machine->code : "OQC") . "-" . $product->id . "-" . Carbon::parse($lineMachine['date'])->format('dmy'));
             $lineQcHistoriesQuery = clone $query;
             $qcHistories = $lineQcHistoriesQuery->whereDate('created_at', $lineMachine['date'])
-            ->whereHas('infoCongDoan', function ($infoQuery) use ($line, $machine, $product) {
-                $infoQuery->where('line_id', $line->id)
-                ->where('machine_code', $machine->code ?? null)
-                ->where('product_id', $product->id);
-            })
-            ->with('testCriteriaDetailHistories', 'infoCongDoan')
-            ->get();
+                ->whereHas('infoCongDoan', function ($infoQuery) use ($line, $machine, $product) {
+                    $infoQuery->where('line_id', $line->id)
+                        ->where('machine_code', $machine->code ?? null)
+                        ->where('product_id', $product->id);
+                })
+                ->with('testCriteriaDetailHistories', 'infoCongDoan')
+                ->get();
             $checked_data = [];
             $lot_id_array = [];
             $losx_array = [];
@@ -1488,7 +1497,7 @@ class Phase2UIApiController extends Controller
             $machine_array = [];
             // return $infos;
             foreach ($qcHistories as $qcHistory) {
-                if(empty($qcHistory->infoCongDoan)){
+                if (empty($qcHistory->infoCongDoan)) {
                     continue;
                 }
                 $lot_id_array[] = $qcHistory->infoCongDoan->lot_id . '(' . $qcHistory->type . ')';
@@ -1536,7 +1545,7 @@ class Phase2UIApiController extends Controller
                     //         $data[$testCriterion->id][$info['lot_id']] = null;
                     //     }
                     // } else {
-                        $data[$testCriterion->id] = $transformData[$testCriterion->id] ?? [];
+                    $data[$testCriterion->id] = $transformData[$testCriterion->id] ?? [];
                     // }
                     $row_data = array_filter($data[$testCriterion->id]);
                     if (empty($row_data)) {
@@ -1580,8 +1589,8 @@ class Phase2UIApiController extends Controller
             $sheet->fromArray($lot_id_array, null, 'D8');
             $sheet->fromArray($data, null, 'D9', true);
             foreach ($sheet->getColumnIterator() as $column) {
-                if($column->getColumnIndex() === 'C'){
-                    $sheet->getStyle($column->getColumnIndex().'1:'.$column->getColumnIndex().$sheet->getHighestRow())->applyFromArray([
+                if ($column->getColumnIndex() === 'C') {
+                    $sheet->getStyle($column->getColumnIndex() . '1:' . $column->getColumnIndex() . $sheet->getHighestRow())->applyFromArray([
                         'alignment' => [
                             'wrapText' => true
                         ]
@@ -1590,7 +1599,6 @@ class Phase2UIApiController extends Controller
                 } else {
                     $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
                 }
-                
             }
             if ($sheet_index < count($lineMachines) - 1) {
                 $spreadsheet->createSheet();
@@ -3189,7 +3197,7 @@ class Phase2UIApiController extends Controller
             return $this->failure('Loại dữ liệu không hợp lệ');
         }
         // $listByProduct = $this->getKPIOrderProductionByProduct(Carbon::parse($startDate)->startOfDay(), Carbon::parse($endDate)->endOfDay());
-        return $this->success(['order_production'=>$dateList, 'product_production'=>$listByProduct]);
+        return $this->success(['order_production' => $dateList, 'product_production' => $listByProduct]);
     }
 
     // Thêm hàm mới để lấy dữ liệu theo sản phẩm
@@ -3280,9 +3288,9 @@ class Phase2UIApiController extends Controller
             $end_title = 'Năm ' . $end->format('Y');
         }
         return $this->success([
-            'result'=>$result,
-            'start'=> $start_title,
-            'end'=> $end_title,
+            'result' => $result,
+            'start' => $start_title,
+            'end' => $end_title,
         ]);
     }
 
@@ -3525,8 +3533,8 @@ class Phase2UIApiController extends Controller
                 'not_produced' => $summaryRow['not_produced'],
             ],
             'customers' => $customers, // phần tử đầu tiên là "Tổng", tiếp theo là từng customer,
-            'start'=> $start_title,
-            'end'=> $end_title,
+            'start' => $start_title,
+            'end' => $end_title,
         ]);
     }
 }
