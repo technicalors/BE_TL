@@ -563,7 +563,7 @@ class Phase2UIApiController extends Controller
             $start = Carbon::parse($item->thoi_gian_bat_dau);
             $end = Carbon::parse($item->thoi_gian_ket_thuc);
             $tg_sx_in_hours = $start->diffInHours($end); // Tính tổng phút
-            $sl_muc_tieu += ($tg_sx_in_hours / 3600) * ($item->plan->UPH ?? 0);
+            $sl_muc_tieu += ($tg_sx_in_hours / 3600) * ($item->plan->UPH ?? 10000);
         });
         try {
             //code...
