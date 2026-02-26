@@ -593,7 +593,7 @@ class Phase2UIApiController extends Controller
             if ($tg_vao_hang < 0) {
                 $tg_vao_hang = 0;
             }
-            if( $tg_hang_loat > $tg_sx) {
+            if ($tg_hang_loat > $tg_sx) {
                 $tg_hang_loat = $tg_sx;
             }
             if ($sl_dau_vao < $sl_ok) {
@@ -700,9 +700,18 @@ class Phase2UIApiController extends Controller
             $tg_sx = 30;
             $tg_hang_loat = 25;
         }
-        if ($tg_vao_hang / $tg_sx > 0.7) {
+        if ($tg_vao_hang > 0 && $tg_vao_hang / $tg_sx > 0.7) {
             $tg_hang_loat = $tg_vao_hang;
             $tg_vao_hang = ($tg_sx - $tg_vao_hang);
+        }
+        if ($tg_vao_hang < 0) {
+            $tg_vao_hang = 0;
+        }
+        if ($tg_hang_loat > $tg_sx) {
+            $tg_hang_loat = $tg_sx;
+        }
+        if ($sl_dau_vao < $sl_ok) {
+            $sl_dau_vao = $sl_dau_ra;
         }
         $ty_le_ng = ($sl_dau_ra > 0 ? number_format($sl_ng / $sl_dau_ra, 2) * 100 : 0) . '%';
         $ty_le_hao_phi_tg = ($tg_sx > 0 ? (float)number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0) . '%';
