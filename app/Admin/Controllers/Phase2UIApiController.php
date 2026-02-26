@@ -573,7 +573,7 @@ class Phase2UIApiController extends Controller
             if ($A > 100) {
                 $A = 100;
             }
-            $Q = ($sl_dau_vao > 0 ? (int) (number_format($sl_ok / $sl_dau_vao, 2)) * 100 : 0);
+            $Q = ($sl_dau_vao > 0 ? (int) (number_format($sl_ok / $sl_dau_vao * 100)) : 0);
             if ($Q > 100) {
                 $Q = 100;
             }
