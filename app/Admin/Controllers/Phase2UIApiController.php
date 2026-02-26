@@ -578,16 +578,17 @@ class Phase2UIApiController extends Controller
             $sl_muc_tieu += ($tg_sx_in_hours / 3600) * ($item->plan->UPH ?? 10800);
         });
         try {
-            if ($tg_vao_hang / $tg_sx < 0.5) {
-                $tg_hang_loat = $tg_vao_hang;
-                $tg_vao_hang = ($tg_sx - $tg_vao_hang);
-            }
+
             //code...
             $ty_le_ng = ($sl_dau_ra > 0 ? number_format($sl_ng / $sl_dau_ra, 2) * 100 : 0) . '%';
             $ty_le_hao_phi_tg = ($tg_sx > 0 ? (float)number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0) . '%';
             if ($tg_sx < 30) {
                 $tg_sx = 30;
                 $tg_hang_loat = 25;
+            }
+            if ($tg_vao_hang / $tg_sx < 0.5) {
+                $tg_hang_loat = $tg_vao_hang;
+                $tg_vao_hang = ($tg_sx - $tg_vao_hang);
             }
             $A = ($tg_sx > 0 ? (int) ((float)number_format($tg_hang_loat / $tg_sx, 2) * 100) : 0);
             if ($A > 100) {
@@ -686,13 +687,13 @@ class Phase2UIApiController extends Controller
             $tg_sx_in_hours = $start->diffInHours($end); // Tính tổng phút
             $sl_muc_tieu += ($tg_sx_in_hours / 3600) * ($item->plan->UPH ?? 10800);
         });
-        if ($tg_vao_hang / $tg_sx < 0.5) {
-            $tg_hang_loat = $tg_vao_hang;
-            $tg_vao_hang = ($tg_sx - $tg_vao_hang);
-        }
         if ($tg_sx < 30) {
             $tg_sx = 30;
             $tg_hang_loat = 25;
+        }
+        if ($tg_vao_hang / $tg_sx < 0.5) {
+            $tg_hang_loat = $tg_vao_hang;
+            $tg_vao_hang = ($tg_sx - $tg_vao_hang);
         }
         $ty_le_ng = ($sl_dau_ra > 0 ? number_format($sl_ng / $sl_dau_ra, 2) * 100 : 0) . '%';
         $ty_le_hao_phi_tg = ($tg_sx > 0 ? (float)number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0) . '%';
