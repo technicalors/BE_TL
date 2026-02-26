@@ -570,8 +570,17 @@ class Phase2UIApiController extends Controller
             $ty_le_ng = ($sl_dau_ra > 0 ? number_format($sl_ng / $sl_dau_ra, 2) * 100 : 0) . '%';
             $ty_le_hao_phi_tg = ($tg_sx > 0 ? (float)number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0) . '%';
             $A = ($tg_sx > 0 ? (int) ((float)number_format($tg_hang_loat / $tg_sx, 2) * 100) : 0);
+            if($A > 100) {
+                $A = 100;
+            }
             $Q = ($sl_dau_vao > 0 ? (int) ((float)number_format($sl_ok / ($sl_dau_vao ?? 1), 2)) * 100 : 0);
+            if($Q > 100) {
+                $Q = 100;
+            }
             $P = ($sl_muc_tieu > 0 ? (int) ((float)number_format($sl_dau_ra / $sl_muc_tieu, 2)) * 100 : 0);
+            if($P > 100) {
+                $P = 100;
+            }
             $OEE = number_format(($A * $P * $Q) / 10000, 2);
         } catch (\Throwable $th) {
 
@@ -656,8 +665,8 @@ class Phase2UIApiController extends Controller
         });
         $ty_le_ng = ($sl_dau_ra > 0 ? number_format($sl_ng / $sl_dau_ra, 2) * 100 : 0) . '%';
         $ty_le_hao_phi_tg = ($tg_sx > 0 ? (float)number_format($tg_vao_hang / $tg_sx, 2) * 100 : 0) . '%';
-        $A = ($tg_sx > 0 ? (int) ((float)number_format($tg_vao_hang / $tg_sx, 2) * 100) : 0);
-        $Q = ($sl_dau_ra > 0 ? (int) ((float)number_format($sl_ok / $sl_dau_ra, 2) * 100) : 0);
+        $A = ($tg_sx > 0 ? (int) ((float)number_format($tg_hang_loat / $tg_sx, 2) * 100) : 0);
+        $Q = ($sl_dau_vao > 0 ? (int) ((float)number_format($sl_ok / $sl_dau_vao, 2) * 100) : 0);
         $P = ($sl_muc_tieu > 0 ? (int) ((float)number_format($sl_dau_ra / $sl_muc_tieu, 2)) * 100 : 0);
         $OEE = number_format(($A * $P * $Q) / 10000, 2);
         $power = $value->sum('powerM');
