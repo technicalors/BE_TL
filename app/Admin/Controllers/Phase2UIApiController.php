@@ -528,7 +528,7 @@ class Phase2UIApiController extends Controller
 
     function parseReportTable1($value, $date, $machine_code)
     {
-        $sl_dau_vao = (int)$value->sum('sl_dau_vao_hang_loat');
+        $sl_dau_vao = (int)$value->sum('sl_dau_vao_hang_loat') ?? 0;
         $sl_dau_ra = (int)$value->sum('sl_dau_ra_hang_loat');
         $sl_tem_vang = (int)$value->sum('sl_tem_vang');
         $sl_ng = $value->sum('sl_ng');
