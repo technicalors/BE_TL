@@ -593,6 +593,9 @@ class Phase2UIApiController extends Controller
             if ($tg_vao_hang < 0) {
                 $tg_vao_hang = 0;
             }
+            if( $tg_hang_loat > $tg_sx) {
+                $tg_hang_loat = $tg_sx;
+            }
             if ($sl_dau_vao < $sl_ok) {
                 $sl_dau_vao = $sl_dau_ra;
             }
