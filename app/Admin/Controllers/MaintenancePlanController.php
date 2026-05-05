@@ -164,4 +164,75 @@ class MaintenancePlanController extends Controller
         }
         return $this->success($data);
     }
+
+    public function cloneYear(Request $request)
+    {
+        $fromYear = $request->input('from_year', 2025);
+        $toYear   = $request->input('to_year', 2026);
+
+        if ($fromYear === $toYear) {
+            return $this->failure(null, 'Năm nguồn và năm đích phải khác nhau.');
+        }
+
+        $schedules = MaintenanceSchedule::whereYear('due_date', $fromYear)->get();
+
+        if ($schedules->isEmpty()) {
+            return $this->failure(null, "Không tìm thấy kế hoạch nào trong năm $fromYear.");
+        }
+
+        $cloned  = 0;
+        $skipped = 0;
+
+        \DB::beginTransaction();
+        try {
+            foreach ($schedules as $schedule) {
+                $originalDate = \Carbon\Carbon::parse($schedule->due_date);
+                // Thay năm nguồn → năm đích, giữ nguyên tháng/ngày
+                try {
+                    $newDate = $originalDate->copy()->setYear($toYear)->format('Y-m-d');
+                } catch (\Throwable $e) {
+                    // Ngày không hợp lệ ở năm đích (vd 29/02 năm không nhuận)
+                    $skipped++;
+                    continue;
+                }
+
+                // Kiểm tra ngày có hợp lệ không (setYear có thể overflow)
+                if (\Carbon\Carbon::parse($newDate)->year !== (int)$toYear) {
+                    $skipped++;
+                    continue;
+                }
+
+                $duplicate = MaintenanceSchedule::where('machine_code', $schedule->machine_code)
+                    ->where('maintenance_item_id', $schedule->maintenance_item_id)
+                    ->where('maintenance_plan_id', $schedule->maintenance_plan_id)
+                    ->where('due_date', $newDate)
+                    ->exists();
+
+                if ($duplicate) {
+                    $skipped++;
+                    continue;
+                }
+
+                $newSchedule = MaintenanceSchedule::create([
+                    'machine_code'          => $schedule->machine_code,
+                    'maintenance_item_id'   => $schedule->maintenance_item_id,
+                    'maintenance_plan_id'   => $schedule->maintenance_plan_id,
+                    'due_date'              => $newDate,
+                ]);
+                $cloned++;
+            }
+            \DB::commit();
+        } catch (\Throwable $th) {
+            \DB::rollBack();
+            return $this->failure($th, 'Đã xảy ra lỗi trong quá trình clone.');
+        }
+
+        return $this->success([
+            'from_year' => $fromYear,
+            'to_year'   => $toYear,
+            'cloned'    => $cloned,
+            'skipped'   => $skipped,
+            'message'   => "Đã clone $cloned bản ghi từ năm $fromYear sang $toYear. Bỏ qua $skipped bản ghi (trùng lặp hoặc ngày không hợp lệ).",
+        ]);
+    }
 }

@@ -5,6 +5,7 @@ namespace App\Admin\Controllers;
 use App\Helpers\ExcelStyleHelper;
 use App\Http\Controllers\Controller;
 use App\Imports\InfoCongDoanImport;
+use App\Imports\KpiHoanThanhKeHoachImport;
 use App\Imports\WarehouseLocationImport;
 use App\Models\Assignment;
 use App\Models\CustomUser;
@@ -14,6 +15,7 @@ use App\Models\ErrorMachine;
 use App\Models\Factory;
 use App\Models\GroupYellowStampInfo;
 use App\Models\InfoCongDoan;
+use App\Models\KpiHoanThanhKeHoach;
 use App\Models\Line;
 use App\Models\Losx;
 use App\Models\Lot;
@@ -51,6 +53,31 @@ use PhpOffice\PhpSpreadsheet\Chart\Title;
 class Phase2UIApiController extends Controller
 {
     use API;
+
+    private function getUserPermissionSlugs(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return [];
+        }
+
+        $permissionSlugs = [];
+
+        foreach ($user->roles as $role) {
+            $permissionSlugs = array_merge($permissionSlugs, $role->permissions()->pluck('slug')->toArray());
+        }
+
+        $permissionSlugs = array_merge($permissionSlugs, $user->permissions()->pluck('slug')->toArray());
+
+        return array_values(array_unique(array_filter($permissionSlugs)));
+    }
+
+    private function hasUserPermission(Request $request, $permissionSlug)
+    {
+        $permissionSlugs = $this->getUserPermissionSlugs($request);
+        return in_array('*', $permissionSlugs, true) || in_array($permissionSlug, $permissionSlugs, true);
+    }
+
     public function getTreeSelect(Request $request)
     {
         $factories = Factory::where('id', 2)->get();
@@ -256,23 +283,22 @@ class Phase2UIApiController extends Controller
 
     public function getProductionHistory(Request $request)
     {
-        $page = $request->page - 1;
-        $pageSize = $request->pageSize;
+        $page = ($request->page ?? 1) - 1;
+        $pageSize = $request->pageSize ?? 10;
         $query = $this->productionHistoryQuery($request);
         $percent_query = clone $query;
-        $infos = $query->get();
-        $info_table = $query->offset($page * $pageSize)->limit($pageSize)->get();
-        $records = [];
-        $overall = $this->productionOverall($records);
+        $count_query = clone $query;
+        $table_query = clone $query;
+        $count = $count_query->count();
+        $info_table = $table_query->orderBy('info_cong_doan.id', 'desc')->offset($page * $pageSize)->limit($pageSize)->get();
+        $overall = $this->productionOverall([]);
         $percent = $this->productionPercent($percent_query);
         $table = $this->productionTable($info_table);
-        $count = count($infos);
-        $totalPage = $count;
         return $this->success([
             "overall" => $overall,
             "percent" => $percent,
             "table" => $table,
-            "totalPage" => $totalPage,
+            "totalPage" => $count,
         ]);
     }
 
@@ -2849,6 +2875,168 @@ class Phase2UIApiController extends Controller
             'value' => $ti_le_hoan_thanh_ke_hoach > 100 ? 100 : $ti_le_hoan_thanh_ke_hoach,
         ];
     }
+
+    public function getKPITiLeHoanThanhKeHoachV2(Request $request)
+    {
+        $request->validate([
+            'dateType' => 'required|in:date,week,month,year',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+        ]);
+
+        $dateType = $request->dateType;
+        $startDate = Carbon::parse($request->start_date);
+        $endDate = Carbon::parse($request->end_date);
+
+        if ($dateType === 'week') {
+            $periodStart = $startDate->copy()->startOfWeek();
+            $periodEnd = $endDate->copy()->endOfWeek();
+        } elseif ($dateType === 'month') {
+            $periodStart = $startDate->copy()->startOfMonth();
+            $periodEnd = $endDate->copy()->endOfMonth();
+        } elseif ($dateType === 'year') {
+            $periodStart = $startDate->copy()->startOfYear();
+            $periodEnd = $endDate->copy()->endOfYear();
+        } else {
+            $periodStart = $startDate->copy()->startOfDay();
+            $periodEnd = $endDate->copy()->endOfDay();
+        }
+
+        $dailyValues = KpiHoanThanhKeHoach::whereBetween('ngay', [$periodStart->toDateString(), $periodEnd->toDateString()])
+            ->pluck('ti_le', 'ngay')
+            ->toArray();
+
+        $dateList = [];
+
+        if ($dateType === 'date') {
+            $period = CarbonPeriod::create($periodStart->toDateString(), $periodEnd->toDateString());
+            foreach ($period as $date) {
+                $dateKey = $date->format('Y-m-d');
+                $value = isset($dailyValues[$dateKey]) ? (float) $dailyValues[$dateKey] : 0;
+                $dateList[] = [
+                    'type' => $date->format('d/m'),
+                    'value' => round($value, 2),
+                ];
+            }
+
+            return $this->success($dateList);
+        }
+
+        $groups = [];
+        $period = CarbonPeriod::create($periodStart->toDateString(), $periodEnd->toDateString());
+
+        foreach ($period as $date) {
+            $dateKey = $date->format('Y-m-d');
+            $value = isset($dailyValues[$dateKey]) ? (float) $dailyValues[$dateKey] : 0;
+
+            if ($dateType === 'week') {
+                $groupKey = $date->format('o-W');
+                $label = 'Tuần ' . $date->format('W');
+            } elseif ($dateType === 'month') {
+                $groupKey = $date->format('Y-m');
+                $label = 'Tháng ' . $date->format('m/Y');
+            } else {
+                $groupKey = $date->format('Y');
+                $label = 'Năm ' . $date->format('Y');
+            }
+
+            if (!isset($groups[$groupKey])) {
+                $groups[$groupKey] = [
+                    'label' => $label,
+                    'sum' => 0,
+                    'count' => 0,
+                ];
+            }
+
+            $groups[$groupKey]['sum'] += $value;
+            $groups[$groupKey]['count']++;
+        }
+
+        foreach ($groups as $group) {
+            $avg = $group['count'] > 0 ? round($group['sum'] / $group['count'], 2) : 0;
+            $dateList[] = [
+                'type' => $group['label'],
+                'value' => $avg,
+            ];
+        }
+
+        return $this->success($dateList);
+    }
+
+    public function upsertKPITiLeHoanThanhKeHoachV2(Request $request)
+    {
+        $request->validate([
+            'ngay' => 'required|date',
+            'ti_le' => 'required|numeric|min:0|max:100',
+        ]);
+
+        $record = KpiHoanThanhKeHoach::updateOrCreate(
+            ['ngay' => Carbon::parse($request->ngay)->toDateString()],
+            ['ti_le' => round((float) $request->ti_le, 2)]
+        );
+
+        return $this->success($record, 'Lưu dữ liệu thành công');
+    }
+
+    public function importKPITiLeHoanThanhKeHoachV2(Request $request)
+    {
+        if (!$this->hasUserPermission($request, 'ui/kpi/ti-le-hoan-thanh-ke-hoach-v2/import')) {
+            return $this->failure([], 'Bạn không có quyền upload Excel KPI', 403);
+        }
+
+        $request->validate(['file' => 'required|file']);
+        $ext = strtolower($request->file('file')->getClientOriginalExtension());
+        if (!in_array($ext, ['xlsx', 'xls'])) {
+            return response()->json([
+                'message' => 'The given data was invalid.',
+                'errors' => ['file' => ['The file must be a file of type: xlsx, xls.']],
+            ], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            Excel::import(new KpiHoanThanhKeHoachImport, $request->file('file'));
+            DB::commit();
+            return $this->success([], 'Upload thành công');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return $this->failure([], $e->getMessage(), 500);
+        }
+    }
+
+    public function exportTemplateKPITiLeHoanThanhKeHoachV2(Request $request)
+    {
+        if (!$this->hasUserPermission($request, 'ui/kpi/ti-le-hoan-thanh-ke-hoach-v2/template')) {
+            return $this->failure([], 'Bạn không có quyền tải file mẫu KPI', 403);
+        }
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $sheet->setCellValue('A1', 'Ngày');
+        $sheet->setCellValue('B1', 'Tỷ lệ hoàn thành kế hoạch (%)');
+        $sheet->setCellValue('A2', '05/05/2026');
+        $sheet->setCellValue('B2', 82);
+
+        $sheet->getStyle('A1:B1')->getFont()->setBold(true);
+        foreach (range('A', 'B') as $column) {
+            $sheet->getColumnDimension($column)->setAutoSize(true);
+        }
+
+        $exportPath = public_path('exported_files');
+        if (!file_exists($exportPath)) {
+            mkdir($exportPath, 0777, true);
+        }
+
+        $fileName = 'KPI_TyLeHoanThanhKeHoach_Template.xlsx';
+        $fullPath = $exportPath . DIRECTORY_SEPARATOR . $fileName;
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save($fullPath);
+
+        return $this->success('/exported_files/' . $fileName);
+    }
+
     public function getKPITiLeLoiCongDoan(Request $request)
     {
         $dateType = $request->dateType;

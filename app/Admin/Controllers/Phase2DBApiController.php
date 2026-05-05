@@ -329,7 +329,10 @@ class Phase2DBApiController extends Controller
 
                 // Fix DB
                 $plan = ProductionPlan::find($info->plan_id);
-                $sumLotPlan = $plan->sl_giao_sx;
+                if (!$plan) {
+                    continue;
+                }
+                $sumLotPlan = $plan->sl_giao_sx ?? 0;
 
                 $sumInfoActure = (int)InfoCongDoan::where('plan_id', $plan->id)->whereDate('thoi_gian_bat_dau', date('Y-m-d'))->sum('sl_dau_ra_hang_loat');
 

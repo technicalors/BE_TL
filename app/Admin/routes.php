@@ -728,6 +728,7 @@ Route::group([
     $router->get('maintenance-plans/calendar-table', [MaintenancePlanController::class, 'calendarTable']);
     $router->get('maintenance-plans/detail/list', [MaintenancePlanController::class, 'detail']);
     $router->post('maintenance-plans/import', [MaintenanceScheduleController::class, 'import']);
+    $router->post('maintenance-plans/clone-year', [MaintenancePlanController::class, 'cloneYear']);
     Route::apiResource('maintenance-plans', MaintenancePlanController::class);
     
     Route::apiResource('maintenance-schedules', MaintenanceScheduleController::class);
@@ -761,6 +762,10 @@ Route::group([
     $router->get('kpi/pass-rate-chart', [Phase2UIApiController::class, 'getKPIPassRateChart']);
     $router->get('kpi/ti-le-van-hanh-tb', [Phase2UIApiController::class, 'getKPITiLeVanHanhTB']);
     $router->get('kpi/ti-le-hoan-thanh-ke-hoach', [Phase2UIApiController::class, 'getKPITiLeHoanThanhKeHoach']);
+    $router->get('kpi/ti-le-hoan-thanh-ke-hoach-v2', [Phase2UIApiController::class, 'getKPITiLeHoanThanhKeHoachV2']);
+    $router->post('kpi/ti-le-hoan-thanh-ke-hoach-v2', [Phase2UIApiController::class, 'upsertKPITiLeHoanThanhKeHoachV2']);
+    $router->post('kpi/ti-le-hoan-thanh-ke-hoach-v2/import', [Phase2UIApiController::class, 'importKPITiLeHoanThanhKeHoachV2']);
+    $router->get('kpi/ti-le-hoan-thanh-ke-hoach-v2/template', [Phase2UIApiController::class, 'exportTemplateKPITiLeHoanThanhKeHoachV2']);
     $router->get('kpi/ti-le-loi-cong-doan', [Phase2UIApiController::class, 'getKPITiLeLoiCongDoan']);
     $router->get('kpi/hieu-suat-thiet-bi', [Phase2UIApiController::class, 'getKPIMachineEfficiency']);
     $router->get('kpi/so-lan-dung-may', [Phase2UIApiController::class, 'getKPISoLanDungMay']);
@@ -773,6 +778,7 @@ Route::group([
     Route::post('fc-plants-import', [FcPlantController::class, 'import']);
 
     Route::get('monthly-consumption', [PowerConsumeController::class, 'monthlyConsumption']);
+    Route::get('monthly-consumption/export', [PowerConsumeController::class, 'exportMonthlyConsumption']);
     Route::get('daily-consumption', [PowerConsumeController::class, 'dailyConsumption']);
 
     Route::get('warehouse-export-plans', [WarehouseExportPlanController::class, 'index']);
