@@ -4555,9 +4555,9 @@ class ApiUIController extends AdminController
             $query->where('lo_sx', $input['lo_sx']);
         }
         if (isset($input['khach_hang'])) {
-            $khach_hang = Customer::where('id', $input['khach_hang'])->first();
-            if ($khach_hang) {
-                $query->where('khach_hang', $khach_hang->name);
+            $customerName = Customer::where('id', $input['khach_hang'])->value('name');
+            if ($customerName) {
+                $query->where('khach_hang', $customerName);
             }
         }
         if (isset($input['status_plan'])) {
@@ -4571,33 +4571,99 @@ class ApiUIController extends AdminController
     {
         $list_query = $this->productionPlanQuery($request);
         $list = $list_query->get();
+
+        if ($list->isEmpty()) {
+            return $this->success($list);
+        }
+
+        $planIds = $list->pluck('id')->filter()->unique()->values()->toArray();
+        $productIds = $list->pluck('product_id')->filter()->unique()->values()->toArray();
+        $lineIds = $list->pluck('line_id')->filter()->unique()->values()->toArray();
+
+        $specMap = Spec::whereIn('product_id', $productIds)
+            ->whereIn('line_id', $lineIds)
+            ->where('name', 'Hao phí sản xuất các công đoạn (%)')
+            ->get()
+            ->keyBy(function ($item) {
+                return $item->product_id . '|' . $item->line_id;
+            });
+
+        $bomByProduct = Bom::with('material', 'product')
+            ->whereIn('product_id', $productIds)
+            ->whereRaw('priority REGEXP "^[0-9]+$"')
+            ->orderBy('id')
+            ->get()
+            ->groupBy('product_id')
+            ->map(function ($items) {
+                return $items->first();
+            });
+
+        $materialBasedBomCount = Bom::whereIn('material_id', $productIds)
+            ->whereRaw('priority REGEXP "^[0-9]+$"')
+            ->select('material_id', DB::raw('COUNT(*) as aggregate_count'))
+            ->groupBy('material_id')
+            ->pluck('aggregate_count', 'material_id');
+
+        $materialExistsMap = Material::whereIn('id', $productIds)
+            ->pluck('id')
+            ->flip();
+
+        $startedAggByPlanLine = InfoCongDoan::whereIn('plan_id', $planIds)
+            ->whereIn('line_id', $lineIds)
+            ->whereNotNull('thoi_gian_bat_dau')
+            ->select(
+                'plan_id',
+                'line_id',
+                DB::raw('SUM(sl_dau_ra_hang_loat) as sum_dau_ra_started'),
+                DB::raw('SUM(sl_ng) as sum_ng_started')
+            )
+            ->groupBy('plan_id', 'line_id')
+            ->get()
+            ->keyBy(function ($row) {
+                return $row->plan_id . '|' . $row->line_id;
+            });
+
+        $planTotals = InfoCongDoan::whereIn('plan_id', $planIds)
+            ->select(
+                'plan_id',
+                DB::raw('SUM(sl_dau_ra_hang_loat) as sum_dau_ra'),
+                DB::raw('SUM(sl_ng) as sum_sl_ng'),
+                DB::raw('SUM(sl_tem_vang) as sum_tem_vang')
+            )
+            ->groupBy('plan_id')
+            ->get()
+            ->keyBy('plan_id');
+
         foreach ($list as $plan) {
-            $spec = Spec::where('product_id', $plan->product_id)->where('line_id', $plan->line_id)->get();
+            $specKey = $plan->product_id . '|' . $plan->line_id;
+            $spec = $specMap->get($specKey);
             $plan->sl_ke_hoach_manh = $plan->sl_giao_sx;
             $plan->ten_san_pham = $plan->product->name ?? '';
-            $bom = Bom::where('product_id', $plan->product_id)->whereRaw('priority REGEXP "^[0-9]+$"')->orderBy('id')->first();
+            $bom = $bomByProduct->get($plan->product_id);
             $plan->material_name = $bom->material->name ?? "";
-            $material = Material::find($plan->product_id);
+            $material = $materialExistsMap->has($plan->product_id);
             if ($plan->line_id != 24 && $material) {
-                $boms = Bom::where('material_id', $plan->product_id)->whereRaw('priority REGEXP "^[0-9]+$"')->orderBy('id')->get();
-                if(count($boms) === 1) $plan->ten_san_pham = $bom->product->name ?? "";
+                $materialBomCount = (int) ($materialBasedBomCount[$plan->product_id] ?? 0);
+                if ($materialBomCount === 1) {
+                    $plan->ten_san_pham = $bom->product->name ?? "";
+                }
                 // $plan->product_id = $bom->product->id ?? "";
             }
             $plan->ngay_giao_hang = $plan->ngay_giao_hang ? date('d/m/Y', strtotime($plan->ngay_giao_hang)) : "";
             $plan->cong_doan_sx = $plan->line->name ?? '';
             $plan->status = strtotime(date('Y-m-d')) >= strtotime($plan->ngay_sx) ? 'FIX' : 'PRE';
-            $plan->kqsx = InfoCongDoan::where('line_id', $plan->line_id)->where('plan_id', $plan->id)->whereNotNull('thoi_gian_bat_dau')->sum('sl_dau_ra_hang_loat') -  InfoCongDoan::where('line_id', $plan->line_id)->where('plan_id', $plan->id)->whereNotNull('thoi_gian_bat_dau')->sum('sl_ng');
+            $startedKey = $plan->id . '|' . $plan->line_id;
+            $startedAgg = $startedAggByPlanLine->get($startedKey);
+            $plan->kqsx = (float) ($startedAgg->sum_dau_ra_started ?? 0) - (float) ($startedAgg->sum_ng_started ?? 0);
             // $plan->thoi_gian_ket_thuc = date('d/m/Y H:i:s', strtotime($plan->thoi_gian_ket_thuc));
             // $plan->thoi_gian_bat_dau =  date('d/m/Y H:i:s', strtotime($plan->thoi_gian_bat_dau));
             $plan->uph_thuc_te = 0;
-            $plan->sl_dau_ra = $plan->infoCongDoan->sum('sl_dau_ra_hang_loat');
-            $plan->sl_ng = $plan->infoCongDoan->sum('sl_ng');
-            $plan->sl_tem_vang = $plan->infoCongDoan->sum('sl_tem_vang');
+            $totalAgg = $planTotals->get($plan->id);
+            $plan->sl_dau_ra = (float) ($totalAgg->sum_dau_ra ?? 0);
+            $plan->sl_ng = (float) ($totalAgg->sum_sl_ng ?? 0);
+            $plan->sl_tem_vang = (float) ($totalAgg->sum_tem_vang ?? 0);
             $plan->sl_dau_ra_ok = $plan->sl_dau_ra - $plan->sl_ng;
-            $hao_phi_sx = $spec->first(function ($record) {
-                return $record->name == 'Hao phí sản xuất các công đoạn (%)';
-            }) ?? null;
-            $plan->hao_phi_cong_doan = ($hao_phi_sx->value ?? 0) . '%';
+            $plan->hao_phi_cong_doan = (($spec->value ?? 0)) . '%';
             // $hao_phi_vao_hang = $spec->first(function ($record) {
             //     return $record->name == 'Hao phí vào hàng các công đoạn';
             // }) ?? null;
