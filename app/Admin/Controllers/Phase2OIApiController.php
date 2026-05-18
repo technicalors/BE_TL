@@ -549,7 +549,7 @@ class Phase2OIApiController extends Controller
             return $this->failure('', 'Chưa có kế hoạch nào đang sản xuất');
         }
         //Kiểm tra xem KH có cho phép không kiểm tra đầu vào không
-        if (!$current_plan->pass_input_lot_id && $current_plan->product_id !== 'RD176') {
+        if (!$current_plan->pass_input_lot_id && $current_plan->product_id !== 'RD176' && $current_plan->product_id !== 'RD276') {
             $hanh_trinh_san_xuat = Spec::where('slug', 'hanh-trinh-san-xuat')->where('product_id', $current_plan->loSX->product_id ?? $current_plan->product_id)->whereRaw('value REGEXP "^[0-9]+$"');
             $curentLine = (clone $hanh_trinh_san_xuat)->where('line_id', $machine->line_id)->first();
             $roll = RollMaterial::with(['material.products', 'warehouse_inventory'])->find($request->scanned_lot);
