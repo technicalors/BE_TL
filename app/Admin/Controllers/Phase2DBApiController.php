@@ -231,10 +231,10 @@ class Phase2DBApiController extends Controller
                 $tl_ht = $sumLotPlan > 0 ? (int) number_format(($sumInfoActure ?? 0) / ($sumLotPlan ?? 0) * 100, 2) : 0;
 
                 $status = 0;
-                if ((!is_null($info->thoi_gian_bat_dau) && is_null($info->thoi_gian_bam_may) && is_null($info->thoi_gian_ket_thuc)) || ($tracking->status != 1 && $tl_ht < 95)) {
+                if ((!is_null($info->thoi_gian_bat_dau) && is_null($info->thoi_gian_bam_may) && is_null($info->thoi_gian_ket_thuc)) || ($tracking && ($tracking->status != 1 && $tl_ht < 95))) {
                     $status = 1; // orange
                 }
-                if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && is_null($info->thoi_gian_ket_thuc) && $tracking->status == 1) {
+                if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && is_null($info->thoi_gian_ket_thuc) && ($tracking && $tracking->status == 1)) {
                     $status = 3; // green
                 }
                 // if (!is_null($info->thoi_gian_bat_dau) && !is_null($info->thoi_gian_bam_may) && !is_null($info->thoi_gian_ket_thuc)) {
