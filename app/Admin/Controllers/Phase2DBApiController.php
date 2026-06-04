@@ -17,6 +17,7 @@ use App\Models\Product;
 use App\Models\ProductionPlan;
 use App\Models\Shift;
 use App\Models\Tracking;
+use App\Services\WorkshopA2ProductionDashboardService;
 use App\Traits\API;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -392,6 +393,12 @@ class Phase2DBApiController extends Controller
             }
         }
         return $this->success($data);
+    }
+
+    public function getWorkshopA2ProductionDashboard(Request $request, WorkshopA2ProductionDashboardService $service)
+    {
+        $payload = $service->build($request->input('ordering_machine'));
+        return $this->success($payload);
     }
 
     public function getProductionSituationLineInV2(Request $request)

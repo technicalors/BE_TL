@@ -647,6 +647,7 @@ Route::group([
 
     $router->get('/production-situation-line-in', [Phase2DBApiController::class, 'getProductionSituationLineIn']);
     $router->get('/production-situation-by-machine', [Phase2DBApiController::class, 'getProductionSituationByMachine']);
+    $router->get('/workshop-a2-production-dashboard', [Phase2DBApiController::class, 'getWorkshopA2ProductionDashboard']);
 });
 //OI
 Route::group([
